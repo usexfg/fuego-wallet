@@ -3,12 +3,13 @@ name: CI
 on:
   push:
     branches:
-      - xfgdev
+      - main
     tags:
       - "v*.*.*"
   pull_request:
     branches:
-      - master
+      - main
+
 jobs:
   build:
     name: ${{ matrix.os }}
@@ -35,7 +36,8 @@ jobs:
       - name: Install dependencies (Windows)
         if: runner.os == 'Windows'
         run: |
-          choco install qt-sdk boost --version=1.72.0 -y
+          choco install qt.install -y --params "'/Version:5.15.2 /Architecture:win64_msvc2019_64'"
+          choco install boost --version=1.72.0 -y
           echo "C:\Qt\5.15.2\msvc2019_64\bin" >> $GITHUB_PATH
           echo "C:\Program Files\Boost\lib64-msvc-14.2" >> $GITHUB_PATH
 
@@ -100,6 +102,7 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
