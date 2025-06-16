@@ -2,9 +2,13 @@ name: CI
 
 on:
   push:
+    branches:
+      - xfgdev
     tags:
       - "v*.*.*"
-
+  pull_request:
+    branches:
+      - master
 jobs:
   build:
     name: ${{ matrix.os }}
