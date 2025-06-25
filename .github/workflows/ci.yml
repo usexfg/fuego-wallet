@@ -32,7 +32,7 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           brew install qt@5 boost
-          export PATH="/usr/local/opt/qt@5/bin:$PATH"
+          echo "/usr/local/opt/qt@5/bin:/opt/homebrew/opt/qt@5/bin" >> $GITHUB_PATH
 
       - name: Install dependencies (Windows)
         if: runner.os == 'Windows'
@@ -67,7 +67,7 @@ jobs:
         if: runner.os == 'macOS'
         id: build_macos
         run: |
-          export PATH="/usr/local/opt/qt@5/bin:$PATH"
+          export PATH="/usr/local/opt/qt@5/bin:/opt/homebrew/opt/qt@5/bin:$PATH"
           xfg_version=$(echo "$GITHUB_REF" | sed 's|refs/tags/v||')
           release_name=fuego-desktop-macOS-v"$xfg_version"
           qmake Fuego-GUI.pro
