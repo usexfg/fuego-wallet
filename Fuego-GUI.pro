@@ -5,6 +5,12 @@
 TEMPLATE = app
 TARGET = fuego-desktop
 INCLUDEPATH += .
+INCLUDEPATH += cryptonote/src
+INCLUDEPATH += cryptonote/include
+INCLUDEPATH += cryptonote/external
+INCLUDEPATH += src
+INCLUDEPATH += /usr/local/include
+INCLUDEPATH += /opt/homebrew/include
 
 # The following define makes your compiler warn you if you use any
 # feature of Qt which has been marked as deprecated (the exact warnings
@@ -16,6 +22,19 @@ DEFINES += QT_DEPRECATED_WARNINGS
 # In order to do so, uncomment the following line.
 # You can also select to disable deprecated APIs only up to a certain version of Qt.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
+
+# Define STATIC_IN_RELEASE for libqrencode
+DEFINES += STATIC_IN_RELEASE=static
+
+# Define version macros for libqrencode
+DEFINES += MAJOR_VERSION=4
+DEFINES += MINOR_VERSION=1
+DEFINES += MICRO_VERSION=2
+DEFINES += VERSION=\\\"4.1.2\\\"
+DEFINES += QRENCODE_VERSION=\"4.1.2\"
+
+# Qt modules
+QT += core gui widgets network
 
 # Input
 HEADERS += libqrencode/bitstream.h \

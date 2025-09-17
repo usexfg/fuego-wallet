@@ -6,9 +6,22 @@
 #include "SplashScreen.h"
 
 #include <QtWidgets>
+#include <QDateTime>
+#include <QTextStream>
+#include <QFileInfo>
 
 SplashScreen::SplashScreen(QWidget* parent) : QWidget(parent)
 {
+  // Debug: Create a simple log file to track splash screen creation
+  QString debugPath = QDir::homePath() + "/Library/Application Support/fuego/splash_debug.log";
+  QDir().mkpath(QFileInfo(debugPath).absolutePath());
+  QFile debugFile(debugPath);
+  if (debugFile.open(QIODevice::WriteOnly | QIODevice::Append))
+  {
+    QTextStream stream(&debugFile);
+    stream << QDateTime::currentDateTime().toString() << " - SplashScreen constructor started\n";
+    debugFile.close();
+  }
   QFont splashFont;
   splashFont.setFamily("Cinzel");
   splashFont.setBold(true);
@@ -16,7 +29,10 @@ SplashScreen::SplashScreen(QWidget* parent) : QWidget(parent)
   splashFont.setStretch(125);
 
   image = new QLabel();
-  image->setPixmap(QPixmap(":/images/splash"));
+  QPixmap splashPixmap(":/images/splash");
+  image->setPixmap(splashPixmap);
+  image->setScaledContents(false);
+  image->setFixedSize(splashPixmap.size());
 
   text = new QLabel();
   palette.setColor(QPalette::WindowText, Qt::darkGray);
@@ -33,12 +49,20 @@ SplashScreen::SplashScreen(QWidget* parent) : QWidget(parent)
   connect(minimizeButton, SIGNAL(released()), this, SLOT(minimize()));
 
   layout = new QVBoxLayout();
+  layout->setContentsMargins(0, 0, 0, 0);
+  layout->setSpacing(0);
   layout->addWidget(minimizeButton);
-  layout->addWidget(image);
+  layout->addWidget(image, 0, Qt::AlignCenter);
   layout->addWidget(text);
   setLayout(layout);
 
-  setFixedSize(500, 325);
+  // Set window size to accommodate image + button + text
+  int windowWidth = splashPixmap.width();
+  int windowHeight = splashPixmap.height() + 50; // Extra space for button and text
+  setFixedSize(windowWidth, windowHeight);
+  
+  // Ensure the image label doesn't get resized by the layout
+  image->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
   setStyleSheet("background-color: #000;");
   setWindowIcon(QIcon(":/images/conceal-logo"));

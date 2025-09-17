@@ -11,12 +11,15 @@
 #include <Common/Util.h>
 
 #include <QCoreApplication>
+#include <QDir>
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QLocale>
 #include <QSettings>
 #include <QStandardPaths>
+#include <QString>
+#include <QStringList>
 
 #include "CommandLineParser.h"
 #include "CurrencyAdapter.h"
@@ -37,6 +40,13 @@ namespace WalletGui
   Q_DECL_CONSTEXPR char OPTION_CURRENCY[] = "currency";
   Q_DECL_CONSTEXPR char OPTION_FEE_ADDRESS[] = "feeAddress";
   Q_DECL_CONSTEXPR char OPTION_AUTOOPTIMIZATION[] = "autoOptimization";
+  
+  // STARK Proof settings
+  Q_DECL_CONSTEXPR char OPTION_STARK_PROOF_ENABLED[] = "starkProofEnabled";
+  Q_DECL_CONSTEXPR char OPTION_DEFAULT_RECIPIENT_ADDRESS[] = "defaultRecipientAddress";
+  Q_DECL_CONSTEXPR char OPTION_AUTO_GENERATE_PROOFS[] = "autoGenerateProofs";
+  Q_DECL_CONSTEXPR char OPTION_ELDERNODE_VERIFICATION_ENABLED[] = "eldernodeVerificationEnabled";
+  Q_DECL_CONSTEXPR char OPTION_ELDERNODE_TIMEOUT[] = "eldernodeTimeout";
 
   Settings &Settings::instance()
   {
@@ -335,6 +345,10 @@ namespace WalletGui
     if (m_settings.contains(OPTION_REMOTE_NODE))
     {
       remotenode = m_settings.value(OPTION_REMOTE_NODE).toString();
+    }
+    else
+    {
+      remotenode = "fuego.spaceportx.net:18180";
     }
     return remotenode;
   }
@@ -654,5 +668,61 @@ namespace WalletGui
   }
 
   QString Settings::getDefaultWalletPath() const { return QDir::homePath() + "/fuego.wallet"; }
+
+  // STARK Proof settings implementation
+  bool Settings::isStarkProofEnabled() const {
+    return m_settings.value(OPTION_STARK_PROOF_ENABLED).toBool(true);
+  }
+
+  void Settings::setStarkProofEnabled(bool enabled) {
+    if (isStarkProofEnabled() != enabled) {
+      m_settings.insert(OPTION_STARK_PROOF_ENABLED, enabled);
+      saveSettings();
+    }
+  }
+
+  QString Settings::getDefaultRecipientAddress() const {
+    return m_settings.value(OPTION_DEFAULT_RECIPIENT_ADDRESS).toString("");
+  }
+
+  void Settings::setDefaultRecipientAddress(const QString& address) {
+    if (getDefaultRecipientAddress() != address) {
+      m_settings.insert(OPTION_DEFAULT_RECIPIENT_ADDRESS, address);
+      saveSettings();
+    }
+  }
+
+  bool Settings::isAutoGenerateProofs() const {
+    return m_settings.value(OPTION_AUTO_GENERATE_PROOFS).toBool(true);
+  }
+
+  void Settings::setAutoGenerateProofs(bool enabled) {
+    if (isAutoGenerateProofs() != enabled) {
+      m_settings.insert(OPTION_AUTO_GENERATE_PROOFS, enabled);
+      saveSettings();
+    }
+  }
+
+  bool Settings::isEldernodeVerificationEnabled() const {
+    return m_settings.value(OPTION_ELDERNODE_VERIFICATION_ENABLED).toBool(true);
+  }
+
+  void Settings::setEldernodeVerificationEnabled(bool enabled) {
+    if (isEldernodeVerificationEnabled() != enabled) {
+      m_settings.insert(OPTION_ELDERNODE_VERIFICATION_ENABLED, enabled);
+      saveSettings();
+    }
+  }
+
+  int Settings::getEldernodeTimeout() const {
+    return m_settings.value(OPTION_ELDERNODE_TIMEOUT).toInt(300); // 5 minutes default
+  }
+
+  void Settings::setEldernodeTimeout(int seconds) {
+    if (getEldernodeTimeout() != seconds) {
+      m_settings.insert(OPTION_ELDERNODE_TIMEOUT, seconds);
+      saveSettings();
+    }
+  }
 
 } // namespace WalletGui

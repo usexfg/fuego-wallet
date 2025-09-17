@@ -8,6 +8,11 @@
 
 #include "LoggerAdapter.h"
 #include "Settings.h"
+#include <ctime>
+#include <QFile>
+#include <QTextStream>
+#include <QDateTime>
+#include <Logging/LoggerRef.h>
 
 namespace WalletGui {
 
@@ -32,6 +37,21 @@ void LoggerAdapter::init() {
   fileLogger.insert("filename", Settings::instance().getDataDir().absoluteFilePath("Fuegowallet.log").toStdString());
   fileLogger.insert("level", logLevel);
   m_logManager.configure(loggerConfiguration);
+  
+  // Test if logging is working by creating a test log entry
+  std::string testMessage = "LoggerAdapter initialized successfully - " + std::to_string(time(nullptr));
+  Logging::LoggerRef logger(m_logManager, "test");
+  logger(Logging::INFO) << testMessage;
+  
+  // Also create a simple test log file to verify file creation works
+  QString logFilePath = Settings::instance().getDataDir().absoluteFilePath("Fuegowallet.log");
+  QFile testLogFile(logFilePath);
+  if (testLogFile.open(QIODevice::WriteOnly | QIODevice::Append))
+  {
+    QTextStream stream(&testLogFile);
+    stream << QDateTime::currentDateTime().toString().toStdString().c_str() << " - LoggerAdapter test entry\n";
+    testLogFile.close();
+  }
 }
 
 LoggerAdapter::LoggerAdapter() : m_logManager() {

@@ -1,0 +1,287 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>BurnDepositsFrame</class>
+ <widget class="QFrame" name="BurnDepositsFrame">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>400</width>
+    <height>300</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Burn Deposits</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">color: #ddd;
+background-color: #1a1a1a;
+border: 1px solid #333;</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="spacing">
+    <number>10</number>
+   </property>
+   <property name="leftMargin">
+    <number>15</number>
+   </property>
+   <property name="topMargin">
+    <number>15</number>
+   </property>
+   <property name="rightMargin">
+    <number>15</number>
+   </property>
+   <property name="bottomMargin">
+    <number>15</number>
+   </property>
+   <item>
+    <widget class="QLabel" name="titleLabel">
+     <property name="text">
+      <string>BURN DEPOSITS</string>
+     </property>
+     <property name="font">
+      <font>
+       <family>Source Sans Pro</family>
+       <pointsize>14</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">color: #ffa500;</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="descriptionLabel">
+     <property name="text">
+      <string>Create burn deposits to generate STARK proofs for cross-chain transactions. Enter your Ethereum address where you want to receive the minted tokens.</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">color: #aaa;</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="addressGroupBox">
+     <property name="title">
+      <string>Ethereum Address</string>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">QGroupBox {
+    color: #ccc;
+    border: 1px solid #444;
+    border-radius: 5px;
+    margin-top: 10px;
+    padding-top: 10px;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 5px 0 5px;
+}</string>
+     </property>
+     <layout class="QVBoxLayout" name="addressLayout">
+      <item>
+       <widget class="QLineEdit" name="ethereumAddressEdit">
+        <property name="placeholderText">
+         <string>0x...</string>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">QLineEdit {
+    background-color: #2a2a2a;
+    border: 1px solid #555;
+    border-radius: 3px;
+    padding: 8px;
+    color: #fff;
+}
+QLineEdit:focus {
+    border: 1px solid #ffa500;
+}</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="privacyTipLabel">
+        <property name="text">
+         <string>💡 Privacy Tip: Use a fresh Ethereum address for each burn deposit to maximize privacy and prevent transaction linking.</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">color: #ffa500;
+font-size: 12px;
+padding: 8px;
+background-color: rgba(255, 165, 0, 0.1);
+border: 1px solid rgba(255, 165, 0, 0.3);
+border-radius: 4px;</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="addressStatusLabel">
+        <property name="text">
+         <string>Enter Ethereum address to validate</string>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">color: #aaa;</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="validateAddressButton">
+        <property name="text">
+         <string>Validate Address</string>
+        </property>
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">QPushButton {
+    background-color: #444;
+    border: 1px solid #666;
+    border-radius: 3px;
+    padding: 8px;
+    color: #fff;
+}
+QPushButton:hover {
+    background-color: #555;
+}
+QPushButton:pressed {
+    background-color: #333;
+}
+QPushButton:disabled {
+    background-color: #222;
+    color: #666;
+}</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="amountGroupBox">
+     <property name="title">
+      <string>Burn Amount</string>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">QGroupBox {
+    color: #ccc;
+    border: 1px solid #444;
+    border-radius: 5px;
+    margin-top: 10px;
+    padding-top: 10px;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 5px 0 5px;
+}</string>
+     </property>
+     <layout class="QHBoxLayout" name="amountLayout">
+      <item>
+       <widget class="QSpinBox" name="burnAmountSpinBox">
+        <property name="minimum">
+         <number>1</number>
+        </property>
+        <property name="maximum">
+         <number>999999999</number>
+        </property>
+        <property name="value">
+         <number>100</number>
+        </property>
+        <property name="suffix">
+         <string> XFG</string>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">QSpinBox {
+    background-color: #2a2a2a;
+    border: 1px solid #555;
+    border-radius: 3px;
+    padding: 8px;
+    color: #fff;
+}
+QSpinBox:focus {
+    border: 1px solid #ffa500;
+}</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="amountSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="createBurnDepositButton">
+     <property name="text">
+      <string>Create Burn Deposit</string>
+     </property>
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">QPushButton {
+    background-color: #ffa500;
+    border: 1px solid #ffa500;
+    border-radius: 3px;
+    padding: 12px;
+    color: #000;
+    font-weight: bold;
+}
+QPushButton:hover {
+    background-color: #ffb733;
+}
+QPushButton:pressed {
+    background-color: #e6940a;
+}
+QPushButton:disabled {
+    background-color: #444;
+    color: #666;
+    border: 1px solid #666;
+}</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>WalletGui::BurnDepositsFrame</class>
+   <extends>QFrame</extends>
+   <header>gui/BurnDepositsFrame.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

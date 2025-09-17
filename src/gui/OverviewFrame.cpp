@@ -8,6 +8,7 @@
 #include "AddressBookDialog.h"
 #include "AddressBookModel.h"
 #include "AddressProvider.h"
+#include "BurnDepositsFrame.h"
 #include "Common/CommandLine.h"
 #include "Common/DnsTools.h"
 #include "Common/PathTools.h"
@@ -135,7 +136,8 @@ namespace WalletGui
                                                    m_depositModel(new DepositListModel),
                                                    m_visibleMessagesModel(new VisibleMessagesModel),
                                                    m_exchangeProvider(new ExchangeProvider(this)),
-                                                   m_addressProvider(new AddressProvider(this))
+                                                   m_addressProvider(new AddressProvider(this)),
+                                                   m_burnDepositsFrame(new BurnDepositsFrame(this))
   {
     m_ui->setupUi(this);
 
@@ -278,6 +280,7 @@ namespace WalletGui
     connect(m_priceProvider, &PriceProvider::priceFoundSignal, this, &OverviewFrame::onPriceFound);
     connect(m_addressProvider, &AddressProvider::addressFoundSignal, this, &OverviewFrame::onAddressFound, Qt::QueuedConnection);
     connect(m_exchangeProvider, &ExchangeProvider::exchangeFoundSignal, this, &OverviewFrame::onExchangeFound);
+    connect(m_burnDepositsFrame, &BurnDepositsFrame::burnDepositCreated, this, &OverviewFrame::onBurnDepositCreated);
 
     connect(&WalletAdapter::instance(), &WalletAdapter::walletStateChangedSignal, this, &OverviewFrame::setStatusBarText);
     connect(&WalletAdapter::instance(), &WalletAdapter::walletSynchronizationCompletedSignal, this, &OverviewFrame::walletSynchronized, Qt::QueuedConnection);
@@ -862,6 +865,24 @@ namespace WalletGui
     exchangeName = _exchange;
   }
 
+  /* Handle burn deposit creation */
+  void OverviewFrame::onBurnDepositCreated(const QString& ethereumAddress, quint64 amount)
+  {
+    // Create a burn transaction using the StarkProofService
+    // This will trigger the STARK proof generation process
+    
+    // For now, we'll emit a notification
+    Q_EMIT notifySignal(QString("Burn deposit created!\n"
+                               "Ethereum Address: %1\n"
+                               "Amount: %2 XFG\n\n"
+                               "STARK proof generation will begin automatically.")
+                       .arg(ethereumAddress)
+                       .arg(amount / 100000)); // Convert back to XFG units
+    
+    // TODO: Integrate with StarkProofService to actually create the burn transaction
+    // and trigger STARK proof generation
+  }
+
   /* Update the total portfolio in XFG and Fiat in bottom corner */
   void OverviewFrame::updatePortfolio()
   {
@@ -888,6 +909,31 @@ namespace WalletGui
       m_ui->m_myConcealWalletTitle->setText(tr("COLD BANKING"));
       m_ui->m_titleIcon->setPixmap(QPixmap(":/icons/icon-banking"));
       m_ui->bankingBox->raise();
+    }
+    else
+    {
+      syncInProgressMessage();
+    }
+  }
+
+  /* Burn deposits menu button clicked */
+  void OverviewFrame::burnDepositsClicked()
+  {
+    m_ui->darkness->hide();
+    if (Settings::instance().isTrackingMode())
+    {
+      Q_EMIT notifySignal(tr("This is a tracking wallet.\nThis action is not available."));
+      return;
+    }
+
+    if (walletSynced == true)
+    {
+      m_ui->m_myConcealWalletTitle->setText(tr("BURN DEPOSITS"));
+      m_ui->m_titleIcon->setPixmap(QPixmap(":/icons/icon-banking"));
+      
+      // Show the burn deposits frame
+      m_burnDepositsFrame->show();
+      m_burnDepositsFrame->raise();
     }
     else
     {

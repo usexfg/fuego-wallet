@@ -13,6 +13,7 @@
 #include "TransactionFrame.h"
 #include "TransactionsModel.h"
 #include "OverviewFrame.h"
+#include "StarkProofService.h"
 #include "ui_transactionframe.h"
 
 namespace WalletGui {
@@ -98,6 +99,9 @@ TransactionFrame::TransactionFrame(const QModelIndex& _index, QWidget* _parent) 
 
   m_dataMapper.setModel(const_cast<QAbstractItemModel*>(m_index.model()));
   m_dataMapper.setItemDelegate(new RecentTransactionDelegate(this));
+  
+  // Update STARK status
+  updateStarkStatus();
   m_dataMapper.addMapping(m_ui->m_iconLabel, TransactionsModel::COLUMN_TYPE);
   m_dataMapper.addMapping(m_ui->o_amountLabel, TransactionsModel::COLUMN_AMOUNT);
   m_dataMapper.addMapping(m_ui->m_timeLabel, TransactionsModel::COLUMN_DATE);
@@ -111,6 +115,44 @@ TransactionFrame::~TransactionFrame() {
 
 void TransactionFrame::mousePressEvent(QMouseEvent* _event) {
   MainWindow::instance().scrollToTransaction(TransactionsModel::instance().index(m_index.data(TransactionsModel::ROLE_ROW).toInt(), 0));
+}
+
+void TransactionFrame::updateStarkStatus() {
+  // Get transaction hash from the model
+  QString txHash = m_index.data(TransactionsModel::ROLE_HASH).toByteArray().toHex().toUpper();
+  
+  if (txHash.isEmpty()) {
+    m_ui->m_starkStatusLabel->setVisible(false);
+    return;
+  }
+  
+  // Get STARK proof status
+  QString status = StarkProofService::instance().getProofStatus(txHash);
+  
+  if (status.isEmpty() || status == "none") {
+    m_ui->m_starkStatusLabel->setVisible(false);
+    return;
+  }
+  
+  m_ui->m_starkStatusLabel->setVisible(true);
+  
+  // Set status text and style based on status
+  if (status == "completed") {
+    m_ui->m_starkStatusLabel->setText(tr("HEAT Ready"));
+    m_ui->m_starkStatusLabel->setStyleSheet("color: #4CAF50; background-color: #E8F5E8; border: 1px solid #4CAF50; padding: 2px 4px; border-radius: 3px;");
+  } else if (status == "stark_pending") {
+    m_ui->m_starkStatusLabel->setText(tr("Generating..."));
+    m_ui->m_starkStatusLabel->setStyleSheet("color: #FF9800; background-color: #FFF3E0; border: 1px solid #FF9800; padding: 2px 4px; border-radius: 3px;");
+  } else if (status == "eldernode_pending") {
+    m_ui->m_starkStatusLabel->setText(tr("Verifying..."));
+    m_ui->m_starkStatusLabel->setStyleSheet("color: #2196F3; background-color: #E3F2FD; border: 1px solid #2196F3; padding: 2px 4px; border-radius: 3px;");
+  } else if (status == "failed") {
+    m_ui->m_starkStatusLabel->setText(tr("Failed"));
+    m_ui->m_starkStatusLabel->setStyleSheet("color: #F44336; background-color: #FFEBEE; border: 1px solid #F44336; padding: 2px 4px; border-radius: 3px;");
+  } else {
+    m_ui->m_starkStatusLabel->setText(tr("Pending"));
+    m_ui->m_starkStatusLabel->setStyleSheet("color: #999; background-color: #F5F5F5; border: 1px solid #999; padding: 2px 4px; border-radius: 3px;");
+  }
 }
 
 }

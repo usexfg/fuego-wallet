@@ -1,13 +1,13 @@
-<img height="500px" width="800px" src="https://raw.githubusercontent.com/usexfg/fuego-wallet/master/src/images/splash.png"><img/>
-# 🔥 Fuego Wallet
+<img height="800px" width="800px" src="https://github.com/usexfg/fuego-data/blob/90b6ca4eda30018eeb053eccea330e2117b4396d/fuego-images/fuegovlyria.png"><img/>
+# Fuego 🔥 Wallet
 
-## Privacy Desktop Banking App 
+##  Desktop Decentralized Privacy Banking
 
-### [Certificate Of Ledger Deposits](https://github.com/usexfg/COLD-DAO/blob/main/README.md) and Untraceable Messaging
+### [Certificates Of Ledger Deposit](https://github.com/usexfg/COLD-DAO/blob/main/README.md) and Untraceable Messaging
 
 Latest Release: v4.2.0.1 (Godflame Point)
 
-<b><sub>Maintained by Fuego Elder Council</sub></b>
+<b><sub>Maintained by ElderFire Privacy Group</sub></b>
 
 [![macOS](https://github.com/usexfg/fuego-wallet/actions/workflows/macOS.yml/badge.svg)](https://github.com/usexfg/fuego-wallet/actions/workflows/macOS.yml)
 
@@ -128,3 +128,6 @@ cpack
 ## Special Thanks
 
 Special thanks to developers from Cryptonote, Bytecoin, Conceal, Karbo, Monero, Forknote, XDN, TurtleCoin, Ryo, and Masari.
+# Trigger new build after fuego memory header fix
+# Test build after cryptonote memory header fix
+# Trigger new build

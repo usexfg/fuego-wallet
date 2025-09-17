@@ -1,32 +1,198 @@
-cmake_minimum_required(VERSION 2.7)
+cmake_minimum_required(VERSION 3.10)
 
-include(CryptoNoteWallet.cmake)
-include(QREncode.cmake)
+# Set project name before including other files
+set(CN_PROJECT_NAME "FuegoWallet")
 
 if(APPLE)
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.12" CACHE STRING "Minimum OS X deployment version")  
 endif(APPLE)
 
-project(${CN_PROJECT_NAME})
+# Enable both C and C++ languages before including other files that need it
+project(${CN_PROJECT_NAME} C CXX)
+
+# Force C++17 standard and compiler flags
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Force C99 standard for C files
+set(CMAKE_C_STANDARD 99)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS OFF)
+
+# Force C++17 flag for all compilers
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
+    message(STATUS "Using GNU compiler with C++17 and C99")
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
+    message(STATUS "Using Clang compiler with C++17 and C99")
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
+    message(STATUS "Using AppleClang compiler with C++17 and C99")
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /std:c99")
+    message(STATUS "Using MSVC compiler with C++17 and C99")
+endif()
+
+message(STATUS "C++ Standard: ${CMAKE_CXX_STANDARD}")
+message(STATUS "C++ Flags: ${CMAKE_CXX_FLAGS}")
+message(STATUS "C Standard: ${CMAKE_C_STANDARD}")
+message(STATUS "C Flags: ${CMAKE_C_FLAGS}")
+
+# Add compiler flags to handle potential compilation issues
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-variable -Wno-unused-function -Wno-error -Wno-deprecated-builtins")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-variable -Wno-unused-function -Wno-error")
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-variable -Wno-unused-function -Wno-error -Wno-deprecated-builtins -Wno-unused-command-line-argument")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-variable -Wno-unused-function -Wno-error -Wno-unused-command-line-argument")
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-variable -Wno-unused-function -Wno-error -Wno-deprecated-builtins -Wno-unused-command-line-argument")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-variable -Wno-unused-function -Wno-error -Wno-unused-command-line-argument")
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /WX-")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /W3 /WX-")
+endif()
+
+# Set STARK CLI path for binary download
+if(WIN32)
+    set(STARK_CLI_PATH "bin/xfg-stark-cli.exe")
+elseif(APPLE)
+    set(STARK_CLI_PATH "bin/xfg-stark-cli")
+else()
+    set(STARK_CLI_PATH "bin/xfg-stark-cli")
+endif()
+
+include(CryptoNoteWallet.cmake)
+include(QREncode.cmake)
 
 execute_process(COMMAND git log -1 --pretty=format:%h
 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 OUTPUT_VARIABLE GIT_REVISION)
 
 set(CRYPTONOTE_LIB cryptonote)
-set(CMAKE_PREFIX_PATH "C:\\Qt\\5.11.0\\msvc2017_64\\lib\\cmake\\")
+# Set Qt5 path from environment variable
+message(STATUS "=== Qt5 Detection Debug ===")
+message(STATUS "Qt5_DIR env: $ENV{Qt5_DIR}")
+message(STATUS "Qt5_Dir env: $ENV{Qt5_Dir}")
+message(STATUS "CMAKE_PREFIX_PATH env: $ENV{CMAKE_PREFIX_PATH}")
+message(STATUS "Current CMAKE_PREFIX_PATH: ${CMAKE_PREFIX_PATH}")
+
+if(DEFINED ENV{Qt5_DIR})
+    # Qt5_DIR points to the cmake directory, we need the parent directory
+    get_filename_component(QT5_ROOT_DIR "$ENV{Qt5_DIR}" DIRECTORY)
+    get_filename_component(QT5_ROOT_DIR "${QT5_ROOT_DIR}" DIRECTORY)
+    set(CMAKE_PREFIX_PATH "${QT5_ROOT_DIR}")
+    message(STATUS "Using Qt5_DIR: $ENV{Qt5_DIR}")
+    message(STATUS "Derived Qt5 root: ${QT5_ROOT_DIR}")
+elseif(DEFINED ENV{Qt5_Dir})
+    # Qt5_Dir points to the cmake directory, we need the parent directory
+    get_filename_component(QT5_ROOT_DIR "$ENV{Qt5_Dir}" DIRECTORY)
+    get_filename_component(QT5_ROOT_DIR "${QT5_ROOT_DIR}" DIRECTORY)
+    set(CMAKE_PREFIX_PATH "${QT5_ROOT_DIR}")
+    message(STATUS "Using Qt5_Dir: $ENV{Qt5_Dir}")
+    message(STATUS "Derived Qt5 root: ${QT5_ROOT_DIR}")
+elseif(DEFINED ENV{CMAKE_PREFIX_PATH})
+    set(CMAKE_PREFIX_PATH "$ENV{CMAKE_PREFIX_PATH}")
+    message(STATUS "Using CMAKE_PREFIX_PATH: $ENV{CMAKE_PREFIX_PATH}")
+else()
+    # Try to find Qt5 automatically
+    message(STATUS "No Qt environment variables found, searching automatically...")
+    find_path(QT5_CMAKE_DIR Qt5Config.cmake
+        PATHS
+        /usr/local/lib/cmake/Qt5
+        /opt/homebrew/lib/cmake/Qt5
+        /usr/lib/cmake/Qt5
+        /Applications/Qt/5.15.2/macos/lib/cmake/Qt5
+        /Users/runner/Qt/5.15.2/macos/lib/cmake/Qt5
+        NO_DEFAULT_PATH
+    )
+    if(QT5_CMAKE_DIR)
+        # Get the root directory from the cmake directory
+        get_filename_component(QT5_ROOT_DIR "${QT5_CMAKE_DIR}" DIRECTORY)
+        get_filename_component(QT5_ROOT_DIR "${QT5_ROOT_DIR}" DIRECTORY)
+        set(CMAKE_PREFIX_PATH "${QT5_ROOT_DIR}")
+        message(STATUS "Found Qt5 automatically at: ${QT5_CMAKE_DIR}")
+        message(STATUS "Derived Qt5 root: ${QT5_ROOT_DIR}")
+    else()
+        message(WARNING "Qt5_DIR, Qt5_Dir, CMAKE_PREFIX_PATH not set and Qt5 not found automatically")
+    endif()
+endif()
+
+message(STATUS "Final CMAKE_PREFIX_PATH: ${CMAKE_PREFIX_PATH}")
+message(STATUS "=== End Qt5 Detection Debug ===")
 
 include_directories(${CMAKE_BINARY_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}
     src
     cryptonote/external
     cryptonote/include
-    cryptonote/src)
+    cryptonote/src
+    cryptonote/src/crypto)
 
 find_package(Qt5Gui REQUIRED)
 find_package(Qt5Widgets REQUIRED)
 find_package(Qt5Network REQUIRED)
 find_package(Qt5Charts)
+
+# Find miniupnpc library for UPNP functionality
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(MINIUPNPC miniupnpc)
+if(MINIUPNPC_FOUND)
+    message(STATUS "Found miniupnpc via pkg-config: ${MINIUPNPC_LIBRARIES}")
+    # Use the full library path from pkg-config
+    set(MINIUPNPC_LIB ${MINIUPNPC_LIBRARIES})
+    # Also add the library directories
+    link_directories(${MINIUPNPC_LIBRARY_DIRS})
+else()
+    find_library(MINIUPNPC_LIB miniupnpc)
+    if(MINIUPNPC_LIB)
+        message(STATUS "Found miniupnpc library: ${MINIUPNPC_LIB}")
+    else()
+        message(WARNING "miniupnpc library not found - UPNP functionality may not work")
+        set(MINIUPNPC_LIB "")
+    endif()
+endif()
+
+# Find Boost libraries (program_options and filesystem)
+find_package(Boost REQUIRED COMPONENTS program_options filesystem)
+if(Boost_FOUND)
+    message(STATUS "Found Boost libraries: ${Boost_LIBRARIES}")
+else()
+    message(FATAL_ERROR "Boost libraries not found")
+endif()
+
+# Find QR code library
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(QRENCODE QREncode)
+if(QRENCODE_FOUND)
+    message(STATUS "Found QREncode via pkg-config: ${QRENCODE_LIBRARIES}")
+    set(QRENCODE_LIB ${QRENCODE_LIBRARIES})
+else()
+    find_library(QRENCODE_LIB qrencode)
+    if(QRENCODE_LIB)
+        message(STATUS "Found QREncode library: ${QRENCODE_LIB}")
+    else()
+        message(WARNING "QREncode library not found - QR code functionality may not work")
+        set(QRENCODE_LIB "")
+    endif()
+endif()
+
+# Handle OpenGL on macOS
+if(APPLE)
+    find_library(OPENGL_LIBRARY OpenGL)
+    find_library(AGL_LIBRARY AGL)
+    set(OPENGL_LIBRARIES ${OPENGL_LIBRARY} ${AGL_LIBRARY})
+    include_directories(/System/Library/Frameworks/OpenGL.framework/Headers)
+    include_directories(/System/Library/Frameworks/AGL.framework/Headers)
+else()
+    find_package(OpenGL REQUIRED)
+endif()
 
 set(Boost_NO_BOOST_CMAKE ON)
 set(Boost_USE_STATIC_LIBS ON)
@@ -36,7 +202,8 @@ else(WIN32)
   set(Boost_USE_STATIC_RUNTIME ON)
 endif(WIN32)
 
-find_package(Boost 1.55 REQUIRED COMPONENTS date_time filesystem program_options regex serialization system thread chrono)
+# Boost is now handled in CryptoNoteWallet.cmake
+# find_package(Boost 1.82 REQUIRED COMPONENTS date_time filesystem program_options regex serialization system thread chrono)
 if ((${Boost_MAJOR_VERSION} EQUAL 1) AND (${Boost_MINOR_VERSION} EQUAL 54))
 	message(SEND_ERROR "Boost version 1.54 is unsupported, more details are available here http://goo.gl/RrCFmA")
 endif ()
@@ -90,24 +257,16 @@ set(CRYPTONOTE_SOURCES
   cryptonote/src/crypto/random.c
   cryptonote/src/crypto/tree-hash.c
   cryptonote/src/crypto/blake256.c
-  cryptonote/src/crypto/chacha8.c
-  cryptonote/src/crypto/crypto-ops-data.c
-  cryptonote/src/crypto/crypto-ops.c
-  cryptonote/src/crypto/crypto.cpp
   cryptonote/src/crypto/groestl.c
   cryptonote/src/crypto/hash-extra-blake.c
   cryptonote/src/crypto/hash-extra-groestl.c
   cryptonote/src/crypto/hash-extra-jh.c
   cryptonote/src/crypto/hash-extra-skein.c
-  cryptonote/src/crypto/hash.c
   cryptonote/src/crypto/jh.c
-  cryptonote/src/crypto/keccak.c
   cryptonote/src/crypto/oaes_lib.c
-  cryptonote/src/crypto/random.c
   cryptonote/src/crypto/skein.c
   cryptonote/src/crypto/slow-hash.c
   cryptonote/src/crypto/slow-hash.cpp
-  cryptonote/src/crypto/tree-hash.c
   cryptonote/src/crypto/aesb.c
   cryptonote/src/CryptoNoteCore/BlockchainIndices.cpp
   cryptonote/src/CryptoNoteCore/BlockchainMessages.cpp
@@ -163,6 +322,7 @@ set(CRYPTONOTE_SOURCES
   cryptonote/src/WalletLegacy/WalletTransactionSender.cpp
   cryptonote/src/WalletLegacy/WalletUnconfirmedTransactions.cpp
   cryptonote/src/WalletLegacy/WalletUserTransactionsCache.cpp
+  cryptonote/src/BurnTransactionHandler.cpp
   cryptonote/src/System/ContextGroup.cpp
   cryptonote/src/System/Event.cpp
   cryptonote/src/System/EventLock.cpp
@@ -194,6 +354,25 @@ set(CRYPTONOTE_SOURCES
   cryptonote/src/BlockchainExplorer/BlockchainExplorerErrors.cpp
 )
 
+# Create the cryptonote library
+add_library(${CRYPTONOTE_LIB} STATIC ${CRYPTONOTE_SOURCES})
+
+# Set target properties for cryptonote library
+set_target_properties(${CRYPTONOTE_LIB} PROPERTIES
+    CXX_STANDARD 11
+    CXX_STANDARD_REQUIRED ON
+)
+
+# C source files will be compiled with C99 standard automatically
+
+# Link cryptonote library with required libraries
+target_link_libraries(${CRYPTONOTE_LIB} ${Boost_LIBRARIES})
+
+# Add platform-specific sources to cryptonote library
+if(UNIX AND NOT APPLE)
+  target_sources(${CRYPTONOTE_LIB} PRIVATE cryptonote/external/miniupnpc/minissdpc.c)
+endif()
+
 file(GLOB_RECURSE SOURCES src/*.cpp)
 file(GLOB_RECURSE HEADERS src/*.h)
 file(GLOB_RECURSE FORMS src/gui/ui/*.ui)
@@ -206,7 +385,19 @@ qt5_add_resources(RCC ${QRC})
 if("${ARCH}" STREQUAL "default")
     set(ARCH_FLAG "")
   else()
-    set(ARCH_FLAG "-march=x86-64")
+    # Set appropriate architecture flag based on platform
+    if(APPLE)
+      # For Apple Silicon (ARM64), don't use -march flag as it's not needed
+      if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64|aarch64")
+        set(ARCH_FLAG "")
+      else()
+        # For Intel Macs, use x86-64
+        set(ARCH_FLAG "-march=x86-64")
+      endif()
+    else()
+      # For other platforms, use x86-64
+      set(ARCH_FLAG "-march=x86-64")
+    endif()
   endif()
 
 if (WIN32)
@@ -222,13 +413,12 @@ if (WIN32)
   set(QTMAIN Qt5::WinMain)
 
 elseif (UNIX)
-  set(CRYPTONOTE_SOURCES ${CRYPTONOTE_SOURCES} cryptonote/external/miniupnpc/minissdpc.c)
   if (APPLE)
     enable_language(ASM)
     file(GLOB_RECURSE OBJC_SOURCES src/*.mm)
     set(SOURCES ${SOURCES} ${OBJC_SOURCES})
     set(PLATFORM_DIR OSX)
-    set(MACOSX_BUNDLE_BUNDLE_NAME ${CN_PROJECT_NAME})
+    set(MACOSX_BUNDLE_BUNDLE_NAME "Fuego Wallet")
     set(MACOSX_BUNDLE_INFO_STRING ${CN_VERSION})
     set(MACOSX_BUNDLE_LONG_VERSION_STRING ${CN_VERSION})
     set(MACOSX_BUNDLE_SHORT_VERSION_STRING ${CN_VERSION})
@@ -260,26 +450,26 @@ endif ()
 
 include_directories(cryptonote/src/Platform/${PLATFORM_DIR})
 file(GLOB PLATFORM_SOURCES cryptonote/src/Platform/${PLATFORM_DIR}/System/*)
-set(CRYPTONOTE_SOURCES ${CRYPTONOTE_SOURCES} ${PLATFORM_SOURCES})
 
-add_library(${CRYPTONOTE_LIB} STATIC ${CRYPTONOTE_SOURCES})
-if (APPLE OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
-target_link_libraries(${CRYPTONOTE_LIB} ${Boost_LIBRARIES} -lresolv)
-else ()
-target_link_libraries(${CRYPTONOTE_LIB} ${Boost_LIBRARIES})
-endif ()
-set_target_properties(${CRYPTONOTE_LIB} PROPERTIES COMPILE_DEFINITIONS _GNU_SOURCE)
+# Add platform-specific sources to cryptonote library
+if(PLATFORM_SOURCES)
+  target_sources(${CRYPTONOTE_LIB} PRIVATE ${PLATFORM_SOURCES})
+endif()
 
 
 add_executable(${PROJECT_NAME} ${BUILD_PLATFORM} ${BUILD_RESOURCES} ${SOURCES} ${HEADERS} ${UIS} ${RCC})
 set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_DEFINITIONS _GNU_SOURCE)
-target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES} ${QTMAIN} ${CRYPTONOTE_LIB} ${QRENCODE_LIB})
+if(APPLE)
+  set_target_properties(${PROJECT_NAME} PROPERTIES MACOSX_BUNDLE_BUNDLE_NAME "Fuego Wallet")
+endif()
+target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES} ${QTMAIN} ${CRYPTONOTE_LIB} ${QRENCODE_LIB} ${MINIUPNPC_LIB})
 
 if (APPLE)
   qt5_use_modules(${PROJECT_NAME} PrintSupport)
   add_definitions(/DHAVE_ROTR)
+  target_link_libraries(${PROJECT_NAME} -lpthread resolv)
 elseif (UNIX)
-  target_link_libraries(${PROJECT_NAME} -lpthread)
+  target_link_libraries(${PROJECT_NAME} -lpthread resolv)
   add_definitions(/DHAVE_ROTR)
 elseif (WIN32)
   target_link_libraries(${PROJECT_NAME} Imm32 Iphlpapi Winmm)
@@ -302,14 +492,31 @@ set(CPACK_PACKAGE_VENDOR "Fandom Gold Society")
 set(CPACK_PACKAGE_CONTACT "https://github.com/fandomgold/")
 set(CPACK_STRIP_FILES ON)
 if (APPLE)
-    set(CPACK_GENERATOR DragNDrop)
+    set(CPACK_GENERATOR ZIP)
     install(TARGETS ${PROJECT_NAME} BUNDLE DESTINATION .)
+    
+    # Install STARK CLI and scripts
+    install(FILES ${STARK_CLI_PATH} DESTINATION .)
+    install(FILES scripts/auto_stark_proof.sh DESTINATION .)
+    install(FILES scripts/stark_proof_generator.py DESTINATION .)
+    install(FILES scripts/progress_logger.py DESTINATION .)
+    
     set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}.-${VERSION_RELEASE}")
 elseif (UNIX)
     install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)
     install(FILES src/fuegowallet.desktop DESTINATION share/applications)
     install(FILES src/images/fuego.png DESTINATION share/pixmaps)
     install(FILES COPYRIGHT DESTINATION share/doc/fuegowallet)
+    
+    # Install STARK CLI and scripts
+    install(FILES ${STARK_CLI_PATH} DESTINATION bin)
+    install(FILES scripts/auto_stark_proof.sh DESTINATION bin)
+    install(FILES scripts/stark_proof_generator.py DESTINATION bin)
+    install(FILES scripts/progress_logger.py DESTINATION bin)
+    # Make scripts executable
+    install(CODE "execute_process(COMMAND chmod +x \$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/bin/auto_stark_proof.sh)")
+    install(CODE "execute_process(COMMAND chmod +x \$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/bin/stark_proof_generator.py)")
+    install(CODE "execute_process(COMMAND chmod +x \$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/bin/progress_logger.py)")
 
 	SET(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
 	SET(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
@@ -345,7 +552,15 @@ set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${VE
     endif ()
 elseif (WIN32)
   install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION .)
-  set(CPACK_GENERATOR ZIP)
+  
+  # Install STARK CLI and scripts
+  install(FILES ${STARK_CLI_PATH} DESTINATION .)
+  install(FILES scripts/auto_stark_proof.sh DESTINATION .)
+  install(FILES scripts/stark_proof_generator.py DESTINATION .)
+  install(FILES scripts/progress_logger.py DESTINATION .)
 endif (APPLE)
 
 include(CPack)
+
+# XFG STARK CLI is downloaded as pre-built binary in CI/CD workflows
+message(STATUS "XFG STARK CLI will be downloaded as pre-built binary")

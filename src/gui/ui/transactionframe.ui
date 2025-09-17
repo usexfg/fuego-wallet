@@ -191,7 +191,7 @@ border-bottom: none;</string>
      </property>
     </widget>
    </item>
-   <item row="1" column="1" colspan="2">
+   <item row="1" column="1">
     <widget class="QLabel" name="m_txLabel">
      <property name="minimumSize">
       <size>
@@ -220,6 +220,40 @@ border-bottom: none;</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="2">
+    <widget class="QLabel" name="m_starkStatusLabel">
+     <property name="minimumSize">
+      <size>
+       <width>80</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>80</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <family>Poppins</family>
+       <pointsize>7</pointsize>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">color: #999; 
+border-bottom: none;
+padding: 2px 4px;
+border-radius: 3px;</string>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter|Qt::AlignVCenter</set>
      </property>
     </widget>
    </item>

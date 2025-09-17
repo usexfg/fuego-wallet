@@ -35,6 +35,8 @@ private:
   QScopedPointer<Ui::TransactionFrame> m_ui;
   QDataWidgetMapper m_dataMapper;
   QPersistentModelIndex m_index;
+  
+  void updateStarkStatus();
 };
 
 }

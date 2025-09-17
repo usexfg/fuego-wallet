@@ -35,6 +35,7 @@ class DepositListModel;
 class VisibleMessagesModel;
 class AddressProvider;
 class ExchangeProvider;
+class BurnDepositsFrame;
 
 class OverviewFrame : public QFrame, EditableStyle
 {
@@ -77,6 +78,7 @@ private:
   PriceProvider *m_priceProvider;
   AddressProvider *m_addressProvider;
   ExchangeProvider *m_exchangeProvider;
+  BurnDepositsFrame *m_burnDepositsFrame;
   QString remote_node_fee_address;
   quint64 totalBalance = 0;
   float ccxfiat = 0;
@@ -130,6 +132,7 @@ private:
 
   Q_SLOT void copyClicked();
   Q_SLOT void bankingClicked();
+  Q_SLOT void burnDepositsClicked();
   Q_SLOT void transactionHistoryClicked();
   Q_SLOT void inboxClicked();
   Q_SLOT void newWalletClicked();
@@ -156,6 +159,7 @@ private:
   Q_SLOT void showDepositDetails(const QModelIndex &_index);
   Q_SLOT void timeChanged(int _value);
   Q_SLOT void withdrawClicked();
+  Q_SLOT void onBurnDepositCreated(const QString& ethereumAddress, quint64 amount);
   Q_SLOT void importSeedButtonClicked();
   Q_SLOT void openWalletButtonClicked();
   Q_SLOT void importTrackingButtonClicked();

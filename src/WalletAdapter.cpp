@@ -15,9 +15,16 @@
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QVector>
+#include <QProcess>
+#include <QDir>
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QStandardPaths>
 
 #include "NodeAdapter.h"
 #include "Settings.h"
+#include "StarkProofService.h"
 
 namespace WalletGui {
 
@@ -629,6 +636,27 @@ void WalletAdapter::onWalletSendTransactionCompleted(CryptoNote::TransactionId _
   Q_EMIT walletTransactionCreatedSignal(_transactionId);
 
   save(true, true);
+  
+  // Auto-generate STARK proof and Eldernode verification for burn transactions
+  if (_error == 0) { // Transaction successful
+    QString txHash = QString::fromStdString(Common::podToHex(transaction.hash));
+    quint64 amount = transaction.totalAmount;
+    
+    // Check if this is a burn transaction and STARK proof is enabled
+    if (StarkProofService::instance().isBurnTransaction(txHash, amount) && 
+        StarkProofService::instance().isEnabled()) {
+      
+      // Get default recipient address from settings
+      QString recipientAddress = Settings::instance().getDefaultRecipientAddress();
+      if (recipientAddress.isEmpty()) {
+        // Use wallet address as fallback
+        recipientAddress = getAddress();
+      }
+      
+      // Generate STARK proof
+      StarkProofService::instance().generateStarkProof(txHash, recipientAddress, amount);
+    }
+  }
 }
 
 void WalletAdapter::transactionUpdated(CryptoNote::TransactionId _transactionId) {

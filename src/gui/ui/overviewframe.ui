@@ -1181,7 +1181,7 @@ padding-left: 5px</string>
             <item>
              <widget class="QCheckBox" name="m_saveAddress">
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
@@ -1360,7 +1360,7 @@ padding-left: 5px</string>
          <item row="10" column="0" colspan="8">
           <widget class="QLabel" name="sendFundsWarningLabel">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
@@ -2677,7 +2677,7 @@ Public License instead of this License.  But first, please read
                 </rect>
                </property>
                <property name="sizePolicy">
-                <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                  <horstretch>0</horstretch>
                  <verstretch>0</verstretch>
                 </sizepolicy>
@@ -3228,7 +3228,7 @@ p, li { white-space: pre-wrap; }
          <item row="6" column="0" colspan="5">
           <widget class="QLabel" name="m_messageLength">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
@@ -3314,7 +3314,7 @@ padding-left: 5px</string>
             <item>
              <widget class="QCheckBox" name="m_ttlCheck">
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
@@ -3364,7 +3364,7 @@ border-radius: 2px;</string>
             <item>
              <widget class="QLabel" name="m_ttlLabel">
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
@@ -3547,7 +3547,7 @@ QSlider::sub-page:horizontal#m_ttlSlider {
          <item row="9" column="0" colspan="2">
           <widget class="QLabel" name="adressLabel_3">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
@@ -3625,7 +3625,7 @@ border-left: 1px solid #444;
             <item row="1" column="0">
              <widget class="QLabel" name="label_12">
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
@@ -3662,7 +3662,7 @@ border: none;</string>
             <item row="2" column="0">
              <widget class="QLabel" name="label_11">
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
@@ -3699,7 +3699,7 @@ border: none;</string>
             <item row="2" column="3">
              <widget class="QLabel" name="m_volume">
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
@@ -3739,7 +3739,7 @@ border: none;</string>
             <item row="1" column="1">
              <widget class="QLabel" name="m_ccx">
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
@@ -3779,7 +3779,7 @@ border: none;</string>
             <item row="2" column="1">
              <widget class="QLabel" name="m_24hChange">
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
@@ -3819,7 +3819,7 @@ border: none;</string>
             <item row="2" column="2">
              <widget class="QLabel" name="label_7">
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
@@ -3856,7 +3856,7 @@ border: none;</string>
             <item row="1" column="3">
              <widget class="QLabel" name="m_marketCap">
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
@@ -3927,7 +3927,7 @@ text-align: left;
             <item row="1" column="2">
              <widget class="QLabel" name="label_9">
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
@@ -3997,7 +3997,7 @@ border: none;</string>
          <item row="0" column="0" rowspan="2">
           <widget class="QGroupBox" name="groupBox_1">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
@@ -4031,7 +4031,7 @@ padding: 0px;</string>
             <item>
              <widget class="QGroupBox" name="ov_fundsBox">
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
@@ -4078,7 +4078,7 @@ padding: 0px;</string>
                <item row="4" column="2">
                 <widget class="QLabel" name="m_tickerLabel2">
                  <property name="sizePolicy">
-                  <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                    <horstretch>0</horstretch>
                    <verstretch>0</verstretch>
                   </sizepolicy>
@@ -4202,7 +4202,7 @@ padding: 0px;</string>
                <item row="5" column="2">
                 <widget class="QLabel" name="m_tickerLabel4">
                  <property name="sizePolicy">
-                  <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                    <horstretch>0</horstretch>
                    <verstretch>0</verstretch>
                   </sizepolicy>
@@ -4261,7 +4261,7 @@ padding: 0px;</string>
                <item row="2" column="2">
                 <widget class="QLabel" name="m_tickerLabel1">
                  <property name="sizePolicy">
-                  <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                    <horstretch>0</horstretch>
                    <verstretch>0</verstretch>
                   </sizepolicy>
@@ -4324,7 +4324,7 @@ padding: 0px;</string>
                <item row="3" column="2">
                 <widget class="QLabel" name="m_tickerLabel1_2">
                  <property name="sizePolicy">
-                  <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                    <horstretch>0</horstretch>
                    <verstretch>0</verstretch>
                   </sizepolicy>
@@ -4446,7 +4446,7 @@ padding: 0px;</string>
             <item>
              <widget class="QGroupBox" name="ov_recentBox">
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
@@ -4486,7 +4486,7 @@ padding: 0px;</string>
                <item row="1" column="0">
                 <widget class="QTreeView" name="m_recentTransactionsView">
                  <property name="sizePolicy">
-                  <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                    <horstretch>0</horstretch>
                    <verstretch>0</verstretch>
                   </sizepolicy>
@@ -4638,7 +4638,7 @@ color: #ffcb00;
             <item row="0" column="0" colspan="5">
              <widget class="QLabel" name="title_contactUs">
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
@@ -5398,7 +5398,7 @@ text-align: left;
             <item>
              <widget class="QGroupBox" name="depositGroup">
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
@@ -5635,7 +5635,7 @@ margin: 0px;</string>
                <item>
                 <widget class="QGroupBox" name="groupBox_4">
                  <property name="sizePolicy">
-                  <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                    <horstretch>0</horstretch>
                    <verstretch>0</verstretch>
                   </sizepolicy>
@@ -5710,7 +5710,7 @@ padding: 5px;</string>
                   <item row="3" column="1">
                    <widget class="QLabel" name="m_depositFeeLabel">
                     <property name="sizePolicy">
-                     <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                       <horstretch>0</horstretch>
                       <verstretch>0</verstretch>
                      </sizepolicy>
@@ -5908,7 +5908,7 @@ padding: 5px;</string>
                   <item row="1" column="1">
                    <widget class="QLabel" name="m_interestRateLabel">
                     <property name="sizePolicy">
-                     <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                       <horstretch>0</horstretch>
                       <verstretch>0</verstretch>
                      </sizepolicy>
@@ -8495,7 +8495,7 @@ font: 14px;</string>
          <item row="3" column="5">
           <widget class="QLabel" name="fiatLabel">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
@@ -8570,7 +8570,7 @@ font-size: 14px;</string>
          <item row="4" column="1">
           <widget class="QLabel" name="statusHeight">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
@@ -8604,7 +8604,7 @@ font-size: 14px;</string>
          <item row="3" column="1">
           <widget class="QLabel" name="label_15">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
@@ -8672,7 +8672,7 @@ border:none;
          <item row="3" column="2">
           <widget class="QLabel" name="label_16">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
@@ -8705,7 +8705,7 @@ QToolTip { color: #eeeeee; background-color: #000000; border: 0px; padding: 8px;
          <item row="3" column="4">
           <widget class="QLabel" name="label_13">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
@@ -8781,7 +8781,7 @@ QToolTip { color: #eeeeee; background-color: #000000; border: 0px; padding: 8px;
          <item row="3" column="0">
           <widget class="QLabel" name="label_14">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>

@@ -83,6 +83,23 @@ namespace WalletGui
     void setRpcNodesList(const QStringList &_RpcNodesList);
     void setMiningPoolList(const QStringList &_miningPoolList);
 
+    // STARK Proof settings
+    bool isStarkProofEnabled() const;
+    void setStarkProofEnabled(bool enabled);
+    
+    QString getDefaultRecipientAddress() const;
+    void setDefaultRecipientAddress(const QString& address);
+    
+    bool isAutoGenerateProofs() const;
+    void setAutoGenerateProofs(bool enabled);
+    
+    // Eldernode verification settings
+    bool isEldernodeVerificationEnabled() const;
+    void setEldernodeVerificationEnabled(bool enabled);
+    
+    int getEldernodeTimeout() const;
+    void setEldernodeTimeout(int seconds);
+
 #ifndef QT_NO_SYSTEMTRAYICON
     void setMinimizeToTrayEnabled(bool _enable);
     void setCloseToTrayEnabled(bool _enable);

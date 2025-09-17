@@ -1,18 +1,40 @@
+# Build artifacts
 build/
-nbproject/
-*~
-uncrustify.cfg
+CMakeFiles/
+cmake-build*/
+CMakeCache.txt
+CMakeCache.txt.*
+Makefile
 *.o
 *.a
-CMakeFiles
-cryptonote/
-CMakeLists.txt
-*.bin
-*.ipch
-.idea/
+*.so
+*.dll
+*.dylib
+*.exe
+
+# Qt build artifacts
 *.pro.user
 *.pro.user*
 *.autosave
-cmake-build*
-src/images/appicon/.DS_Store
+.qmake.stash
+moc_*.cpp
+moc_*.h
+ui_*.h
+qrc_*.cpp
+*.moc
+
+# IDE files
+.idea/
+nbproject/
+*.ipch
+
+# OS files
 .DS_Store
+*~
+
+# Project specific
+cryptonote/
+CMakeLists.txt
+*.bin
+uncrustify.cfg
+src/images/appicon/.DS_Store
