@@ -1,0 +1,99 @@
+name: macOS Simple Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: macos-14
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+        
+    - name: Install dependencies
+      run: |
+        brew install libqrencode miniupnpc boost qt@5
+        
+    - name: Configure CMake
+      run: |
+        mkdir -p build/release
+        cd build/release
+        cmake ../.. -DCMAKE_PREFIX_PATH="/opt/homebrew/opt/qt@5" -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_STANDARD_REQUIRED=ON -DCMAKE_CXX_EXTENSIONS=OFF
+        
+    - name: Build
+      run: |
+        cd build/release
+        cmake --build . --parallel $(nproc)
+        
+    - name: Verify build
+      run: |
+        ls -la build/release/FuegoWallet.app
+        
+    - name: Deploy Qt frameworks
+      run: |
+        cd build/release
+        /opt/homebrew/opt/qt@5/bin/macdeployqt FuegoWallet.app
+        
+    - name: Copy Boost libraries
+      run: |
+        cd build/release
+        BOOST_LIB_DIR="/opt/homebrew/lib"
+        cp "$BOOST_LIB_DIR/libboost_program_options.dylib" FuegoWallet.app/Contents/Frameworks/
+        cp "$BOOST_LIB_DIR/libboost_filesystem.dylib" FuegoWallet.app/Contents/Frameworks/
+        cp "$BOOST_LIB_DIR/libboost_atomic.dylib" FuegoWallet.app/Contents/Frameworks/
+        cp "$BOOST_LIB_DIR/libboost_chrono.dylib" FuegoWallet.app/Contents/Frameworks/
+        cp "$BOOST_LIB_DIR/libboost_date_time.dylib" FuegoWallet.app/Contents/Frameworks/
+        cp "$BOOST_LIB_DIR/libboost_regex.dylib" FuegoWallet.app/Contents/Frameworks/
+        cp "$BOOST_LIB_DIR/libboost_serialization.dylib" FuegoWallet.app/Contents/Frameworks/
+        cp "$BOOST_LIB_DIR/libboost_thread.dylib" FuegoWallet.app/Contents/Frameworks/
+        cp "$BOOST_LIB_DIR/libboost_system.dylib" FuegoWallet.app/Contents/Frameworks/
+        
+    - name: Fix library paths
+      run: |
+        cd build/release
+        app_name="FuegoWallet.app"
+        
+        # Fix Boost library paths
+        otool -L "$app_name/Contents/MacOS/FuegoWallet" | grep boost | while read line; do
+          lib_path=$(echo "$line" | awk '{print $1}')
+          if [[ "$lib_path" == *"/opt/homebrew/lib/"* ]]; then
+            lib_name=$(basename "$lib_path")
+            install_name_tool -change "$lib_path" "@executable_path/../Frameworks/$lib_name" "$app_name/Contents/MacOS/FuegoWallet"
+          fi
+        done
+        
+        # Fix Qt framework paths
+        otool -L "$app_name/Contents/MacOS/FuegoWallet" | grep Qt | while read line; do
+          lib_path=$(echo "$line" | awk '{print $1}')
+          if [[ "$lib_path" == *"/opt/homebrew/opt/qt@5/lib/"* ]]; then
+            lib_name=$(basename "$lib_path")
+            install_name_tool -change "$lib_path" "@executable_path/../Frameworks/$lib_name" "$app_name/Contents/MacOS/FuegoWallet"
+          fi
+        done
+        
+        # Add rpath for Frameworks
+        install_name_tool -add_rpath "@executable_path/../Frameworks" "$app_name/Contents/MacOS/FuegoWallet"
+        
+    - name: Set permissions
+      run: |
+        cd build/release
+        app_name="FuegoWallet.app"
+        find "$app_name" -maxdepth 1 -type f -exec chmod 644 {} \;
+        find "$app_name" -maxdepth 1 -type d -exec chmod 755 {} \;
+        chmod +x "$app_name/Contents/MacOS/FuegoWallet"
+        
+    - name: Code sign
+      run: |
+        cd build/release
+        codesign --force --deep --sign - FuegoWallet.app
+        
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: FuegoWallet-macOS-Simple
+        path: build/release/FuegoWallet.app

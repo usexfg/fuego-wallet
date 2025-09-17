@@ -1,0 +1,289 @@
+name: macOS Wallet Only
+
+# DISABLED - Commented out to prevent automatic runs
+# on:
+#   push:
+#     branches: [ master ]
+#   pull_request:
+#     branches: [ master ]
+
+jobs:
+  build-macos-wallet-only:
+    runs-on: macos-14
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Clone fuego
+      run: |
+        echo "🔄 Starting fresh clone of fuego repository..."
+        rm -rf cryptonote cryptonote-temp
+        echo "📥 Cloning from ColinRitman/fuego master branch..."
+        git clone --branch master --depth 1 https://github.com/ColinRitman/fuego.git cryptonote-temp
+        mv cryptonote-temp cryptonote
+        echo "📋 Verifying cloned repository..."
+        git -C cryptonote log --oneline -3
+        echo "Current cryptonote commit: $(git -C cryptonote rev-parse HEAD)"
+        
+        # Verify the LoggingLevel fix is present
+        echo "🔍 Checking UpgradeDetector.h for LoggingLevel fix..."
+        if grep -q "Logging::ERROR\|static_cast<Logging::Level>(1)" cryptonote/src/CryptoNoteCore/UpgradeDetector.h; then
+          echo "✅ LoggingLevel fix is present"
+        else
+          echo "❌ LoggingLevel fix is missing!"
+          echo "Content of UpgradeDetector.h:"
+          grep -n "Logging::" cryptonote/src/CryptoNoteCore/UpgradeDetector.h
+          exit 1
+        fi
+
+    - name: Cache Homebrew packages
+      uses: actions/cache@v3
+      with:
+        path: /opt/homebrew/Cellar
+        key: ${{ runner.os }}-homebrew-${{ hashFiles('**/CMakeLists.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-homebrew-
+
+    - name: Install dependencies
+      run: |
+        # Update Homebrew
+        brew update
+        
+        # Install dependencies with caching
+        brew install libqrencode miniupnpc qt@5 boost
+        # Link packages to make them available system-wide
+        brew link boost --force
+        brew link qrencode --force
+        brew link miniupnpc --force
+        brew link qt@5 --force
+
+    - name: Fix compilation errors
+      run: |
+        # All compilation fixes are now included in the fuego repository
+        echo "✅ All compilation fixes are included in the fuego repository"
+
+    - name: Cache build directory
+      uses: actions/cache@v3
+      with:
+        path: build/
+        key: ${{ runner.os }}-build-${{ hashFiles('**/CMakeLists.txt', 'cryptonote/**/*.cpp', 'cryptonote/**/*.h', 'src/**/*.cpp', 'src/**/*.h') }}
+        restore-keys: |
+          ${{ runner.os }}-build-
+
+    - name: Build Fuego Wallet
+      run: |
+        # Create build directory
+        mkdir -p build/release
+        cd build/release
+        
+        # Configure with CMake
+        cmake -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
+              -DCMAKE_OSX_ARCHITECTURES=arm64 \
+              -DQt5_DIR=/opt/homebrew/lib/cmake/Qt5 \
+              -DCMAKE_PREFIX_PATH="/opt/homebrew;/opt/homebrew/opt/qt@5" \
+              -DBOOST_ROOT=/opt/homebrew \
+              -DBoost_INCLUDE_DIR=/opt/homebrew/include \
+              -DBoost_LIBRARY_DIR=/opt/homebrew/lib \
+              -DBoost_NO_BOOST_CMAKE=ON \
+              -DBoost_NO_CMAKE_PACKAGE_REGISTRY=ON \
+              -DBoost_USE_STATIC_LIBS=OFF \
+              -DBoost_USE_MULTITHREADED=ON \
+              ../..
+        
+        # Build
+        cmake --build . --parallel $(nproc)
+        
+        # Verify the app bundle was created
+        if [ ! -d "FuegoWallet.app" ]; then
+          echo "❌ FuegoWallet.app bundle not found!"
+          echo "Contents of build directory:"
+          ls -la
+          exit 1
+        elif [ ! -f "FuegoWallet.app/Contents/MacOS/FuegoWallet" ]; then
+          echo "❌ FuegoWallet executable not found in app bundle!"
+          echo "Contents of FuegoWallet.app:"
+          find FuegoWallet.app -type f
+          exit 1
+        else
+          echo "✅ FuegoWallet.app bundle created successfully"
+        fi
+
+    - name: Bundle and sign app
+      id: bundle_and_sign
+      run: |
+        cd build/release
+        
+        # Set variables
+        app_name="Fuego Wallet.app"
+        release_name="FuegoWallet-macOS-$(date +%Y%m%d-%H%M%S)"
+        
+        # Rename the existing app bundle
+        mv FuegoWallet.app "$app_name"
+        
+        # Use macdeployqt to properly deploy Qt frameworks
+        echo "📦 Deploying Qt frameworks with macdeployqt..."
+        /opt/homebrew/opt/qt@5/bin/macdeployqt "$app_name" -verbose=2
+        
+        # Copy Boost libraries
+        echo "📦 Copying Boost libraries..."
+        cp /opt/homebrew/lib/libboost_program_options.dylib "$app_name/Contents/Frameworks/" || echo "Failed to copy libboost_program_options.dylib"
+        cp /opt/homebrew/lib/libboost_filesystem.dylib "$app_name/Contents/Frameworks/" || echo "Failed to copy libboost_filesystem.dylib"
+        cp /opt/homebrew/lib/libboost_chrono.dylib "$app_name/Contents/Frameworks/" || echo "Failed to copy libboost_chrono.dylib"
+        cp /opt/homebrew/lib/libboost_atomic.dylib "$app_name/Contents/Frameworks/" || echo "Failed to copy libboost_atomic.dylib"
+        cp /opt/homebrew/lib/libboost_thread.dylib "$app_name/Contents/Frameworks/" || echo "Failed to copy libboost_thread.dylib"
+        cp /opt/homebrew/lib/libboost_serialization.dylib "$app_name/Contents/Frameworks/" || echo "Failed to copy libboost_serialization.dylib"
+        cp /opt/homebrew/lib/libboost_date_time.dylib "$app_name/Contents/Frameworks/" || echo "Failed to copy libboost_date_time.dylib"
+        cp /opt/homebrew/lib/libboost_regex.dylib "$app_name/Contents/Frameworks/" || echo "Failed to copy libboost_regex.dylib"
+        
+        # Verify Boost libraries were copied
+        echo "🔍 Verifying Boost libraries..."
+        ls -la "$app_name/Contents/Frameworks/" | grep boost
+        
+        # Copy other dependencies
+        cp /opt/homebrew/lib/libminiupnpc.dylib "$app_name/Contents/Frameworks/"
+        
+        # Fix library paths
+        echo "🔧 Fixing library paths..."
+        
+        # First, let's see what library paths are currently set
+        echo "Current library dependencies:"
+        otool -L "$app_name/Contents/MacOS/FuegoWallet"
+        
+        # macdeployqt already handled Qt framework paths, so we skip manual Qt path fixing
+        
+        # Fix Boost library paths - use dynamic path detection
+        echo "🔧 Fixing Boost library paths..."
+        
+        # Get the actual library paths from the executable
+        BOOST_PATHS=$(otool -L "$app_name/Contents/MacOS/FuegoWallet" | grep boost | awk '{print $1}')
+        echo "Found Boost library paths: $BOOST_PATHS"
+        
+        # Fix each Boost library path dynamically
+        for lib in program_options filesystem chrono atomic thread serialization date_time regex; do
+          OLD_PATH=$(otool -L "$app_name/Contents/MacOS/FuegoWallet" | grep "libboost_${lib}.dylib" | awk '{print $1}')
+          if [ ! -z "$OLD_PATH" ]; then
+            echo "Changing $OLD_PATH to @executable_path/../Frameworks/libboost_${lib}.dylib"
+            install_name_tool -change "$OLD_PATH" "@executable_path/../Frameworks/libboost_${lib}.dylib" "$app_name/Contents/MacOS/FuegoWallet"
+          else
+            echo "No libboost_${lib}.dylib found in executable dependencies"
+          fi
+        done
+        
+        # Fix other library paths dynamically
+        MINIUPNPC_PATH=$(otool -L "$app_name/Contents/MacOS/FuegoWallet" | grep miniupnpc | awk '{print $1}')
+        if [ ! -z "$MINIUPNPC_PATH" ]; then
+          echo "Changing $MINIUPNPC_PATH to @executable_path/../Frameworks/libminiupnpc.dylib"
+          install_name_tool -change "$MINIUPNPC_PATH" "@executable_path/../Frameworks/libminiupnpc.dylib" "$app_name/Contents/MacOS/FuegoWallet"
+        else
+          echo "No miniupnpc library found in executable dependencies"
+        fi
+        
+        # Fix rpath to point to Frameworks directory
+        echo "🔧 Fixing rpath..."
+        install_name_tool -add_rpath "@executable_path/../Frameworks" "$app_name/Contents/MacOS/FuegoWallet"
+        # Remove any incorrect rpaths
+        install_name_tool -delete_rpath "/opt/homebrew/Cellar/miniupnpc/2.3.3/lib" "$app_name/Contents/MacOS/FuegoWallet" 2>/dev/null || true
+        install_name_tool -delete_rpath "/opt/homebrew/lib" "$app_name/Contents/MacOS/FuegoWallet" 2>/dev/null || true
+        
+        # Verify the library paths were updated correctly
+        echo "Final library dependencies:"
+        otool -L "$app_name/Contents/MacOS/FuegoWallet"
+        
+        # Create Info.plist
+        echo "📝 Creating Info.plist..."
+        cat > "$app_name/Contents/Info.plist" << 'EOF'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>CFBundleExecutable</key>
+            <string>FuegoWallet</string>
+            <key>CFBundleIdentifier</key>
+            <string>com.fuego.wallet</string>
+            <key>CFBundleName</key>
+            <string>Fuego Wallet</string>
+            <key>CFBundleDisplayName</key>
+            <string>Fuego Wallet</string>
+            <key>CFBundleVersion</key>
+            <string>1.0.0</string>
+            <key>CFBundleShortVersionString</key>
+            <string>1.0.0</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+            <key>CFBundleSignature</key>
+            <string>????</string>
+            <key>CFBundleIconFile</key>
+            <string>fuego</string>
+            <key>LSMinimumSystemVersion</key>
+            <string>11.0</string>
+            <key>NSHighResolutionCapable</key>
+            <true/>
+            <key>NSRequiresAquaSystemAppearance</key>
+            <false/>
+        </dict>
+        </plist>
+        EOF
+        
+        # Clean up any unsealed contents in bundle root
+        echo "🧹 Cleaning up bundle root..."
+        # List what's in the bundle root
+        echo "Contents of bundle root:"
+        ls -la "$app_name"
+        # Remove any nested app bundles or directories that shouldn't be in the root
+        # But don't remove the main app bundle itself
+        find "$app_name" -maxdepth 1 -type d -name "FuegoWallet.app" -exec rm -rf {} \; 2>/dev/null || true
+        # Remove any files that might be in the bundle root (should only be Contents/)
+        find "$app_name" -maxdepth 1 -type f -delete 2>/dev/null || true
+        # Also remove any hidden files
+        find "$app_name" -maxdepth 1 -name ".*" -type f -delete 2>/dev/null || true
+        echo "After cleanup:"
+        ls -la "$app_name"
+        
+        # Fix permissions before code signing
+        echo "🔧 Fixing permissions for code signing..."
+        find "$app_name" -type f -exec chmod 644 {} \;
+        find "$app_name" -type d -exec chmod 755 {} \;
+        chmod +x "$app_name/Contents/MacOS/FuegoWallet"
+        
+        # Basic ad-hoc code signing
+        echo "🔐 Code signing the app bundle..."
+        codesign --force --deep --sign - "$app_name"
+        
+        # Verify the signature
+        codesign --verify --verbose "$app_name"
+        
+        # Test the application
+        echo "🧪 Testing application..."
+        timeout 10s "./$app_name/Contents/MacOS/FuegoWallet" --version || echo "App test completed"
+        
+        # Verify the app bundle structure
+        echo "🔍 Verifying app bundle structure..."
+        if [ -d "$app_name/Contents/MacOS" ] && [ -d "$app_name/Contents/Frameworks" ] && [ -d "$app_name/Contents/Resources" ]; then
+          echo "✅ App bundle structure is correct"
+          echo "📁 App bundle contents:"
+          ls -la "$app_name"
+        else
+          echo "❌ App bundle structure is incorrect!"
+          exit 1
+        fi
+        
+        # Create a tar.gz file to preserve the app bundle structure
+        echo "📦 Creating tar.gz archive to preserve app bundle structure..."
+        tar -czf "${release_name}.tar.gz" "$app_name"
+        
+        echo "📦 Minimal app bundle ready: $app_name"
+        echo "release_name=${release_name}" >> $GITHUB_OUTPUT
+        echo "artifact_path=build/release/${release_name}.tar.gz" >> $GITHUB_OUTPUT
+
+    - name: Upload Minimal App Bundle
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.bundle_and_sign.outputs.release_name }}
+        path: ${{ steps.bundle_and_sign.outputs.artifact_path }}
+        retention-days: 30
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

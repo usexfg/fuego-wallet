@@ -1,0 +1,425 @@
+name: Build check
+
+on:
+  push:
+    branches:
+      - "**"
+    tags-ignore:
+      - "*" # We don't want this to run on release
+  pull_request:
+
+jobs:
+  build-windows:
+    name: Windows
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup msbuild
+        uses: microsoft/setup-msbuild@v1.0.2
+
+      - name: Cache vcpkg
+        uses: actions/cache@v4
+        with:
+          path: C:\vcpkg
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('**/vcpkg.json', '**/vcpkg-configuration.json') }}
+          restore-keys: |
+            vcpkg-${{ runner.os }}-
+
+      - name: Install dependencies using vcpkg
+        shell: powershell
+        run: |
+          # Install vcpkg if not cached
+          if (-not (Test-Path "C:\vcpkg")) {
+            git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
+            C:\vcpkg\bootstrap-vcpkg.bat
+          }
+          
+          # Install Boost components and libqrencode miniupnpc
+          C:\vcpkg\vcpkg install boost-system boost-filesystem boost-thread boost-chrono boost-atomic libqrencode miniupnpc --triplet=x64-windows
+          
+          # Set environment variables
+          echo "BOOST_ROOT=C:\vcpkg\installed\x64-windows" >> $env:GITHUB_ENV
+          echo "CMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake" >> $env:GITHUB_ENV
+          
+          Write-Output "✅ Dependencies installed via vcpkg"
+          
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          host: "windows"
+          target: "desktop"
+          modules: "qtcharts"
+          install-deps: "true"
+          
+      - name: Set Qt environment variables
+        shell: powershell
+        run: |
+          # Set Qt5_DIR to the Qt installation path
+          $qtPath = "$env:Qt5_Dir"
+          if (-not $qtPath) {
+            $qtPath = "$env:Qt5_DIR"
+          }
+          if (-not $qtPath) {
+            # Fallback: try to find Qt in common locations
+            $qtPath = Get-ChildItem -Path "C:\Qt" -Directory -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+          }
+          if ($qtPath) {
+            echo "Qt5_DIR=$qtPath" >> $env:GITHUB_ENV
+            echo "CMAKE_PREFIX_PATH=$qtPath" >> $env:GITHUB_ENV
+            Write-Host "Set Qt5_DIR to: $qtPath"
+          } else {
+            Write-Host "Warning: Could not find Qt installation path"
+          }
+
+      - name: Download XFG STARK CLI
+        shell: powershell
+        run: |
+          # Download pre-built xfg-stark-cli binary from releases
+          Invoke-WebRequest -Uri "https://github.com/colinritman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-windows.tar.gz" -OutFile "xfg-stark-cli-windows.tar.gz"
+          tar -xzf xfg-stark-cli-windows.tar.gz
+          New-Item -ItemType Directory -Path "bin" -Force
+          Move-Item "xfg-stark-cli.exe" "bin/"
+
+      - name: Clone fuego
+        shell: powershell
+        run: |
+          Remove-Item cryptonote -Recurse -Force -ErrorAction Ignore
+          git clone https://github.com/ColinRitman/fuego.git cryptonote
+          git -C cryptonote checkout f77ea2bf2dcb1095a7b22e78dfa2737a06cecfdc
+
+      - name: Pre-build setup
+        shell: powershell
+        run: |
+          $search = "set\(CN_VERSION "
+          $xfg_version = ((Get-Content CryptoNoteWallet.cmake | Select-String $search) | %{$_ -replace $search, ""}) | %{$_ -replace "\)", ""}
+          $xfg_version = $xfg_version + ".0"
+
+          # Update "CMakeLists.txt" with cmake dir
+          $qt5_cmake = "$env:Qt5_DIR/lib/cmake" -replace '[/]', '\\'
+          $file = "CMakeLists.txt"
+          $find = '^set\(CMAKE_PREFIX_PATH.+'
+          $replace = "set(CMAKE_PREFIX_PATH `"$($qt5_cmake)`")"
+          (Get-Content $file) | %{$_ -replace $find, $replace} | Set-Content $file
+
+          # Update FuegoWallet.nsi with the current version
+          $file = "FuegoWallet.nsi"
+          $find = "^!define VERSION.+"
+          $replace = "!define VERSION '$xfg_version.0'"
+          (Get-Content $file) | %{$_ -replace $find, $replace} | Set-Content $file
+
+      - name: Build
+        shell: powershell
+        id: build
+        run: |
+          $build_folder = "build"
+          $release_folder = "Release"
+          $sha = "${{ github.sha }}"
+          $xfg_version = $sha.SubString(0,7)
+          $release_name = "fuego-desktop-win64-dev-$xfg_version"
+
+          New-Item "$build_folder\$release_folder" -ItemType Directory
+          cd "$build_folder"
+
+          cmake -G "Visual Studio 17 2022" .. -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake
+          msbuild Fuego-Wallet.sln /p:Configuration=Release /m:2
+
+          echo "build_folder=${build_folder}" >> $env:GITHUB_OUTPUT
+          echo "release_folder=${release_folder}" >> $env:GITHUB_OUTPUT
+          echo "release_name=${release_name}" >> $env:GITHUB_OUTPUT
+
+      - name: Pack
+        shell: powershell
+        id: pack
+        run: |
+          $build_folder = "${{ steps.build.outputs.build_folder }}"
+          $release_name = "${{ steps.build.outputs.release_name }}"
+          $release_folder = "${{ steps.build.outputs.release_folder }}"
+
+          cd "$build_folder/$release_folder"
+          mkdir "Final"
+          choco install openssl -y
+          cp "C:\Program Files\OpenSSL-Win64\libcrypto*.dll" "Final/"
+          cp "C:\Program Files\OpenSSL-Win64\libssl*.dll" "Final/"
+          windeployqt --release Fuego-Wallet.exe --dir "Final/" --no-translations --no-opengl-sw
+          cd ../../
+          makensis FuegoWallet.nsi
+          cd "$build_folder/$release_folder"
+          Compress-Archive -Path FUEGO-Setup.exe -DestinationPath "$release_name.zip"
+
+          $artifact_path = "$build_folder/$release_folder/$release_name.zip"
+          echo "artifact_path=${artifact_path}" >> $env:GITHUB_OUTPUT
+
+      - name: Upload To GH Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build.outputs.release_name }}
+          path: ${{ steps.pack.outputs.artifact_path }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
+  build-ubuntu24:
+    name: Ubuntu 24.04
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache APT packages
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt
+          key: apt-${{ runner.os }}-${{ hashFiles('**/apt-packages.txt') }}
+          restore-keys: |
+            apt-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          sudo apt update -y
+          sudo apt install -y qtbase5-dev qtchooser qt5-qmake qtbase5-dev-tools qttools5-dev qttools5-dev-tools libqt5charts5-dev libboost-all-dev libqrencode-dev libminiupnpc-dev git
+          
+      - name: Set Qt environment variables
+        run: |
+          # Find Qt5 installation path
+          QT5_PATH=$(find /usr -name "Qt5Config.cmake" 2>/dev/null | head -1 | xargs dirname | xargs dirname | xargs dirname)
+          if [ -n "$QT5_PATH" ]; then
+            echo "Qt5_DIR=$QT5_PATH/lib/cmake/Qt5" >> $GITHUB_ENV
+            echo "CMAKE_PREFIX_PATH=$QT5_PATH" >> $GITHUB_ENV
+            echo "Found Qt5 at: $QT5_PATH"
+          else
+            echo "Warning: Could not find Qt5 installation"
+          fi
+
+      - name: Download XFG STARK CLI
+        run: |
+          # Download pre-built xfg-stark-cli binary from releases
+          wget -O xfg-stark-cli-linux.tar.gz https://github.com/colinritman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-linux.tar.gz
+          tar -xzf xfg-stark-cli-linux.tar.gz
+          chmod +x xfg-stark-cli
+          mkdir -p bin
+          mv xfg-stark-cli bin/
+
+      - name: Clone fuego
+        run: |
+          rm -rf cryptonote
+          git clone https://github.com/ColinRitman/fuego.git cryptonote
+          git -C cryptonote checkout f77ea2bf2dcb1095a7b22e78dfa2737a06cecfdc
+
+
+
+      - name: Build
+        id: build
+        run: |
+          xfg_version=${GITHUB_SHA::7}
+          release_name=fuego-desktop-ubuntu-2404-dev-"$xfg_version"
+
+          # Clean up any existing CMake cache files
+          rm -f CMakeCache.txt CMakeCache.txt.*
+          rm -rf build/
+          
+          # Build using CMake (main project, not cryptonote subdirectory)
+          mkdir -p build/release
+          cd build/release
+          cmake ../.. -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH"
+          make -j4
+          cd ../..
+          
+          mkdir $release_name
+          mkdir -p $release_name/icon
+          mv build/release/FuegoWallet $release_name
+          cp fuego-desktop.desktop $release_name
+          cp src/images/fuego.png $release_name/icon
+          tar -czf "$release_name".tar.gz "$release_name"
+
+          echo "release_name=${release_name}" >> $GITHUB_OUTPUT
+          echo "artifact_path=${release_name}.tar.gz" >> $GITHUB_OUTPUT
+          echo "artifact_path=${release_name}.tar.gz" >> $GITHUB_OUTPUT
+
+      - name: Upload To GH Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build.outputs.release_name }}
+          path: ${{ steps.build.outputs.artifact_path }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-ubuntu22:
+    name: Ubuntu 22.04
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt update -y
+          sudo apt install -y qtbase5-dev qtchooser qt5-qmake qtbase5-dev-tools qttools5-dev qttools5-dev-tools libqt5charts5-dev libboost-all-dev libqrencode-dev libminiupnpc-dev git
+          
+      - name: Set Qt environment variables
+        run: |
+          # Find Qt5 installation path
+          QT5_PATH=$(find /usr -name "Qt5Config.cmake" 2>/dev/null | head -1 | xargs dirname | xargs dirname | xargs dirname)
+          if [ -n "$QT5_PATH" ]; then
+            echo "Qt5_DIR=$QT5_PATH/lib/cmake/Qt5" >> $GITHUB_ENV
+            echo "CMAKE_PREFIX_PATH=$QT5_PATH" >> $GITHUB_ENV
+            echo "Found Qt5 at: $QT5_PATH"
+          else
+            echo "Warning: Could not find Qt5 installation"
+          fi
+
+      - name: Download XFG STARK CLI
+        run: |
+          # Download pre-built xfg-stark-cli binary from releases
+          wget -O xfg-stark-cli-linux.tar.gz https://github.com/colinritman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-linux.tar.gz
+          tar -xzf xfg-stark-cli-linux.tar.gz
+          chmod +x xfg-stark-cli
+          mkdir -p bin
+          mv xfg-stark-cli bin/
+
+      - name: Clone fuego
+        run: |
+          rm -rf cryptonote
+          git clone https://github.com/ColinRitman/fuego.git cryptonote
+          git -C cryptonote checkout f77ea2bf2dcb1095a7b22e78dfa2737a06cecfdc
+
+
+
+      - name: Build
+        id: build
+        run: |
+          xfg_version=${GITHUB_SHA::7}
+          release_name=fuego-desktop-ubuntu-2204-dev-"$xfg_version"
+
+          # Clean up any existing CMake cache files
+          rm -f CMakeCache.txt CMakeCache.txt.*
+          rm -rf build/
+          
+          # Build using CMake (main project, not cryptonote subdirectory)
+          mkdir -p build/release
+          cd build/release
+          cmake ../.. -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH"
+          make -j4
+          cd ../..
+          
+          mkdir $release_name
+          mkdir -p $release_name/icon
+          mv build/release/FuegoWallet $release_name
+          cp fuego-desktop.desktop $release_name
+          cp src/images/fuego.png $release_name/icon
+          tar -czf "$release_name".tar.gz "$release_name"
+
+          echo "release_name=${release_name}" >> $GITHUB_OUTPUT
+          echo "artifact_path=${release_name}.tar.gz" >> $GITHUB_OUTPUT
+
+          echo "release_name=${release_name}" >> $GITHUB_OUTPUT
+          echo "artifact_path=${release_name}.tar.gz" >> $GITHUB_OUTPUT
+
+      - name: Upload To GH Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build.outputs.release_name }}
+          path: ${{ steps.build.outputs.artifact_path }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-macos-intel:
+    name: macOS Intel
+    runs-on: macos-13
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Homebrew packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/Homebrew
+            /usr/local/Homebrew/Library/Caches/Homebrew
+          key: homebrew-${{ runner.os }}-${{ hashFiles('**/brew-packages.txt') }}
+          restore-keys: |
+            homebrew-${{ runner.os }}-
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          modules: "qtcharts"
+          
+      - name: Set Qt environment variables
+        run: |
+          # Find Qt5 installation path
+          QT5_PATH=$(find /usr -name "Qt5Config.cmake" 2>/dev/null | head -1 | xargs dirname | xargs dirname | xargs dirname)
+          if [ -n "$QT5_PATH" ]; then
+            echo "Qt5_DIR=$QT5_PATH/lib/cmake/Qt5" >> $GITHUB_ENV
+            echo "CMAKE_PREFIX_PATH=$QT5_PATH" >> $GITHUB_ENV
+            echo "Found Qt5 at: $QT5_PATH"
+          else
+            echo "Warning: Could not find Qt5 installation"
+          fi
+
+      - name: Install dependencies
+        run: |
+          brew install boost libqrencode miniupnpc
+
+      - name: Download XFG STARK CLI
+        run: |
+          # Download pre-built xfg-stark-cli binary from releases
+          curl -L -o xfg-stark-cli-macos.tar.gz https://github.com/colinritman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-macos.tar.gz
+          tar -xzf xfg-stark-cli-macos.tar.gz
+          chmod +x xfg-stark-cli
+          mkdir -p bin
+          mv xfg-stark-cli bin/
+
+      - name: Clone fuego
+        run: |
+          rm -rf cryptonote
+          git clone https://github.com/ColinRitman/fuego.git cryptonote
+          git -C cryptonote checkout f77ea2bf2dcb1095a7b22e78dfa2737a06cecfdc
+
+
+
+      - name: Build
+        id: build
+        run: |
+          build_folder="build/release"
+          xfg_ver=${GITHUB_SHA::7}
+          release_name="fuego-desktop-macOS-dev-$xfg_ver"
+          app_name="Fuego-Wallet.app"
+
+          # Clean up any existing CMake cache files
+          rm -f CMakeCache.txt CMakeCache.txt.*
+          rm -rf build/
+          
+          # Build using CMake (main project, not cryptonote subdirectory)
+          mkdir -p build/release
+          cd build/release
+          cmake ../.. -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH"
+          make -j4
+          cd ../..
+          
+          cd build/release
+          macdeployqt "$app_name"
+          cpack
+          mkdir "$release_name"
+          mv *.dmg "$release_name".dmg
+          mv "$release_name".dmg "$release_name"
+
+          echo "release_name=${release_name}" >> $GITHUB_OUTPUT
+          echo "artifact_path=build/release/${release_name}" >> $GITHUB_OUTPUT
+
+      - name: Upload To GH Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build.outputs.release_name }}
+          path: ${{ steps.build.outputs.artifact_path }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  
+  
+  # macOS Apple Silicon build disabled due to C++17 type traits compatibility issues
+  # with Boost.Math and macOS libc++ standard library
+  # The other platforms (Windows, Ubuntu, macOS Intel) are building successfully
+  # build-macos-apple-silicon:
+  #   name: macOS Apple Silicon
+  #   runs-on: macos-14
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Build disabled
+  #       run: echo "macOS Apple Silicon build disabled due to C++17 compatibility issues"

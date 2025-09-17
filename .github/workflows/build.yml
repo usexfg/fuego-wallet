@@ -1,0 +1,572 @@
+name: Build Cryptonote
+
+on:
+  push:
+    branches: [ master, main ]
+    tags:
+      - "*"
+  pull_request:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    name: Windows
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup msbuild
+        uses: microsoft/setup-msbuild@v1.0.2
+
+      - name: Install dependencies using vcpkg
+        shell: powershell
+        run: |
+          # Install vcpkg
+          git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
+          C:\vcpkg\bootstrap-vcpkg.bat
+          
+          # Install Boost components, libqrencode, and miniupnpc
+          C:\vcpkg\vcpkg install boost-system boost-filesystem boost-thread boost-chrono boost-atomic libqrencode miniupnpc --triplet=x64-windows
+          
+          # Set environment variables
+          echo "BOOST_ROOT=C:\vcpkg\installed\x64-windows" >> $env:GITHUB_ENV
+          echo "CMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake" >> $env:GITHUB_ENV
+          
+          Write-Output "✅ Dependencies installed via vcpkg"
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          host: "windows"
+          target: "desktop"
+          modules: "qtcharts"
+          install-deps: "true"
+          
+      - name: Set Qt environment variables
+        shell: powershell
+        run: |
+          # Set Qt5_DIR to the Qt installation path
+          $qtPath = "$env:Qt5_Dir"
+          if (-not $qtPath) {
+            $qtPath = "$env:Qt5_DIR"
+          }
+          if (-not $qtPath) {
+            # Fallback: try to find Qt in common locations
+            $qtPath = Get-ChildItem -Path "C:\Qt" -Directory -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+          }
+          if ($qtPath) {
+            echo "Qt5_DIR=$qtPath" >> $env:GITHUB_ENV
+            echo "CMAKE_PREFIX_PATH=$qtPath" >> $env:GITHUB_ENV
+            Write-Host "Set Qt5_DIR to: $qtPath"
+          } else {
+            Write-Host "Warning: Could not find Qt installation path"
+          }
+
+      - name: Clone fuego
+        run: |
+          Remove-Item -Recurse -Force cryptonote -ErrorAction SilentlyContinue
+          # Clone cryptonote from ColinRitman/fuego master branch
+          git clone --branch master https://github.com/ColinRitman/fuego.git cryptonote
+
+      - name: Download XFG STARK CLI
+        shell: powershell
+        run: |
+          # Download pre-built xfg-stark-cli binary from releases
+          Invoke-WebRequest -Uri "https://github.com/colinritman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-windows.tar.gz" -OutFile "xfg-stark-cli-windows.tar.gz"
+          tar -xzf xfg-stark-cli-windows.tar.gz
+          New-Item -ItemType Directory -Path "bin" -Force
+          Move-Item "xfg-stark-cli.exe" "bin/"
+          
+          # Verify the binary works
+          .\bin\xfg-stark-cli.exe --version
+          
+          Write-Host "✅ STARK CLI downloaded and verified successfully"
+
+      - name: Build
+        id: build
+        run: |
+          $xfgVer = $env:GITHUB_REF -replace "refs/tags/", ""
+          $releaseName = "fuego-desktop-windows-v$xfgVer"
+          $appName = "Fuego-Wallet.exe"
+
+          # Clean up any existing CMake cache files
+          Remove-Item -Force CMakeCache.txt -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force build -ErrorAction SilentlyContinue
+          
+          # Build cryptonote using CMake
+          New-Item -ItemType Directory -Path "build\release" -Force
+          Set-Location "build\release"
+          cmake -G "Visual Studio 17 2022" ..\.. -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake
+          cmake --build . --config Release --parallel 4
+          Set-Location ..\..
+          
+          Set-Location "build\release"
+          windeployqt "$appName"
+          cpack
+          New-Item -ItemType Directory -Path "$releaseName" -Force
+          New-Item -ItemType Directory -Path "$releaseName\tools" -Force
+          Move-Item "*.exe" "$releaseName\"
+          # Include STARK CLI in release
+          Copy-Item "..\..\bin\xfg-stark-cli.exe" "$releaseName\tools\"
+          Copy-Item "..\..\download-stark-cli.sh" "$releaseName\tools\"
+          Copy-Item "..\..\scripts\auto_stark_proof.sh" "$releaseName\tools\"
+          Copy-Item "..\..\STARK_CLI_INTEGRATION_OPTIMIZATION.md" "$releaseName\"
+          Compress-Archive -Path "$releaseName", "*.exe" -DestinationPath "$releaseName.zip"
+          $sha256 = (Get-FileHash "$releaseName.zip" -Algorithm SHA256).Hash.ToUpper()
+
+          echo "sha256=$sha256" >> $env:GITHUB_OUTPUT
+          echo "release_name=$releaseName.zip" >> $env:GITHUB_OUTPUT
+          echo "asset_path=build\release\$releaseName.zip" >> $env:GITHUB_OUTPUT
+          echo "xfg_version=$xfgVer" >> $env:GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v4
+        with:
+          files: ${{ steps.build.outputs.asset_path }}
+          name: Fuego Desktop v${{ steps.build.outputs.xfg_ver }}
+          body: |
+            <img src="https://camo.githubusercontent.com/cbd9fe20e5a69edc9a14b1a1f14d59f1a622aee1e2e3e7ffcf1e9adcd44b5f3b/68747470733a2f2f63646e2d69636f6e732d706e672e666c617469636f6e2e636f6d2f3531322f3232362f3232363737312e706e67" width="16"> [Download for Windows](../../releases/download/${{ steps.build.outputs.xfg_ver }}/${{ steps.build.outputs.release_name }}) ${{ steps.build.outputs.release_name }}
+            `SHA256 : ${{ steps.build.outputs.sha256 }}`
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-ubuntu22:
+    name: Ubuntu 22.04
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake libssl-dev pkg-config libqt5widgets5 libqt5gui5 libqt5core5a libqt5charts5-dev libqt5svg5-dev qtbase5-dev qtchooser qt5-qmake qtbase5-dev-tools libqrencode-dev libminiupnpc-dev
+
+          # Build Boost 1.82.0 from source (same as macOS)
+          wget https://sourceforge.net/projects/boost/files/boost/1.82.0/boost_1_82_0.tar.gz/download -O boost_1_82_0.tar.gz
+          tar -xzf boost_1_82_0.tar.gz
+          cd boost_1_82_0
+          ./bootstrap.sh --prefix=/usr/local/boost-custom
+          ./b2 --prefix=/usr/local/boost-custom --with-filesystem --with-thread --with-date_time --with-chrono --with-regex --with-serialization --with-program_options install
+          
+          echo "BOOST_ROOT=/usr/local/boost-custom" >> $GITHUB_ENV
+          echo "BOOST_INCLUDEDIR=/usr/local/boost-custom/include" >> $GITHUB_ENV
+          echo "BOOST_LIBRARYDIR=/usr/local/boost-custom/lib" >> $GITHUB_ENV
+          echo "CMAKE_PREFIX_PATH=/usr/local/boost-custom:$CMAKE_PREFIX_PATH" >> $GITHUB_ENV
+          echo "Boost_DIR=/usr/local/boost-custom/lib/cmake/Boost-1.82.0" >> $GITHUB_ENV
+          echo "CPPFLAGS=-I/usr/local/boost-custom/include" >> $GITHUB_ENV
+          echo "CXXFLAGS=-I/usr/local/boost-custom/include" >> $GITHUB_ENV
+          echo "LDFLAGS=-L/usr/local/boost-custom/lib" >> $GITHUB_ENV
+          
+      - name: Set Qt environment variables
+        run: |
+          # Find Qt5 installation path
+          QT5_PATH=$(find /usr -name "Qt5Config.cmake" 2>/dev/null | head -1 | xargs dirname | xargs dirname | xargs dirname)
+          if [ -n "$QT5_PATH" ]; then
+            echo "Qt5_DIR=$QT5_PATH/lib/cmake/Qt5" >> $GITHUB_ENV
+            echo "CMAKE_PREFIX_PATH=$QT5_PATH" >> $GITHUB_ENV
+            echo "Found Qt5 at: $QT5_PATH"
+          else
+            echo "Warning: Could not find Qt5 installation"
+          fi
+
+      - name: Clone fuego
+        run: |
+          rm -rf cryptonote
+          # Clone cryptonote from ColinRitman/fuego master branch
+git clone --branch master https://github.com/ColinRitman/fuego.git cryptonote
+
+      - name: Download XFG STARK CLI
+        run: |
+          # Download pre-built xfg-stark-cli binary from releases
+          wget -O xfg-stark-cli-linux.tar.gz https://github.com/colinritman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-linux.tar.gz
+          tar -xzf xfg-stark-cli-linux.tar.gz
+          chmod +x xfg-stark-cli
+          mkdir -p bin
+          mv xfg-stark-cli bin/
+          
+          # Verify the binary works
+          ./bin/xfg-stark-cli --version
+          
+          echo "✅ STARK CLI downloaded and verified successfully"
+
+      - name: Build
+        id: build
+        run: |
+          build_folder="build/release"
+          xfg_ver=$(echo ${{ github.ref }} | sed 's|refs/tags/||')
+          release_name="fuego-desktop-ubuntu22-v$xfg_ver"
+          app_name="FuegoWallet"
+
+          # Clean up any existing CMake cache files
+          rm -f CMakeCache.txt CMakeCache.txt.*
+          rm -rf build/
+          
+          # Build cryptonote using CMake
+          mkdir -p build/release
+          cd build/release
+          cmake ../.. -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH" -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_STANDARD_REQUIRED=ON -DCMAKE_CXX_EXTENSIONS=OFF -DCMAKE_BUILD_TYPE=Release
+          make -j4
+          cd ../..
+          
+          cd build/release
+          mkdir "$release_name"
+          mkdir -p "$release_name/tools"
+          cp "$app_name" "$release_name/"
+          # Include STARK CLI in release
+          cp ../../bin/xfg-stark-cli "$release_name/tools/"
+          cp ../../download-stark-cli.sh "$release_name/tools/"
+          cp ../../scripts/auto_stark_proof.sh "$release_name/tools/"
+          cp ../../STARK_CLI_INTEGRATION_OPTIMIZATION.md "$release_name/"
+          tar -czf "$release_name".tar.gz "$release_name"
+          sha256=$(sha256sum "$release_name".tar.gz | awk '{ print toupper($1) }')
+
+          echo "sha256=${sha256}" >> $GITHUB_OUTPUT
+          echo "release_name=${release_name}.tar.gz" >> $GITHUB_OUTPUT
+          echo "asset_path=build/release/${release_name}.tar.gz" >> $GITHUB_OUTPUT
+          echo "xfg_version=${xfg_version}" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v4
+        with:
+          files: ${{ steps.build.outputs.asset_path }}
+          name: Fuego Desktop v${{ steps.build.outputs.xfg_ver }}
+          body: |
+            <img src="https://camo.githubusercontent.com/95ad8ed31c0e145dd722621b7d26661bbed66df59ce2d1fa52ecb3f5f99a5de5/68747470733a2f2f63646e2d69636f6e732d706e672e666c617469636f6e2e636f6d2f3531322f3838382f3838383837392e706e67" width="16"> [Download for Ubuntu 22.04](../../releases/download/${{ steps.build.outputs.xfg_ver }}/${{ steps.build.outputs.release_name }}) ${{ steps.build.outputs.release_name }}
+            `SHA256 : ${{ steps.build.outputs.sha256 }}`
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-ubuntu24:
+    name: Ubuntu 24.04
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake libssl-dev pkg-config libqt5widgets5 libqt5gui5 libqt5core5a libqt5charts5-dev libqt5svg5-dev qtbase5-dev qtchooser qt5-qmake qtbase5-dev-tools libqrencode-dev libminiupnpc-dev
+
+          # Build Boost 1.82.0 from source (same as macOS)
+          wget https://sourceforge.net/projects/boost/files/boost/1.82.0/boost_1_82_0.tar.gz/download -O boost_1_82_0.tar.gz
+          tar -xzf boost_1_82_0.tar.gz
+          cd boost_1_82_0
+          ./bootstrap.sh --prefix=/usr/local/boost-custom
+          ./b2 --prefix=/usr/local/boost-custom --with-filesystem --with-thread --with-date_time --with-chrono --with-regex --with-serialization --with-program_options install
+          
+          echo "BOOST_ROOT=/usr/local/boost-custom" >> $GITHUB_ENV
+          echo "BOOST_INCLUDEDIR=/usr/local/boost-custom/include" >> $GITHUB_ENV
+          echo "BOOST_LIBRARYDIR=/usr/local/boost-custom/lib" >> $GITHUB_ENV
+          echo "CMAKE_PREFIX_PATH=/usr/local/boost-custom:$CMAKE_PREFIX_PATH" >> $GITHUB_ENV
+          echo "Boost_DIR=/usr/local/boost-custom/lib/cmake/Boost-1.82.0" >> $GITHUB_ENV
+          echo "CPPFLAGS=-I/usr/local/boost-custom/include" >> $GITHUB_ENV
+          echo "CXXFLAGS=-I/usr/local/boost-custom/include" >> $GITHUB_ENV
+          echo "LDFLAGS=-L/usr/local/boost-custom/lib" >> $GITHUB_ENV
+          
+      - name: Set Qt environment variables
+        run: |
+          # Find Qt5 installation path
+          QT5_PATH=$(find /usr -name "Qt5Config.cmake" 2>/dev/null | head -1 | xargs dirname | xargs dirname | xargs dirname)
+          if [ -n "$QT5_PATH" ]; then
+            echo "Qt5_DIR=$QT5_PATH/lib/cmake/Qt5" >> $GITHUB_ENV
+            echo "CMAKE_PREFIX_PATH=$QT5_PATH" >> $GITHUB_ENV
+            echo "Found Qt5 at: $QT5_PATH"
+          else
+            echo "Warning: Could not find Qt5 installation"
+          fi
+
+      - name: Clone fuego
+        run: |
+          rm -rf cryptonote
+          # Clone cryptonote from ColinRitman/fuego master branch
+git clone --branch master https://github.com/ColinRitman/fuego.git cryptonote
+
+      - name: Download XFG STARK CLI
+        run: |
+          # Download pre-built xfg-stark-cli binary from releases
+          wget -O xfg-stark-cli-linux.tar.gz https://github.com/colinritman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-linux.tar.gz
+          tar -xzf xfg-stark-cli-linux.tar.gz
+          chmod +x xfg-stark-cli
+          mkdir -p bin
+          mv xfg-stark-cli bin/
+          
+          # Verify the binary works
+          ./bin/xfg-stark-cli --version
+          
+          echo "✅ STARK CLI downloaded and verified successfully"
+
+      - name: Build
+        id: build
+        run: |
+          build_folder="build/release"
+          xfg_ver=$(echo ${{ github.ref }} | sed 's|refs/tags/||')
+          release_name="fuego-desktop-ubuntu24-v$xfg_ver"
+          app_name="FuegoWallet"
+
+          # Clean up any existing CMake cache files
+          rm -f CMakeCache.txt CMakeCache.txt.*
+          rm -rf build/
+          
+          # Build cryptonote using CMake
+          mkdir -p build/release
+          cd build/release
+          cmake ../.. -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH" -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_STANDARD_REQUIRED=ON -DCMAKE_CXX_EXTENSIONS=OFF -DCMAKE_BUILD_TYPE=Release
+          make -j4
+          cd ../..
+          
+          cd build/release
+          mkdir "$release_name"
+          mkdir -p "$release_name/tools"
+          cp "$app_name" "$release_name/"
+          # Include STARK CLI in release
+          cp ../../bin/xfg-stark-cli "$release_name/tools/"
+          cp ../../download-stark-cli.sh "$release_name/tools/"
+          cp ../../scripts/auto_stark_proof.sh "$release_name/tools/"
+          cp ../../STARK_CLI_INTEGRATION_OPTIMIZATION.md "$release_name/"
+          tar -czf "$release_name".tar.gz "$release_name"
+          sha256=$(sha256sum "$release_name".tar.gz | awk '{ print toupper($1) }')
+
+          echo "sha256=${sha256}" >> $GITHUB_OUTPUT
+          echo "release_name=${release_name}.tar.gz" >> $GITHUB_OUTPUT
+          echo "asset_path=build/release/${release_name}.tar.gz" >> $GITHUB_OUTPUT
+          echo "xfg_version=${xfg_version}" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v4
+        with:
+          files: ${{ steps.build.outputs.asset_path }}
+          name: Fuego Desktop v${{ steps.build.outputs.xfg_ver }}
+          body: |
+            <img src="https://camo.githubusercontent.com/95ad8ed31c0e145dd722621b7d26661bbed66df59ce2d1fa52ecb3f5f99a5de5/68747470733a2f2f63646e2d69636f6e732d706e672e666c617469636f6e2e636f6d2f3531322f3838382f3838383837392e706e67" width="16"> [Download for Ubuntu 24.04](../../releases/download/${{ steps.build.outputs.xfg_ver }}/${{ steps.build.outputs.release_name }}) ${{ steps.build.outputs.release_name }}
+            `SHA256 : ${{ steps.build.outputs.sha256 }}`
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-macos-intel:
+    name: macOS Intel
+    runs-on: macos-13  # Intel runner
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt
+        run: |
+          # Install Qt5 via Homebrew directly
+          brew install qt@5
+          # Set Qt paths manually
+          QT_PREFIX=$(brew --prefix qt@5)
+          echo "Qt5_DIR=$QT_PREFIX/lib/cmake/Qt5" >> $GITHUB_ENV
+          echo "CMAKE_PREFIX_PATH=$QT_PREFIX" >> $GITHUB_ENV
+          echo "PATH=$QT_PREFIX/bin:$PATH" >> $GITHUB_ENV
+          echo "Installed Qt5 via Homebrew at: $QT_PREFIX"
+          echo "Qt5_DIR set to: $QT_PREFIX/lib/cmake/Qt5"
+
+      - name: Install dependencies
+        run: |
+          brew install libqrencode miniupnpc
+
+          # Build Boost 1.82.0 from source
+          cd /tmp
+          wget https://boostorg.jfrog.io/artifactory/main/release/1.82.0/source/boost_1_82_0.tar.gz
+          tar -xzf boost_1_82_0.tar.gz
+          cd boost_1_82_0
+          ./bootstrap.sh --with-toolset=clang --prefix=/opt/homebrew/opt/boost-custom
+          ./b2 toolset=clang cxxflags="-stdlib=libc++" linkflags="-stdlib=libc++" --prefix=/opt/homebrew/opt/boost-custom install
+
+          echo "BOOST_ROOT=/opt/homebrew/opt/boost-custom" >> $GITHUB_ENV
+          echo "BOOST_INCLUDEDIR=/opt/homebrew/opt/boost-custom/include" >> $GITHUB_ENV
+          echo "BOOST_LIBRARYDIR=/opt/homebrew/opt/boost-custom/lib" >> $GITHUB_ENV
+          echo "CMAKE_PREFIX_PATH=/opt/homebrew/opt/boost-custom:$CMAKE_PREFIX_PATH" >> $GITHUB_ENV
+
+      - name: Clone fuego
+        run: |
+          rm -rf cryptonote
+          # Clone cryptonote from ColinRitman/fuego master branch
+git clone --branch master https://github.com/ColinRitman/fuego.git cryptonote
+
+      - name: Download XFG STARK CLI
+        run: |
+          # Download pre-built xfg-stark-cli binary from releases
+          curl -L -o xfg-stark-cli-macos.tar.gz https://github.com/colinritman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-macos.tar.gz
+          tar -xzf xfg-stark-cli-macos.tar.gz
+          chmod +x xfg-stark-cli
+          mkdir -p bin
+          mv xfg-stark-cli bin/
+          
+          # Verify the binary works
+          ./bin/xfg-stark-cli --version
+          
+          echo "✅ STARK CLI downloaded and verified successfully"
+
+      - name: Build
+        id: build
+        run: |
+          build_folder="build/release"
+          xfg_ver=$(echo ${{ github.ref }} | sed 's|refs/tags/||')
+          release_name="fuego-desktop-macOS-intel-v$xfg_ver"
+          app_name="Fuego-Wallet.app"
+
+          # Clean up any existing CMake cache files
+          rm -f CMakeCache.txt CMakeCache.txt.*
+          rm -rf build/
+          
+          # Build cryptonote using CMake
+          mkdir -p build/release
+          cd build/release
+          cmake ../.. -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH" -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_STANDARD_REQUIRED=ON -DCMAKE_CXX_EXTENSIONS=OFF -DCMAKE_BUILD_TYPE=Release
+          make -j4
+          cd ../..
+          
+          cd build/release
+          macdeployqt "$app_name"
+          cpack
+          mkdir "$release_name"
+          mkdir -p "$release_name/tools"
+          mv *.dmg "$release_name".dmg
+          # Include STARK CLI in release
+          cp ../../bin/xfg-stark-cli "$release_name/tools/"
+          cp ../../download-stark-cli.sh "$release_name/tools/"
+          cp ../../scripts/auto_stark_proof.sh "$release_name/tools/"
+          cp ../../STARK_CLI_INTEGRATION_OPTIMIZATION.md "$release_name/"
+          zip "$release_name".zip "$release_name".dmg "$release_name/tools" "$release_name/STARK_CLI_INTEGRATION_OPTIMIZATION.md"
+          sha256=$(shasum -a 256 "$release_name".zip | awk '{ print toupper($1) }')
+
+          echo "sha256=${sha256}" >> $GITHUB_OUTPUT
+          echo "release_name=${release_name}.zip" >> $GITHUB_OUTPUT
+          echo "asset_path=build/release/${release_name}.zip" >> $GITHUB_OUTPUT
+          echo "xfg_version=${xfg_version}" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v4
+        with:
+          files: ${{ steps.build.outputs.asset_path }}
+          name: Fuego Desktop v${{ steps.build.outputs.xfg_ver }}
+          body: |
+            <img src="https://camo.githubusercontent.com/db6daf7df2ad2d89a28c0916039d3b9ee6c97801425b6937c353139ebf630cb3/68747470733a2f2f63646e2d69636f6e732d706e672e666c617469636f6e2e636f6d2f3531322f3838322f3838323630322e706e67" width="16"> [Download for macOS Intel](../../releases/download/${{ steps.build.outputs.xfg_ver }}/${{ steps.build.outputs.release_name }}) ${{ steps.build.outputs.release_name }}
+            `SHA256 : ${{ steps.build.outputs.sha256 }}`
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  macos-apple-silicon:
+    name: macOS Apple Silicon
+    runs-on: macos-14  # Apple Silicon runner
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies and rebuild Boost with libc++
+        run: |
+          # Install dependencies
+          brew install libqrencode miniupnpc
+          
+          # ULTIMATE FINAL SOLUTION: Build custom Boost and override compiler paths
+          echo "=== ULTIMATE FINAL SOLUTION: Build custom Boost and override compiler paths ==="
+          
+          # Download and build Boost from source with libc++
+          cd /tmp
+          wget https://boostorg.jfrog.io/artifactory/main/release/1.82.0/source/boost_1_82_0.tar.gz
+          tar -xzf boost_1_82_0.tar.gz
+          cd boost_1_82_0
+          
+          # Configure Boost to use libc++
+          ./bootstrap.sh --with-toolset=clang
+          ./b2 toolset=clang cxxflags="-stdlib=libc++" linkflags="-stdlib=libc++" --prefix=/opt/homebrew/opt/boost-custom install
+          
+          # Set environment variables to use our custom Boost
+          echo "BOOST_ROOT=/opt/homebrew/opt/boost-custom" >> $GITHUB_ENV
+          echo "BOOST_INCLUDEDIR=/opt/homebrew/opt/boost-custom/include" >> $GITHUB_ENV
+          echo "BOOST_LIBRARYDIR=/opt/homebrew/opt/boost-custom/lib" >> $GITHUB_ENV
+          echo "CMAKE_PREFIX_PATH=/opt/homebrew/opt/boost-custom:$CMAKE_PREFIX_PATH" >> $GITHUB_ENV
+          
+          # Override compiler include paths to force our custom Boost
+          echo "CPPFLAGS=-I/opt/homebrew/opt/boost-custom/include" >> $GITHUB_ENV
+          echo "CXXFLAGS=-I/opt/homebrew/opt/boost-custom/include -stdlib=libc++" >> $GITHUB_ENV
+          echo "LDFLAGS=-L/opt/homebrew/opt/boost-custom/lib -stdlib=libc++" >> $GITHUB_ENV
+          
+          # Verify our custom Boost is present
+          echo "Custom Boost headers:"
+          ls -la /opt/homebrew/opt/boost-custom/include/boost/math/special_functions/round.hpp || echo "Custom Boost headers not found"
+          
+          echo "ULTIMATE FINAL SOLUTION: Built custom Boost and set compiler overrides"
+
+      - name: Install Qt
+        run: |
+          # Install Qt5 via Homebrew directly
+          brew install qt@5
+          # Set Qt paths manually
+          QT_PREFIX=$(brew --prefix qt@5)
+          echo "Qt5_DIR=$QT_PREFIX/lib/cmake/Qt5" >> $GITHUB_ENV
+          echo "CMAKE_PREFIX_PATH=$QT_PREFIX" >> $GITHUB_ENV
+          echo "PATH=$QT_PREFIX/bin:$PATH" >> $GITHUB_ENV
+          echo "Installed Qt5 via Homebrew at: $QT_PREFIX"
+          echo "Qt5_DIR set to: $QT_PREFIX/lib/cmake/Qt5"
+          
+      - name: Verify Qt installation
+        run: |
+          echo "Qt5_DIR: $Qt5_DIR"
+          echo "CMAKE_PREFIX_PATH: $CMAKE_PREFIX_PATH"
+          ls -la "$Qt5_DIR" || echo "Qt5_DIR not found"
+          find "$CMAKE_PREFIX_PATH" -name "Qt5GuiConfig.cmake" 2>/dev/null || echo "Qt5GuiConfig.cmake not found"
+          find "$CMAKE_PREFIX_PATH" -name "*Qt5*" -type d 2>/dev/null | head -5
+
+      - name: Clone fuego
+        run: |
+          rm -rf cryptonote
+          # Clone cryptonote from ColinRitman/fuego master branch
+          git clone --branch master https://github.com/ColinRitman/fuego.git cryptonote
+
+      - name: Build
+        id: build
+        run: |
+          build_folder="build/release"
+          xfg_ver=$(echo ${{ github.ref }} | sed 's|refs/tags/||')
+          release_name="fuego-desktop-macOS-apple-silicon-v$xfg_ver"
+          app_name="Fuego-Wallet.app"
+
+          # Clean up any existing CMake cache files
+          rm -f CMakeCache.txt CMakeCache.txt.*
+          rm -rf build/
+          
+          # Build using CMake (main project, not cryptonote subdirectory)
+          mkdir -p build/release
+          cd build/release
+          
+          # macOS Apple Silicon: Work around Xcode 16.4 libc++ compatibility issues
+          # Use older macOS SDK and add std namespace qualifiers for random headers
+          export CXXFLAGS="$CXXFLAGS -I/opt/homebrew/opt/boost-custom/include -stdlib=libc++"
+          export LDFLAGS="$LDFLAGS -L/opt/homebrew/opt/boost-custom/lib -stdlib=libc++"
+          export MACOSX_DEPLOYMENT_TARGET=13.0
+
+          # ULTIMATE FINAL SOLUTION: Force compiler to use our custom Boost with explicit flags
+          cmake ../.. -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH" -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_STANDARD_REQUIRED=ON -DCMAKE_CXX_EXTENSIONS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="$CXXFLAGS" -DCMAKE_CXX_COMPILER_FLAGS="$CXXFLAGS" -DCMAKE_EXE_LINKER_FLAGS="$LDFLAGS" -DBOOST_ROOT="$BOOST_ROOT" -DBOOST_INCLUDEDIR="$BOOST_INCLUDEDIR" -DBOOST_LIBRARYDIR="$BOOST_LIBRARYDIR" -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0
+          make -j4
+          cd ../..
+          
+          cd build/release
+          macdeployqt "$app_name"
+          cpack
+          mkdir "$release_name"
+          mkdir -p "$release_name/tools"
+          mv *.dmg "$release_name".dmg
+          # Include STARK CLI in release
+          cp ../../bin/xfg-stark-cli "$release_name/tools/"
+          cp ../../download-stark-cli.sh "$release_name/tools/"
+          cp ../../scripts/auto_stark_proof.sh "$release_name/tools/"
+          cp ../../STARK_CLI_INTEGRATION_OPTIMIZATION.md "$release_name/"
+          zip "$release_name".zip "$release_name".dmg "$release_name/tools" "$release_name/STARK_CLI_INTEGRATION_OPTIMIZATION.md"
+          sha256=$(shasum -a 256 "$release_name".zip | awk '{ print toupper($1) }')
+
+          echo "sha256=${sha256}" >> $GITHUB_OUTPUT
+          echo "release_name=${release_name}.zip" >> $GITHUB_OUTPUT
+          echo "asset_path=build/release/${release_name}.zip" >> $GITHUB_OUTPUT
+          echo "xfg_version=${xfg_version}" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v4
+        with:
+          files: ${{ steps.build.outputs.asset_path }}
+          name: Fuego Desktop v${{ steps.build.outputs.xfg_ver }}
+          body: |
+            <img src="https://camo.githubusercontent.com/db6daf7df2ad2d89a28c0916039d3b9ee6c97801425b6937c353139ebf630cb3/68747470733a2f2f63646e2d69636f6e732d706e672e666c617469636f6e2e636f6d2f3531322f3838322f3838323630322e706e67" width="16"> [Download for macOS Apple Silicon](../../releases/download/${{ steps.build.outputs.xfg_ver }}/${{ steps.build.outputs.release_name }}) ${{ steps.build.outputs.release_name }}
+            `SHA256 : ${{ steps.build.outputs.sha256 }}`
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

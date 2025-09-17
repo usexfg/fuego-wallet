@@ -1,0 +1,82 @@
+name: Ubuntu 20.04
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  build-ubuntu20:
+    name: Ubuntu 20.04
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt update -y
+          sudo apt install -y build-essential cmake libssl-dev pkg-config qt5-default qttools5-dev qttools5-dev-tools libqt5charts5-dev libqrencode-dev libminiupnpc-dev
+
+          # Build Boost 1.82.0 from source
+          wget https://sourceforge.net/projects/boost/files/boost/1.82.0/boost_1_82_0.tar.gz/download -O boost_1_82_0.tar.gz
+          tar -xzf boost_1_82_0.tar.gz
+          cd boost_1_82_0
+          ./bootstrap.sh --prefix=/usr/local/boost-custom
+          ./b2 --prefix=/usr/local/boost-custom --with-filesystem --with-thread --with-date_time --with-chrono --with-regex --with-serialization --with-program_options install
+          
+          echo "BOOST_ROOT=/usr/local/boost-custom" >> $GITHUB_ENV
+          echo "BOOST_INCLUDEDIR=/usr/local/boost-custom/include" >> $GITHUB_ENV
+          echo "BOOST_LIBRARYDIR=/usr/local/boost-custom/lib" >> $GITHUB_ENV
+          echo "CMAKE_PREFIX_PATH=/usr/local/boost-custom:$CMAKE_PREFIX_PATH" >> $GITHUB_ENV
+          echo "Boost_DIR=/usr/local/boost-custom/lib/cmake/Boost-1.82.0" >> $GITHUB_ENV
+          echo "CPPFLAGS=-I/usr/local/boost-custom/include" >> $GITHUB_ENV
+          echo "CXXFLAGS=-I/usr/local/boost-custom/include" >> $GITHUB_ENV
+          echo "LDFLAGS=-L/usr/local/boost-custom/lib" >> $GITHUB_ENV
+
+      - name: Clone fuego
+        run: |
+          rm -rf cryptonote
+          git clone https://github.com/usexfg/fuego.git cryptonote
+
+      - name: Build
+        id: build
+        run: |
+          xfg_version=$(echo "$GITHUB_REF" | sed 's|refs/tags/||')
+
+          release_name=fuego-desktop-ubuntu-2004-v"$xfg_version"
+
+          build_folder="build/release"
+
+          make -j4 build-release
+          mkdir $release_name
+          mkdir -p $release_name/icon
+          mv build/release/Fuego-Wallet $release_name
+
+          cp fuego-desktop.desktop $release_name
+
+          cp src/images/fuego.png $release_name/icon
+
+          tar -czf "$release_name".tar.gz "$release_name"
+
+          sha256=$(shasum -a 256 "$release_name".tar.gz | awk '{print toupper($1)}')
+
+          echo "sha256=${sha256}" >> $GITHUB_OUTPUT
+
+          echo "release_name=${release_name}.tar.gz" >> $GITHUB_OUTPUT
+
+          echo "xfg_version=${xfg_version}" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v4
+        with:
+          files: ${{ steps.build.outputs.release_name }}
+
+          name: Fuego Desktop v${{ steps.build.outputs.xfg_version }}
+
+          body: |
+            <img src="https://cdn-icons-png.flaticon.com/512/888/888879.png" width="16"> [Download for Ubuntu 20.04](../../releases/download/${{ steps.build.outputs.xfg_version }}/${{ steps.build.outputs.release_name }}) ${{ steps.build.outputs.release_name }}
+
+            `SHA256 : ${{ steps.build.outputs.sha256 }}`
+
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

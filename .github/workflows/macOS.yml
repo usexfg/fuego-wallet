@@ -1,0 +1,80 @@
+name: macOS
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  build-macos:
+    name: macOS
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          brew install qt@5
+          
+          # Build Boost 1.82.0 from source
+          wget https://sourceforge.net/projects/boost/files/boost/1.82.0/boost_1_82_0.tar.gz/download -O boost_1_82_0.tar.gz
+          tar -xzf boost_1_82_0.tar.gz
+          cd boost_1_82_0
+          ./bootstrap.sh --prefix=/opt/homebrew/opt/boost-custom
+          ./b2 --prefix=/opt/homebrew/opt/boost-custom --with-filesystem --with-thread --with-date_time --with-chrono --with-regex --with-serialization --with-program_options install
+          
+          echo "BOOST_ROOT=/opt/homebrew/opt/boost-custom" >> $GITHUB_ENV
+          echo "BOOST_INCLUDEDIR=/opt/homebrew/opt/boost-custom/include" >> $GITHUB_ENV
+          echo "BOOST_LIBRARYDIR=/opt/homebrew/opt/boost-custom/lib" >> $GITHUB_ENV
+          echo "CMAKE_PREFIX_PATH=/opt/homebrew/opt/boost-custom:$CMAKE_PREFIX_PATH" >> $GITHUB_ENV
+          echo "Boost_DIR=/opt/homebrew/opt/boost-custom/lib/cmake/Boost-1.82.0" >> $GITHUB_ENV
+
+      - name: Clone Fuego
+        run: |
+          rm -rf cryptonote
+          git clone https://github.com/usexfg/fuego.git cryptonote
+
+      - name: Build
+        id: build
+        run: |
+          export PATH="/usr/local/opt/qt@5/bin:$PATH"
+
+          build_folder="build/release"
+          xfg_ver=$(echo ${{ github.ref }} | sed 's|refs/tags/||')
+
+          release_name="fuego-desktop-macOS-v$xfg_ver"
+
+          app_name="Fuego-Wallet.app"
+
+          make -j4 build-release
+          cd "$build_folder"
+          macdeployqt "$app_name"
+          cpack
+          mkdir "$release_name"
+          mv *.dmg "$release_name".dmg
+          zip "$release_name".zip "$release_name".dmg
+
+          sha256=$(shasum -a 256 "$release_name".zip | awk '{ print toupper($1) }')
+
+          echo "sha256=${sha256}" >> $GITHUB_OUTPUT
+
+          echo "release_name=${release_name}.zip" >> $GITHUB_OUTPUT
+
+          echo "asset_path=${build_folder}/${release_name}.zip" >> $GITHUB_OUTPUT
+
+          echo "xfg_version=${xfg_version}" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v4
+        with:
+          files: ${{ steps.build.outputs.asset_path }}
+
+          name: Fuego Desktop v${{ steps.build.outputs.xfg_ver }}
+
+          body: |
+            <img src="https://cdn-icons-png.flaticon.com/512/882/882602.png" width="16"> [Download for macOS](../../releases/download/${{ steps.build.outputs.xfg_ver }}/${{ steps.build.outputs.release_name }}) ${{ steps.build.outputs.release_name }}
+
+            `SHA256 : ${{ steps.build.outputs.sha256 }}`
+
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,147 @@
+name: Download XFG STARK CLI
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly check for updates
+
+jobs:
+  download-stark-cli:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            asset_name: xfg-stark-cli-linux.tar.gz
+            binary_name: xfg-stark-cli
+            platform: linux
+          - os: macos-latest
+            asset_name: xfg-stark-cli-macos.tar.gz
+            binary_name: xfg-stark-cli
+            platform: macos
+          - os: windows-latest
+            asset_name: xfg-stark-cli-windows.tar.gz
+            binary_name: xfg-stark-cli.exe
+            platform: windows
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download STARK CLI from colinritman/xfgwin release
+      run: |
+        # Get the latest release info
+        RELEASE_URL=$(curl -s https://api.github.com/repos/ColinRitman/xfgwin/releases/latest | jq -r '.assets[] | select(.name=="'${{ matrix.asset_name }}'") | .browser_download_url')
+        
+        echo "Downloading ${{ matrix.asset_name }} from: $RELEASE_URL"
+        
+        # Download the asset
+        curl -L -o ${{ matrix.asset_name }} "$RELEASE_URL"
+        
+        # Extract the binary
+        tar -xzf ${{ matrix.asset_name }}
+        
+        # Make binary executable (Unix systems)
+        if [ "${{ matrix.platform }}" != "windows" ]; then
+          chmod +x ${{ matrix.binary_name }}
+        fi
+        
+        # Verify the binary works
+        if [ "${{ matrix.platform }}" == "windows" ]; then
+          ./${{ matrix.binary_name }} --version
+        else
+          ./${{ matrix.binary_name }} --version
+        fi
+        
+        echo "✅ STARK CLI downloaded and verified successfully"
+        
+        # Create a simple integration script
+        cat > integrate-stark-cli.sh << 'EOF'
+        #!/bin/bash
+        # Integration script for XFG STARK CLI
+        
+        CLI_PATH="./${{ matrix.binary_name }}"
+        
+        if [ ! -f "$CLI_PATH" ]; then
+          echo "❌ STARK CLI binary not found at $CLI_PATH"
+          exit 1
+        fi
+        
+        echo "✅ STARK CLI found at $CLI_PATH"
+        echo "Version: $($CLI_PATH --version)"
+        
+        # Test basic functionality
+        echo "🧪 Testing STARK CLI..."
+        $CLI_PATH --help > /dev/null 2>&1
+        if [ $? -eq 0 ]; then
+          echo "✅ STARK CLI is working correctly"
+        else
+          echo "❌ STARK CLI test failed"
+          exit 1
+        fi
+        
+        echo "🚀 STARK CLI integration complete!"
+        EOF
+        
+        chmod +x integrate-stark-cli.sh
+        ./integrate-stark-cli.sh
+
+    - name: Upload STARK CLI binary
+      uses: actions/upload-artifact@v4
+      with:
+        name: stark-cli-${{ matrix.platform }}
+        path: |
+          ${{ matrix.binary_name }}
+          integrate-stark-cli.sh
+        retention-days: 30
+
+    - name: Update integration scripts
+      run: |
+        # Update the auto_stark_proof.sh script to use the downloaded binary
+        if [ -f "scripts/auto_stark_proof.sh" ]; then
+          # Update the CLI path in the script
+          sed -i "s|CLI_PATH=.*|CLI_PATH=\"./${{ matrix.binary_name }}\"|g" scripts/auto_stark_proof.sh
+          echo "✅ Updated auto_stark_proof.sh to use downloaded binary"
+        fi
+        
+        # Create a simple download script for future use
+        cat > download-stark-cli.sh << 'EOF'
+        #!/bin/bash
+        # Download XFG STARK CLI from colinritman/xfgwin releases
+        
+        PLATFORM=$(uname -s | tr '[:upper:]' '[:lower:]')
+        if [[ "$PLATFORM" == "darwin" ]]; then
+          PLATFORM="macos"
+        elif [[ "$PLATFORM" == "linux" ]]; then
+          PLATFORM="linux"
+        else
+          echo "❌ Unsupported platform: $PLATFORM"
+          exit 1
+        fi
+        
+        ASSET_NAME="xfg-stark-cli-$PLATFORM.tar.gz"
+        BINARY_NAME="xfg-stark-cli"
+        
+        echo "📥 Downloading STARK CLI for $PLATFORM..."
+        
+        # Get download URL
+        DOWNLOAD_URL=$(curl -s https://api.github.com/repos/ColinRitman/xfgwin/releases/latest | jq -r ".assets[] | select(.name==\"$ASSET_NAME\") | .browser_download_url")
+        
+        if [ -z "$DOWNLOAD_URL" ]; then
+          echo "❌ Could not find download URL for $ASSET_NAME"
+          exit 1
+        fi
+        
+        # Download and extract
+        curl -L -o "$ASSET_NAME" "$DOWNLOAD_URL"
+        tar -xzf "$ASSET_NAME"
+        chmod +x "$BINARY_NAME"
+        
+        echo "✅ STARK CLI downloaded successfully"
+        echo "Binary: $BINARY_NAME"
+        echo "Version: $($BINARY_NAME --version)"
+        EOF
+        
+        chmod +x download-stark-cli.sh
+        echo "✅ Created download-stark-cli.sh for future use"
