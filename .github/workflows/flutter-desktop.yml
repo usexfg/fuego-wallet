@@ -4,11 +4,11 @@ on:
   push:
     branches: [ main, master ]
     paths:
-      - 'firefly͖͖wallet/**'
+      - 'fireflywallet/**'
   pull_request:
     branches: [ main, master ]
     paths:
-      - 'firefly͖͖wallet/**'
+      - 'fireflywallet/**'
   workflow_dispatch:
 
 jobs:
@@ -32,7 +32,7 @@ jobs:
       - name: Navigate to Flutter project
         run: |
           # Handle the special characters in directory name
-          cd "firefly͖͖wallet"
+          cd "fireflywallet"
 
       - name: Install dependencies
         run: flutter pub get
@@ -44,7 +44,7 @@ jobs:
 
       - name: Create app archive
         run: |
-          cd firefly͖͖wallet/build/macos/Build/Products/Release
+          cd fireflywallet/build/macos/Build/Products/Release
           zip -r Firefly-Wallet-macOS.zip "Firefly Wallet.app"
         working-directory: firefly͖͖wallet
 
@@ -52,7 +52,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: firefly-wallet-macos
-          path: firefly͖͖wallet/build/macos/Build/Products/Release/Firefly-Wallet-macOS.zip
+          path: fireflywallet/build/macos/Build/Products/Release/Firefly-Wallet-macOS.zip
           retention-days: 30
 
   build-windows:
@@ -78,13 +78,13 @@ jobs:
 
       - name: Build Windows desktop app
         run: flutter build windows --release
-        working-directory: firefly͖͖wallet
+        working-directory: fireflywallet
 
       - name: Create app archive
         run: |
           cd build\windows\runner\Release
           Compress-Archive -Path * -DestinationPath ..\..\..\..\Firefly-Wallet-Windows.zip
-        working-directory: firefly͖͖wallet
+        working-directory: fireflywallet
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -115,21 +115,21 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
-        working-directory: firefly͖͖wallet
+        working-directory: fireflywallet
 
       - name: Build Linux desktop app
         run: flutter build linux --release
-        working-directory: firefly͖͖wallet
+        working-directory: fireflywallet
 
       - name: Create app archive
         run: |
           cd build/linux/x64/release/bundle
           tar -czf ../../../../Firefly-Wallet-Linux.tar.gz *
-        working-directory: firefly͖͖wallet
+        working-directory: fireflywallet
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: firefly-wallet-linux
-          path: firefly͖͖wallet/Firefly-Wallet-Linux.tar.gz
+          path: fireflywallet/Firefly-Wallet-Linux.tar.gz
           retention-days: 30
