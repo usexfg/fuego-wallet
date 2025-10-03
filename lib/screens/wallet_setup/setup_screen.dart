@@ -107,141 +107,300 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
           gradient: AppTheme.backgroundGradient,
         ),
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              children: [
-                Expanded(
-                  flex: 2,
-                  child: FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Logo
-                        Container(
-                          width: 100,
-                          height: 100,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: AppTheme.primaryGradient,
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppTheme.primaryColor.withOpacity(0.3),
-                                blurRadius: 15,
-                                spreadRadius: 1,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // Use different layouts for desktop vs mobile
+              bool isDesktop = constraints.maxWidth > 600;
+
+              if (isDesktop) {
+                return Row(
+                  children: [
+                    // Left side - Logo and welcome
+                    Expanded(
+                      flex: 1,
+                      child: FadeTransition(
+                        opacity: _fadeAnimation,
+                        child: Padding(
+                          padding: const EdgeInsets.all(48.0),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              // Logo
+                              Container(
+                                width: 120,
+                                height: 120,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: AppTheme.primaryGradient,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppTheme.primaryColor.withOpacity(0.3),
+                                      blurRadius: 15,
+                                      spreadRadius: 1,
+                                    ),
+                                  ],
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Image.asset(
+                                    'assets/logo/fuegologo.png',
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 32),
+                              // Welcome text
+                              AnimatedTextKit(
+                                animatedTexts: [
+                                  FadeAnimatedText(
+                                    'Welcome to Fuego',
+                                    textStyle: const TextStyle(
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppTheme.textPrimary,
+                                    ),
+                                    duration: const Duration(milliseconds: 1200),
+                                  ),
+                                ],
+                                totalRepeatCount: 1,
+                              ),
+                              const SizedBox(height: 20),
+                              Text(
+                                'Your gateway to private, secure, and decentralized cryptocurrency transactions',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: AppTheme.textSecondary,
+                                  height: 1.5,
+                                ),
                               ),
                             ],
                           ),
-                          child: const Icon(
-                            Icons.local_fire_department,
-                            size: 50,
-                            color: Colors.white,
-                          ),
                         ),
-                        const SizedBox(height: 24),
-                        // Welcome text
-                        AnimatedTextKit(
-                          animatedTexts: [
-                            FadeAnimatedText(
-                              'Welcome to Fuego',
-                              textStyle: const TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    // Right side - Features and buttons
+                    Expanded(
+                      flex: 1,
+                      child: Padding(
+                        padding: const EdgeInsets.all(48.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // Features list
+                            SlideTransition(
+                              position: _slideAnimation,
+                              child: Column(
+                                children: [
+                                  _buildFeatureItem(
+                                    Icons.security,
+                                    'Anonymous Transactions',
+                                    'Ring signatures for complete privacy',
+                                  ),
+                                  const SizedBox(height: 16),
+                                  _buildFeatureItem(
+                                    Icons.link_off,
+                                    'Untraceable Payments',
+                                    'Advanced cryptography protection',
+                                  ),
+                                  const SizedBox(height: 16),
+                                  _buildFeatureItem(
+                                    Icons.message_outlined,
+                                    'Encrypted Messaging',
+                                    'Secure blockchain-based communication',
+                                  ),
+                                  const SizedBox(height: 16),
+                                  _buildFeatureItem(
+                                    Icons.account_tree,
+                                    'Elderfier Staking',
+                                    'Participate in network consensus',
+                                  ),
+                                ],
                               ),
-                              duration: const Duration(milliseconds: 1200),
+                            ),
+                            const SizedBox(height: 48),
+                            // Buttons
+                            SizedBox(
+                              width: 300,
+                              child: Column(
+                                children: [
+                                  ElevatedButton(
+                                    onPressed: _navigateToCreateWallet,
+                                    style: ElevatedButton.styleFrom(
+                                      minimumSize: const Size(double.infinity, 50),
+                                    ),
+                                    child: const Text('Create New Wallet'),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  OutlinedButton(
+                                    onPressed: _navigateToRestoreWallet,
+                                    style: OutlinedButton.styleFrom(
+                                      minimumSize: const Size(double.infinity, 50),
+                                    ),
+                                    child: const Text('Restore Existing Wallet'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 32),
+                            // Terms and privacy
+                            Text(
+                              'By continuing, you agree to our Terms of Service\nand Privacy Policy',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.textMuted,
+                                height: 1.4,
+                              ),
                             ),
                           ],
-                          totalRepeatCount: 1,
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Your gateway to private, secure, and decentralized cryptocurrency transactions',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: AppTheme.textSecondary,
-                            height: 1.5,
+                      ),
+                    ),
+                  ],
+                );
+              } else {
+                // Mobile layout (original)
+                return Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: FadeTransition(
+                          opacity: _fadeAnimation,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              // Logo
+                              Container(
+                                width: 100,
+                                height: 100,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: AppTheme.primaryGradient,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppTheme.primaryColor.withOpacity(0.3),
+                                      blurRadius: 15,
+                                      spreadRadius: 1,
+                                    ),
+                                  ],
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(6.0),
+                                  child: Image.asset(
+                                    'assets/logo/fuegologo.png',
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+                              // Welcome text
+                              AnimatedTextKit(
+                                animatedTexts: [
+                                  FadeAnimatedText(
+                                    'Welcome to Fuego',
+                                    textStyle: const TextStyle(
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppTheme.textPrimary,
+                                    ),
+                                    duration: const Duration(milliseconds: 1200),
+                                  ),
+                                ],
+                                totalRepeatCount: 1,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Your gateway to private, secure, and decentralized cryptocurrency transactions',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: AppTheme.textSecondary,
+                                  height: 1.5,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: SlideTransition(
-                    position: _slideAnimation,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Features list
-                        _buildFeatureItem(
-                          Icons.security,
-                          'Anonymous Transactions',
-                          'Ring signatures for complete privacy',
-                        ),
-                        const SizedBox(height: 16),
-                        _buildFeatureItem(
-                          Icons.link_off,
-                          'Untraceable Payments',
-                          'Advanced cryptography protection',
-                        ),
-                        const SizedBox(height: 16),
-                        _buildFeatureItem(
-                          Icons.message_outlined,
-                          'Encrypted Messaging',
-                          'Secure blockchain-based communication',
-                        ),
-                        const SizedBox(height: 16),
-                        _buildFeatureItem(
-                          Icons.account_tree,
-                          'Elderfier Staking',
-                          'Participate in network consensus',
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 1,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      // Create wallet button
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _navigateToCreateWallet,
-                          child: const Text('Create New Wallet'),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: SlideTransition(
+                          position: _slideAnimation,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              // Features list
+                              _buildFeatureItem(
+                                Icons.security,
+                                'Anonymous Transactions',
+                                'Ring signatures for complete privacy',
+                              ),
+                              const SizedBox(height: 16),
+                              _buildFeatureItem(
+                                Icons.link_off,
+                                'Untraceable Payments',
+                                'Advanced cryptography protection',
+                              ),
+                              const SizedBox(height: 16),
+                              _buildFeatureItem(
+                                Icons.message_outlined,
+                                'Encrypted Messaging',
+                                'Secure blockchain-based communication',
+                              ),
+                              const SizedBox(height: 16),
+                              _buildFeatureItem(
+                                Icons.account_tree,
+                                'Elderfier Staking',
+                                'Participate in network consensus',
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      // Restore wallet button
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton(
-                          onPressed: _navigateToRestoreWallet,
-                          child: const Text('Restore Existing Wallet'),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      // Terms and privacy
-                      Text(
-                        'By continuing, you agree to our Terms of Service\nand Privacy Policy',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppTheme.textMuted,
-                          height: 1.4,
+                      Expanded(
+                        flex: 1,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            // Create wallet button
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: _navigateToCreateWallet,
+                                child: const Text('Create New Wallet'),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            // Restore wallet button
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton(
+                                onPressed: _navigateToRestoreWallet,
+                                child: const Text('Restore Existing Wallet'),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            // Terms and privacy
+                            Text(
+                              'By continuing, you agree to our Terms of Service\nand Privacy Policy',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.textMuted,
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
-                ),
-              ],
-            ),
+                );
+              }
+            },
           ),
         ),
       ),
