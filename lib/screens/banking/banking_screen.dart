@@ -111,6 +111,13 @@ class _BankingScreenState extends State<BankingScreen> {
                   _buildInterestCard(
                     title: '3 Months',
                     rate: '8%',
+                    description: 'Micro deposit tier',
+                    example: '8 XFG @ 8% = 0.00016 CD yield',
+                  ),
+                  const SizedBox(height: 12),
+                  _buildInterestCard(
+                    title: '3 Months',
+                    rate: '8%',
                     description: 'Standard deposit tier',
                     example: '800 XFG @ 8% = 0.00064 CD yield',
                   ),
