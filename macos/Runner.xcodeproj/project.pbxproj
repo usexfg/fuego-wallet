@@ -131,7 +131,7 @@
 		33CC10EE2044A3C60003C045 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				33CC10ED2044A3C60003C045 /* Fuego Wallet.app */,
+				33CC10ED2044A3C60003C045 /* fuego_wallet.app */,
 				331C80D5294CF71000263BE5 /* RunnerTests.xctest */,
 			);
 			name = Products;
@@ -216,8 +216,8 @@
 				33CC11202044C79F0003C045 /* PBXTargetDependency */,
 			);
 			name = Runner;
-			productName = "Fuego Wallet";
-			productReference = 33CC10ED2044A3C60003C045 /* "Fuego Wallet.app" */;
+			productName = fuego_wallet;
+			productReference = 33CC10ED2044A3C60003C045 /* fuego_wallet.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -307,7 +307,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "echo \"Fuego Wallet.app\" > \"$PROJECT_DIR\"/Flutter/ephemeral/.app_filename && \"$FLUTTER_ROOT\"/packages/flutter_tools/bin/macos_assemble.sh embed\n";
+			shellScript = "echo \"fuego_wallet.app\" > \"$PROJECT_DIR\"/Flutter/ephemeral/.app_filename && \"$FLUTTER_ROOT\"/packages/flutter_tools/bin/macos_assemble.sh embed\n";
 		};
 		33CC111E2044C6BF0003C045 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -388,7 +388,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.firefly.xfgwallet.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Fuego Wallet.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Fuego Wallet";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/fuego_wallet.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/fuego_wallet";
 			};
 			name = Debug;
 		};
@@ -402,7 +402,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.firefly.xfgwallet.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Fuego Wallet.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Fuego Wallet";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/fuego_wallet.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/fuego_wallet";
 			};
 			name = Release;
 		};
@@ -416,7 +416,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.firefly.xfgwallet.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Fuego Wallet.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Fuego Wallet";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/fuego_wallet.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/fuego_wallet";
 			};
 			name = Profile;
 		};
