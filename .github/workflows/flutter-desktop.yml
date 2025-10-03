@@ -4,11 +4,25 @@ on:
   push:
     branches: [ main, master ]
     paths:
-      - 'fireflywallet/**'
+      - 'lib/**'
+      - 'android/**'
+      - 'ios/**'
+      - 'macos/**'
+      - 'windows/**'
+      - 'linux/**'
+      - 'pubspec.yaml'
+      - '.github/workflows/flutter-desktop.yml'
   pull_request:
     branches: [ main, master ]
     paths:
-      - 'fireflywallet/**'
+      - 'lib/**'
+      - 'android/**'
+      - 'ios/**'
+      - 'macos/**'
+      - 'windows/**'
+      - 'linux/**'
+      - 'pubspec.yaml'
+      - '.github/workflows/flutter-desktop.yml'
   workflow_dispatch:
 
 jobs:
@@ -29,30 +43,22 @@ jobs:
       - name: Enable macOS desktop support
         run: flutter config --enable-macos-desktop
 
-      - name: Navigate to Flutter project
-        run: |
-          # Handle the special characters in directory name
-          cd "fireflywallet"
-
       - name: Install dependencies
         run: flutter pub get
-        working-directory: firefly͖͖wallet
 
       - name: Build macOS desktop app
         run: flutter build macos --release
-        working-directory: firefly͖͖wallet
 
       - name: Create app archive
         run: |
-          cd fireflywallet/build/macos/Build/Products/Release
+          cd build/macos/Build/Products/Release
           zip -r Firefly-Wallet-macOS.zip "Firefly Wallet.app"
-        working-directory: firefly͖͖wallet
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: firefly-wallet-macos
-          path: fireflywallet/build/macos/Build/Products/Release/Firefly-Wallet-macOS.zip
+          path: build/macos/Build/Products/Release/Firefly-Wallet-macOS.zip
           retention-days: 30
 
   build-windows:
@@ -74,23 +80,20 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
-        working-directory: firefly͖͖wallet
 
       - name: Build Windows desktop app
         run: flutter build windows --release
-        working-directory: fireflywallet
 
       - name: Create app archive
         run: |
           cd build\windows\runner\Release
           Compress-Archive -Path * -DestinationPath ..\..\..\..\Firefly-Wallet-Windows.zip
-        working-directory: fireflywallet
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: firefly-wallet-windows
-          path: firefly͖͖wallet/Firefly-Wallet-Windows.zip
+          path: Firefly-Wallet-Windows.zip
           retention-days: 30
 
   build-linux:
@@ -115,21 +118,18 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
-        working-directory: fireflywallet
 
       - name: Build Linux desktop app
         run: flutter build linux --release
-        working-directory: fireflywallet
 
       - name: Create app archive
         run: |
           cd build/linux/x64/release/bundle
           tar -czf ../../../../Firefly-Wallet-Linux.tar.gz *
-        working-directory: fireflywallet
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: firefly-wallet-linux
-          path: fireflywallet/Firefly-Wallet-Linux.tar.gz
+          path: Firefly-Wallet-Linux.tar.gz
           retention-days: 30
