@@ -86,14 +86,21 @@ jobs:
 
       - name: Create app archive
         run: |
-          cd build\windows\runner\Release
-          Compress-Archive -Path * -DestinationPath Fuego-Wallet-Windows.zip
+          if (Test-Path "build\windows\runner\Release") {
+            cd build\windows\runner\Release
+            Compress-Archive -Path * -DestinationPath ..\..\..\..\Fuego-Wallet-Windows.zip
+          } elseif (Test-Path "build\windows\x64\runner\Release") {
+            cd build\windows\x64\runner\Release
+            Compress-Archive -Path * -DestinationPath ..\..\..\..\..\Fuego-Wallet-Windows.zip
+          } else {
+            Get-ChildItem build -Recurse | Where-Object { $_.Name -like "*.exe" } | Select-Object -First 1 | ForEach-Object { Compress-Archive -Path $_.DirectoryName -DestinationPath "Fuego-Wallet-Windows.zip" }
+          }
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: fuego-wallet-windows
-          path: build/windows/runner/Release/Fuego-Wallet-Windows.zip
+          path: Fuego-Wallet-Windows.zip
           retention-days: 30
 
   build-linux:
