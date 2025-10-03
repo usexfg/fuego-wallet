@@ -37,7 +37,7 @@ class FuegoWalletApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => WalletProvider()),
       ],
       child: MaterialApp(
-        title: 'Firefly Wallet',
+        title: 'Fuego Wallet',
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: ThemeMode.dark, // Default to dark theme for crypto aesthetic
