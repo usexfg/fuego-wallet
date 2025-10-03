@@ -27,7 +27,7 @@ on:
 
 jobs:
   build-macos:
-    name: Build Firefly Wallet (macOS)
+    name: Build Fuego Wallet (macOS)
     runs-on: macos-latest
 
     steps:
@@ -62,7 +62,7 @@ jobs:
           retention-days: 30
 
   build-windows:
-    name: Build Firefly Wallet (Windows)
+    name: Build Fuego Wallet (Windows)
     runs-on: windows-latest
 
     steps:
@@ -87,17 +87,17 @@ jobs:
       - name: Create app archive
         run: |
           cd build\windows\runner\Release
-          Compress-Archive -Path * -DestinationPath ..\..\..\..\Firefly-Wallet-Windows.zip
+          Compress-Archive -Path * -DestinationPath Fuego-Wallet-Windows.zip
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: fuego-wallet-windows
-          path: Firefly-Wallet-Windows.zip
+          path: build/windows/runner/Release/Fuego-Wallet-Windows.zip
           retention-days: 30
 
   build-linux:
-    name: Build Firefly Wallet (Linux)
+    name: Build Fuego Wallet (Linux)
     runs-on: ubuntu-latest
 
     steps:
@@ -125,11 +125,11 @@ jobs:
       - name: Create app archive
         run: |
           cd build/linux/x64/release/bundle
-          tar -czf ../../../../Fuego-Wallet-Linux.tar.gz *
+          tar -czf Fuego-Wallet-Linux.tar.gz *
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: fuego-wallet-linux
-          path: Fuego-Wallet-Linux.tar.gz
+          path: build/linux/x64/release/bundle/Fuego-Wallet-Linux.tar.gz
           retention-days: 30
