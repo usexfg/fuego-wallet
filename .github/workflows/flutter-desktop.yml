@@ -52,7 +52,7 @@ jobs:
       - name: Create app archive
         run: |
           cd build/macos/Build/Products/Release
-          zip -r Fuego-Wallet-macOS.zip "Fuego Wallet.app"
+          zip -r Fuego-Wallet-macOS.zip "fuego_wallet.app"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -113,7 +113,7 @@ jobs:
       - name: Enable Linux desktop support
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libsecret-1-dev
           flutter config --enable-linux-desktop
 
       - name: Install dependencies
