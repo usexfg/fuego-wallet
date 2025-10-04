@@ -41,6 +41,9 @@ dependencies:
   # QR Code
   qr_flutter: ^4.1.0
   mobile_scanner: ^4.0.1
+
+  # File Picker
+  file_picker: ^8.0.0+1
   
   # UI Components
   animated_text_kit: ^4.2.2

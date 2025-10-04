@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../utils/theme.dart';
 import 'restore_wallet_screen.dart';
+import 'open_wallet_file_screen.dart';
+import 'import_keys_screen.dart';
 
 class OpenExistingWalletScreen extends StatefulWidget {
   const OpenExistingWalletScreen({super.key});
@@ -63,11 +65,19 @@ class _OpenExistingWalletScreenState extends State<OpenExistingWalletScreen>
   }
 
   void _navigateToOpenWallet() {
-    // TODO: Implement open existing wallet functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Open existing wallet functionality coming soon!'),
-        backgroundColor: AppTheme.primaryColor,
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const OpenWalletFileScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(1.0, 0.0),
+              end: Offset.zero,
+            ).animate(animation),
+            child: child,
+          );
+        },
       ),
     );
   }
@@ -91,11 +101,19 @@ class _OpenExistingWalletScreenState extends State<OpenExistingWalletScreen>
   }
 
   void _navigateToImportKeys() {
-    // TODO: Implement import by keys functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Import by keys functionality coming soon!'),
-        backgroundColor: AppTheme.primaryColor,
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const ImportKeysScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(1.0, 0.0),
+              end: Offset.zero,
+            ).animate(animation),
+            child: child,
+          );
+        },
       ),
     );
   }
