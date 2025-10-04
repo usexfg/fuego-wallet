@@ -183,7 +183,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                     Expanded(
                       flex: 1,
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(48.0, 24.0, 48.0, 48.0),
+                        padding: const EdgeInsets.fromLTRB(48.0, 12.0, 48.0, 48.0),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.start,
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -201,7 +201,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                                   const SizedBox(height: 16),
                                   _buildFeatureItem(
                                     Icons.account_balance,
-                                    'Private CD Banking',
+                                    'Private Banking',
                                     'High-yield CD interest on XFG deposits',
                                   ),
                                   const SizedBox(height: 16),
@@ -342,7 +342,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                               const SizedBox(height: 16),
                               _buildFeatureItem(
                                 Icons.account_balance,
-                                'Private CD Banking',
+                                'Private Banking',
                                 'High-yield CD interest on XFG deposits',
                               ),
                               const SizedBox(height: 16),
