@@ -392,23 +392,23 @@ class _BankingScreenState extends State<BankingScreen>
           const SizedBox(height: 16),
 
           _buildCDTermCard(
-            term: '30 Days',
-            interestRate: '8.5%',
-            minimumDeposit: '100 XFG',
+            term: '3 Months',
+            interestRate: '8%',
+            minimumDeposit: '8 XFG',
           ),
           const SizedBox(height: 12),
 
           _buildCDTermCard(
-            term: '90 Days',
-            interestRate: '12.5%',
-            minimumDeposit: '500 XFG',
+            term: '3 Months',
+            interestRate: '18%',
+            minimumDeposit: '800 XFG',
           ),
           const SizedBox(height: 12),
 
           _buildCDTermCard(
-            term: '180 Days',
-            interestRate: '15.0%',
-            minimumDeposit: '1000 XFG',
+            term: '3 Months',
+            interestRate: '33%',
+            minimumDeposit: '8000 XFG',
           ),
         ],
       ),
