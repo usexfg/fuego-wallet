@@ -346,14 +346,26 @@ class WalletProvider extends ChangeNotifier {
   // Connection Management
   Future<void> connectToNode(String url) async {
     _setLoading(true);
-    _nodeUrl = url;
-    
-    await _checkConnection();
-    
-    if (_isConnected && hasWallet) {
-      await refreshWallet();
+
+    try {
+      // Parse the URL to extract host and port
+      final uri = Uri.parse(url);
+      final host = uri.host;
+      final port = uri.port == 80 || uri.port == 443 ? FuegoRPCService.defaultRpcPort : uri.port;
+
+      // Update the RPC service with new node
+      _rpcService.updateNode(host, port: port);
+      _nodeUrl = url;
+
+      await _checkConnection();
+
+      if (_isConnected && hasWallet) {
+        await refreshWallet();
+      }
+    } catch (e) {
+      _setError('Invalid node URL: $e');
     }
-    
+
     _setLoading(false);
   }
 

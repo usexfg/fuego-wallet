@@ -173,6 +173,133 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  void _showNodeSelectionDialog() {
+    final TextEditingController customNodeController = TextEditingController();
+    String selectedNode = FuegoRPCService.defaultRemoteNodes.first;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: AppTheme.cardColor,
+              title: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.primaryGradient,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.cloud,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Select Node',
+                    style: TextStyle(color: AppTheme.textPrimary),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Choose a Fuego network node to connect to:',
+                    style: TextStyle(color: AppTheme.textSecondary),
+                  ),
+                  const SizedBox(height: 16),
+                  ...FuegoRPCService.defaultRemoteNodes.map((node) => RadioListTile<String>(
+                    title: Text(
+                      node,
+                      style: const TextStyle(color: AppTheme.textPrimary),
+                    ),
+                    value: node,
+                    groupValue: selectedNode,
+                    onChanged: (value) {
+                      setState(() {
+                        selectedNode = value!;
+                        customNodeController.clear();
+                      });
+                    },
+                    activeColor: AppTheme.primaryColor,
+                  )),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Or enter custom node:',
+                    style: TextStyle(color: AppTheme.textSecondary),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: customNodeController,
+                    decoration: InputDecoration(
+                      hintText: 'node.example.com:28180',
+                      hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.5)),
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: AppTheme.primaryColor),
+                      ),
+                    ),
+                    style: const TextStyle(color: AppTheme.textPrimary),
+                    onChanged: (value) {
+                      if (value.isNotEmpty) {
+                        setState(() {
+                          selectedNode = value;
+                        });
+                      }
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(
+                    'Cancel',
+                    style: TextStyle(color: AppTheme.textSecondary),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    Navigator.of(context).pop();
+
+                    final walletProvider = Provider.of<WalletProvider>(context, listen: false);
+                    final nodeUrl = selectedNode.contains(':')
+                        ? 'http://$selectedNode'
+                        : 'http://$selectedNode:${FuegoRPCService.defaultRpcPort}';
+
+                    await walletProvider.connectToNode(nodeUrl);
+
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Connecting to $selectedNode...',
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                          backgroundColor: AppTheme.primaryColor,
+                        ),
+                      );
+                    }
+                  },
+                  child: const Text('Connect'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _showAboutDialog() {
     showDialog(
       context: context,
@@ -315,7 +442,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _buildSettingsTile(
                 icon: Icons.cloud,
                 title: 'Node Connection',
-                subtitle: walletProvider.isConnected ? 'Connected' : 'Disconnected',
+                subtitle: walletProvider.isConnected
+                    ? 'Connected to ${walletProvider.nodeUrl?.replaceAll('http://', '') ?? 'remote node'}'
+                    : 'Disconnected',
                 trailing: Container(
                   width: 8,
                   height: 8,
@@ -326,9 +455,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     shape: BoxShape.circle,
                   ),
                 ),
-                onTap: () {
-                  // TODO: Show node settings
-                },
+                onTap: _showNodeSelectionDialog,
               ),
               _buildSettingsTile(
                 icon: Icons.sync,

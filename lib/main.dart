@@ -34,7 +34,14 @@ class FuegoWalletApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => WalletProvider()),
+        ChangeNotifierProvider(
+          create: (_) => WalletProvider(
+            rpcService: FuegoRPCService(
+              host: '207.244.247.64',
+              port: 18180,
+            ),
+          ),
+        ),
       ],
       child: MaterialApp(
         title: 'Fuego Wallet',

@@ -6,11 +6,21 @@ import '../models/wallet.dart';
 
 class FuegoRPCService {
   final Dio _dio;
-  final String _baseUrl;
+  String _baseUrl;
   final String? _password;
-  
+
   static const int defaultRpcPort = 28180;
   static const int defaultWalletPort = 8070;
+
+  // Default remote Fuego nodes (public community nodes)
+  static const List<String> defaultRemoteNodes = [
+    '207.244.247.64:18180',
+    'node1.usexfg.org',
+    'node2.usexfg.org',
+    'fuego.seednode1.com',
+    'fuego.seednode2.com',
+    'fuego.communitynode.net',
+  ];
 
   FuegoRPCService({
     String host = 'localhost',
@@ -23,6 +33,14 @@ class FuegoRPCService {
          receiveTimeout: const Duration(seconds: 30),
          headers: {'Content-Type': 'application/json'},
        ));
+
+  // Update connection to a new node
+  void updateNode(String host, {int port = defaultRpcPort}) {
+    _baseUrl = 'http://$host:$port';
+  }
+
+  // Get current node URL
+  String get currentNodeUrl => _baseUrl;
 
   // Daemon RPC Methods
   Future<Map<String, dynamic>> getInfo() async {

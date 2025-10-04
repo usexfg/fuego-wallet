@@ -57,7 +57,7 @@ A comprehensive, secure, and feature-rich mobile wallet application for **Fuego 
 - **Flutter SDK**: 3.22.2 or higher
 - **Dart SDK**: 3.4.3 or higher
 - **Android Studio** / **Xcode** for platform-specific builds
-- **Fuego Daemon** running for full functionality
+- **Internet connection** to connect to Fuego network nodes
 
 ### Installation
 
@@ -128,22 +128,32 @@ lib/
 
 ### Fuego Node Setup
 
-The app requires a running Fuego daemon for full functionality:
+The app connects to remote Fuego network nodes for full functionality. By default, it connects to community-maintained public nodes, but you can configure custom nodes in the app settings.
 
-```bash
-# Default RPC endpoints
-Daemon RPC: http://localhost:28180
-Wallet RPC: http://localhost:8070
-```
+#### Default Remote Nodes
+The app includes several pre-configured remote nodes, with `207.244.247.64:18180` as the primary default:
+- `207.244.247.64:18180` (Primary)
+- `node1.usexfg.org`
+- `node2.usexfg.org`
+- `fuego.seednode1.com`
+- `fuego.seednode2.com`
+- `fuego.communitynode.net`
 
-### Network Configuration
-
-You can configure custom node connections in the app settings or modify the default endpoints in:
+#### Custom Node Configuration
+You can add custom nodes through the Settings > Node Connection menu, or modify the defaults in:
 ```dart
 // lib/services/fuego_rpc_service.dart
-static const int defaultRpcPort = 28180;
-static const int defaultWalletPort = 8070;
+static const List<String> defaultRemoteNodes = [
+  'node1.usexfg.org',
+  'node2.usexfg.org',
+  // ... more nodes
+];
 ```
+
+#### Node Requirements
+- RPC port: `28180` (default)
+- Wallet RPC port: `8070`
+- Must support standard CryptoNote RPC methods
 
 ## 📱 Screenshots
 
