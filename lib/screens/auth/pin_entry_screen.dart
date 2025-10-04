@@ -74,7 +74,7 @@ class _PinEntryScreenState extends State<PinEntryScreen>
   Future<void> _authenticateWithBiometric() async {
     try {
       final authenticated = await _securityService.authenticateWithBiometrics(
-        reason: 'Authenticate to access your Fuego wallet',
+        reason: 'Authenticate to access your XF₲ wallet',
       );
 
       if (authenticated && mounted) {

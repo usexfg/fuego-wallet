@@ -153,7 +153,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                               AnimatedTextKit(
                                 animatedTexts: [
                                   FadeAnimatedText(
-                                    'Welcome to Fuego',
+                                    'Welcome to XF₲',
                                     textStyle: const TextStyle(
                                       fontSize: 32,
                                       fontWeight: FontWeight.bold,
@@ -183,9 +183,10 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                     Expanded(
                       flex: 1,
                       child: Padding(
-                        padding: const EdgeInsets.all(48.0),
+                        padding: const EdgeInsets.fromLTRB(48.0, 24.0, 48.0, 48.0),
                         child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             // Features list
                             SlideTransition(
@@ -194,14 +195,14 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                                 children: [
                                   _buildFeatureItem(
                                     Icons.security,
-                                    'Anonymous Transactions',
+                                    'Untraceable Transactions',
                                     'Ring signatures for complete privacy',
                                   ),
                                   const SizedBox(height: 16),
                                   _buildFeatureItem(
-                                    Icons.link_off,
-                                    'Untraceable Payments',
-                                    'Advanced cryptography protection',
+                                    Icons.account_balance,
+                                    'Private CD Banking',
+                                    'High-yield CD interest on XFG deposits',
                                   ),
                                   const SizedBox(height: 16),
                                   _buildFeatureItem(
@@ -300,7 +301,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                               AnimatedTextKit(
                                 animatedTexts: [
                                   FadeAnimatedText(
-                                    'Welcome to Fuego',
+                                    'Welcome to XF₲',
                                     textStyle: const TextStyle(
                                       fontSize: 28,
                                       fontWeight: FontWeight.bold,
@@ -335,14 +336,14 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                               // Features list
                               _buildFeatureItem(
                                 Icons.security,
-                                'Anonymous Transactions',
+                                'Untraceable Transactions',
                                 'Ring signatures for complete privacy',
                               ),
                               const SizedBox(height: 16),
                               _buildFeatureItem(
-                                Icons.link_off,
-                                'Untraceable Payments',
-                                'Advanced cryptography protection',
+                                Icons.account_balance,
+                                'Private CD Banking',
+                                'High-yield CD interest on XFG deposits',
                               ),
                               const SizedBox(height: 16),
                               _buildFeatureItem(

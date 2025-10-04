@@ -25,11 +25,11 @@ void main() {
     ),
   );
 
-  runApp(const FuegoWalletApp());
+  runApp(const XFGWalletApp());
 }
 
-class FuegoWalletApp extends StatelessWidget {
-  const FuegoWalletApp({super.key});
+class XFGWalletApp extends StatelessWidget {
+  const XFGWalletApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +45,7 @@ class FuegoWalletApp extends StatelessWidget {
         ),
       ],
       child: MaterialApp(
-        title: 'Fuego Wallet',
+        title: 'XF₲ Wallet',
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: ThemeMode.dark, // Default to dark theme for crypto aesthetic

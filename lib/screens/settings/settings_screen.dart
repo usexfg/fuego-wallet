@@ -40,7 +40,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
       
       final authenticated = await _securityService.authenticateWithBiometrics(
-        reason: 'Enable biometric authentication for Fuego Wallet',
+        reason: 'Enable biometric authentication for XF₲ Wallet',
       );
       
       if (!authenticated) {
@@ -324,7 +324,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(width: 12),
               const Text(
-                'Fuego Wallet',
+                'XF₲ Wallet',
                 style: TextStyle(color: AppTheme.textPrimary),
               ),
             ],
@@ -343,7 +343,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'A privacy-focused cryptocurrency wallet for Fuego (XFG)',
+                'A privacy-focused cryptocurrency wallet for XF₲ (XFG)',
                 style: TextStyle(color: AppTheme.textSecondary),
               ),
               const SizedBox(height: 16),
@@ -483,7 +483,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _buildSettingsTile(
                 icon: Icons.help,
                 title: 'Help & Support',
-                subtitle: 'Get help using Fuego Wallet',
+                subtitle: 'Get help using XF₲ Wallet',
                 onTap: () {
                   // TODO: Open help/support
                 },

@@ -115,7 +115,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Fuego Wallet',
+                          'XF₲ Wallet',
                           style: TextStyle(
                             color: AppTheme.textPrimary,
                             fontSize: 24,
