@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/wallet_provider.dart';
+import '../../services/fuego_rpc_service.dart';
 import '../../services/security_service.dart';
 import '../../utils/theme.dart';
 import '../wallet_setup/setup_screen.dart';
