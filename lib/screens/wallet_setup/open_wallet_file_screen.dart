@@ -485,3 +485,4 @@ class _OpenWalletFileScreenState extends State<OpenWalletFileScreen>
     );
   }
 }
+

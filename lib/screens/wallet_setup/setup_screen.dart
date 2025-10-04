@@ -166,7 +166,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                               ),
                               const SizedBox(height: 20),
                               Text(
-                                'Your gateway to private, secure, and decentralized cryptocurrency transactions',
+                                'Your gateway to private, secure, decentralized finance.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 18,
@@ -197,19 +197,19 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                                     _buildFeatureItem(
                                       Icons.security,
                                       'Untraceable Transactions',
-                                      'Ring signatures for complete privacy',
+                                      'Dynamic RingCT for highest privacy',
                                     ),
                                     const SizedBox(height: 16),
                                     _buildFeatureItem(
                                       Icons.local_fire_department,
-                                      'HEAT Ξmbers Minting',
-                                      'Burn XFG to mint \$HEAT ERC20 tokens for zkC0DL3 gas',
+                                      'Mint Fuego Ξmbers',
+                                      'Burn XFG to mint erc20 \$HEAT tokens on Ethereum',
                                     ),
                                     const SizedBox(height: 16),
                                     _buildFeatureItem(
                                       Icons.account_balance,
-                                      'Private Banking',
-                                      'High-yield CD interest on XFG deposits',
+                                      'Private CD Banking',
+                                      'High-yield interest on XFG deposits',
                                     ),
                                     const SizedBox(height: 16),
                                     _buildFeatureItem(
@@ -221,7 +221,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                                     _buildFeatureItem(
                                       Icons.account_tree,
                                       'Elderfier Staking',
-                                      'Participate in network consensus',
+                                      'New consensus nodes for zkSTARK proofs & cross-chain usage',
                                     ),
                                   ],
                                 ),
