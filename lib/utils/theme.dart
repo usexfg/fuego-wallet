@@ -5,9 +5,9 @@ class AppTheme {
   static const Color primaryColor = Color(0xFFFF6B35); // Fuego orange/red
   static const Color secondaryColor = Color(0xFF1A1A1A); // Dark gray
   static const Color accentColor = Color(0xFFFFD700); // Gold accent
-  static const Color backgroundColor = Color(0xFF0D1117); // Very dark blue-gray
-  static const Color surfaceColor = Color(0xFF161B22); // Dark surface
-  static const Color cardColor = Color(0xFF21262D); // Card background
+  static const Color backgroundColor = Color(0xFF0A0E14); // Even darker blue-gray
+  static const Color surfaceColor = Color(0xFF1A1F26); // Darker surface
+  static const Color cardColor = Color(0xFF252B33); // Darker card background
   
   // Text colors
   static const Color textPrimary = Color(0xFFFFFFFF);
@@ -247,7 +247,7 @@ class AppTheme {
     end: Alignment.bottomCenter,
     colors: [
       backgroundColor,
-      Color(0xFF161B22),
+      Color(0xFF1A1F26),
     ],
   );
 
