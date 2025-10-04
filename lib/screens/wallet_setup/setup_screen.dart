@@ -179,82 +179,90 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                         ),
                       ),
                     ),
-                    // Right side - Features and buttons
+                    // Right side - Features and buttons (Scrollable)
                     Expanded(
                       flex: 1,
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(48.0, 12.0, 48.0, 48.0),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Features list
-                            SlideTransition(
-                              position: _slideAnimation,
-                              child: Column(
-                                children: [
-                                  _buildFeatureItem(
-                                    Icons.security,
-                                    'Untraceable Transactions',
-                                    'Ring signatures for complete privacy',
-                                  ),
-                                  const SizedBox(height: 16),
-                                  _buildFeatureItem(
-                                    Icons.account_balance,
-                                    'Private Banking',
-                                    'High-yield CD interest on XFG deposits',
-                                  ),
-                                  const SizedBox(height: 16),
-                                  _buildFeatureItem(
-                                    Icons.message_outlined,
-                                    'Encrypted Messaging',
-                                    'Secure blockchain-based communication',
-                                  ),
-                                  const SizedBox(height: 16),
-                                  _buildFeatureItem(
-                                    Icons.account_tree,
-                                    'Elderfier Staking',
-                                    'Participate in network consensus',
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 48),
-                            // Buttons
-                            SizedBox(
-                              width: 400,
-                              child: Column(
-                                children: [
-                                  ElevatedButton(
-                                    onPressed: _navigateToCreateWallet,
-                                    style: ElevatedButton.styleFrom(
-                                      minimumSize: const Size(double.infinity, 50),
+                        child: SingleChildScrollView(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Features list
+                              SlideTransition(
+                                position: _slideAnimation,
+                                child: Column(
+                                  children: [
+                                    _buildFeatureItem(
+                                      Icons.security,
+                                      'Untraceable Transactions',
+                                      'Ring signatures for complete privacy',
                                     ),
-                                    child: const Text('Create New Wallet'),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  OutlinedButton(
-                                    onPressed: _navigateToOpenExistingWallet,
-                                    style: OutlinedButton.styleFrom(
-                                      minimumSize: const Size(double.infinity, 50),
+                                    const SizedBox(height: 16),
+                                    _buildFeatureItem(
+                                      Icons.local_fire_department,
+                                      'HEAT Ξmbers Minting',
+                                      'Burn XFG to mint $HEAT ERC20 tokens for zkC0DL3 gas',
                                     ),
-                                    child: const Text('Open Existing Wallet'),
-                                  ),
-                                ],
+                                    const SizedBox(height: 16),
+                                    _buildFeatureItem(
+                                      Icons.account_balance,
+                                      'Private Banking',
+                                      'High-yield CD interest on XFG deposits',
+                                    ),
+                                    const SizedBox(height: 16),
+                                    _buildFeatureItem(
+                                      Icons.message_outlined,
+                                      'Encrypted Messaging',
+                                      'Secure blockchain-based communication',
+                                    ),
+                                    const SizedBox(height: 16),
+                                    _buildFeatureItem(
+                                      Icons.account_tree,
+                                      'Elderfier Staking',
+                                      'Participate in network consensus',
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 32),
-                            // Terms and privacy
-                            Text(
-                              'By continuing, you agree to our Terms of Service\nand Privacy Policy',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppTheme.textMuted,
-                                height: 1.4,
+                              const SizedBox(height: 48),
+                              // Buttons
+                              SizedBox(
+                                width: 400,
+                                child: Column(
+                                  children: [
+                                    ElevatedButton(
+                                      onPressed: _navigateToCreateWallet,
+                                      style: ElevatedButton.styleFrom(
+                                        minimumSize: const Size(double.infinity, 50),
+                                      ),
+                                      child: const Text('Create New Wallet'),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    OutlinedButton(
+                                      onPressed: _navigateToOpenExistingWallet,
+                                      style: OutlinedButton.styleFrom(
+                                        minimumSize: const Size(double.infinity, 50),
+                                      ),
+                                      child: const Text('Open Existing Wallet'),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 32),
+                              // Terms and privacy
+                              Text(
+                                'By continuing, you agree to our Terms of Service\nand Privacy Policy',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppTheme.textMuted,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -338,6 +346,12 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                                 Icons.security,
                                 'Untraceable Transactions',
                                 'Ring signatures for complete privacy',
+                              ),
+                              const SizedBox(height: 16),
+                              _buildFeatureItem(
+                                Icons.local_fire_department,
+                                'HEAT Ξmbers Minting',
+                                'Burn XFG to mint $HEAT ERC20 tokens for zkC0DL3 gas',
                               ),
                               const SizedBox(height: 16),
                               _buildFeatureItem(

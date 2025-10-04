@@ -43,6 +43,13 @@ jobs:
       - name: Enable macOS desktop support
         run: flutter config --enable-macos-desktop
 
+      - name: Download xfg-stark-cli
+        run: |
+          curl -L -o xfg-stark-cli "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-macos"
+          chmod +x xfg-stark-cli
+          mkdir -p assets/bin
+          mv xfg-stark-cli assets/bin/
+
       - name: Install dependencies
         run: flutter pub get
 
@@ -77,6 +84,12 @@ jobs:
 
       - name: Enable Windows desktop support
         run: flutter config --enable-windows-desktop
+
+      - name: Download xfg-stark-cli
+        run: |
+          curl -L -o xfg-stark-cli.exe "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-windows.exe"
+          mkdir -p assets\bin
+          mv xfg-stark-cli.exe assets\bin\
 
       - name: Install dependencies
         run: flutter pub get
@@ -116,6 +129,13 @@ jobs:
         with:
           flutter-version: '3.24.0'
           channel: 'stable'
+
+      - name: Download xfg-stark-cli
+        run: |
+          curl -L -o xfg-stark-cli "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-linux"
+          chmod +x xfg-stark-cli
+          mkdir -p assets/bin
+          mv xfg-stark-cli assets/bin/
 
       - name: Enable Linux desktop support
         run: |
