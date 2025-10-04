@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
 import '../../utils/theme.dart';
 import 'create_wallet_screen.dart';
-import 'restore_wallet_screen.dart';
+import 'open_existing_wallet_screen.dart';
 
 class SetupScreen extends StatefulWidget {
   const SetupScreen({super.key});
@@ -81,11 +81,11 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
     );
   }
 
-  void _navigateToRestoreWallet() {
+  void _navigateToOpenExistingWallet() {
     Navigator.of(context).push(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
-            const RestoreWalletScreen(),
+            const OpenExistingWalletScreen(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return SlideTransition(
             position: Tween<Offset>(
@@ -221,7 +221,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                             const SizedBox(height: 48),
                             // Buttons
                             SizedBox(
-                              width: 300,
+                              width: 400,
                               child: Column(
                                 children: [
                                   ElevatedButton(
@@ -233,11 +233,11 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                                   ),
                                   const SizedBox(height: 16),
                                   OutlinedButton(
-                                    onPressed: _navigateToRestoreWallet,
+                                    onPressed: _navigateToOpenExistingWallet,
                                     style: OutlinedButton.styleFrom(
                                       minimumSize: const Size(double.infinity, 50),
                                     ),
-                                    child: const Text('Restore Existing Wallet'),
+                                    child: const Text('Open Existing Wallet'),
                                   ),
                                 ],
                               ),
@@ -266,7 +266,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                   child: Column(
                     children: [
                       Expanded(
-                        flex: 2,
+                        flex: 1,
                         child: FadeTransition(
                           opacity: _fadeAnimation,
                           child: Column(
@@ -326,7 +326,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                         ),
                       ),
                       Expanded(
-                        flex: 2,
+                        flex: 1,
                         child: SlideTransition(
                           position: _slideAnimation,
                           child: Column(
@@ -361,7 +361,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                         ),
                       ),
                       Expanded(
-                        flex: 1,
+                        flex: 2,
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
@@ -374,12 +374,12 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                               ),
                             ),
                             const SizedBox(height: 12),
-                            // Restore wallet button
+                            // Open existing wallet button
                             SizedBox(
                               width: double.infinity,
                               child: OutlinedButton(
-                                onPressed: _navigateToRestoreWallet,
-                                child: const Text('Restore Existing Wallet'),
+                                onPressed: _navigateToOpenExistingWallet,
+                                child: const Text('Open Existing Wallet'),
                               ),
                             ),
                             const SizedBox(height: 24),
