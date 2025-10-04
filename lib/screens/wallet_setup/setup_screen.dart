@@ -203,7 +203,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                                     _buildFeatureItem(
                                       Icons.local_fire_department,
                                       'HEAT Ξmbers Minting',
-                                      'Burn XFG to mint $HEAT ERC20 tokens for zkC0DL3 gas',
+                                      'Burn XFG to mint \$HEAT ERC20 tokens for zkC0DL3 gas',
                                     ),
                                     const SizedBox(height: 16),
                                     _buildFeatureItem(
