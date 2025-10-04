@@ -1,4 +1,6 @@
-# 🔥 Fuego Flutter Wallet
+# 🔥 FIREFLY / XFG_wallet
+
+Fuego Flutter Wallet
 
 <p align="center">
   <img src="https://img.shields.io/badge/Flutter-3.22.2-blue?logo=flutter" alt="Flutter Version" />
@@ -7,9 +9,7 @@
   <img src="https://img.shields.io/badge/License-MIT-green" alt="License" />
 </p>
 
-A comprehensive, secure, and feature-rich mobile wallet application for **Fuego (XFG)** - the privacy-focused cryptocurrency built on the CryptoNote protocol.
-
-## ✨ Features
+A mobile wallet application for **Fuego (XFG)**. Private blockchain banking, secure untraceable transactions, encrypted messaging, decentralized proof-verifier (Elderfier) nodes, plus 'Elderfyre Stayking' ceremony, features included. 
 
 ### 🔐 Advanced Security
 - **PIN Authentication** with PBKDF2 secure hashing
@@ -27,7 +27,7 @@ A comprehensive, secure, and feature-rich mobile wallet application for **Fuego 
 
 ### 💸 Privacy Transactions
 - **Send XFG** with configurable privacy levels
-- **Ring Signatures** (0-15 mixins for anonymity)
+- **Ring Signatures** (8-15 mixins for anonymity)
 - **Receive with QR Codes** and integrated addresses
 - **Payment ID Support** for transaction identification
 - **Fee Estimation** and validation
@@ -38,8 +38,8 @@ A comprehensive, secure, and feature-rich mobile wallet application for **Fuego 
 - **Real-time Hashrate** monitoring
 - **Mining Performance** tracking
 
-### 🔥 Elderfier Staking
-- **Node Registration** with 800 XFG minimum stake
+### 🔥 Elderfyre Stayking
+- **Elderfier Registration** requires 800 XFG stake
 - **Consensus Participation** (Fast-Pass/Fall-Back/Full-Quorum)
 - **Network Monitoring** of all Elderfier nodes
 - **Rewards Tracking** and performance metrics
