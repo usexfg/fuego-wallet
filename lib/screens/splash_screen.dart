@@ -180,7 +180,7 @@ class _SplashScreenState extends State<SplashScreen>
                           AnimatedTextKit(
                             animatedTexts: [
                               TypewriterAnimatedText(
-                                'FUEGO WALLET',
+                                'Fyrefly XF₲_wallet',
                                 textStyle: const TextStyle(
                                   fontSize: 28,
                                   fontWeight: FontWeight.bold,
@@ -195,7 +195,7 @@ class _SplashScreenState extends State<SplashScreen>
                           const SizedBox(height: 16),
                           // Subtitle
                           Text(
-                            'Privacy-Focused Cryptocurrency',
+                            'Privacy Blockchain Banking',
                             style: TextStyle(
                               fontSize: 16,
                               color: AppTheme.textSecondary,
@@ -262,7 +262,7 @@ class _SplashScreenState extends State<SplashScreen>
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          'Anonymous • Untraceable • Decentralized',
+                          'Secure • Untraceable • Decentralized',
                           style: TextStyle(
                             fontSize: 10,
                             color: AppTheme.textMuted,
