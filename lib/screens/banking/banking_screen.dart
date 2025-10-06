@@ -272,7 +272,7 @@ class _BankingScreenState extends State<BankingScreen>
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Fuego Ξmbers are an atomic equivalent erc20 token of XFG on Ethereum. HEAT is designed to function as the gas token for txns on Fuego\'s C0DL3 rollup.',
+                    'Fuego Ξmbers (HEAT) are the atomic equivalent of XFG as erc20 tokens on Ethereum to provide more decentralized liquidity options. HEAT is also designed to function as the gas token powering Fuego\'s C0DL3 rollup.',
                     style: TextStyle(
                       color: AppTheme.textSecondary,
                       height: 1.4,
