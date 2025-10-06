@@ -141,8 +141,8 @@ jobs:
           asset_content_type: application/zip
 
   build-linux-compat:
-    name: Build XF₲ Wallet (Linux - GLIBC 2.35)
-    runs-on: ubuntu-22.04
+    name: Build XF₲ Wallet (Linux - GLIBC 2.31)
+    runs-on: ubuntu-20.04
 
     steps:
       - name: Checkout code
@@ -170,19 +170,33 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build Linux desktop app (GLIBC 2.35)
-        run: flutter build linux --release
+      - name: Build Linux desktop app (GLIBC 2.31)
+        run: |
+          flutter build linux --release
+          # Create a portable build by copying required libraries
+          cd build/linux/x64/release/bundle
+          mkdir -p lib
+          # Copy system libraries for better compatibility
+          cp /lib/x86_64-linux-gnu/libc.so.6 lib/ 2>/dev/null || echo "libc.so.6 not found"
+          cp /usr/lib/x86_64-linux-gnu/libstdc++.so.6 lib/ 2>/dev/null || echo "libstdc++.so.6 not found"
+          # Create a wrapper script that uses bundled libraries
+          cat > run_xfg_wallet.sh << 'EOF'
+#!/bin/bash
+export LD_LIBRARY_PATH="$(dirname "$0")/lib:$LD_LIBRARY_PATH"
+exec "$(dirname "$0")/fuego_wallet" "$@"
+EOF
+          chmod +x run_xfg_wallet.sh
 
       - name: Create app archive
         run: |
           cd build/linux/x64/release/bundle
-          tar -czf XF₲-Wallet-Linux-GLIBC-2.35.tar.gz *
+          tar -czf XF₲-Wallet-Linux-GLIBC-2.31.tar.gz *
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: xfg-wallet-linux-glibc-235
-          path: build/linux/x64/release/bundle/XF₲-Wallet-Linux-GLIBC-2.35.tar.gz
+          name: xfg-wallet-linux-glibc-231
+          path: build/linux/x64/release/bundle/XF₲-Wallet-Linux-GLIBC-2.31.tar.gz
           retention-days: 30
 
       - name: Upload to Release
@@ -192,8 +206,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: build/linux/x64/release/bundle/XF₲-Wallet-Linux-GLIBC-2.35.tar.gz
-          asset_name: XF₲-Wallet-Linux-GLIBC-2.35.tar.gz
+          asset_path: build/linux/x64/release/bundle/XF₲-Wallet-Linux-GLIBC-2.31.tar.gz
+          asset_name: XF₲-Wallet-Linux-GLIBC-2.31.tar.gz
           asset_content_type: application/gzip
 
   build-linux-latest:

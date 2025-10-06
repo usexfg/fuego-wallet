@@ -153,7 +153,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                               AnimatedTextKit(
                                 animatedTexts: [
                                   FadeAnimatedText(
-                                    'Welcome to XF₲',
+                                    'Welcome to XF₲ wallet',
                                     textStyle: const TextStyle(
                                       fontSize: 32,
                                       fontWeight: FontWeight.bold,
@@ -166,7 +166,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                               ),
                               const SizedBox(height: 20),
                               Text(
-                                'Your gateway to private, secure, decentralized finance.',
+                                'Your gateway to secure, private banking and untraceable transactions.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 18,
@@ -197,7 +197,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                                     _buildFeatureItem(
                                       Icons.security,
                                       'Untraceable Transactions',
-                                      'Dynamic RingCT for highest privacy',
+                                      'Dynamic RingCT for highest-possible privacy',
                                     ),
                                     const SizedBox(height: 16),
                                     _buildFeatureItem(
@@ -221,7 +221,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                                     _buildFeatureItem(
                                       Icons.account_tree,
                                       'Elderfier Staking',
-                                      'New consensus nodes for zkSTARK proofs & cross-chain usage',
+                                      'New consensus nodes for zkSTARK proofs & cross-chain communication',
                                     ),
                                   ],
                                 ),
@@ -253,7 +253,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                               const SizedBox(height: 32),
                               // Terms and privacy
                               Text(
-                                'Fuego developers are unable to access or recover your private keys or mnemonic phrase. Please keep them safe & secure. Protecting access to your keys- protects access to your money.',
+                                'Fuego developers are unable to access or recover your private keys or mnemonic phrase. Please keep them safe & secure. Protecting access to your keys, protects access to your money.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 10,
@@ -309,7 +309,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                               AnimatedTextKit(
                                 animatedTexts: [
                                   FadeAnimatedText(
-                                    'Welcome to XF₲ Wallet',
+                                    'Welcome to XF₲ wallet',
                                     textStyle: const TextStyle(
                                       fontSize: 28,
                                       fontWeight: FontWeight.bold,
@@ -322,7 +322,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                'Your gateway to secure private blockchain banking and untraceable transactions.',
+                                'Your Fuego L1 gateway to secure, private banking and untraceable transactions.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 16,
@@ -345,19 +345,19 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                               _buildFeatureItem(
                                 Icons.security,
                                 'Untraceable Transactions',
-                                'Ring signatures for complete privacy',
+                                'Dynamic RingCT for highest-possible privacy',
                               ),
                               const SizedBox(height: 16),
                               _buildFeatureItem(
                                 Icons.local_fire_department,
-                                'HEAT Ξmbers Minting',
-                                'Burn XFG to mint \$HEAT ERC20 tokens for zkC0DL3 gas',
+                                'Mint Fuego Ξmbers',
+                                'Burn XFG to mint \$HEAT erc20 tokens on Ethereum',
                               ),
                               const SizedBox(height: 16),
                               _buildFeatureItem(
                                 Icons.account_balance,
-                                'Private Banking',
-                                'High-yield CD interest on XFG deposits',
+                                'Private CD Banking',
+                                'High-yield interest on XFG deposits',
                               ),
                               const SizedBox(height: 16),
                               _buildFeatureItem(
@@ -368,8 +368,8 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                               const SizedBox(height: 16),
                               _buildFeatureItem(
                                 Icons.account_tree,
-                                'Ξlderfier Stayking',
-                                'Participate in verified consensus',
+                                'Elderfier Stayking',
+                                'Participate as a verified consensus node completing the "Elderfyre Stayking" ceremony',
                               ),
                             ],
                           ),
@@ -400,7 +400,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                             const SizedBox(height: 24),
                             // Terms and privacy
                             Text(
-                              'Fuego developers are unable to access or recover your private keys or mnemonic phrase. Please keep them safe & secure. Protecting access to your keys- protects access to your money.',
+                              'Fuego developers are unable to access or recover your private keys or mnemonic phrase. Please keep them safe and secure. Protecting access to your keys, protects access to your money.',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: 10,
