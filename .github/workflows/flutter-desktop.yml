@@ -47,10 +47,10 @@ jobs:
 
       - name: Download xfg-stark-cli
         run: |
-          curl -L -o xfg-stark-cli "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-macos"
-          chmod +x xfg-stark-cli
+          curl -L -o xfg-stark-cli-macos "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-macos"
+          chmod +x xfg-stark-cli-macos
           mkdir -p assets/bin
-          mv xfg-stark-cli assets/bin/
+          mv xfg-stark-cli-macos assets/bin/
 
       - name: Install dependencies
         run: flutter pub get
@@ -100,9 +100,9 @@ jobs:
 
       - name: Download xfg-stark-cli
         run: |
-          curl -L -o xfg-stark-cli.exe "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-windows.exe"
+          curl -L -o xfg-stark-cli-windows.exe "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-windows.exe"
           mkdir -p assets\bin
-          mv xfg-stark-cli.exe assets\bin\
+          mv xfg-stark-cli-windows.exe assets\bin\xfg-stark-cli.exe
 
       - name: Install dependencies
         run: flutter pub get
@@ -156,10 +156,10 @@ jobs:
 
       - name: Download xfg-stark-cli
         run: |
-          curl -L -o xfg-stark-cli "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-linux"
-          chmod +x xfg-stark-cli
+          curl -L -o xfg-stark-cli-linux "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-linux"
+          chmod +x xfg-stark-cli-linux
           mkdir -p assets/bin
-          mv xfg-stark-cli assets/bin/
+          mv xfg-stark-cli-linux assets/bin/
 
       - name: Enable Linux desktop support
         run: |
@@ -212,10 +212,10 @@ jobs:
 
       - name: Download xfg-stark-cli
         run: |
-          curl -L -o xfg-stark-cli "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-linux"
-          chmod +x xfg-stark-cli
+          curl -L -o xfg-stark-cli-linux "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-linux"
+          chmod +x xfg-stark-cli-linux
           mkdir -p assets/bin
-          mv xfg-stark-cli assets/bin/
+          mv xfg-stark-cli-linux assets/bin/
 
       - name: Enable Linux desktop support
         run: |

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/wallet_provider.dart';
 import '../../utils/theme.dart';
+import '../../services/cli_service.dart';
 
 class BankingScreen extends StatefulWidget {
   const BankingScreen({super.key});
@@ -27,7 +28,7 @@ class _BankingScreenState extends State<BankingScreen>
     super.dispose();
   }
 
-  void _burnXFG(String option) {
+  Future<void> _burnXFG(String option) async {
     double burnAmount;
     String heatAmount;
 
@@ -39,12 +40,66 @@ class _BankingScreenState extends State<BankingScreen>
       heatAmount = '8 Billion HEAT';
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Burning $burnAmount XFG to mint $heatAmount Ξmbers'),
-        backgroundColor: AppTheme.primaryColor,
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 20),
+            Text('Generating STARK proof...'),
+          ],
+        ),
       ),
     );
+
+    try {
+      // Get wallet provider for private key
+      final walletProvider = Provider.of<WalletProvider>(context, listen: false);
+      
+      // For now, use a placeholder private key - in real implementation,
+      // this would come from the wallet's private key
+      const String privateKey = 'placeholder_private_key';
+      const String recipientAddress = '0x0000000000000000000000000000000000000000';
+      
+      // Generate STARK proof using CLI
+      final Map<String, dynamic> result = await CLIService.generateBurnProof(
+        privateKey: privateKey,
+        burnAmount: burnAmount,
+        recipientAddress: recipientAddress,
+      );
+
+      // Close loading dialog
+      Navigator.of(context).pop();
+
+      if (result['success']) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Successfully burned $burnAmount XFG to mint $heatAmount Ξmbers'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Burn failed: ${result['error']}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      // Close loading dialog
+      Navigator.of(context).pop();
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
