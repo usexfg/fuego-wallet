@@ -256,7 +256,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                                 'Fuego developers are unable to access or recover your private keys or mnemonic phrase. Please keep them safe & secure. Protecting access to your keys- protects access to your money.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 10,
                                   color: AppTheme.textMuted,
                                   height: 1.4,
                                 ),
@@ -309,7 +309,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                               AnimatedTextKit(
                                 animatedTexts: [
                                   FadeAnimatedText(
-                                    'Welcome to XF₲',
+                                    'Welcome to XF₲ Wallet',
                                     textStyle: const TextStyle(
                                       fontSize: 28,
                                       fontWeight: FontWeight.bold,
@@ -322,7 +322,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                'Your gateway to private, secure, and decentralized cryptocurrency transactions',
+                                'Your gateway to secure private blockchain banking and untraceable transactions.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 16,
@@ -368,8 +368,8 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                               const SizedBox(height: 16),
                               _buildFeatureItem(
                                 Icons.account_tree,
-                                'Elderfier Staking',
-                                'Participate in network consensus',
+                                'Ξlderfier Stayking',
+                                'Participate in verified consensus',
                               ),
                             ],
                           ),
@@ -400,10 +400,10 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                             const SizedBox(height: 24),
                             // Terms and privacy
                             Text(
-                              'By continuing, you agree to our Terms of Service\nand Privacy Policy',
+                              'Fuego developers are unable to access or recover your private keys or mnemonic phrase. Please keep them safe & secure. Protecting access to your keys- protects access to your money.',
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 10,
                                 color: AppTheme.textMuted,
                                 height: 1.4,
                               ),
