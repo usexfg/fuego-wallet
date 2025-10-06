@@ -1,7 +1,5 @@
 # 🔥 FYREFLY / XFG_wallet
 
-Fuego Flutter Wallet App
-
 <p align="center">
   <img src="https://img.shields.io/badge/Flutter-3.22.2-blue?logo=flutter" alt="Flutter Version" />
   <img src="https://img.shields.io/badge/Dart-3.4.3-blue?logo=dart" alt="Dart Version" />
