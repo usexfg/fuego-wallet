@@ -253,7 +253,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                               const SizedBox(height: 32),
                               // Terms and privacy
                               Text(
-                                'No one from Fuego\'s dev team is able to access or recover your private keys or mnemonic phrase. Please keep them as safe & secure, just as you would money.',
+                                'Fuego developers are unable to access or recover your private keys or mnemonic phrase. Please keep them safe & secure, just as you would protect your money.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 12,
