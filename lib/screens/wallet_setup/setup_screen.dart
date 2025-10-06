@@ -253,7 +253,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                               const SizedBox(height: 32),
                               // Terms and privacy
                               Text(
-                                'By continuing, you agree to our Terms of Service\nand Privacy Policy',
+                                'No one from Fuego\'s dev team is able to access or recover your private keys or mnemonic phrase. Please keep them as safe & secure, just as you would money.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 12,
