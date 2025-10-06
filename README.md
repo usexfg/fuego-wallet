@@ -9,21 +9,23 @@ Fuego Flutter Wallet App
   <img src="https://img.shields.io/badge/License-MIT-green" alt="License" />
 </p>
 
-A mobile wallet application for **Fuego (XFG)**. Private blockchain banking, secure untraceable transactions, encrypted messaging, decentralized proof-verifier (Elderfier) nodes, plus 'Elderfyre Stayking' ceremony, features included. 
+A mobile wallet application for **Fuego (XFG)** privacy cryptocurrency. 
+
+Features include secure untraceable transactions, encrypted messaging, privacy banking suite, menu for Ξlderfier (decentralized verification) nodes, complete with 'Elderfyre Stayking' ceremony, plus built-in mining. 🔥
 
 ### 🔐 Advanced Security
 - **PIN Authentication** with PBKDF2 secure hashing
 - **Biometric Authentication** (fingerprint/Face ID)
 - **AES-256-CBC Encryption** for wallet data
 - **Secure Device Storage** with hardware keychain
-- **25-word Mnemonic** backup and recovery
+- **25-word Mnemonic** backup / recovery 
 
 ### 💼 Wallet Management
 - **Create New Wallets** with secure entropy
-- **Restore from Backup** using mnemonic phrases
+- **Restore from Backup** using mnemonic phrase or private keys
 - **Real-time Balance Display** with privacy toggle
-- **Blockchain Synchronization** progress tracking
-- **Transaction History** with status monitoring
+- **Blockchain Sync** progress tracking
+- **Transaction History** with confirmation status monitoring
 
 ### 💸 Privacy Transactions
 - **Send XFG** with configurable privacy levels
@@ -33,16 +35,16 @@ A mobile wallet application for **Fuego (XFG)**. Private blockchain banking, sec
 - **Fee Estimation** and validation
 
 ### ⛏️ Built-in Mining
-- **CPU Mining Control** directly from mobile
+- **CPU Mining Controls** directly from device
 - **Thread Configuration** (1-8 CPU threads)
 - **Real-time Hashrate** monitoring
 - **Mining Performance** tracking
 
-### 🔥 Elderfyre Stayking
+### 🔥 Elderfyre Stayking Ceremony
 - **Elderfier Registration** requires 800 XFG stake
-- **Consensus Participation** (Fast-Pass/Fall-Back/Full-Quorum)
+- **Consensus Participation** (3of3 FastPass/ 8of10 FallBack)
 - **Network Monitoring** of all Elderfier nodes
-- **Rewards Tracking** and performance metrics
+- **Fyre_Fee Rewards Tracking** and performance metrics
 
 ### 📱 Encrypted Messaging
 - **Blockchain Messaging** with end-to-end encryption
@@ -174,9 +176,9 @@ static const List<String> defaultRemoteNodes = [
 - **Hardware security module** integration when available
 
 ### Privacy Features
-- **Ring signatures** with configurable mixing levels
+- **Dynamic RingCT** for highest possible privacy (per available decoy outputs: min 8 max 18) 
 - **Payment IDs** for transaction identification
-- **Integrated addresses** for enhanced privacy
+- **Integrated addresses** better UX, easier for network services
 - **No data tracking** - all operations local
 
 ### Authentication Security
