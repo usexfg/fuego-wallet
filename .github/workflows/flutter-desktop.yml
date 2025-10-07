@@ -180,10 +180,10 @@ jobs:
           cp /usr/lib/x86_64-linux-gnu/libstdc++.so.6 lib/ 2>/dev/null || echo "libstdc++.so.6 not found"
           # Create a wrapper script that uses bundled libraries
           cat > run_xfg_wallet.sh << 'EOF'
-#!/bin/bash
-export LD_LIBRARY_PATH="$(dirname "$0")/lib:$LD_LIBRARY_PATH"
-exec "$(dirname "$0")/fuego_wallet" "$@"
-EOF
+          #!/bin/bash
+          export LD_LIBRARY_PATH="$(dirname "$0")/lib:$LD_LIBRARY_PATH"
+          exec "$(dirname "$0")/fuego_wallet" "$@"
+          EOF
           chmod +x run_xfg_wallet.sh
 
       - name: Create app archive
