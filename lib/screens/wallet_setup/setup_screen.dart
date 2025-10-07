@@ -203,7 +203,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                                     _buildFeatureItem(
                                       Icons.local_fire_department,
                                       'Mint Fuego Ξmbers',
-                                      'Burn XFG to mint erc20 \$HEAT tokens on Ethereum',
+                                      'Burn XFG to mint atomic equivalent ERC20 tokens on Ethereum L1 via Arbitrum L2',
                                     ),
                                     const SizedBox(height: 16),
                                     _buildFeatureItem(
