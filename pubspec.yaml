@@ -44,9 +44,8 @@ dependencies:
 
   # File Picker
   file_picker: ^8.0.0+1
-  
+
   # Path utilities
-  path_provider: ^2.1.1
   path: ^1.8.3
   
   # UI Components
