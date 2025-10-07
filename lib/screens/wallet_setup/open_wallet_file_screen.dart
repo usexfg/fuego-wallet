@@ -71,16 +71,48 @@ class _OpenWalletFileScreenState extends State<OpenWalletFileScreen>
   Future<void> _pickWalletFile() async {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['wallet', 'keys', 'dat'],
+        type: FileType.any, // Changed from custom to any for better mobile compatibility
+        allowedExtensions: ['wallet', 'keys', 'dat'], // This will be ignored on mobile but kept for desktop
         dialogTitle: 'Select XF₲ Wallet File',
+        withData: false, // Don't load file data into memory
+        withReadStream: false, // Don't create read stream
+        allowMultiple: false, // Only single file selection
       );
 
-      if (result != null && result.files.single.path != null) {
-        setState(() {
-          _selectedFilePath = result.files.single.path;
-          _selectedFileName = result.files.single.name;
-        });
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.single;
+        if (file.path != null) {
+          // Additional validation for file extension
+          final fileName = file.name.toLowerCase();
+          final validExtensions = ['.wallet', '.keys', '.dat'];
+          final hasValidExtension = validExtensions.any((ext) => fileName.endsWith(ext));
+
+          if (!hasValidExtension) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Please select a valid wallet file (.wallet, .keys, or .dat)'),
+                  backgroundColor: AppTheme.errorColor,
+                ),
+              );
+            }
+            return;
+          }
+
+          setState(() {
+            _selectedFilePath = file.path;
+            _selectedFileName = file.name;
+          });
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Unable to access selected file path'),
+                backgroundColor: AppTheme.errorColor,
+              ),
+            );
+          }
+        }
       }
     } catch (e) {
       if (mounted) {

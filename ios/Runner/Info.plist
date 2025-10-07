@@ -45,5 +45,17 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app needs access to your photo library to select wallet files</string>
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>This app needs access to your documents folder to select wallet files</string>
+	<key>NSDesktopFolderUsageDescription</key>
+	<string>This app needs access to your desktop folder to select wallet files</string>
+	<key>NSDownloadsFolderUsageDescription</key>
+	<string>This app needs access to your downloads folder to select wallet files</string>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+	<key>UIFileSharingEnabled</key>
+	<true/>
 </dict>
 </plist>
