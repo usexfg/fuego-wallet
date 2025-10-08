@@ -137,8 +137,8 @@ jobs:
           files: Fuego-Wallet-Windows.zip
 
   build-linux-compat:
-    name: Build XF₲ Wallet (Linux - GLIBC 2.31)
-    runs-on: ubuntu-20.04
+    name: Build XF₲ Wallet (Linux - GLIBC 2.35)
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout code
@@ -166,7 +166,7 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build Linux desktop app (GLIBC 2.31)
+      - name: Build Linux desktop app (GLIBC 2.35)
         run: |
           flutter build linux --release
           # Create a portable build by copying required libraries
