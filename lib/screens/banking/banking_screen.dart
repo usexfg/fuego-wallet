@@ -272,7 +272,7 @@ class _BankingScreenState extends State<BankingScreen>
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Fuego Ξmbers (HEAT) are the atomic equivalent ERC20 token of XFG minted on Ethereum L1 using Arbitrum L2 for gas-efficiency (verifying STARKs is thirsty work). HEAT will function as the gas token for Fuego\'s C0DL3 rollup powering CD, PARA, COLDAO, & Fuego Mob (community) assets.',
+                    'Fuego Ξmbers (HEAT) are the atomic equivalent ERC20 token of XFG minted on Ethereum L1 using Arbitrum L2 for gas-efficiency (verifying STARKs is thirsty work). HEAT will function as the gas token for Fuego\'s C0DL3 rollup powering CD, PARA, COLDAO, & Fuego Mob (community) interest yield assets.',
                     style: TextStyle(
                       color: AppTheme.textSecondary,
                       height: 1.4,

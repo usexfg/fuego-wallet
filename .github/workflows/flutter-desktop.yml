@@ -100,8 +100,8 @@ jobs:
       - name: Download xfg-stark-cli
         run: |
           curl -L -o xfg-stark-cli-windows.exe "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-windows.exe"
-          mkdir -p assets\bin
-          mv xfg-stark-cli-windows.exe assets\bin\xfg-stark-cli.exe
+          New-Item -ItemType Directory -Force -Path assets\bin
+          Move-Item xfg-stark-cli-windows.exe assets\bin\xfg-stark-cli.exe
 
       - name: Install dependencies
         run: flutter pub get
@@ -130,14 +130,11 @@ jobs:
 
       - name: Upload to Release
         if: github.event_name == 'release'
-        uses: actions/upload-release-asset@v1
+        uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: Fuego-Wallet-Windows.zip
-          asset_name: XF₲-Wallet-Windows.zip
-          asset_content_type: application/zip
+          files: Fuego-Wallet-Windows.zip
 
   build-linux-compat:
     name: Build XF₲ Wallet (Linux - GLIBC 2.31)
