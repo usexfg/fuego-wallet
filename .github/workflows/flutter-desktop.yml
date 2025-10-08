@@ -202,6 +202,32 @@ jobs:
           files: build/linux/x64/release/bundle/XF₲-Wallet-Linux-GLIBC-2.31.tar.gz
           name: XF₲-Wallet-Linux-GLIBC-2.31.tar.gz
 
+      - name: Create AppImage (GLIBC 2.35)
+        run: |
+          cd build/linux/x64/release/bundle
+          # Download appimagetool
+          curl -LO https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool-x86_64.AppImage
+          # Create AppImage
+          ./appimagetool-x86_64.AppImage . XF₲-Wallet-Linux-GLIBC-2.35.AppImage
+          # Clean up
+          rm -f appimagetool-x86_64.AppImage
+
+      - name: Upload AppImage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfg-wallet-linux-glibc-235-appimage
+          path: build/linux/x64/release/bundle/XF₲-Wallet-Linux-GLIBC-2.35.AppImage
+          retention-days: 30
+
+      - name: Upload AppImage to Release
+        if: github.event_name == "release"
+        uses: softprops/action-gh-release@v1
+        with:
+          files: build/linux/x64/release/bundle/XF₲-Wallet-Linux-GLIBC-2.35.AppImage
+          name: XF₲-Wallet-Linux-GLIBC-2.35.AppImage
+
+
   build-linux-latest:
     name: Build XF₲ Wallet (Linux - Latest)
     runs-on: ubuntu-latest
