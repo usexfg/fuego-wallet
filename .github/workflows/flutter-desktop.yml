@@ -219,7 +219,7 @@ jobs:
           Categories=Finance;
           EOF
           # Copy icon file
-          cp ../../../../app_icon_256.png fuego_wallet.png
+          cp ../../../../../app_icon_256.png fuego_wallet.png
           # Create AppImage (using extraction to avoid FUSE)
           ./appimagetool-x86_64.AppImage --appimage-extract
           ./squashfs-root/AppRun . XF₲-Wallet-Linux-GLIBC-2.35.AppImage
