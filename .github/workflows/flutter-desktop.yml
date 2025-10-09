@@ -208,10 +208,13 @@ jobs:
           # Download appimagetool
           curl -LO https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
           chmod +x appimagetool-x86_64.AppImage
-          # Create AppImage
-          ./appimagetool-x86_64.AppImage . XF₲-Wallet-Linux-GLIBC-2.35.AppImage
+          # Create AppImage (using extraction to avoid FUSE)
+          ./appimagetool-x86_64.AppImage --appimage-extract
+          ./squashfs-root/AppRun . XF₲-Wallet-Linux-GLIBC-2.35.AppImage
           # Clean up
           rm -f appimagetool-x86_64.AppImage
+          # Clean up extracted files
+          rm -rf squashfs-root
 
       - name: Upload AppImage artifacts
         uses: actions/upload-artifact@v4
