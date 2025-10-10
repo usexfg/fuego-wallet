@@ -71,13 +71,13 @@ class _OpenWalletFileScreenState extends State<OpenWalletFileScreen>
   Future<void> _pickWalletFile() async {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.any, // Changed from custom to any for better mobile compatibility
-        allowedExtensions: ['wallet', 'keys', 'dat'], // This will be ignored on mobile but kept for desktop
-        dialogTitle: 'Select XF₲ Wallet File',
-        withData: false, // Don't load file data into memory
-        withReadStream: false, // Don't create read stream
-        allowMultiple: false, // Only single file selection
-      );
+          type: FileType.custom,
+          allowedExtensions: ['wallet', 'keys', 'dat'],
+          dialogTitle: 'Select XF₲ Wallet File',
+          withData: false,
+          withReadStream: false,
+          allowMultiple: false,
+        );
 
       if (result != null && result.files.isNotEmpty) {
         final file = result.files.single;
