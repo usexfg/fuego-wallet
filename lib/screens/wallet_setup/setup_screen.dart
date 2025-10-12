@@ -197,13 +197,13 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                                     _buildFeatureItem(
                                       Icons.security,
                                       'Untraceable Transactions',
-                                      'Dynamic RingCT for highest-possible privacy',
+                                      'Dynamaxin for highest-possible privacy',
                                     ),
                                     const SizedBox(height: 16),
                                     _buildFeatureItem(
                                       Icons.local_fire_department,
                                       'Mint Fuego Ξmbers',
-                                      'Burn XFG to mint atomic equivalent ERC20 tokens on Ethereum L1 via Arbitrum L2',
+                                      'Burn XFG to mint atomical equivalent amount in erc-20 HEAT tokens on Ethereum L1 via Arbitrum L2',
                                     ),
                                     const SizedBox(height: 16),
                                     _buildFeatureItem(
@@ -345,7 +345,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                               _buildFeatureItem(
                                 Icons.security,
                                 'Untraceable Transactions',
-                                'Dynamic RingCT for highest-possible privacy',
+                                'Dynamaxin for highest-possible privacy',
                               ),
                               const SizedBox(height: 16),
                               _buildFeatureItem(

@@ -174,7 +174,7 @@ static const List<String> defaultRemoteNodes = [
 - **Hardware security module** integration when available
 
 ### Privacy Features
-- **Dynamic RingCT** for highest possible privacy (per available decoy outputs: min 8 max 18) 
+- **Dynamaxin** for highest possible privacy (per available decoy outputs: min 8 max 18) 
 - **Payment IDs** for transaction identification
 - **Integrated addresses** better UX, easier for network services
 - **No data tracking** - all operations local
@@ -254,7 +254,7 @@ This software is provided "as is" without warranty. Cryptocurrency transactions 
 ---
 
 <p align="center">
-  <strong>🔥 Built with ❤️ for the Fuego Community 🔥</strong>
+  <strong> Built with 🔥 for the Fuego Mob</strong>
 </p>
 
 <p align="center">
