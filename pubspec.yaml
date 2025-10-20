@@ -1,5 +1,5 @@
 name: xfg_wallet
-description: "XF₲ Wallet - Privacy-focused cryptocurrency wallet"
+description: "XF₲ Wallet - Decentralized Privacy Banking Wallet"
 publish_to: 'none' 
 
 version: 1.0.0+1
@@ -62,6 +62,7 @@ dependencies:
   
   # Notifications
   flutter_local_notifications: ^17.0.0
+  logging: ^1.2.0
 
 dev_dependencies:
   flutter_test:
@@ -87,6 +88,9 @@ flutter:
     - assets/icons/
     - assets/logo/
     - assets/bin/
+    - assets/bin/xfg-stark-cli-linux
+    - assets/bin/xfg-stark-cli-macos
+    - assets/bin/xfg-stark-cli-windows.exe
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware

@@ -5,6 +5,7 @@ import '../elderfier/elderfier_screen.dart';
 import '../messaging/messaging_screen.dart';
 import '../banking/banking_screen.dart';
 import '../settings/settings_screen.dart';
+import '../banking/burn_deposits_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -22,6 +23,7 @@ class _MainScreenState extends State<MainScreen> {
     const BankingScreen(),
     const ElderfierScreen(),
     const SettingsScreen(),
+    const BurnDepositsScreen(),
   ];
 
   @override
@@ -59,7 +61,7 @@ class _MainScreenState extends State<MainScreen> {
                 ),
                 _buildNavItem(
                   icon: Icons.account_balance,
-                  label: 'Banking',
+                  label: 'CD Banking',
                   index: 2,
                 ),
                 _buildNavItem(
@@ -71,6 +73,11 @@ class _MainScreenState extends State<MainScreen> {
                   icon: Icons.settings,
                   label: 'Settings',
                   index: 4,
+                ),
+                _buildNavItem(
+                  icon: Icons.local_fire_department,
+                  label: 'Mint Ξmbers',
+                  index: 5,
                 ),
               ],
             ),

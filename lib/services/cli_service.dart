@@ -1,131 +1,196 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
+import 'package:logging/logging.dart';
 
-class CLIService {
-  static const String _cliBinaryName = 'xfg-stark-cli';
-  static String? _cliPath;
+class BurnProofAnalytics {
+  static final Logger _logger = Logger('BurnProofService');
 
-  /// Get the path to the xfg-stark-cli binary
-  static Future<String> getCLIPath() async {
-    if (_cliPath != null) return _cliPath!;
-
-    try {
-      // Get the application documents directory
-      final Directory appDir = await getApplicationDocumentsDirectory();
-      final String cliDir = path.join(appDir.path, 'bin');
-      
-      // Create bin directory if it doesn't exist
-      await Directory(cliDir).create(recursive: true);
-      
-      // Determine the correct binary name for the platform
-      String binaryName = _getBinaryNameForPlatform();
-      final String cliPath = path.join(cliDir, binaryName);
-      
-      // Check if binary already exists
-      if (await File(cliPath).exists()) {
-        _cliPath = cliPath;
-        return cliPath;
-      }
-      
-      // Extract binary from assets
-      await _extractBinaryFromAssets(binaryName, cliPath);
-      
-      // Make binary executable on Unix systems
-      if (Platform.isLinux || Platform.isMacOS) {
-        await Process.run('chmod', ['+x', cliPath]);
-      }
-      
-      _cliPath = cliPath;
-      return cliPath;
-    } catch (e) {
-      throw Exception('Failed to setup CLI binary: $e');
-    }
+  static void logBurnProofGeneration(BurnProofResult result) {
+    _logger.info('Burn Proof Generated: '
+      'Amount: ${result.burnAmount}, '
+      'Recipient: ${result.recipientAddress}, '
+      'Proof Hash: ${result.proofHash}');
   }
 
-  /// Extract the CLI binary from assets to the filesystem
-  static Future<void> _extractBinaryFromAssets(String binaryName, String targetPath) async {
+  static void logBurnProofError(dynamic error, StackTrace stackTrace) {
+    _logger.severe('Burn Proof Generation Failed', error, stackTrace);
+  }
+}
+
+class BurnProofResult {
+  final String proofHash;
+  final int burnAmount;
+  final String recipientAddress;
+  final DateTime timestamp;
+
+  const BurnProofResult({
+    required this.proofHash,
+    required this.burnAmount,
+    required this.recipientAddress,
+    required this.timestamp,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'proofHash': proofHash,
+    'burnAmount': burnAmount,
+    'recipientAddress': recipientAddress,
+    'timestamp': timestamp.toIso8601String(),
+  };
+
+  factory BurnProofResult.fromJson(Map<String, dynamic> json) => BurnProofResult(
+    proofHash: json['proofHash'],
+    burnAmount: json['burnAmount'],
+    recipientAddress: json['recipientAddress'],
+    timestamp: DateTime.parse(json['timestamp']),
+  );
+}
+
+class CLIService {
+  static final Logger _logger = Logger('CLIService');
+
+  /// Supported burn denominations
+  static const Map<String, int> burnDenominations = {
+    'Standard Burn': 800000, // 0.8 XFG = 8 Million HEAT
+    'Large Burn': 80000000,  // 800 XFG = 8 Billion HEAT
+  };
+
+  /// Determines the correct path for the CLI binary based on the current platform
+  static Future<String> _getBinaryPath() async {
+    final Directory appDir = await getApplicationSupportDirectory();
+    final String binaryName = Platform.isWindows 
+        ? 'xfg-stark-cli.exe' 
+        : Platform.isMacOS 
+            ? 'xfg-stark-cli-macos' 
+            : 'xfg-stark-cli-linux';
+    
+    return path.join(appDir.path, 'bin', binaryName);
+  }
+
+  /// Extracts the bundled CLI binary to a temporary directory
+  static Future<String> _extractBinary() async {
     try {
-      // Load the binary from assets
-      final ByteData data = await rootBundle.load('assets/bin/$binaryName');
+      final Directory tempDir = await getTemporaryDirectory();
+      final String binaryName = Platform.isWindows 
+          ? 'xfg-stark-cli.exe' 
+          : Platform.isMacOS 
+              ? 'xfg-stark-cli-macos' 
+              : 'xfg-stark-cli-linux';
       
-      // Write to target path
-      final File file = File(targetPath);
-      await file.writeAsBytes(data.buffer.asUint8List());
-    } catch (e) {
+      final File binaryFile = File(path.join(tempDir.path, binaryName));
+      
+      // Extract binary from assets
+      final ByteData data = await rootBundle.load('assets/bin/$binaryName');
+      await binaryFile.create(recursive: true);
+      await binaryFile.writeAsBytes(data.buffer.asUint8List());
+
+      // Set executable permissions for non-Windows platforms
+      if (!Platform.isWindows) {
+        await Process.run('chmod', ['+x', binaryFile.path]);
+      }
+
+      _logger.info('CLI binary extracted successfully: $binaryName');
+      return binaryFile.path;
+    } catch (e, stackTrace) {
+      _logger.severe('Failed to extract CLI binary', e, stackTrace);
       throw Exception('Failed to extract CLI binary: $e');
     }
   }
 
-  /// Get the correct binary name for the current platform
-  static String _getBinaryNameForPlatform() {
-    if (Platform.isWindows) {
-      return 'xfg-stark-cli.exe';
-    } else if (Platform.isMacOS) {
-      return 'xfg-stark-cli-macos';
-    } else if (Platform.isLinux) {
-      return 'xfg-stark-cli-linux';
-    } else {
-      throw UnsupportedError('Unsupported platform: ${Platform.operatingSystem}');
-    }
-  }
-
-  /// Execute the CLI with the given arguments
-  static Future<ProcessResult> executeCLI(List<String> arguments) async {
-    final String cliPath = await getCLIPath();
-    
-    try {
-      final ProcessResult result = await Process.run(cliPath, arguments);
-      return result;
-    } catch (e) {
-      throw Exception('Failed to execute CLI: $e');
-    }
-  }
-
-  /// Generate STARK proof for XFG burn
-  static Future<Map<String, dynamic>> generateBurnProof({
-    required String privateKey,
-    required double burnAmount,
-    required String recipientAddress,
+  /// Generates a STARK proof for a burn transaction
+  static Future<BurnProofResult> generateBurnProof({
+    required String transactionHash, 
+    required String recipientAddress, 
+    required int burnAmount,
+    String burnType = 'Standard Burn'
   }) async {
     try {
+      // Validate Ethereum address
+      if (!isValidEthereumAddress(recipientAddress)) {
+        throw ArgumentError('Invalid Ethereum address');
+      }
+
+      // Validate burn amount
+      if (!burnDenominations.containsKey(burnType)) {
+        throw ArgumentError('Invalid burn type');
+      }
+
+      // Extract or get the CLI binary path
+      final String binaryPath = await _extractBinary();
+      
+      // Prepare the process arguments
       final List<String> args = [
         'burn-proof',
-        '--private-key', privateKey,
-        '--amount', burnAmount.toString(),
-        '--recipient', recipientAddress,
+        transactionHash,
+        recipientAddress,
+        burnAmount.toString(),
+        burnType
       ];
-      
-      final ProcessResult result = await executeCLI(args);
-      
-      if (result.exitCode != 0) {
-        throw Exception('CLI execution failed: ${result.stderr}');
+
+      // Run the CLI command
+      final ProcessResult result = await Process.run(binaryPath, args);
+
+      // Check the result
+      if (result.exitCode == 0) {
+        // Parse the output to extract proof details
+        final Map<String, dynamic> proofDetails = _parseProofOutput(result.stdout);
+        
+        final BurnProofResult proofResult = BurnProofResult(
+          proofHash: proofDetails['proofHash'],
+          burnAmount: burnAmount,
+          recipientAddress: recipientAddress,
+          timestamp: DateTime.now()
+        );
+
+        // Log the successful burn proof generation
+        BurnProofAnalytics.logBurnProofGeneration(proofResult);
+
+        return proofResult;
+      } else {
+        // Log the error
+        _logger.severe('Burn proof generation failed: ${result.stderr}');
+        throw Exception('Burn proof generation failed: ${result.stderr}');
       }
-      
-      // Parse the JSON output
-      final String output = result.stdout.toString();
-      return {
-        'success': true,
-        'proof': output,
-        'transactionHash': '', // Will be filled by the CLI output
-      };
-    } catch (e) {
-      return {
-        'success': false,
-        'error': e.toString(),
-      };
+    } catch (e, stackTrace) {
+      // Log the error
+      BurnProofAnalytics.logBurnProofError(e, stackTrace);
+      rethrow;
     }
   }
 
-  /// Verify STARK proof
-  static Future<bool> verifyProof(String proof) async {
+  /// Parse the output from the CLI burn proof generation
+  static Map<String, dynamic> _parseProofOutput(String output) {
     try {
-      final List<String> args = ['verify-proof', '--proof', proof];
-      final ProcessResult result = await executeCLI(args);
-      return result.exitCode == 0;
+      // This is a placeholder. Actual parsing depends on the CLI tool's output format
+      return {
+        'proofHash': output.trim(), // Assuming the output is the proof hash
+      };
     } catch (e) {
-      return false;
+      _logger.severe('Error parsing proof output: $e');
+      throw FormatException('Unable to parse burn proof output');
     }
+  }
+
+  /// Validates an Ethereum address
+  static bool isValidEthereumAddress(String address) {
+    // Basic Ethereum address validation
+    final RegExp ethAddressRegex = RegExp(r'^0x[a-fA-F0-9]{40}$');
+    return ethAddressRegex.hasMatch(address);
+  }
+
+  /// Calculates HEAT token amount based on burn amount
+  static int calculateHeatTokens(int burnAmount) {
+    // Conversion logic based on burn denominations
+    if (burnAmount == burnDenominations['Standard Burn']) {
+      return 8000000; // 8 Million HEAT
+    } else if (burnAmount == burnDenominations['Large Burn']) {
+      return 8000000000; // 8 Billion HEAT
+    }
+    throw ArgumentError('Invalid burn amount');
   }
 }

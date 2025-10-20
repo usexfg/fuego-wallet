@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+-import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/wallet_provider.dart';
 import '../../utils/theme.dart';
@@ -140,15 +140,15 @@ class _BankingScreenState extends State<BankingScreen>
   Widget _buildMintHeatTab() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           // Header
-          Container(
+            Container(
             padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
+              decoration: BoxDecoration(
               gradient: AppTheme.primaryGradient,
-              borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(16),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -162,7 +162,7 @@ class _BankingScreenState extends State<BankingScreen>
                     ),
                     const SizedBox(width: 12),
                     Text(
-                      'Mint Heat Ξmbers',
+                      'Mint Fuego Ξmbers',
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -173,7 +173,7 @@ class _BankingScreenState extends State<BankingScreen>
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Burn XFG to mint HEAT tokens for Ξmbers',
+                  'Burn XFG to mint Fuego Ξmbers (HEAT)',
                   style: TextStyle(
                     fontSize: 16,
                     color: Colors.white.withOpacity(0.9),
@@ -200,7 +200,7 @@ class _BankingScreenState extends State<BankingScreen>
             title: 'Standard Burn',
             burnAmount: '0.8 XFG',
             heatAmount: '8 Million HEAT',
-            description: 'Perfect for Ξmber participation',
+            description: 'Standard burn amount for basic uses like C0DL3 gas fees',
             isSelected: _selectedBurnOption == 'standard',
             onTap: () => setState(() => _selectedBurnOption = 'standard'),
           ),
@@ -211,7 +211,7 @@ class _BankingScreenState extends State<BankingScreen>
             title: 'Large Burn',
             burnAmount: '800 XFG',
             heatAmount: '8 Billion HEAT',
-            description: 'Maximum Ξmber rewards',
+            description: 'Larger HEAT mint. Amounts are kept uniform for higher privacy',
             isSelected: _selectedBurnOption == 'large',
             onTap: () => setState(() => _selectedBurnOption = 'large'),
           ),
@@ -250,16 +250,16 @@ class _BankingScreenState extends State<BankingScreen>
             ),
           ),
 
-          const SizedBox(height: 24),
+            const SizedBox(height: 24),
 
           // Info Card
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppTheme.surfaceColor,
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.surfaceColor,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: AppTheme.textMuted.withOpacity(0.3),
+                border: Border.all(
+                  color: AppTheme.textMuted.withOpacity(0.3),
               ),
             ),
             child: Row(
@@ -301,10 +301,10 @@ class _BankingScreenState extends State<BankingScreen>
                 colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
               ),
               borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                 Row(
                   children: [
                     Icon(
@@ -337,15 +337,15 @@ class _BankingScreenState extends State<BankingScreen>
           const SizedBox(height: 24),
 
           // Current Deposits
-          Text(
+                  Text(
             'Your CD Deposits',
-            style: TextStyle(
+                    style: TextStyle(
               fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 16),
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
 
           _buildCDDepositCard(
             amount: '1000 XFG',
@@ -394,25 +394,25 @@ class _BankingScreenState extends State<BankingScreen>
           const SizedBox(height: 24),
 
           // New Deposit Button
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('New CD deposit functionality coming soon!'),
                     backgroundColor: AppTheme.primaryColor,
                   ),
                 );
-              },
-              style: ElevatedButton.styleFrom(
+                      },
+                      style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.all(20),
                 backgroundColor: const Color(0xFF4CAF50),
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -423,9 +423,9 @@ class _BankingScreenState extends State<BankingScreen>
                   const SizedBox(width: 12),
                   Text(
                     'Open New CD Deposit',
-                    style: TextStyle(
+                        style: TextStyle(
                       fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.bold,
                     ),
                   ),
                 ],
@@ -510,11 +510,11 @@ class _BankingScreenState extends State<BankingScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: TextStyle(
+            Text(
+              title,
+              style: TextStyle(
                       fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.bold,
                       color: AppTheme.textPrimary,
                     ),
                   ),
@@ -524,13 +524,13 @@ class _BankingScreenState extends State<BankingScreen>
                     style: TextStyle(
                       fontSize: 14,
                       color: AppTheme.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
                     description,
-                    style: TextStyle(
-                      fontSize: 12,
+              style: TextStyle(
+                fontSize: 12,
                       color: AppTheme.textMuted,
                     ),
                   ),
@@ -542,7 +542,7 @@ class _BankingScreenState extends State<BankingScreen>
                 Icons.check_circle,
                 color: AppTheme.primaryColor,
                 size: 24,
-              ),
+            ),
           ],
         ),
       ),
@@ -564,53 +564,53 @@ class _BankingScreenState extends State<BankingScreen>
           color: AppTheme.textMuted.withOpacity(0.3),
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
+                  children: [
+                    Text(
                 amount,
-                style: TextStyle(
+                      style: TextStyle(
                   fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textPrimary,
-                ),
-              ),
-              Container(
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
+                      decoration: BoxDecoration(
                   color: const Color(0xFF4CAF50).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
                   interestRate,
-                  style: TextStyle(
+                        style: TextStyle(
                     color: const Color(0xFF4CAF50),
-                    fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+          const SizedBox(height: 8),
+                Text(
+            'Matures: $maturityDate',
+                  style: TextStyle(
+                    color: AppTheme.textSecondary,
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Matures: $maturityDate',
-            style: TextStyle(
-              color: AppTheme.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
+                const SizedBox(height: 4),
+                Text(
             '$daysRemaining days remaining',
-            style: TextStyle(
-              color: AppTheme.accentColor,
-              fontWeight: FontWeight.w500,
+                  style: TextStyle(
+                    color: AppTheme.accentColor,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
     );
   }
 

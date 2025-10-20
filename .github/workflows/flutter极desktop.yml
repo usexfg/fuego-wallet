@@ -1,0 +1,295 @@
+name: XF₲ Wallet Desktop Build & Release
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'lib/**'
+      - 'android/**'
+      - 'ios/**'
+      - 'macos/**'
+      - 'windows/**'
+      - 'linux/**'
+      - 'pubspec.yaml'
+      - '.github/workflows/flutter-desktop.yml'
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'lib/**'
+      - 'android/**'
+      - 'ios/**'
+      - 'macos/**'
+      - 'windows/**'
+      - 'linux/**'
+      - 'pubspec.yaml'
+      - '.github/workflows/flutter-desktop.yml'
+  workflow_dispatch:
+  release:
+    types: [published]
+    permissions:
+      contents: write
+
+jobs:
+  build-macos:
+    name: Build XF₲ Wallet (macOS)
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+
+      - name: Enable macOS desktop support
+        run: flutter config --enable-macos-desktop
+
+      - name: Download xfg-stark-cli
+        run: |
+          curl -L -o xfg-stark-cli-macos "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-macos"
+          chmod +x xfg-stark-cli-macos
+          mkdir -p assets/bin
+          mv xfg-stark-cli-macos assets/bin/
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build macOS desktop app
+        run: flutter build macos --release
+
+      - name: Create app archive
+        run: |
+          cd build/macos/Build/Products/Release
+          zip -r Fuego-Wallet-macOS.zip "fuego_wallet.app"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuego-wallet-macos
+          path: build/macos/Build/Products/Release/Fuego-Wallet-macOS.zip
+          retention-days: 30
+
+      - name: Upload to Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: build/macos/Build/Products/Release/Fuego-Wallet-macOS.zip
+
+  build-windows:
+    name: Build XF₲ Wallet (Windows)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+
+      - name: Enable Windows desktop support
+        run: flutter config --enable-windows-desktop
+
+      - name: Download xfg-stark-cli
+        run: |
+          curl -L -o xfg-stark-cli-windows.exe "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-windows.exe"
+          New-Item -ItemType Directory -Force -Path assets\bin
+          Move-Item xfg-stark-cli-windows.exe assets\bin\xfg-stark-cli.exe
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Windows desktop app
+        run: flutter build windows --release
+
+      - name: Create app archive
+        run: |
+          if (Test-Path "build\windows\runner\Release") {
+            cd build\windows\runner\Release
+            Compress-Archive -Path * -DestinationPath ..\..\..\..\Fuego-Wallet-Windows.zip
+          } elseif (Test-Path "build\windows\x64\runner\Release") {
+            cd build\windows\x64\runner\Release
+            Compress-Archive -Path * -DestinationPath ..\..\..\..\..\Fuego-Wallet-Windows.zip
+          } else {
+            Get-ChildItem build -Recurse | Where-Object { $_.Name -like "*.exe" } | Select-Object -First 1 | ForEach-Object { Compress-Archive -Path $_.DirectoryName -DestinationPath "Fuego-Wallet-Windows.zip" }
+          }
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuego-wallet-windows
+          path: Fuego-Wallet-Windows.zip
+          retention-days: 30
+
+      - name: Upload to Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: Fuego-Wallet-Windows.zip
+
+  build-linux-compat:
+    name: Build XF₲ Wallet (Linux - GLIBC 2.35)
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+
+      - name: Download xfg-stark-cli
+        run: |
+          curl -L -o xfg-stark-cli-linux "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-linux"
+          chmod +x xfg-stark-cli-linux
+          mkdir -p assets/bin
+          mv xfg-stark-cli-linux assets/bin/
+
+      - name: Enable Linux desktop support
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libsecret-1-dev
+          flutter config --enable-linux-desktop
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Linux desktop app (GLIBC 2.35)
+        run: |
+          flutter build linux --release
+          # Create a portable build by copying required libraries
+          cd build/linux/x64/release/bundle
+          mkdir -p lib
+          # Copy system libraries for better compatibility
+          cp /lib/x86_64-linux-gnu/libc.so.6 lib/ 2>/dev/null || echo "libc.so.6 not found"
+          cp /usr/lib/x86_64-linux-gnu/libstdc++.so.6 lib/ 2>/dev/null || echo "libstdc++.so.6 not found"
+          # Create a wrapper script that uses bundled libraries
+          cat > run_xfg_wallet.sh << 'EOF'
+          #!/bin/bash
+          export LD_LIBRARY_PATH="$(dirname "$0")/lib:$LD_LIBRARY_PATH"
+          exec "$(dirname "$0")/fuego_wallet" "$@"
+          EOF
+          chmod +x run_xfg_wallet.sh
+
+      - name: Create app archive
+        run: |
+          cd build/linux/x64/release/bundle
+          tar -czf XF₲-Wallet-Linux-GLIBC-2.31.tar.gz *
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfg-wallet-linux-glibc-231
+          path: build/linux/x64/release/bundle/XF₲-Wallet-Linux-GLIBC-2.31.tar.gz
+          retention-days: 30
+
+      - name: Upload to Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: build/linux/x64/release/bundle/XF₲-Wallet-Linux-GLIBC-2.31.tar.gz
+          name: XF₲-Wallet-Linux-GLIBC-2.31.tar.gz
+
+      - name: Create AppImage (GLIBC 2.35)
+        run: |
+          cd build/linux/x64/release/bundle
+          # Download appimagetool
+          curl -LO https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool-x86_64.AppImage
+          # Copy icon file for AppImage
+          cp ../../../../app_icon_256.png fuego_wallet.png
+          # Create AppImage (using extraction to avoid FUSE)
+          ./appimagetool-x86_64.AppImage --appimage-extract
+          # Create desktop file for AppImage
+          cat > XF₲-Wallet.desktop << 'EOF'
+          [Desktop Entry]
+          Type=Application
+          Name=XF₲ Wallet
+          Comment=Privacy-focused cryptocurrency wallet
+          Exec=fuego_wallet
+          Icon=fuego_wallet
+          Categories=Finance;          EOF
+          ./squashfs-root/AppRun . XF₲-Wallet-Linux-GLIBC-2.35.AppImage
+          # Clean up
+          rm -f appimagetool-x86_64.AppImage
+          # Clean up extracted files
+          rm -rf squashfs-root
+
+      - name: Upload AppImage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfg-wallet-linux-glibc-235-appimage
+          path: build/linux/x64/release/bundle/XF₲-Wallet-Linux-GLIBC-2.35.AppImage
+          retention-days: 30
+
+      - name: Upload AppImage to Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: build/linux/x64/release/bundle/XF₲-Wallet-Linux-GLIBC-2.35.AppImage
+          name: XF₲-Wallet-Linux-GLIBC-2.35.AppImage
+
+
+  build-linux-latest:
+    name: Build XF₲ Wallet (Linux - Latest)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+
+      - name: Download xfg-stark-cli
+        run: |
+          curl -L -o xfg-stark-cli-linux "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-linux"
+          chmod +x xfg-stark-cli-linux
+          mkdir -p assets/bin
+          mv xfg-stark-cli-linux assets/bin/
+
+      - name: Enable Linux desktop support
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libsecret-1-dev
+          flutter config --enable-linux-desktop
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Linux desktop app (Latest)
+        run: flutter build linux --release
+
+      - name: Create app archive
+        run: |
+          cd build/linux/x64/release/bundle
+          tar -czf XF₲-Wallet-Linux-Latest.tar.gz *
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: xfg-wallet-linux-latest
+          path: build/linux/x64/release/bundle/XF₲-Wallet-Linux-Latest.tar.gz
+          retention-days: 30
+
+      - name: Upload to Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: build/linux/x64/release/bundle/XF₲-Wallet-Linux-Latest.tar.gz
+          name: XF₲-Wallet-Linux-Latest.tar.gz
