@@ -54,6 +54,12 @@ jobs:
           mkdir -p assets/bin
           mv xfg-stark-cli-macos assets/bin/
 
+      - name: Download fuego-walletd
+        run: |
+          curl -L -o fuego-walletd-macos "https://github.com/usexfg/fuego/releases/latest/download/fuego-walletd-macos"
+          chmod +x fuego-walletd-macos
+          mv fuego-walletd-macos assets/bin/
+
       - name: Install dependencies
         run: flutter pub get
 
@@ -102,6 +108,11 @@ jobs:
           curl -L -o xfg-stark-cli-windows.exe "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-windows.exe"
           New-Item -ItemType Directory -Force -Path assets\bin
           Move-Item xfg-stark-cli-windows.exe assets\bin\xfg-stark-cli.exe
+
+      - name: Download fuego-walletd
+        run: |
+          curl -L -o fuego-walletd-windows.exe "https://github.com/usexfg/fuego/releases/latest/download/fuego-walletd-windows.exe"
+          Move-Item fuego-walletd-windows.exe assets\bin\fuego-walletd-windows.exe
 
       - name: Install dependencies
         run: flutter pub get

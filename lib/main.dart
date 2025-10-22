@@ -3,11 +3,18 @@ import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
 import 'providers/wallet_provider.dart';
 import 'services/fuego_rpc_service.dart';
+import 'services/wallet_daemon_service.dart';
 import 'screens/splash_screen.dart';
 import 'utils/theme.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize WalletDaemonService
+  await WalletDaemonService.initialize(
+    daemonAddress: '207.244.247.64',
+    daemonPort: 18180,
+  );
   
   // Set preferred orientations
   SystemChrome.setPreferredOrientations([

@@ -299,7 +299,8 @@ class FuegoRPCService {
     Map<String, dynamic> params,
   ) async {
     try {
-      final walletUrl = _baseUrl.replaceAll(':$defaultRpcPort', ':$defaultWalletPort');
+      // Use local walletd instead of remote
+      final walletUrl = 'http://localhost:8070';
       
       final response = await _dio.post(
         '$walletUrl/json_rpc',
