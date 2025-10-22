@@ -8,8 +8,11 @@
 </p>
 
 A mobile wallet application for **Fuego (XFG)** privacy cryptocurrency. 
-
 Features include secure untraceable transactions, encrypted messaging, privacy banking suite, menu for Ξlderfier (decentralized verification) nodes, complete with 'Elderfyre Stayking' ceremony, plus built-in mining. 🔥
+
+
+![](https://github.com/ColinRitman/xfg_wallet/blob/a3cc073a4ef9ab3961dde35d5ca3616a36181be3/assets/images/xfgwalletdesktopsplash.gif)
+
 
 ### 🔐 Advanced Security
 - **PIN Authentication** with PBKDF2 secure hashing
@@ -151,19 +154,10 @@ static const List<String> defaultRemoteNodes = [
 ```
 
 #### Node Requirements
-- RPC port: `28180` (default)
+- RPC port: `18180` (default)
 - Wallet RPC port: `8070`
 - Must support standard CryptoNote RPC methods
 
-## 📱 Screenshots
-
-| Splash Screen | Wallet Setup | Dashboard | Send Transaction |
-|---------------|--------------|-----------|------------------|
-| ![Splash](docs/screenshots/splash.png) | ![Setup](docs/screenshots/setup.png) | ![Dashboard](docs/screenshots/dashboard.png) | ![Send](docs/screenshots/send.png) |
-
-| Elderfier Staking | Encrypted Messaging | Mining Control | Settings |
-|-------------------|---------------------|----------------|----------|
-| ![Elderfier](docs/screenshots/elderfier.png) | ![Messaging](docs/screenshots/messaging.png) | ![Mining](docs/screenshots/mining.png) | ![Settings](docs/screenshots/settings.png) |
 
 ## 🔒 Security Features
 
