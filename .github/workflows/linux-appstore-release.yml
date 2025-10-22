@@ -70,12 +70,8 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
 
-      - name: Download xfg-stark-cli
-        run: |
-          curl -L -o xfg-stark-cli-linux "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-linux"
-          chmod +x xfg-stark-cli-linux
-          mkdir -p assets/bin
-          mv xfg-stark-cli-linux assets/bin/
+      - name: Download required binaries
+        run: ./scripts/ensure-binaries.sh
 
       - name: Enable Linux desktop support
         run: |
@@ -138,12 +134,8 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
 
-      - name: Download xfg-stark-cli
-        run: |
-          curl -L -o xfg-stark-cli-linux "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-linux"
-          chmod +x xfg-stark-cli-linux
-          mkdir -p assets/bin
-          mv xfg-stark-cli-linux assets/bin/
+      - name: Download required binaries
+        run: ./scripts/ensure-binaries.sh
 
       - name: Install Flatpak and dependencies
         run: |
@@ -158,6 +150,12 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Analyze code
+        run: flutter analyze
 
       - name: Build Linux desktop app
         run: flutter build linux --release
@@ -204,12 +202,8 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
 
-      - name: Download xfg-stark-cli
-        run: |
-          curl -L -o xfg-stark-cli-linux "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-linux"
-          chmod +x xfg-stark-cli-linux
-          mkdir -p assets/bin
-          mv xfg-stark-cli-linux assets/bin/
+      - name: Download required binaries
+        run: ./scripts/ensure-binaries.sh
 
       - name: Enable Linux desktop support
         run: |
@@ -219,6 +213,12 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Analyze code
+        run: flutter analyze
 
       - name: Build Linux desktop app
         run: flutter build linux --release
