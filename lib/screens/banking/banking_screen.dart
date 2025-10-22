@@ -1,4 +1,4 @@
--import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/wallet_provider.dart';
 import '../../utils/theme.dart';
@@ -65,8 +65,8 @@ class _BankingScreenState extends State<BankingScreen>
       const String recipientAddress = '0x0000000000000000000000000000000000000000';
       
       // Generate STARK proof using CLI
-      final Map<String, dynamic> result = await CLIService.generateBurnProof(
-        privateKey: privateKey,
+      final BurnProofResult result = await CLIService.generateBurnProof(
+        transactionHash: 'burn_${DateTime.now().millisecondsSinceEpoch}', // Generate a unique transaction hash
         burnAmount: burnAmount,
         recipientAddress: recipientAddress,
       );
@@ -74,21 +74,13 @@ class _BankingScreenState extends State<BankingScreen>
       // Close loading dialog
       Navigator.of(context).pop();
 
-      if (result['success']) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Successfully burned $burnAmount XFG to mint $heatAmount Ξmbers'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Burn failed: ${result['error']}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Successfully burned $burnAmount XFG to mint $heatAmount Ξmbers\nProof Hash: ${result.proofHash}'),
+          backgroundColor: Colors.green,
+        ),
+      );
     } catch (e) {
       // Close loading dialog
       Navigator.of(context).pop();
