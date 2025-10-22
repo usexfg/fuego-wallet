@@ -73,6 +73,9 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Download required binaries
+        run: ./scripts/ensure-binaries.sh
+
       - name: Run tests
         run: flutter test
 
