@@ -9,7 +9,7 @@ class FuegoRPCService {
   String _baseUrl;
   final String? _password;
 
-  static const int defaultRpcPort = 28180;
+  static const int defaultRpcPort = 18180;
   static const int defaultWalletPort = 8070;
 
   // Default remote Fuego nodes (public community nodes)

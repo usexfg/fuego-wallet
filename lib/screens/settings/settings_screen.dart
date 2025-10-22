@@ -240,7 +240,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   TextField(
                     controller: customNodeController,
                     decoration: InputDecoration(
-                      hintText: 'node.example.com:28180',
+                      hintText: 'node.example.com:18180',
                       hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.5)),
                       enabledBorder: OutlineInputBorder(
                         borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
