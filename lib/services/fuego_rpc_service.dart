@@ -3,14 +3,13 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:crypto/crypto.dart';
 import '../models/wallet.dart';
+import '../models/network_config.dart';
 
 class FuegoRPCService {
   final Dio _dio;
   String _baseUrl;
   final String? _password;
-
-  static const int defaultRpcPort = 18180;
-  static const int defaultWalletPort = 8070;
+  NetworkConfig _networkConfig;
 
   // Default remote Fuego nodes (public community nodes)
   static const List<String> defaultRemoteNodes = [
@@ -24,10 +23,12 @@ class FuegoRPCService {
 
   FuegoRPCService({
     String host = 'localhost',
-    int port = defaultRpcPort,
+    int? port,
     String? password,
-  }) : _baseUrl = 'http://$host:$port',
+    NetworkConfig? networkConfig,
+  }) : _baseUrl = 'http://$host:${port ?? NetworkConfig.mainnet.daemonRpcPort}',
        _password = password,
+       _networkConfig = networkConfig ?? NetworkConfig.mainnet,
        _dio = Dio(BaseOptions(
          connectTimeout: const Duration(seconds: 30),
          receiveTimeout: const Duration(seconds: 30),
@@ -35,9 +36,20 @@ class FuegoRPCService {
        ));
 
   // Update connection to a new node
-  void updateNode(String host, {int port = defaultRpcPort}) {
-    _baseUrl = 'http://$host:$port';
+  void updateNode(String host, {int? port}) {
+    _baseUrl = 'http://$host:${port ?? _networkConfig.daemonRpcPort}';
   }
+
+  // Update network configuration
+  void updateNetworkConfig(NetworkConfig config) {
+    _networkConfig = config;
+    // Update base URL with new port if needed
+    final uri = Uri.parse(_baseUrl);
+    _baseUrl = 'http://${uri.host}:${config.daemonRpcPort}';
+  }
+
+  // Get current network configuration
+  NetworkConfig get networkConfig => _networkConfig;
 
   // Get current node URL
   String get currentNodeUrl => _baseUrl;
@@ -299,8 +311,8 @@ class FuegoRPCService {
     Map<String, dynamic> params,
   ) async {
     try {
-      // Use local walletd instead of remote
-      final walletUrl = 'http://localhost:8070';
+      // Use local walletd with network-specific port
+      final walletUrl = 'http://localhost:${_networkConfig.walletRpcPort}';
       
       final response = await _dio.post(
         '$walletUrl/json_rpc',

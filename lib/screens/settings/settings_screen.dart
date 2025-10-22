@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 import '../../providers/wallet_provider.dart';
 import '../../services/fuego_rpc_service.dart';
 import '../../services/security_service.dart';
+import '../../models/network_config.dart';
 import '../../utils/theme.dart';
 import '../wallet_setup/setup_screen.dart';
+import 'network_selection_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -457,6 +459,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
                 onTap: _showNodeSelectionDialog,
+              ),
+              _buildSettingsTile(
+                icon: walletProvider.networkConfig.isTestnet ? Icons.science : Icons.public,
+                title: 'Network',
+                subtitle: walletProvider.networkConfig.name,
+                trailing: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: walletProvider.networkConfig.isTestnet 
+                        ? Colors.orange.withOpacity(0.2)
+                        : Colors.green.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: walletProvider.networkConfig.isTestnet 
+                          ? Colors.orange 
+                          : Colors.green,
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    walletProvider.networkConfig.isTestnet ? 'TESTNET' : 'MAINNET',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: walletProvider.networkConfig.isTestnet 
+                          ? Colors.orange 
+                          : Colors.green,
+                    ),
+                  ),
+                ),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const NetworkSelectionScreen(),
+                    ),
+                  );
+                },
               ),
               _buildSettingsTile(
                 icon: Icons.sync,

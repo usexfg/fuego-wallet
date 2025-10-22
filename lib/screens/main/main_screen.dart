@@ -55,13 +55,13 @@ class _MainScreenState extends State<MainScreen> {
                   index: 0,
                 ),
                 _buildNavItem(
-                  icon: Icons.message,
-                  label: 'Messages',
+                  icon: Icons.account_balance,
+                  label: 'CD Banking',
                   index: 1,
                 ),
                 _buildNavItem(
-                  icon: Icons.account_balance,
-                  label: 'CD Banking',
+                  icon: Icons.message,
+                  label: 'Messages',
                   index: 2,
                 ),
                 _buildNavItem(

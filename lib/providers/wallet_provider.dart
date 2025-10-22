@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../models/wallet.dart';
+import '../models/network_config.dart';
 import '../services/fuego_rpc_service.dart';
 import '../services/security_service.dart';
 
@@ -19,6 +20,7 @@ class WalletProvider extends ChangeNotifier {
   String? _error;
   String? _nodeUrl;
   Timer? _syncTimer;
+  NetworkConfig _networkConfig = NetworkConfig.mainnet;
 
   // Mining status
   int _miningSpeed = 0;
@@ -48,6 +50,7 @@ class WalletProvider extends ChangeNotifier {
   int get miningSpeed => _miningSpeed;
   int get miningThreads => _miningThreads;
   ConnectivityResult get connectivityResult => _connectivityResult;
+  NetworkConfig get networkConfig => _networkConfig;
 
   bool get hasWallet => _wallet != null;
   bool get isWalletSynced => _wallet?.synced ?? false;
@@ -351,7 +354,7 @@ class WalletProvider extends ChangeNotifier {
       // Parse the URL to extract host and port
       final uri = Uri.parse(url);
       final host = uri.host;
-      final port = uri.port == 80 || uri.port == 443 ? FuegoRPCService.defaultRpcPort : uri.port;
+      final port = uri.port == 80 || uri.port == 443 ? _networkConfig.daemonRpcPort : uri.port;
 
       // Update the RPC service with new node
       _rpcService.updateNode(host, port: port);
@@ -367,6 +370,21 @@ class WalletProvider extends ChangeNotifier {
     }
 
     _setLoading(false);
+  }
+
+  /// Update network configuration
+  Future<void> updateNetworkConfig(NetworkConfig config) async {
+    _networkConfig = config;
+    _rpcService.updateNetworkConfig(config);
+    
+    // Update node URL if it's using the old port
+    if (_nodeUrl != null) {
+      final uri = Uri.parse(_nodeUrl!);
+      final newUrl = '${uri.scheme}://${uri.host}:${config.daemonRpcPort}';
+      _nodeUrl = newUrl;
+    }
+    
+    notifyListeners();
   }
 
   Future<void> _checkConnection() async {

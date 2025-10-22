@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'providers/wallet_provider.dart';
 import 'services/fuego_rpc_service.dart';
 import 'services/wallet_daemon_service.dart';
+import 'models/network_config.dart';
 import 'screens/splash_screen.dart';
 import 'utils/theme.dart';
 
@@ -14,6 +15,7 @@ void main() async {
   await WalletDaemonService.initialize(
     daemonAddress: '207.244.247.64',
     daemonPort: 18180,
+    networkConfig: NetworkConfig.mainnet,
   );
   
   // Set preferred orientations
@@ -47,6 +49,7 @@ class XFGWalletApp extends StatelessWidget {
             rpcService: FuegoRPCService(
               host: '207.244.247.64',
               port: 18180,
+              networkConfig: NetworkConfig.mainnet,
             ),
           ),
         ),

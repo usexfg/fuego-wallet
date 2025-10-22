@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
 import '../../services/cli_service.dart';
 import '../../services/wallet_service.dart';
 import '../../models/transaction_model.dart';
+import '../../providers/wallet_provider.dart';
+import '../../models/wallet.dart';
+import '../../utils/theme.dart';
 
 class BurnDepositsScreen extends StatefulWidget {
   const BurnDepositsScreen({Key? key}) : super(key: key);
@@ -17,7 +21,7 @@ class _BurnDepositsScreenState extends State<BurnDepositsScreen> {
   String _selectedBurnType = 'Standard Burn';
   bool _isAddressValid = false;
   bool _isProcessing = false;
-  TransactionModel? _lastBurnTransaction;
+  WalletTransaction? _lastBurnTransaction;
 
   @override
   void initState() {
@@ -27,9 +31,21 @@ class _BurnDepositsScreenState extends State<BurnDepositsScreen> {
 
   Future<void> _fetchLastBurnTransaction() async {
     try {
-      // Fetch the last burn transaction from wallet history
-      final List<TransactionModel> transactions = await WalletService.getTransactions();
-      final burnTransactions = transactions.where((tx) => tx.isBurnTransaction).toList();
+      // Get wallet provider to access transactions
+      final walletProvider = Provider.of<WalletProvider>(context, listen: false);
+      
+      // Refresh transactions to get the latest data
+      await walletProvider.refreshTransactions();
+      
+      // Get all transactions and find burn transactions
+      final transactions = walletProvider.transactions;
+      
+      // Filter for burn transactions (outgoing transactions with specific characteristics)
+      final burnTransactions = transactions.where((tx) => 
+        tx.isSpending && // Outgoing transaction
+        tx.amount > 0 && // Has amount
+        tx.confirmations > 0 // Confirmed transaction
+      ).toList();
       
       if (burnTransactions.isNotEmpty) {
         setState(() {

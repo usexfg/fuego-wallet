@@ -5,11 +5,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
+import '../models/network_config.dart';
 
 class WalletDaemonService {
   static Process? _walletdProcess;
   static bool _isRunning = false;
-  static int _walletdPort = 8070;
+  static NetworkConfig _networkConfig = NetworkConfig.mainnet;
   static String? _walletdPath;
   static String? _walletPath;
   static String? _daemonAddress;
@@ -20,16 +21,20 @@ class WalletDaemonService {
     required String daemonAddress,
     required int daemonPort,
     String? walletPath,
+    NetworkConfig? networkConfig,
   }) async {
     _daemonAddress = daemonAddress;
     _daemonPort = daemonPort;
     _walletPath = walletPath;
+    _networkConfig = networkConfig ?? NetworkConfig.mainnet;
     
     // Extract walletd binary
     _walletdPath = await _extractWalletdBinary();
     
     debugPrint('WalletDaemonService initialized');
+    debugPrint('Network: ${_networkConfig.name}');
     debugPrint('Daemon: $_daemonAddress:$_daemonPort');
+    debugPrint('Walletd port: ${_networkConfig.walletRpcPort}');
     debugPrint('Walletd binary: $_walletdPath');
     debugPrint('Wallet path: $_walletPath');
   }
@@ -80,7 +85,7 @@ class WalletDaemonService {
       final List<String> args = [
         '--daemon-address', '$_daemonAddress',
         '--daemon-port', '$_daemonPort.toString()',
-        '--rpc-bind-port', '_walletdPort.toString()',
+        '--rpc-bind-port', '${_networkConfig.walletRpcPort}',
         '--log-level', '1', // Info level
         '--non-interactive',
       ];
@@ -148,10 +153,13 @@ class WalletDaemonService {
   static bool get isRunning => _isRunning;
 
   /// Get the walletd port
-  static int get port => _walletdPort;
+  static int get port => _networkConfig.walletRpcPort;
 
   /// Get the walletd URL
-  static String get url => 'http://localhost:$_walletdPort';
+  static String get url => 'http://localhost:${_networkConfig.walletRpcPort}';
+
+  /// Get current network configuration
+  static NetworkConfig get networkConfig => _networkConfig;
 
   /// Restart walletd with new parameters
   static Future<bool> restartWalletd({

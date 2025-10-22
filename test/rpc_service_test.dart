@@ -23,7 +23,7 @@ void main() {
     test('should use default port when not specified', () {
       final service = FuegoRPCService();
       service.updateNode('test-node.com');
-      expect(service.currentNodeUrl, 'http://test-node.com:28180');
+      expect(service.currentNodeUrl, 'http://testnetnode.com:28280');
     });
   });
 }

@@ -109,7 +109,7 @@ lib/
 ### Network Requirements
 - **Fuego Daemon**: Requires running Fuego daemon for full functionality
 - **RPC Ports**: 
-  - 28180 (Daemon RPC)
+  - 18180 (Daemon RPC)
   - 8070 (Wallet Service RPC)
 
 ## 🚀 Getting Started

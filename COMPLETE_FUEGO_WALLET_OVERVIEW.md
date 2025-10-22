@@ -49,13 +49,13 @@ I have successfully created a **complete, production-ready Flutter mobile wallet
 ### 🌐 **Network & Node Management**
 ✅ **Full Fuego RPC Integration** - Complete daemon communication  
 ✅ **Connection Status Monitoring** - Real-time network connectivity tracking  
-✅ **Custom Node Support** - Connect to any Fuego node  
+✅ **Custom Node Support** - Connect to any daemon remote or local   
 ✅ **Sync Progress Display** - Visual blockchain synchronization progress  
 ✅ **Network Health Indicators** - Connection quality and status reporting  
 
-### 🔥 **Elderfier Staking System**
-✅ **Elderfier Node Registration** - Complete node registration with 800 XFG minimum stake  
-✅ **My Nodes Management** - Track personal Elderfier nodes with status monitoring  
+### 🔥 **Elderfyre StayKing System**
+✅ **Elderfier Node Registration** - Complete node registration ceremony with 800 XFG stake  
+✅ **MyFier Node Management** - Track your personal Elderfier node with status monitoring  
 ✅ **Network Overview** - View all network Elderfier nodes and statistics  
 ✅ **Stake Management** - Full staking interface with balance validation  
 ✅ **Consensus Participation** - Support for Fast-Pass, Fall-Back, and Full-Quorum consensus  
