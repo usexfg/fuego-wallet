@@ -47,15 +47,17 @@ jobs:
       - name: Enable macOS desktop support
         run: flutter config --enable-macos-desktop
 
-      - name: Download xfg-stark-cli
-        run: |
-          curl -L -o xfg-stark-cli-macos "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-macos"
-          chmod +x xfg-stark-cli-macos
-          mkdir -p assets/bin
-          mv xfg-stark-cli-macos assets/bin/
+      - name: Download required binaries
+        run: ./scripts/ensure-binaries.sh
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Analyze code
+        run: flutter analyze
 
       - name: Build macOS desktop app
         run: flutter build macos --release
@@ -97,14 +99,17 @@ jobs:
       - name: Enable Windows desktop support
         run: flutter config --enable-windows-desktop
 
-      - name: Download xfg-stark-cli
-        run: |
-          curl -L -o xfg-stark-cli-windows.exe "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-windows.exe"
-          New-Item -ItemType Directory -Force -Path assets\bin
-          Move-Item xfg-stark-cli-windows.exe assets\bin\xfg-stark-cli.exe
+      - name: Download required binaries
+        run: ./scripts/ensure-binaries.sh
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Analyze code
+        run: flutter analyze
 
       - name: Build Windows desktop app
         run: flutter build windows --release
@@ -165,6 +170,12 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Analyze code
+        run: flutter analyze
 
       - name: Build Linux desktop app (GLIBC 2.35)
         run: |
@@ -270,6 +281,12 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Analyze code
+        run: flutter analyze
 
       - name: Build Linux desktop app (Latest)
         run: flutter build linux --release
