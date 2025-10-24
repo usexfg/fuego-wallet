@@ -65,7 +65,8 @@ jobs:
       - name: Download xfg-stark-cli
         run: |
           curl -L -o xfg-stark-cli-linux.tar.gz "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-linux.tar.gz"
-          tar -xzf xfg-stark-cli-linux.tar.gz
+          tar -xzf xfg-stark-cli-linux.tar.gz --strip-components=1
+          find . -name "xfg-stark-cli-linux" -type f
           chmod +x xfg-stark-cli-linux
           mkdir -p assets/bin
           mv xfg-stark-cli-linux assets/bin/
