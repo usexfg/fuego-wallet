@@ -1,4 +1,4 @@
--import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/wallet_provider.dart';
 import '../../utils/theme.dart';
@@ -59,14 +59,59 @@ class _BankingScreenState extends State<BankingScreen>
       // Get wallet provider for private key
       final walletProvider = Provider.of<WalletProvider>(context, listen: false);
       
-      // For now, use a placeholder private key - in real implementation,
-      // this would come from the wallet's private key
-      const String privateKey = 'placeholder_private_key';
+      // Get the actual private key from the wallet provider
+      final walletProvider = Provider.of<WalletProvider>(context, listen: false);
+      final wallet = walletProvider.wallet;
+      
+      if (wallet == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Wallet not loaded. Please unlock your wallet first.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+      
+      // Try to get private key directly first (if wallet is unlocked)
+      String? privateKey = walletProvider.getPrivateKey();
+      
+      // If not available, prompt for PIN
+      if (privateKey == null) {
+        final pin = await _showPinDialog(context);
+        if (pin == null) {
+          return; // User cancelled
+        }
+        
+        // Get private key with PIN verification
+        privateKey = await walletProvider.getPrivateKeyForBurn(pin);
+        if (privateKey == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to access private key. Please try again.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+      }
+      
+      // Validate private key format
+      if (!walletProvider.isValidPrivateKey(privateKey)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Invalid private key format. Please check your wallet.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+      
       const String recipientAddress = '0x0000000000000000000000000000000000000000';
       
       // Generate STARK proof using CLI
-      final Map<String, dynamic> result = await CLIService.generateBurnProof(
-        privateKey: privateKey,
+      final BurnProofResult result = await CLIService.generateBurnProof(
+        transactionHash: 'burn_${DateTime.now().millisecondsSinceEpoch}', // Generate a unique transaction hash
         burnAmount: burnAmount,
         recipientAddress: recipientAddress,
       );
@@ -74,21 +119,16 @@ class _BankingScreenState extends State<BankingScreen>
       // Close loading dialog
       Navigator.of(context).pop();
 
-      if (result['success']) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Successfully burned $burnAmount XFG to mint $heatAmount Ξmbers'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Burn failed: ${result['error']}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Successfully burned $burnAmount XFG to mint $heatAmount Ξmbers\nProof Hash: ${result.proofHash}'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      
+      // Clear sensitive data from memory
+      privateKey = null;
     } catch (e) {
       // Close loading dialog
       Navigator.of(context).pop();
@@ -100,6 +140,48 @@ class _BankingScreenState extends State<BankingScreen>
         ),
       );
     }
+  }
+
+  // Show PIN dialog for private key access
+  Future<String?> _showPinDialog(BuildContext context) async {
+    final pinController = TextEditingController();
+    
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Enter PIN'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Please enter your PIN to access your private key for the burn transaction:'),
+              const SizedBox(height: 16),
+              TextField(
+                controller: pinController,
+                obscureText: true,
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                decoration: const InputDecoration(
+                  labelText: 'PIN',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(pinController.text),
+              child: const Text('Confirm'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override

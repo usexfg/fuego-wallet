@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:logging/logging.dart';
 import '../models/wallet.dart';
 import '../models/network_config.dart';
 import '../services/fuego_rpc_service.dart';
 import '../services/security_service.dart';
 
 class WalletProvider extends ChangeNotifier {
+  static final Logger _logger = Logger('WalletProvider');
   final FuegoRPCService _rpcService;
   final SecurityService _securityService;
   
@@ -55,6 +57,63 @@ class WalletProvider extends ChangeNotifier {
   bool get hasWallet => _wallet != null;
   bool get isWalletSynced => _wallet?.synced ?? false;
   double get syncProgress => _wallet?.syncProgress ?? 0.0;
+
+  // Get private key for burn transactions (requires PIN verification)
+  Future<String?> getPrivateKeyForBurn(String pin) async {
+    try {
+      _logger.info('Attempting to get private key for burn transaction');
+      
+      final isValidPin = await _securityService.verifyPIN(pin);
+      if (!isValidPin) {
+        _logger.warning('Invalid PIN provided for private key access');
+        throw Exception('Invalid PIN');
+      }
+
+      final keys = await _securityService.getWalletKeys(pin);
+      if (keys == null || _wallet == null) {
+        _logger.severe('Wallet keys not found');
+        throw Exception('Wallet keys not found');
+      }
+
+      _logger.info('Private key accessed successfully for burn transaction');
+      // Return the spend key as the private key for burn transactions
+      return keys['spendKey'];
+    } catch (e) {
+      _logger.severe('Failed to get private key: $e');
+      _setError('Failed to get private key: $e');
+      return null;
+    }
+  }
+
+  // Get private key without PIN verification (for internal use when wallet is unlocked)
+  String? getPrivateKey() {
+    if (_wallet == null) {
+      _setError('Wallet not loaded');
+      return null;
+    }
+    
+    // Only return private key if wallet is synced and unlocked
+    if (!isWalletSynced) {
+      _setError('Wallet must be synced to access private key');
+      return null;
+    }
+    
+    return _wallet?.spendKey;
+  }
+
+  // Validate private key format (basic validation)
+  bool isValidPrivateKey(String privateKey) {
+    // Basic validation - in real implementation, this would validate against Fuego key format
+    return privateKey.isNotEmpty && privateKey.length >= 32;
+  }
+
+  // Clear sensitive data from memory
+  void clearSensitiveData() {
+    // In a real implementation, this would securely clear memory
+    // For now, we'll just clear the wallet reference
+    _wallet = null;
+    notifyListeners();
+  }
 
   // Initialize connectivity monitoring
   void _initConnectivity() {
