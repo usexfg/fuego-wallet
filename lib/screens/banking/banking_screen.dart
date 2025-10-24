@@ -60,7 +60,6 @@ class _BankingScreenState extends State<BankingScreen>
       final walletProvider = Provider.of<WalletProvider>(context, listen: false);
       
       // Get the actual private key from the wallet provider
-      final walletProvider = Provider.of<WalletProvider>(context, listen: false);
       final wallet = walletProvider.wallet;
       
       if (wallet == null) {
