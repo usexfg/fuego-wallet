@@ -120,7 +120,7 @@ class WalletDaemonService {
       // Check if process is still running
       if (_walletdProcess!.exitCode == null) {
         _isRunning = true;
-        debugPrint('Walletd started successfully on port $_walletdPort');
+        debugPrint('Walletd started successfully on port ${_networkConfig.walletRpcPort}');
         return true;
       } else {
         debugPrint('Walletd failed to start');

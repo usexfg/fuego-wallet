@@ -277,7 +277,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     final walletProvider = Provider.of<WalletProvider>(context, listen: false);
                     final nodeUrl = selectedNode.contains(':')
                         ? 'http://$selectedNode'
-                        : 'http://$selectedNode:${FuegoRPCService.defaultRpcPort}';
+                        : 'http://$selectedNode:${walletProvider.networkConfig.daemonRpcPort}';
 
                     await walletProvider.connectToNode(nodeUrl);
 
