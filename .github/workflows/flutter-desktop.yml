@@ -47,15 +47,17 @@ jobs:
       - name: Enable macOS desktop support
         run: flutter config --enable-macos-desktop
 
-      - name: Download xfg-stark-cli
-        run: |
-          curl -L -o xfg-stark-cli-macos "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-macos"
-          chmod +x xfg-stark-cli-macos
-          mkdir -p assets/bin
-          mv xfg-stark-cli-macos assets/bin/
+      - name: Download required binaries
+        run: ./scripts/ensure-binaries.sh
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Analyze code
+        run: flutter analyze
 
       - name: Build macOS desktop app
         run: flutter build macos --release
@@ -97,14 +99,17 @@ jobs:
       - name: Enable Windows desktop support
         run: flutter config --enable-windows-desktop
 
-      - name: Download xfg-stark-cli
-        run: |
-          curl -L -o xfg-stark-cli-windows.exe "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-windows.exe"
-          New-Item -ItemType Directory -Force -Path assets\bin
-          Move-Item xfg-stark-cli-windows.exe assets\bin\xfg-stark-cli.exe
+      - name: Download required binaries
+        run: ./scripts/ensure-binaries.sh
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Analyze code
+        run: flutter analyze
 
       - name: Build Windows desktop app
         run: flutter build windows --release
@@ -166,6 +171,12 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Run tests
+        run: flutter test
+
+      - name: Analyze code
+        run: flutter analyze
+
       - name: Build Linux desktop app (GLIBC 2.35)
         run: |
           flutter build linux --release
@@ -198,47 +209,11 @@ jobs:
       - name: Upload to Release
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: build/linux/x64/release/bundle/XF₲-Wallet-Linux-GLIBC-2.31.tar.gz
           name: XF₲-Wallet-Linux-GLIBC-2.31.tar.gz
-
-      - name: Create AppImage (GLIBC 2.35)
-        run: |
-          cd build/linux/x64/release/bundle
-          # Download appimagetool
-          curl -LO https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
-          chmod +x appimagetool-x86_64.AppImage
-          # Create desktop file for AppImage
-          cat > XF₲-Wallet.desktop << 'EOF'
-          [Desktop Entry]
-          Type=Application
-          Name=XF₲ Wallet
-          Comment=Privacy-focused cryptocurrency wallet
-          Exec=fuego_wallet
-          Icon=fuego_wallet
-          Categories=Finance;
-          EOF
-          # Copy icon file
-          cp ../../../../../app_icon_256.png fuego_wallet.png
-          # Create AppImage (using extraction to avoid FUSE)
-          ./appimagetool-x86_64.AppImage --appimage-extract
-          ./squashfs-root/AppRun . XF₲-Wallet-Linux-GLIBC-2.35.AppImage
-          # Clean up
-          rm -f appimagetool-x86_64.AppImage
-
-      - name: Upload AppImage artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: xfg-wallet-linux-glibc-235-appimage
-          path: build/linux/x64/release/bundle/XF₲-Wallet-Linux-GLIBC-2.35.AppImage
-          retention-days: 30
-
-      - name: Upload AppImage to Release
-        if: github.event_name == 'release'
-        uses: softprops/action-gh-release@v1
-        with:
-          files: build/linux/x64/release/bundle/XF₲-Wallet-Linux-GLIBC-2.35.AppImage
-          name: XF₲-Wallet-Linux-GLIBC-2.35.AppImage
 
 
   build-linux-latest:
@@ -271,6 +246,12 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Run tests
+        run: flutter test
+
+      - name: Analyze code
+        run: flutter analyze
+
       - name: Build Linux desktop app (Latest)
         run: flutter build linux --release
 
@@ -289,6 +270,8 @@ jobs:
       - name: Upload to Release
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: build/linux/x64/release/bundle/XF₲-Wallet-Linux-Latest.tar.gz
           name: XF₲-Wallet-Linux-Latest.tar.gz
