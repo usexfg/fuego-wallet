@@ -88,12 +88,6 @@ flutter:
     - assets/icons/
     - assets/logo/
     - assets/bin/
-    - assets/bin/xfg-stark-cli-linux
-    - assets/bin/xfg-stark-cli-macos
-    - assets/bin/xfg-stark-cli-windows.exe
-    - assets/bin/fuego-walletd-linux
-    - assets/bin/fuego-walletd-macos
-    - assets/bin/fuego-walletd-windows.exe
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware

@@ -65,10 +65,18 @@ jobs:
 
       - name: Download xfg-stark-cli
         run: |
-          curl -L -o xfg-stark-cli-macos "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-macos"
+          curl -L -o xfg-stark-cli-macos.tar.gz "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-macos.tar.gz"
+          tar -xzf xfg-stark-cli-macos.tar.gz
           chmod +x xfg-stark-cli-macos
           mkdir -p assets/bin
           mv xfg-stark-cli-macos assets/bin/
+          rm xfg-stark-cli-macos.tar.gz
+
+      - name: Download fuego-walletd
+        run: |
+          curl -L -o fuego-walletd-macos "https://github.com/usexfg/fuego/releases/latest/download/fuego-walletd-macos"
+          chmod +x fuego-walletd-macos
+          mv fuego-walletd-macos assets/bin/
 
       - name: Install dependencies
         run: flutter pub get
