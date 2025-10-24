@@ -68,8 +68,8 @@ jobs:
           tar -tzf xfg-stark-cli-linux.tar.gz
           tar -xzf xfg-stark-cli-linux.tar.gz
           ls -la
-          find . -name "*xfg-stark-cli*" -type f
-          BINARY_PATH=$(find . -name "*xfg-stark-cli*" -type f | head -1)
+          find . -name "xfg-stark-cli" -type f
+          BINARY_PATH=$(find . -name "xfg-stark-cli" -type f | head -1)
           echo "Found binary at: $BINARY_PATH"
           chmod +x "$BINARY_PATH"
           mkdir -p assets/bin
