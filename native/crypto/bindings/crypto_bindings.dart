@@ -167,14 +167,29 @@ class NativeCrypto {
     throw UnimplementedError('Requires native library implementation');
   }
 
-  /// Generate seed phrase from private key
-  static String keyToMnemonic(Uint8List privateKey, {String language = 'english'}) {
-    throw UnimplementedError('Requires native library implementation');
+  /// Generate seed phrase from private key using native library
+  static String? keyToMnemonic(Uint8List privateKey, {String language = 'english'}) {
+    if (!isAvailable) return null;
+
+    // TODO: Call fuego_key_to_mnemonic FFI function
+    // This will be implemented when the native library is properly linked
+    return null; // Placeholder until FFI binding is complete
   }
 
-  /// Derive private key from seed phrase
+  /// Derive private key from seed phrase using native library
   static Uint8List? mnemonicToKey(String seedPhrase) {
-    throw UnimplementedError('Requires native library implementation');
+    if (!isAvailable) return null;
+
+    // TODO: Call fuego_mnemonic_to_key FFI function
+    return null; // Placeholder until FFI binding is complete
+  }
+
+  /// Validate mnemonic seed phrase using native library
+  static bool validateMnemonic(String seedPhrase) {
+    if (!isAvailable) return false;
+
+    // TODO: Call fuego_validate_mnemonic FFI function
+    return false; // Placeholder until FFI binding is complete
   }
 
   /// Generate wallet address from keys

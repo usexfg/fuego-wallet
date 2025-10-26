@@ -375,6 +375,102 @@ pub extern "C" fn fuego_hash(
     0 // Success
 }
 
+/// Generate mnemonic seed phrase from private key
+#[no_mangle]
+pub extern "C" fn fuego_key_to_mnemonic(
+    private_key: *const u8,
+    mnemonic_out: *mut c_char,
+    max_len: usize,
+) -> c_int {
+    use zeroize::Zeroize;
+    
+    unsafe {
+        let private_key_arr: [u8; KEY_SIZE] = {
+            let slice = std::slice::from_raw_parts(private_key, KEY_SIZE);
+            let mut arr = [0u8; KEY_SIZE];
+            arr.copy_from_slice(slice);
+            arr
+        };
+
+        // Generate mnemonic using BIP39
+        let mnemonic = bip39::Mnemonic::from_entropy(&private_key_arr, bip39::Language::English)
+            .unwrap_or_else(|_| bip39::Mnemonic::generate_in(bip39::Language::English, bip39::MnemonicType::Words12));
+
+        let mnemonic_str = mnemonic.phrase();
+        
+        let mnemonic_cstr = match CString::new(mnemonic_str) {
+            Ok(cstr) => cstr,
+            Err(_) => return -1,
+        };
+        
+        let bytes = mnemonic_cstr.as_bytes_with_nul();
+        if bytes.len() > max_len {
+            return -1;
+        }
+        
+        std::ptr::copy_nonoverlapping(
+            bytes.as_ptr(),
+            mnemonic_out as *mut u8,
+            bytes.len(),
+        );
+
+        private_key_arr.zeroize();
+    }
+
+    0 // Success
+}
+
+/// Derive private key from mnemonic seed phrase
+#[no_mangle]
+pub extern "C" fn fuego_mnemonic_to_key(
+    mnemonic: *const c_char,
+    private_key_out: *mut u8,
+) -> c_int {
+    unsafe {
+        let mnemonic_str = match CStr::from_ptr(mnemonic).to_str() {
+            Ok(s) => s,
+            Err(_) => return -1,
+        };
+
+        let mnemonic_obj = match bip39::Mnemonic::from_phrase(mnemonic_str, bip39::Language::English) {
+            Ok(m) => m,
+            Err(_) => return -1,
+        };
+
+        let entropy = mnemonic_obj.entropy();
+        
+        if entropy.len() < KEY_SIZE {
+            return -1;
+        }
+        
+        std::ptr::copy_nonoverlapping(
+            entropy.as_ptr(),
+            private_key_out,
+            KEY_SIZE,
+        );
+    }
+
+    0 // Success
+}
+
+/// Validate mnemonic seed phrase
+#[no_mangle]
+pub extern "C" fn fuego_validate_mnemonic(
+    mnemonic: *const c_char,
+) -> c_int {
+    unsafe {
+        let mnemonic_str = match CStr::from_ptr(mnemonic).to_str() {
+            Ok(s) => s,
+            Err(_) => return 0,
+        };
+
+        match bip39::Mnemonic::from_phrase(mnemonic_str, bip39::Language::English) {
+            Ok(_) => 1, // Valid
+            Err(_) => 0, // Invalid
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

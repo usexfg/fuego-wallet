@@ -18,6 +18,8 @@ base58check = "0.2"
 ripemd160 = "0.1"
 ripemd160-simd = "0.1"
 enveloped-rs = "1.0"
+bip39 = "2.0"
+zeroize = "1.7"
 
 [build-dependencies]
 cc = "1.0"
