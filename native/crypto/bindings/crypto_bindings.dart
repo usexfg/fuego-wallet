@@ -5,18 +5,45 @@
 import 'dart:ffi';
 import 'dart:io';
 import 'dart:typed_data';
-
-extension StringExtension on String {
-  Uint8List toUint8List() {
-    return Uint8List.fromList(codeUnits);
-  }
-}
+import 'package:ffi/ffi.dart';
+import 'package:flutter/foundation.dart';
 
 /// Native crypto library for wallet operations
 /// This provides in-process crypto primitives without needing fuego-walletd
 class NativeCrypto {
   static DynamicLibrary? _library;
   static bool _initialized = false;
+
+  // FFI function signatures
+  static late final _GenerateKeys = _lib.lookupFunction<
+      Int32 Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>),
+      int Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>)>('fuego_generate_keys');
+  
+  static late final _PrivateToPublic = _lib.lookupFunction<
+      Int32 Function(Pointer<Uint8>, Pointer<Uint8>),
+      int Function(Pointer<Uint8>, Pointer<Uint8>)>('fuego_private_to_public');
+  
+  static late final _GenerateAddress = _lib.lookupFunction<
+      Int32 Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>, Pointer<Int8>, Size),
+      int Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>, Pointer<Int8>, int)>('fuego_generate_address');
+  
+  static late final _ValidateAddress = _lib.lookupFunction<
+      Int32 Function(Pointer<Uint8>),
+      int Function(Pointer<Uint8>)>('fuego_validate_address');
+  
+  static late final _KeyToMnemonic = _lib.lookupFunction<
+      Int32 Function(Pointer<Uint8>, Pointer<Int8>, Size),
+      int Function(Pointer<Uint8>, Pointer<Int8>, int)>('fuego_key_to_mnemonic');
+  
+  static late final _MnemonicToKey = _lib.lookupFunction<
+      Int32 Function(Pointer<Uint8>, Pointer<Uint8>),
+      int Function(Pointer<Uint8>, Pointer<Uint8>)>('fuego_mnemonic_to_key');
+  
+  static late final _ValidateMnemonic = _lib.lookupFunction<
+      Int32 Function(Pointer<Uint8>),
+      int Function(Pointer<Uint8>)>('fuego_validate_mnemonic');
+  
+  static late final DynamicLibrary _lib;
 
   /// Initialize the native crypto library
   static Future<bool> init() async {
@@ -27,13 +54,13 @@ class NativeCrypto {
       String libraryPath;
       
       if (Platform.isAndroid) {
-        libraryPath = 'libcrypto.so';
+        libraryPath = 'libfuego_crypto.so';
       } else if (Platform.isIOS || Platform.isMacOS) {
-        libraryPath = 'libcrypto.dylib';
+        libraryPath = 'libfuego_crypto.dylib';
       } else if (Platform.isLinux) {
-        libraryPath = 'libcrypto.so';
+        libraryPath = 'libfuego_crypto.so';
       } else if (Platform.isWindows) {
-        libraryPath = 'crypto.dll';
+        libraryPath = 'fuego_crypto.dll';
       } else {
         throw UnsupportedError('Platform not supported: ${Platform.operatingSystem}');
       }
@@ -43,8 +70,8 @@ class NativeCrypto {
       return true;
     } catch (e) {
       // Library not available - fallback to RPC
-      print('Native crypto library not available: $e');
-      print('Falling back to RPC-based wallet operations');
+      debugPrint('Native crypto library not available: $e');
+      debugPrint('Falling back to RPC-based wallet operations');
       return false;
     }
   }
@@ -52,44 +79,18 @@ class NativeCrypto {
   /// Check if native crypto is available
   static bool get isAvailable => _initialized && _library != null;
 
-  // FFI bindings to Rust library
-  static late final DynamicLibrary _lib;
-  static bool _initialized = false;
-
-  static Future<void> _initializeFFI() async {
-    if (_initialized) return;
-    
-    // Initialize FFI bindings
-    _initialized = true;
-  }
-
-  // FFI function signatures
-  static int Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>)? _generateKeys;
-  static int Function(Pointer<Uint8>, Pointer<Uint8>)? _privateToPublic;
-  
-  // Initialize FFI functions after library is loaded
-  static void _loadFunctions() {
-    _generateKeys = _lib.lookupFunction<
-        int Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>),
-        int Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>)>('fuego_generate_keys');
-    
-    _privateToPublic = _lib.lookupFunction<
-        int Function(Pointer<Uint8>, Pointer<Uint8>),
-        int Function(Pointer<Uint8>, Pointer<Uint8>)>('fuego_private_to_public');
-  }
-
   /// Generate a new wallet key pair
-  /// Returns: [private_spend_key, private_view_key, public_spend_key, public_view_key]
+  /// Returns: Map with keys or null on failure
   static Map<String, Uint8List>? generateKeys() {
     if (!isAvailable) return null;
 
-    final spendPriv = malloc.allocate<Uint8>(32);
-    final viewPriv = malloc.allocate<Uint8>(32);
-    final spendPub = malloc.allocate<Uint8>(32);
-    final viewPub = malloc.allocate<Uint8>(32);
+    final spendPriv = calloc<Uint8>(32);
+    final viewPriv = calloc<Uint8>(32);
+    final spendPub = calloc<Uint8>(32);
+    final viewPub = calloc<Uint8>(32);
 
     try {
-      final result = _generateKeys!(spendPriv, viewPriv, spendPub, viewPub);
+      final result = _GenerateKeys(spendPriv, viewPriv, spendPub, viewPub);
       if (result != 0) return null;
 
       return {
@@ -99,111 +100,160 @@ class NativeCrypto {
         'public_view_key': viewPub.asTypedList(32).toList(),
       };
     } finally {
-      malloc.free(spendPriv);
-      malloc.free(viewPriv);
-      malloc.free(spendPub);
-      malloc.free(viewPub);
+      calloc.free(spendPriv);
+      calloc.free(viewPriv);
+      calloc.free(spendPub);
+      calloc.free(viewPub);
     }
-  }
-
-  /// Generate view key from spend key (deterministic wallets)
-  static Uint8List? generateViewKeyFromSpend(Uint8List spendKey) {
-    throw UnimplementedError('Requires native library implementation');
   }
 
   /// Generate public key from private key
   static Uint8List? generatePublicKey(Uint8List privateKey) {
-    throw UnimplementedError('Requires native library implementation');
-  }
+    if (!isAvailable || privateKey.length != 32) return null;
 
-  /// Generate key image from transaction output
-  static Uint8List? generateKeyImage(
-    Uint8List publicKey,
-    Uint8List privateKey,
-    int outputIndex,
-  ) {
-    throw UnimplementedError('Requires native library implementation');
-  }
+    final privPtr = calloc<Uint8>(32);
+    privPtr.asTypedList(32).setAll(0, privateKey);
+    
+    final pubPtr = calloc<Uint8>(32);
 
-  /// Derive public key from public key (stealth address)
-  static Uint8List? derivePublicKey(
-    Uint8List publicKey,
-    int derivation,
-  ) {
-    throw UnimplementedError('Requires native library implementation');
-  }
+    try {
+      final result = _PrivateToPublic(privPtr, pubPtr);
+      if (result != 0) return null;
 
-  /// Sign transaction
-  static Uint8List? signTransaction(Uint8List transactionHash, Uint8List privateKey) {
-    throw UnimplementedError('Requires native library implementation');
-  }
-
-  /// Verify transaction signature
-  static bool verifySignature(
-    Uint8List signature,
-    Uint8List publicKey,
-    Uint8List message,
-  ) {
-    throw UnimplementedError('Requires native library implementation');
-  }
-
-  /// Generate payment ID
-  static String generatePaymentId() {
-    throw UnimplementedError('Requires native library implementation');
-  }
-
-  /// Hash data
-  static Uint8List hash(Uint8List data) {
-    throw UnimplementedError('Requires native library implementation');
-  }
-
-  /// Seal message (encode for transaction extra)
-  static Uint8List sealMessage(String message, String recipientAddress) {
-    throw UnimplementedError('Requires native library implementation');
-  }
-
-  /// Unseal message (decode from transaction extra)
-  static String? unsealMessage(Uint8List extra, String myAddress) {
-    throw UnimplementedError('Requires native library implementation');
-  }
-
-  /// Generate seed phrase from private key using native library
-  static String? keyToMnemonic(Uint8List privateKey, {String language = 'english'}) {
-    if (!isAvailable) return null;
-
-    // TODO: Call fuego_key_to_mnemonic FFI function
-    // This will be implemented when the native library is properly linked
-    return null; // Placeholder until FFI binding is complete
-  }
-
-  /// Derive private key from seed phrase using native library
-  static Uint8List? mnemonicToKey(String seedPhrase) {
-    if (!isAvailable) return null;
-
-    // TODO: Call fuego_mnemonic_to_key FFI function
-    return null; // Placeholder until FFI binding is complete
-  }
-
-  /// Validate mnemonic seed phrase using native library
-  static bool validateMnemonic(String seedPhrase) {
-    if (!isAvailable) return false;
-
-    // TODO: Call fuego_validate_mnemonic FFI function
-    return false; // Placeholder until FFI binding is complete
+      return pubPtr.asTypedList(32).toList();
+    } finally {
+      calloc.free(privPtr);
+      calloc.free(pubPtr);
+    }
   }
 
   /// Generate wallet address from keys
-  static String generateAddress(
+  static String? generateAddress(
     Uint8List publicSpendKey,
     Uint8List publicViewKey,
-    String addressPrefix, // e.g., "FUEGO" for mainnet
+    String addressPrefix,
   ) {
-    throw UnimplementedError('Requires native library implementation');
+    if (!isAvailable || publicSpendKey.length != 32 || publicViewKey.length != 32) {
+      return null;
+    }
+
+    final spendPtr = calloc<Uint8>(32);
+    final viewPtr = calloc<Uint8>(32);
+    final prefixCStr = addressPrefix.toNativeUtf8();
+    final addrPtr = calloc<Int8>(200);
+
+    spendPtr.asTypedList(32).setAll(0, publicSpendKey);
+    viewPtr.asTypedList(32).setAll(0, publicViewKey);
+
+    try {
+      final result = _GenerateAddress(spendPtr, viewPtr, addrPtr, prefixCStr.cast(), 200);
+      if (result != 0) return null;
+
+      final address = addrPtr.cast<Utf8>().toDartString();
+      return address;
+    } finally {
+      calloc.free(spendPtr);
+      calloc.free(viewPtr);
+      calloc.free(addrPtr);
+      malloc.free(prefixCStr);
+    }
   }
 
   /// Validate wallet address
   static bool isValidAddress(String address) {
-    throw UnimplementedError('Requires native library implementation');
+    if (!isAvailable) return false;
+
+    final addrCStr = address.toNativeUtf8();
+    
+    try {
+      final result = _ValidateAddress(addrCStr.cast());
+      return result == 1;
+    } finally {
+      malloc.free(addrCStr);
+    }
+  }
+
+  /// Generate seed phrase from private key
+  static String? keyToMnemonic(Uint8List privateKey, {String language = 'english'}) {
+    if (!isAvailable || privateKey.length != 32) return null;
+
+    final privPtr = calloc<Uint8>(32);
+    privPtr.asTypedList(32).setAll(0, privateKey);
+    final mnemonicPtr = calloc<Int8>(300);
+
+    try {
+      final result = _KeyToMnemonic(privPtr, mnemonicPtr, 300);
+      if (result != 0) return null;
+
+      final mnemonic = mnemonicPtr.cast<Utf8>().toDartString();
+      return mnemonic;
+    } finally {
+      calloc.free(privPtr);
+      calloc.free(mnemonicPtr);
+    }
+  }
+
+  /// Derive private key from seed phrase
+  static Uint8List? mnemonicToKey(String seedPhrase) {
+    if (!isAvailable) return null;
+
+    final mnemonicCStr = seedPhrase.toNativeUtf8();
+    final keyPtr = calloc<Uint8>(32);
+
+    try {
+      final result = _MnemonicToKey(mnemonicCStr.cast(), keyPtr);
+      if (result != 0) return null;
+
+      return keyPtr.asTypedList(32).toList();
+    } finally {
+      calloc.free(keyPtr);
+      malloc.free(mnemonicCStr);
+    }
+  }
+
+  /// Validate mnemonic seed phrase
+  static bool validateMnemonic(String seedPhrase) {
+    if (!isAvailable) return false;
+
+    final mnemonicCStr = seedPhrase.toNativeUtf8();
+    
+    try {
+      final result = _ValidateMnemonic(mnemonicCStr.cast());
+      return result == 1;
+    } finally {
+      malloc.free(mnemonicCStr);
+    }
+  }
+
+  /// Generate key image for ring signatures
+  static Uint8List? generateKeyImage(Uint8List publicKey, Uint8List privateKey) {
+    if (!isAvailable) return null;
+
+    // TODO: Implement key image generation FFI binding
+    return null;
+  }
+
+  /// Hash data
+  static Uint8List? hash(Uint8List data) {
+    if (!isAvailable) return null;
+
+    // TODO: Implement hash FFI binding
+    return null;
+  }
+
+  /// Sign message
+  static Uint8List? signMessage(Uint8List privateKey, Uint8List message) {
+    if (!isAvailable) return null;
+
+    // TODO: Implement signing FFI binding
+    return null;
+  }
+
+  /// Verify signature
+  static bool verifySignature(Uint8List publicKey, Uint8List message, Uint8List signature) {
+    if (!isAvailable) return false;
+
+    // TODO: Implement verification FFI binding
+    return false;
   }
 }
-

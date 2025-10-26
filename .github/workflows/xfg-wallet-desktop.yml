@@ -122,6 +122,22 @@ jobs:
           flutter-version: '3.24.0'
           channel: 'stable'
 
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up Rust cache
+        uses: swatinem/rust-cache@v2
+
+      - name: Build Rust crypto library
+        run: |
+          cd native/crypto
+          cargo build --release --target x86_64-pc-windows-msvc
+
+      - name: Copy Rust library to assets
+        run: |
+          New-Item -ItemType Directory -Force -Path assets\bin
+          Copy-Item native\crypto\target\x86_64-pc-windows-msvc\release\fuego_crypto.dll assets\bin\fuego_crypto.dll
+
       - name: Enable Windows desktop support
         run: flutter config --enable-windows-desktop
 
@@ -184,6 +200,22 @@ jobs:
         with:
           flutter-version: '3.24.0'
           channel: 'stable'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up Rust cache
+        uses: swatinem/rust-cache@v2
+
+      - name: Build Rust crypto library
+        run: |
+          cd native/crypto
+          cargo build --release --target x86_64-unknown-linux-gnu
+
+      - name: Copy Rust library to assets
+        run: |
+          mkdir -p assets/bin
+          cp native/crypto/target/x86_64-unknown-linux-gnu/release/libfuego_crypto.so assets/bin/libfuego_crypto.so
 
       - name: Download xfg-stark-cli
         run: |

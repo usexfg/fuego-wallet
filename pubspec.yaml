@@ -47,6 +47,10 @@ dependencies:
 
   # Path utilities
   path: ^1.8.3
+  path_provider: ^2.1.2
+  
+  # FFI for native bindings
+  ffi: ^2.1.0
   
   # UI Components
   animated_text_kit: ^4.2.2
