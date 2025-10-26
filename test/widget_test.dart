@@ -12,6 +12,6 @@ void main() {
 
     // Verify that our app starts with the splash screen
     expect(find.text('XF₲ WALLET'), findsOneWidget);
-    expect(find.text('Privacy-Focused Cryptocurrency'), findsOneWidget);
+    expect(find.text('Privacy Blockchain Banking'), findsOneWidget);
   });
 }

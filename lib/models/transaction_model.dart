@@ -61,13 +61,13 @@ class TransactionModel {
   /// Get formatted amount for display
   String get formattedAmount {
     final amountDouble = double.tryParse(amount) ?? 0.0;
-    return '${amountDouble.toStringAsFixed(8)} XFG';
+    return '${amountDouble.toStringAsFixed(7)} XFG';
   }
 
   /// Get formatted fee for display
   String get formattedFee {
     final feeDouble = double.tryParse(fee) ?? 0.0;
-    return '${feeDouble.toStringAsFixed(8)} XFG';
+    return '${feeDouble.toStringAsFixed(3)} XFG';
   }
 
   /// Get formatted timestamp for display

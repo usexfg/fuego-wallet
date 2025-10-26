@@ -149,7 +149,7 @@ class WalletProvider extends ChangeNotifier {
       await _securityService.storeWalletSeed(seed, pin);
       await _securityService.setPIN(pin);
 
-      // In a real implementation, we would derive keys from the mnemonic
+      // TODO: Derive keys from the mnemonic
       // For now, we'll simulate this process
       final viewKey = 'view_key_placeholder_${DateTime.now().millisecondsSinceEpoch}';
       final spendKey = 'spend_key_placeholder_${DateTime.now().millisecondsSinceEpoch}';
@@ -185,7 +185,7 @@ class WalletProvider extends ChangeNotifier {
       await _securityService.storeWalletSeed(mnemonic, pin);
       await _securityService.setPIN(pin);
 
-      // Derive keys from mnemonic (placeholder implementation)
+      // TODO Derive keys from mnemonic (placeholder implementation)
       final viewKey = 'restored_view_key_${DateTime.now().millisecondsSinceEpoch}';
       final spendKey = 'restored_spend_key_${DateTime.now().millisecondsSinceEpoch}';
       
@@ -220,7 +220,7 @@ class WalletProvider extends ChangeNotifier {
       }
 
       // Initialize wallet with placeholder data
-      // In real implementation, this would open wallet with the keys
+      // TODO: Open wallet with the keys
       await refreshWallet();
       
       _setLoading(false);
@@ -296,7 +296,7 @@ class WalletProvider extends ChangeNotifier {
     _clearError();
 
     try {
-      final atomicAmount = (amount * 100000000).round();
+      final atomicAmount = (amount * 10000000).round();
       final fee = 10000000; // Default fee in atomic units
       
       final request = SendTransactionRequest(
@@ -387,7 +387,7 @@ class WalletProvider extends ChangeNotifier {
     required double stakeAmount,
   }) async {
     try {
-      final atomicStake = (stakeAmount * 100000000).round();
+      final atomicStake = (stakeAmount * 10000000).round();
       final success = await _rpcService.registerElderfierNode(
         customName: customName,
         address: address,

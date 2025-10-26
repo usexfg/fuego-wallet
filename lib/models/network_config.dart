@@ -30,7 +30,7 @@ class NetworkConfig {
   static const NetworkConfig mainnet = NetworkConfig(
     type: NetworkType.mainnet,
     name: 'Fuego Mainnet',
-    addressPrefix: 'FUEGO',
+    addressPrefix: 'fire',
     networkId: 'fuego-mainnet',
     daemonRpcPort: 18180,
     walletRpcPort: 8070,
@@ -49,7 +49,7 @@ class NetworkConfig {
   static const NetworkConfig testnet = NetworkConfig(
     type: NetworkType.testnet,
     name: 'Fuego Testnet',
-    addressPrefix: 'FUEGO-TEST',
+    addressPrefix: 'TEST',
     networkId: 'fuego-testnet',
     daemonRpcPort: 20808,
     walletRpcPort: 28280,

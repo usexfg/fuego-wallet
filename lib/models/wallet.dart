@@ -50,8 +50,8 @@ class Wallet {
   }
 
   // Convert atomic units to XFG (assuming 8 decimal places)
-  double get balanceXFG => balance / 100000000.0;
-  double get unlockedBalanceXFG => unlockedBalance / 100000000.0;
+  double get balanceXFG => balance / 10000000.0;
+  double get unlockedBalanceXFG => unlockedBalance / 10000000.0;
   
   // Sync progress percentage
   double get syncProgress => 
@@ -87,8 +87,8 @@ class WalletTransaction {
   Map<String, dynamic> toJson() => _$WalletTransactionToJson(this);
 
   // Convert atomic units to XFG
-  double get amountXFG => amount / 100000000.0;
-  double get feeXFG => fee / 100000000.0;
+  double get amountXFG => amount / 10000000.0;
+  double get feeXFG => fee / 10000000.0;
   
   // Get transaction status
   TransactionStatus get status {
@@ -115,7 +115,7 @@ class SendTransactionRequest {
     required this.amount,
     required this.paymentId,
     required this.fee,
-    this.mixins = 7, // Default ring size
+    this.mixins = 8, // Default ring size
   });
 
   factory SendTransactionRequest.fromJson(Map<String, dynamic> json) => 
@@ -149,5 +149,5 @@ class ElderfierNode {
       _$ElderfierNodeFromJson(json);
   Map<String, dynamic> toJson() => _$ElderfierNodeToJson(this);
 
-  double get stakeAmountXFG => stakeAmount / 100000000.0;
+  double get stakeAmountXFG => stakeAmount / 10000000.0;
 }

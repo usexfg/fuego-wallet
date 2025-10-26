@@ -24,7 +24,7 @@ class _PinEntryScreenState extends State<PinEntryScreen>
   String? _errorMessage;
   bool _canUseBiometric = false;
   int _failedAttempts = 0;
-  static const int maxFailedAttempts = 5;
+  static const int maxFailedAttempts = 69;
 
   @override
   void initState() {
@@ -36,7 +36,7 @@ class _PinEntryScreenState extends State<PinEntryScreen>
 
   void _setupAnimations() {
     _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 1000),
+      duration: const Duration(milliseconds: 3000),
       vsync: this,
     );
 
@@ -64,7 +64,7 @@ class _PinEntryScreenState extends State<PinEntryScreen>
     if (!_canUseBiometric) return;
 
     // Delay to allow screen to render
-    await Future.delayed(const Duration(milliseconds: 500));
+    await Future.delayed(const Duration(milliseconds: 800));
 
     if (mounted) {
       await _authenticateWithBiometric();

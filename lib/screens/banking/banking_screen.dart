@@ -201,7 +201,7 @@ class _BankingScreenState extends State<BankingScreen>
           unselectedLabelColor: AppTheme.textSecondary,
           tabs: const [
             Tab(text: 'Mint HEAT'),
-            Tab(text: 'CD Banking'),
+            Tab(text: 'COLD Banking'),
           ],
         ),
       ),
