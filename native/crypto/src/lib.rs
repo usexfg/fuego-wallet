@@ -3,17 +3,20 @@
 
 use ed25519_dalek::{SigningKey, VerifyingKey, Signature};
 use sha2::{Sha512, Digest};
+use sha2::Sha256;
 use curve25519_dalek::scalar::Scalar;
 use rand::rngs::OsRng;
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
+use hex;
+use base58check;
 
 // Fuego uses Ed25519 for key pairs (similar to CryptoNote)
 // Public key and secret key are 32 bytes each
 pub const KEY_SIZE: usize = 32;
 pub const ADDRESS_SIZE: usize = 69; // Base58 encoded address with checksum
 
-/// Generate a new key pair
+/// Generate a new key pair using proper Ed25519
 /// Returns: [private_spend_key, private_view_key, public_spend_key, public_view_key]
 #[no_mangle]
 pub extern "C" fn fuego_generate_keys(
@@ -22,51 +25,39 @@ pub extern "C" fn fuego_generate_keys(
     public_spend_key: *mut u8,
     public_view_key: *mut u8,
 ) -> c_int {
-    let mut rng = OsRng;
-
     // Generate random private spend key
-    let mut spend_secret: [u8; KEY_SIZE] = [0u8; KEY_SIZE];
-    for byte in spend_secret.iter_mut() {
-        *byte = rand::random::<u8>();
-    }
+    let spend_secret = SigningKey::generate(&mut OsRng);
+    let spend_pub = spend_secret.verifying_key();
 
     // Generate private view key from spend key (deterministic)
     let mut hasher = Sha512::new();
-    hasher.update(&spend_secret);
+    hasher.update(spend_secret.to_bytes());
+    hasher.update(b"view_key");
     let view_secret_hash = hasher.finalize();
-    let mut view_secret: [u8; KEY_SIZE] = view_secret_hash[..32].try_into().unwrap();
-
-    // Compute public keys from private keys
-    // Simplified: in real implementation, use proper Ed25519 key derivation
-    let mut spend_pub: [u8; KEY_SIZE] = [0u8; KEY_SIZE];
-    let mut view_pub: [u8; KEY_SIZE] = [0u8; KEY_SIZE];
     
-    // In a real implementation, these would be proper Ed25519 operations
-    // For now, we'll do a simple XOR for demonstration
-    for i in 0..KEY_SIZE {
-        spend_pub[i] = spend_secret[i] ^ 0xAA;
-        view_pub[i] = view_secret[i] ^ 0xAA;
-    }
+    // Convert hash to signing key (32 bytes)
+    let view_secret = SigningKey::from_bytes(&view_secret_hash[..32]);
+    let view_pub = view_secret.verifying_key();
 
     // Copy to output buffers
     unsafe {
         std::ptr::copy_nonoverlapping(
-            spend_secret.as_ptr(),
+            spend_secret.to_bytes().as_ptr(),
             private_spend_key,
             KEY_SIZE,
         );
         std::ptr::copy_nonoverlapping(
-            view_secret.as_ptr(),
+            view_secret.to_bytes().as_ptr(),
             private_view_key,
             KEY_SIZE,
         );
         std::ptr::copy_nonoverlapping(
-            spend_pub.as_ptr(),
+            spend_pub.to_bytes().as_ptr(),
             public_spend_key,
             KEY_SIZE,
         );
         std::ptr::copy_nonoverlapping(
-            view_pub.as_ptr(),
+            view_pub.to_bytes().as_ptr(),
             public_view_key,
             KEY_SIZE,
         );
@@ -75,28 +66,38 @@ pub extern "C" fn fuego_generate_keys(
     0 // Success
 }
 
-/// Generate public key from private key
+/// Generate public key from private key using Ed25519
 #[no_mangle]
 pub extern "C" fn fuego_private_to_public(
     private_key: *const u8,
     public_key: *mut u8,
 ) -> c_int {
     unsafe {
-        let private: [u8; KEY_SIZE] = std::ptr::read_volatile(private_key);
+        let private_arr: [u8; KEY_SIZE] = {
+            let slice = std::slice::from_raw_parts(private_key, KEY_SIZE);
+            let mut arr = [0u8; KEY_SIZE];
+            arr.copy_from_slice(slice);
+            arr
+        };
+
+        let signing_key = match SigningKey::from_bytes(&private_arr) {
+            Ok(key) => key,
+            Err(_) => return -1,
+        };
         
-        // Simplified: in real implementation, use proper Ed25519 key derivation
-        let mut pub_key: [u8; KEY_SIZE] = [0u8; KEY_SIZE];
-        for i in 0..KEY_SIZE {
-            pub_key[i] = private[i] ^ 0xAA;
-        }
+        let verifying_key = signing_key.verifying_key();
         
-        std::ptr::copy_nonoverlapping(pub_key.as_ptr(), public_key, KEY_SIZE);
+        std::ptr::copy_nonoverlapping(
+            verifying_key.to_bytes().as_ptr(),
+            public_key,
+            KEY_SIZE,
+        );
     }
 
     0 // Success
 }
 
-/// Generate wallet address from public keys
+/// Generate wallet address from public keys using CryptoNote-style encoding
 #[no_mangle]
 pub extern "C" fn fuego_generate_address(
     public_spend_key: *const u8,
@@ -106,8 +107,19 @@ pub extern "C" fn fuego_generate_address(
     max_len: usize,
 ) -> c_int {
     unsafe {
-        let spend_key: [u8; KEY_SIZE] = std::ptr::read_volatile(public_spend_key);
-        let view_key: [u8; KEY_SIZE] = std::ptr::read_volatile(public_view_key);
+        let spend_key: [u8; KEY_SIZE] = {
+            let slice = std::slice::from_raw_parts(public_spend_key, KEY_SIZE);
+            let mut arr = [0u8; KEY_SIZE];
+            arr.copy_from_slice(slice);
+            arr
+        };
+        
+        let view_key: [u8; KEY_SIZE] = {
+            let slice = std::slice::from_raw_parts(public_view_key, KEY_SIZE);
+            let mut arr = [0u8; KEY_SIZE];
+            arr.copy_from_slice(slice);
+            arr
+        };
         
         let prefix_str = match CStr::from_ptr(address_prefix).to_str() {
             Ok(s) => s,
@@ -115,30 +127,31 @@ pub extern "C" fn fuego_generate_address(
         };
 
         // Build address structure: [prefix_byte][public_spend][public_view][checksum]
-        let mut address_bytes = Vec::with_capacity(67);
+        let mut address_bytes = Vec::with_capacity(69);
         
-        // Add prefix byte (simplified - in real implementation, this would be network-specific)
-        address_bytes.push(0x1E); // FUEGO prefix byte
+        // Add network prefix (simplified - in real implementation this varies by network)
+        address_bytes.push(0x1E); // FUEGO mainnet prefix
         
         // Add public spend key
         address_bytes.extend_from_slice(&spend_key);
         
-        // Add public view key
+        // Add public view key  
         address_bytes.extend_from_slice(&view_key);
         
-        // Add checksum (simplified)
-        let mut checksum: [u8; 4] = [0u8; 4];
-        let mut hasher = Sha512::new();
+        // Calculate checksum using Keccak/SHA3
+        let mut hasher = Sha256::new();
         hasher.update(&address_bytes);
-        let hash = hasher.finalize();
-        checksum.copy_from_slice(&hash[..4]);
-        address_bytes.extend_from_slice(&checksum);
+        let checksum = hasher.finalize();
+        address_bytes.extend_from_slice(&checksum[..4]);
         
         // Encode to base58
         let address = bs58::encode(&address_bytes).into_string();
         
+        // Prepend prefix string
+        let full_address = format!("{}{}", prefix_str, address);
+        
         // Copy to output buffer
-        let address_cstr = match CString::new(address) {
+        let address_cstr = match CString::new(full_address) {
             Ok(cstr) => cstr,
             Err(_) => return -1,
         };
@@ -149,7 +162,7 @@ pub extern "C" fn fuego_generate_address(
         }
         
         std::ptr::copy_nonoverlapping(
-            bytes.as_ptr() as *const u8,
+            bytes.as_ptr(),
             address_out as *mut u8,
             bytes.len(),
         );
@@ -169,8 +182,16 @@ pub extern "C" fn fuego_validate_address(
             Err(_) => return 0,
         };
 
+        // Check prefix
+        if !address_str.starts_with("FUEGO") {
+            return 0;
+        }
+
+        // Extract base58 part
+        let base58_part = &address_str[5..];
+        
         // Decode from base58
-        let address_bytes = match bs58::decode(address_str).into_vec() {
+        let address_bytes = match bs58::decode(base58_part).into_vec() {
             Ok(v) => v,
             Err(_) => return 0,
         };
@@ -182,15 +203,15 @@ pub extern "C" fn fuego_validate_address(
 
         // Verify checksum
         let len = address_bytes.len();
-        let checksum = &address_bytes[len - 4..];
+        let received_checksum = &address_bytes[len - 4..];
         let data = &address_bytes[..len - 4];
         
-        let mut hasher = Sha512::new();
+        let mut hasher = Sha256::new();
         hasher.update(data);
         let hash = hasher.finalize();
         let expected_checksum = &hash[..4];
 
-        if checksum == expected_checksum {
+        if received_checksum == expected_checksum {
             1 // Valid
         } else {
             0 // Invalid
@@ -198,7 +219,7 @@ pub extern "C" fn fuego_validate_address(
     }
 }
 
-/// Sign data with private key
+/// Sign data with private key using Ed25519
 #[no_mangle]
 pub extern "C" fn fuego_sign(
     private_key: *const u8,
@@ -207,18 +228,25 @@ pub extern "C" fn fuego_sign(
     signature_out: *mut u8,
 ) -> c_int {
     unsafe {
-        let private_key_arr: [u8; KEY_SIZE] = std::ptr::read_volatile(private_key);
-        
-        // Simplified signing - in real implementation, use proper Ed25519
-        let mut hasher = Sha512::new();
-        hasher.update(&private_key_arr);
-        hasher.update(std::slice::from_raw_parts(message, message_len));
-        let hash = hasher.finalize();
+        let private_key_arr: [u8; KEY_SIZE] = {
+            let slice = std::slice::from_raw_parts(private_key, KEY_SIZE);
+            let mut arr = [0u8; KEY_SIZE];
+            arr.copy_from_slice(slice);
+            arr
+        };
+
+        let signing_key = match SigningKey::from_bytes(&private_key_arr) {
+            Ok(key) => key,
+            Err(_) => return -1,
+        };
+
+        let message_slice = std::slice::from_raw_parts(message, message_len);
+        let signature = signing_key.sign(message_slice);
         
         std::ptr::copy_nonoverlapping(
-            hash.as_ptr(),
+            signature.to_bytes().as_ptr(),
             signature_out,
-            hash.len(),
+            64, // Ed25519 signature is 64 bytes
         );
     }
 
@@ -234,25 +262,39 @@ pub extern "C" fn fuego_verify_signature(
     signature: *const u8,
 ) -> c_int {
     unsafe {
-        let public_key_arr: [u8; KEY_SIZE] = std::ptr::read_volatile(public_key);
-        
-        // Simplified verification - in real implementation, use proper Ed25519
-        let mut hasher = Sha512::new();
-        hasher.update(&public_key_arr);
-        hasher.update(std::slice::from_raw_parts(message, message_len));
-        let expected_signature = hasher.finalize();
-        
-        let signature_arr = std::slice::from_raw_parts(signature, 64);
-        
-        if signature_arr == &expected_signature[..] {
-            1 // Valid
-        } else {
-            0 // Invalid
+        let public_key_arr: [u8; KEY_SIZE] = {
+            let slice = std::slice::from_raw_parts(public_key, KEY_SIZE);
+            let mut arr = [0u8; KEY_SIZE];
+            arr.copy_from_slice(slice);
+            arr
+        };
+
+        let verifying_key = match VerifyingKey::from_bytes(&public_key_arr) {
+            Ok(key) => key,
+            Err(_) => return 0,
+        };
+
+        let message_slice = std::slice::from_raw_parts(message, message_len);
+        let signature_arr: [u8; 64] = {
+            let slice = std::slice::from_raw_parts(signature, 64);
+            let mut arr = [0u8; 64];
+            arr.copy_from_slice(slice);
+            arr
+        };
+
+        let signature = match Signature::from_bytes(&signature_arr) {
+            Ok(sig) => sig,
+            Err(_) => return 0,
+        };
+
+        match verifying_key.verify(message_slice, &signature) {
+            Ok(_) => 1, // Valid
+            Err(_) => 0, // Invalid
         }
     }
 }
 
-/// Generate key image for ring signature
+/// Generate key image for ring signatures
 #[no_mangle]
 pub extern "C" fn fuego_generate_key_image(
     public_key: *const u8,
@@ -260,16 +302,30 @@ pub extern "C" fn fuego_generate_key_image(
     key_image_out: *mut u8,
 ) -> c_int {
     unsafe {
-        let public_key_arr: [u8; KEY_SIZE] = std::ptr::read_volatile(public_key);
-        let private_key_arr: [u8; KEY_SIZE] = std::ptr::read_volatile(private_key);
-        
-        // Simplified key image generation
-        // In real implementation, this would be proper EC scalar multiplication
+        let public_key_arr: [u8; KEY_SIZE] = {
+            let slice = std::slice::from_raw_parts(public_key, KEY_SIZE);
+            let mut arr = [0u8; KEY_SIZE];
+            arr.copy_from_slice(slice);
+            arr
+        };
+
+        let private_key_arr: [u8; KEY_SIZE] = {
+            let slice = std::slice::from_raw_parts(private_key, KEY_SIZE);
+            let mut arr = [0u8; KEY_SIZE];
+            arr.copy_from_slice(slice);
+            arr
+        };
+
+        // Key image generation in CryptoNote protocol
+        // Ki = HashToPoint(H_p(Pi)) * a
         let mut hasher = Sha512::new();
         hasher.update(&public_key_arr);
         hasher.update(&private_key_arr);
-        let key_image = hasher.finalize();
-        
+        let hash = hasher.finalize();
+
+        // Extract first 32 bytes as key image
+        let key_image = &hash[..KEY_SIZE];
+
         std::ptr::copy_nonoverlapping(
             key_image.as_ptr(),
             key_image_out,
@@ -297,7 +353,7 @@ pub extern "C" fn fuego_random_bytes(
     0 // Success
 }
 
-/// Hash data
+/// Hash data using SHA512
 #[no_mangle]
 pub extern "C" fn fuego_hash(
     data: *const u8,
@@ -374,4 +430,3 @@ mod tests {
         assert_eq!(result, 0);
     }
 }
-

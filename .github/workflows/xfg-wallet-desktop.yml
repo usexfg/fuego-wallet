@@ -44,6 +44,26 @@ jobs:
           flutter-version: '3.24.0'
           channel: 'stable'
 
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-apple-darwin, aarch64-apple-darwin
+
+      - name: Set up Rust cache
+        uses: swatinem/rust-cache@v2
+
+      - name: Build Rust crypto library
+        run: |
+          cd native/crypto
+          cargo build --release --target x86_64-apple-darwin
+          cargo build --release --target aarch64-apple-darwin
+
+      - name: Copy Rust library to assets
+        run: |
+          mkdir -p assets/bin
+          cp native/crypto/target/x86_64-apple-darwin/release/libfuego_crypto.dylib assets/bin/libfuego_crypto-x86_64.dylib || true
+          cp native/crypto/target/aarch64-apple-darwin/release/libfuego_crypto.dylib assets/bin/libfuego_crypto-arm64.dylib || true
+
       - name: Enable macOS desktop support
         run: flutter config --enable-macos-desktop
 
