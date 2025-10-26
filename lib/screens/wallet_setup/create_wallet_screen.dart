@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../providers/wallet_provider.dart';
+import '../../providers/wallet_provider_hybrid.dart';
 import '../../services/security_service.dart';
 import '../../utils/theme.dart';
+import '../../widgets/mnemonic_display.dart';
+import '../../widgets/mnemonic_input.dart';
 import '../auth/pin_setup_screen.dart';
 
 class CreateWalletScreen extends StatefulWidget {
@@ -27,19 +30,42 @@ class _CreateWalletScreenState extends State<CreateWalletScreen> {
     _generateMnemonic();
   }
 
-  void _generateMnemonic() {
+  Future<void> _generateMnemonic() async {
     setState(() {
       _isLoading = true;
     });
 
-    // Generate mnemonic using SecurityService
-    Future.delayed(const Duration(milliseconds: 500), () {
+    try {
+      // Try to generate mnemonic using native crypto (hybrid provider)
+      final hybridProvider = Provider.of<WalletProviderHybrid>(context, listen: false);
+      
+      if (hybridProvider.useNativeCrypto) {
+        // Use native crypto if available
+        final mnemonic = await hybridProvider.getMnemonicSeed();
+        if (mnemonic != null && mounted) {
+          setState(() {
+            _mnemonic = mnemonic;
+            _mnemonicGenerated = true;
+            _isLoading = false;
+          });
+          return;
+        }
+      }
+      
+      // Fallback to SecurityService
       setState(() {
         _mnemonic = SecurityService.generateMnemonic();
         _mnemonicGenerated = true;
         _isLoading = false;
       });
-    });
+    } catch (e) {
+      // Fallback to SecurityService
+      setState(() {
+        _mnemonic = SecurityService.generateMnemonic();
+        _mnemonicGenerated = true;
+        _isLoading = false;
+      });
+    }
   }
 
   void _nextPage() {
