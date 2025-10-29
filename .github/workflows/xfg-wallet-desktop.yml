@@ -12,6 +12,8 @@ on:
       - 'linux/**'
       - 'pubspec.yaml'
       - '.github/workflows/flutter-desktop.yml'
+      - '.github/workflows/xfg-wallet-desktop.yml'
+      - 'native/**'
   pull_request:
     branches: [ main, master ]
     paths:
