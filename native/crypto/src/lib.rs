@@ -1,15 +1,13 @@
 // Fuego Crypto Library for Native Wallet Operations
 // This provides FFI-safe crypto primitives for the Dart/Flutter wallet
 
-use ed25519_dalek::{SigningKey, VerifyingKey, Signature};
+use ed25519_dalek::{SigningKey, VerifyingKey, Signature, Signer, Verifier, SecretKey};
 use sha2::{Sha512, Digest};
 use sha2::Sha256;
-use curve25519_dalek::scalar::Scalar;
 use rand::rngs::OsRng;
+use rand::RngCore;
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
-use hex;
-use base58check;
 
 // Fuego uses Ed25519 for key pairs (similar to CryptoNote)
 // Public key and secret key are 32 bytes each
@@ -26,38 +24,43 @@ pub extern "C" fn fuego_generate_keys(
     public_view_key: *mut u8,
 ) -> c_int {
     // Generate random private spend key
-    let spend_secret = SigningKey::generate(&mut OsRng);
+    let mut spend_key_bytes = [0u8; 32];
+    let mut rng = OsRng;
+    rng.fill_bytes(&mut spend_key_bytes);
+    let spend_secret = SigningKey::from_bytes(&SecretKey::from(spend_key_bytes));
     let spend_pub = spend_secret.verifying_key();
 
     // Generate private view key from spend key (deterministic)
     let mut hasher = Sha512::new();
-    hasher.update(spend_secret.to_bytes());
+    hasher.update(spend_key_bytes);
     hasher.update(b"view_key");
     let view_secret_hash = hasher.finalize();
     
     // Convert hash to signing key (32 bytes)
-    let view_secret = SigningKey::from_bytes(&view_secret_hash[..32]);
+    let mut view_key_bytes = [0u8; 32];
+    view_key_bytes.copy_from_slice(&view_secret_hash[..32]);
+    let view_secret = SigningKey::from_bytes(&SecretKey::from(view_key_bytes));
     let view_pub = view_secret.verifying_key();
 
     // Copy to output buffers
     unsafe {
         std::ptr::copy_nonoverlapping(
-            spend_secret.to_bytes().as_ptr(),
+            spend_secret.as_bytes().as_ptr(),
             private_spend_key,
             KEY_SIZE,
         );
         std::ptr::copy_nonoverlapping(
-            view_secret.to_bytes().as_ptr(),
+            view_secret.as_bytes().as_ptr(),
             private_view_key,
             KEY_SIZE,
         );
         std::ptr::copy_nonoverlapping(
-            spend_pub.to_bytes().as_ptr(),
+            spend_pub.as_bytes().as_ptr(),
             public_spend_key,
             KEY_SIZE,
         );
         std::ptr::copy_nonoverlapping(
-            view_pub.to_bytes().as_ptr(),
+            view_pub.as_bytes().as_ptr(),
             public_view_key,
             KEY_SIZE,
         );
@@ -80,15 +83,11 @@ pub extern "C" fn fuego_private_to_public(
             arr
         };
 
-        let signing_key = match SigningKey::from_bytes(&private_arr) {
-            Ok(key) => key,
-            Err(_) => return -1,
-        };
-        
+        let signing_key = SigningKey::from_bytes(&SecretKey::from(private_arr));
         let verifying_key = signing_key.verifying_key();
         
         std::ptr::copy_nonoverlapping(
-            verifying_key.to_bytes().as_ptr(),
+            verifying_key.as_bytes().as_ptr(),
             public_key,
             KEY_SIZE,
         );
@@ -235,11 +234,7 @@ pub extern "C" fn fuego_sign(
             arr
         };
 
-        let signing_key = match SigningKey::from_bytes(&private_key_arr) {
-            Ok(key) => key,
-            Err(_) => return -1,
-        };
-
+        let signing_key = SigningKey::from_bytes(&SecretKey::from(private_key_arr));
         let message_slice = std::slice::from_raw_parts(message, message_len);
         let signature = signing_key.sign(message_slice);
         
@@ -282,7 +277,7 @@ pub extern "C" fn fuego_verify_signature(
             arr
         };
 
-        let signature = match Signature::from_bytes(&signature_arr) {
+        let signature = match Signature::try_from(&signature_arr) {
             Ok(sig) => sig,
             Err(_) => return 0,
         };
@@ -385,7 +380,7 @@ pub extern "C" fn fuego_key_to_mnemonic(
     use zeroize::Zeroize;
     
     unsafe {
-        let private_key_arr: [u8; KEY_SIZE] = {
+        let mut private_key_arr: [u8; KEY_SIZE] = {
             let slice = std::slice::from_raw_parts(private_key, KEY_SIZE);
             let mut arr = [0u8; KEY_SIZE];
             arr.copy_from_slice(slice);
@@ -393,10 +388,15 @@ pub extern "C" fn fuego_key_to_mnemonic(
         };
 
         // Generate mnemonic using BIP39
-        let mnemonic = bip39::Mnemonic::from_entropy(&private_key_arr, bip39::Language::English)
-            .unwrap_or_else(|_| bip39::Mnemonic::generate_in(bip39::Language::English, bip39::MnemonicType::Words12));
+        let mnemonic = bip39::Mnemonic::from_entropy_in(bip39::Language::English, &private_key_arr)
+            .unwrap_or_else(|_| {
+                // Generate new mnemonic if entropy derivation fails
+                let mut entropy = [0u8; 16];
+                OsRng.fill_bytes(&mut entropy);
+                bip39::Mnemonic::from_entropy_in(bip39::Language::English, &entropy).unwrap()
+            });
 
-        let mnemonic_str = mnemonic.phrase();
+        let mnemonic_str = mnemonic.to_string();
         
         let mnemonic_cstr = match CString::new(mnemonic_str) {
             Ok(cstr) => cstr,
@@ -432,12 +432,12 @@ pub extern "C" fn fuego_mnemonic_to_key(
             Err(_) => return -1,
         };
 
-        let mnemonic_obj = match bip39::Mnemonic::from_phrase(mnemonic_str, bip39::Language::English) {
+        let mnemonic_obj = match bip39::Mnemonic::parse_in_normalized(bip39::Language::English, mnemonic_str) {
             Ok(m) => m,
             Err(_) => return -1,
         };
 
-        let entropy = mnemonic_obj.entropy();
+        let entropy = mnemonic_obj.to_entropy();
         
         if entropy.len() < KEY_SIZE {
             return -1;
@@ -464,7 +464,7 @@ pub extern "C" fn fuego_validate_mnemonic(
             Err(_) => return 0,
         };
 
-        match bip39::Mnemonic::from_phrase(mnemonic_str, bip39::Language::English) {
+        match bip39::Mnemonic::parse_in_normalized(bip39::Language::English, mnemonic_str) {
             Ok(_) => 1, // Valid
             Err(_) => 0, // Invalid
         }

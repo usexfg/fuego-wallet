@@ -14,17 +14,10 @@ curve25519-dalek = "4.0"
 rand = "0.8"
 bs58 = "0.5"
 hex = "0.4"
-base58check = "0.2"
-ripemd160 = "0.1"
-ripemd160-simd = "0.1"
-enveloped-rs = "1.0"
+base58check = "0.1"
 bip39 = "2.0"
 zeroize = "1.7"
 
 [build-dependencies]
 cc = "1.0"
-
-[dependencies.ffi]
-name = "fuego_crypto"
-version = "0.1.0"
 
