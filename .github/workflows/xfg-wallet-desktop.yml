@@ -146,7 +146,13 @@ jobs:
           curl -L -o xfg-stark-cli-windows.zip "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-windows.zip"
           Expand-Archive -Path xfg-stark-cli-windows.zip -DestinationPath .
           New-Item -ItemType Directory -Force -Path assets\bin
-          Move-Item xfg-stark-cli-windows.exe assets\bin\xfg-stark-cli.exe
+          $binary = Get-ChildItem -Filter "xfg-stark-cli*.exe" -Recurse | Select-Object -First 1
+          if ($binary) {
+            Move-Item $binary.FullName assets\bin\xfg-stark-cli.exe
+          } else {
+            Write-Error "xfg-stark-cli executable not found after extraction"
+            exit 1
+          }
           Remove-Item xfg-stark-cli-windows.zip
 
       - name: Download fuego-walletd

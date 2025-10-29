@@ -13,11 +13,13 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-REPO="usexfg/xfg-wallet"
+REPO="ColinRitman/xfg_wallet"
 WORKFLOWS=(
   "xfg-wallet-desktop.yml"
   "android-release.yml"
   "ios-release.yml"
+  "flutter-desktop.yml"
+  "linux-appstore-release.yml"
 )
 
 # Check if gh CLI is installed
