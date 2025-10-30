@@ -71,9 +71,18 @@ jobs:
         run: |
           curl -L -o xfg-stark-cli-macos.tar.gz "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-macos.tar.gz"
           tar -xzf xfg-stark-cli-macos.tar.gz
-          chmod +x xfg-stark-cli-macos
           mkdir -p assets/bin
-          mv xfg-stark-cli-macos assets/bin/
+          BINARY_PATH=$(find . -type f -name "xfg-stark-cli*" -perm +111 | head -n1 || true)
+          if [ -z "$BINARY_PATH" ]; then
+            BINARY_PATH=$(find . -type f -name "xfg-stark-cli*" | head -n1 || true)
+          fi
+          if [ -n "$BINARY_PATH" ]; then
+            chmod +x "$BINARY_PATH"
+            mv "$BINARY_PATH" assets/bin/xfg-stark-cli-macos
+          else
+            echo "xfg-stark-cli not found after extraction" >&2
+            exit 1
+          fi
           rm xfg-stark-cli-macos.tar.gz
 
       - name: Download fuego-walletd
