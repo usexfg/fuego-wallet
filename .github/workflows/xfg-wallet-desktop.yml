@@ -12,8 +12,6 @@ on:
       - 'linux/**'
       - 'pubspec.yaml'
       - '.github/workflows/flutter-desktop.yml'
-      - '.github/workflows/xfg-wallet-desktop.yml'
-      - 'native/**'
   pull_request:
     branches: [ main, master ]
     paths:
@@ -229,9 +227,18 @@ jobs:
         run: |
           curl -L -o xfg-stark-cli-linux.tar.gz "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-linux.tar.gz"
           tar -xzf xfg-stark-cli-linux.tar.gz
-          chmod +x xfg-stark-cli-linux
           mkdir -p assets/bin
-          mv xfg-stark-cli-linux assets/bin/
+          BINARY_PATH=$(find . -type f -name "xfg-stark-cli*" -perm -111 | head -n1 || true)
+          if [ -z "$BINARY_PATH" ]; then
+            BINARY_PATH=$(find . -type f -name "xfg-stark-cli*" | head -n1 || true)
+          fi
+          if [ -n "$BINARY_PATH" ]; then
+            chmod +x "$BINARY_PATH"
+            mv "$BINARY_PATH" assets/bin/xfg-stark-cli-linux
+          else
+            echo "xfg-stark-cli not found after extraction" >&2
+            exit 1
+          fi
           rm xfg-stark-cli-linux.tar.gz
 
       - name: Enable Linux desktop support
@@ -337,9 +344,18 @@ jobs:
         run: |
           curl -L -o xfg-stark-cli-linux.tar.gz "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-linux.tar.gz"
           tar -xzf xfg-stark-cli-linux.tar.gz
-          chmod +x xfg-stark-cli-linux
           mkdir -p assets/bin
-          mv xfg-stark-cli-linux assets/bin/
+          BINARY_PATH=$(find . -type f -name "xfg-stark-cli*" -perm -111 | head -n1 || true)
+          if [ -z "$BINARY_PATH" ]; then
+            BINARY_PATH=$(find . -type f -name "xfg-stark-cli*" | head -n1 || true)
+          fi
+          if [ -n "$BINARY_PATH" ]; then
+            chmod +x "$BINARY_PATH"
+            mv "$BINARY_PATH" assets/bin/xfg-stark-cli-linux
+          else
+            echo "xfg-stark-cli not found after extraction" >&2
+            exit 1
+          fi
           rm xfg-stark-cli-linux.tar.gz
 
       - name: Enable Linux desktop support
