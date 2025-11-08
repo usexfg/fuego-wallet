@@ -70,6 +70,41 @@ else
     print_success "xfg-stark-cli-windows.exe already exists"
 fi
 
+# Download fuego-walletd binaries for all platforms
+print_status "Downloading fuego-walletd binaries..."
+
+# Linux fuego-walletd
+if [ ! -f "assets/bin/fuego-walletd-linux" ]; then
+    print_status "Downloading fuego-walletd-linux..."
+    curl -L -o fuego-walletd-linux "https://github.com/usexfg/fuego/releases/latest/download/fuego-walletd-linux"
+    chmod +x fuego-walletd-linux
+    mv fuego-walletd-linux assets/bin/
+    print_success "fuego-walletd-linux downloaded"
+else
+    print_success "fuego-walletd-linux already exists"
+fi
+
+# macOS fuego-walletd
+if [ ! -f "assets/bin/fuego-walletd-macos" ]; then
+    print_status "Downloading fuego-walletd-macos..."
+    curl -L -o fuego-walletd-macos "https://github.com/usexfg/fuego/releases/latest/download/fuego-walletd-macos"
+    chmod +x fuego-walletd-macos
+    mv fuego-walletd-macos assets/bin/
+    print_success "fuego-walletd-macos downloaded"
+else
+    print_success "fuego-walletd-macos already exists"
+fi
+
+# Windows fuego-walletd
+if [ ! -f "assets/bin/fuego-walletd-windows.exe" ]; then
+    print_status "Downloading fuego-walletd-windows.exe..."
+    curl -L -o fuego-walletd-windows.exe "https://github.com/usexfg/fuego/releases/latest/download/fuego-walletd-windows.exe"
+    mv fuego-walletd-windows.exe assets/bin/
+    print_success "fuego-walletd-windows.exe downloaded"
+else
+    print_success "fuego-walletd-windows.exe already exists"
+fi
+
 # Verify all binaries are present and executable
 print_status "Verifying binaries..."
 
@@ -77,6 +112,9 @@ required_binaries=(
     "assets/bin/xfg-stark-cli-linux"
     "assets/bin/xfg-stark-cli-macos"
     "assets/bin/xfg-stark-cli-windows.exe"
+    "assets/bin/fuego-walletd-linux"
+    "assets/bin/fuego-walletd-macos"
+    "assets/bin/fuego-walletd-windows.exe"
 )
 
 all_present=true

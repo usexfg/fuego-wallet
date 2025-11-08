@@ -2,27 +2,27 @@ name: XF₲ Wallet Desktop Build & Release
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
     paths:
-      - 'lib/**'
-      - 'android/**'
-      - 'ios/**'
-      - 'macos/**'
-      - 'windows/**'
-      - 'linux/**'
-      - 'pubspec.yaml'
-      - '.github/workflows/flutter-desktop.yml'
+      - "lib/**"
+      - "android/**"
+      - "ios/**"
+      - "macos/**"
+      - "windows/**"
+      - "linux/**"
+      - "pubspec.yaml"
+      - ".github/workflows/flutter-desktop.yml"
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
     paths:
-      - 'lib/**'
-      - 'android/**'
-      - 'ios/**'
-      - 'macos/**'
-      - 'windows/**'
-      - 'linux/**'
-      - 'pubspec.yaml'
-      - '.github/workflows/flutter-desktop.yml'
+      - "lib/**"
+      - "android/**"
+      - "ios/**"
+      - "macos/**"
+      - "windows/**"
+      - "linux/**"
+      - "pubspec.yaml"
+      - ".github/workflows/flutter-desktop.yml"
   workflow_dispatch:
   release:
     types: [published]
@@ -41,8 +41,8 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
-          channel: 'stable'
+          flutter-version: "3.24.0"
+          channel: "stable"
 
       - name: Enable macOS desktop support
         run: flutter config --enable-macos-desktop
@@ -93,8 +93,8 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
-          channel: 'stable'
+          flutter-version: "3.24.0"
+          channel: "stable"
 
       - name: Enable Windows desktop support
         run: flutter config --enable-windows-desktop
@@ -152,8 +152,8 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
-          channel: 'stable'
+          flutter-version: "3.24.0"
+          channel: "stable"
 
       - name: Download xfg-stark-cli
         run: |
@@ -161,6 +161,13 @@ jobs:
           chmod +x xfg-stark-cli-linux
           mkdir -p assets/bin
           mv xfg-stark-cli-linux assets/bin/
+
+      - name: Download fuego-walletd
+        run: |
+          curl -L -o fuego-walletd-linux "https://github.com/usexfg/fuego/releases/latest/download/fuego-walletd-linux"
+          chmod +x fuego-walletd-linux
+          mkdir -p assets/bin
+          mv fuego-walletd-linux assets/bin/
 
       - name: Enable Linux desktop support
         run: |
@@ -215,7 +222,6 @@ jobs:
           files: build/linux/x64/release/bundle/XF₲-Wallet-Linux-GLIBC-2.31.tar.gz
           name: XF₲-Wallet-Linux-GLIBC-2.31.tar.gz
 
-
   build-linux-latest:
     name: Build XF₲ Wallet (Linux - Latest)
     runs-on: ubuntu-latest
@@ -227,8 +233,8 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
-          channel: 'stable'
+          flutter-version: "3.24.0"
+          channel: "stable"
 
       - name: Download xfg-stark-cli
         run: |
@@ -236,6 +242,13 @@ jobs:
           chmod +x xfg-stark-cli-linux
           mkdir -p assets/bin
           mv xfg-stark-cli-linux assets/bin/
+
+      - name: Download fuego-walletd
+        run: |
+          curl -L -o fuego-walletd-linux "https://github.com/usexfg/fuego/releases/latest/download/fuego-walletd-linux"
+          chmod +x fuego-walletd-linux
+          mkdir -p assets/bin
+          mv fuego-walletd-linux assets/bin/
 
       - name: Enable Linux desktop support
         run: |

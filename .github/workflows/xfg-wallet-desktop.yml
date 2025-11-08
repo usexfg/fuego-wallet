@@ -250,6 +250,13 @@ jobs:
           fi
           rm xfg-stark-cli-linux.tar.gz
 
+      - name: Download fuego-walletd
+        run: |
+          curl -L -o fuego-walletd-linux "https://github.com/usexfg/fuego/releases/latest/download/fuego-walletd-linux"
+          chmod +x fuego-walletd-linux
+          mkdir -p assets/bin
+          mv fuego-walletd-linux assets/bin/
+
       - name: Enable Linux desktop support
         run: |
           sudo apt-get update
@@ -387,6 +394,13 @@ EOF
             exit 1
           fi
           rm xfg-stark-cli-linux.tar.gz
+
+      - name: Download fuego-walletd
+        run: |
+          curl -L -o fuego-walletd-linux "https://github.com/usexfg/fuego/releases/latest/download/fuego-walletd-linux"
+          chmod +x fuego-walletd-linux
+          mkdir -p assets/bin
+          mv fuego-walletd-linux assets/bin/
 
       - name: Enable Linux desktop support
         run: |

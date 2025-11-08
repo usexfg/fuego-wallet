@@ -2,45 +2,45 @@ name: XF₲ Wallet Linux App Store Release
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
     paths:
-      - 'lib/**'
-      - 'linux/**'
-      - 'snapcraft.yaml'
-      - 'flatpak/**'
-      - 'pubspec.yaml'
-      - '.github/workflows/linux-appstore-release.yml'
+      - "lib/**"
+      - "linux/**"
+      - "snapcraft.yaml"
+      - "flatpak/**"
+      - "pubspec.yaml"
+      - ".github/workflows/linux-appstore-release.yml"
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
     paths:
-      - 'lib/**'
-      - 'linux/**'
-      - 'snapcraft.yaml'
-      - 'flatpak/**'
-      - 'pubspec.yaml'
-      - '.github/workflows/linux-appstore-release.yml'
+      - "lib/**"
+      - "linux/**"
+      - "snapcraft.yaml"
+      - "flatpak/**"
+      - "pubspec.yaml"
+      - ".github/workflows/linux-appstore-release.yml"
   workflow_dispatch:
     inputs:
       build_type:
-        description: 'Build type'
+        description: "Build type"
         required: true
-        default: 'release'
+        default: "release"
         type: choice
         options:
-        - release
-        - debug
+          - release
+          - debug
       distribution_method:
-        description: 'Distribution method'
+        description: "Distribution method"
         required: true
-        default: 'snap'
+        default: "snap"
         type: choice
         options:
-        - snap
-        - flatpak
-        - appimage
-        - all
+          - snap
+          - flatpak
+          - appimage
+          - all
       upload_to_store:
-        description: 'Upload to store'
+        description: "Upload to store"
         required: false
         default: false
         type: boolean
@@ -50,16 +50,16 @@ on:
       contents: write
 
 env:
-  FLUTTER_VERSION: '3.24.0'
-  SNAP_NAME: 'xfg-wallet'
-  FLATPAK_APP_ID: 'com.fuego.fuego_wallet'
+  FLUTTER_VERSION: "3.24.0"
+  SNAP_NAME: "xfg-wallet"
+  FLATPAK_APP_ID: "com.fuego.fuego_wallet"
 
 jobs:
   build-snap:
     name: Build XF₲ Wallet (Snap Store)
     runs-on: ubuntu-latest
     if: github.event.inputs.distribution_method == 'snap' || github.event.inputs.distribution_method == 'all' || github.event_name != 'workflow_dispatch'
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -68,7 +68,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: 'stable'
+          channel: "stable"
 
       - name: Download required binaries
         run: ./scripts/ensure-binaries.sh
@@ -123,7 +123,7 @@ jobs:
     name: Build XF₲ Wallet (Flatpak)
     runs-on: ubuntu-latest
     if: github.event.inputs.distribution_method == 'flatpak' || github.event.inputs.distribution_method == 'all' || github.event_name != 'workflow_dispatch'
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -132,7 +132,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: 'stable'
+          channel: "stable"
 
       - name: Download required binaries
         run: ./scripts/ensure-binaries.sh
@@ -191,7 +191,7 @@ jobs:
     name: Build XF₲ Wallet (AppImage)
     runs-on: ubuntu-latest
     if: github.event.inputs.distribution_method == 'appimage' || github.event.inputs.distribution_method == 'all' || github.event_name != 'workflow_dispatch'
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -200,7 +200,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: 'stable'
+          channel: "stable"
 
       - name: Download required binaries
         run: ./scripts/ensure-binaries.sh
@@ -229,7 +229,7 @@ jobs:
           # Download appimagetool
           curl -LO https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
           chmod +x appimagetool-x86_64.AppImage
-          
+
           # Create desktop file for AppImage
           cat > XF₲-Wallet.desktop << 'EOF'
           [Desktop Entry]
@@ -241,13 +241,13 @@ jobs:
           Categories=Finance;
           Terminal=false
           EOF
-          
+
           # Copy icon file
-          cp ../../../../../app_icon_256.png fuego_wallet.png
-          
+          cp ../../../../../app_icon_256.png fuego_wallet.png || cp ../../../../app_icon_256.png fuego_wallet.png
+
           # Create AppImage
           ./appimagetool-x86_64.AppImage . XF₲-Wallet-Linux.AppImage
-          
+
           # Clean up
           rm -f appimagetool-x86_64.AppImage
 
@@ -273,7 +273,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-snap
     if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.upload_to_store == 'true')
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -302,7 +302,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-flatpak
     if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.upload_to_store == 'true')
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -333,7 +333,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-snap, build-flatpak, build-appimage]
     if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.build_type == 'release')
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -359,7 +359,7 @@ jobs:
       - name: Run security analysis
         run: |
           echo "Running Linux App Store security analysis..."
-          
+
           # Check for security issues in packages
           echo "Checking Snap package..."
           if [ -f "artifacts/snap/*.snap" ]; then
@@ -367,12 +367,12 @@ jobs:
             # Basic security checks
             unsquashfs -l artifacts/snap/*.snap | head -20
           fi
-          
+
           echo "Checking Flatpak package..."
           if [ -f "artifacts/flatpak/xfg-wallet.flatpak" ]; then
             echo "✅ Flatpak package found"
           fi
-          
+
           echo "Checking AppImage package..."
           if [ -f "artifacts/appimage/XF₲-Wallet-Linux.AppImage" ]; then
             echo "✅ AppImage package found"
@@ -383,9 +383,16 @@ jobs:
   notify-release:
     name: Notify Release
     runs-on: ubuntu-latest
-    needs: [build-snap, build-flatpak, build-appimage, upload-to-snap-store, upload-to-flathub]
+    needs:
+      [
+        build-snap,
+        build-flatpak,
+        build-appimage,
+        upload-to-snap-store,
+        upload-to-flathub,
+      ]
     if: always() && github.event_name == 'release'
-    
+
     steps:
       - name: Notify Discord
         if: env.DISCORD_WEBHOOK_URL != ''
@@ -395,11 +402,11 @@ jobs:
         with:
           args: |
             🚀 **XF₲ Wallet Linux App Store Release ${{ github.ref_name }}**
-            
+
             ✅ Linux app store packages built
             📦 Available for Snap Store, Flatpak, and AppImage
             🔗 [Download from GitHub Releases](https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }})
-            
+
             **Build Details:**
             - Version: ${{ github.ref_name }}
             - Commit: ${{ github.sha }}
