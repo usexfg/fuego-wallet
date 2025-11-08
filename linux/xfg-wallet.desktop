@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=XF₲ Wallet
+GenericName=Cryptocurrency Wallet
+Comment=Privacy-focused cryptocurrency wallet for XF₲
+Exec=fuego_wallet
+Icon=fuego_wallet
+Terminal=false
+Categories=Finance;Network;
+Keywords=cryptocurrency;wallet;privacy;fuego;xfg;
+StartupWMClass=fuego_wallet
+StartupNotify=true
