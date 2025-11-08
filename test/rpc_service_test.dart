@@ -7,8 +7,8 @@ void main() {
   group('FuegoRPCService', () {
     test('should initialize with default remote node', () {
       final service = FuegoRPCService();
-      expect(service.defaultRemoteNodes.isNotEmpty, true);
-      expect(service.defaultRemoteNodes.first, '207.244.247.64:18180');
+      expect(FuegoRPCService.defaultRemoteNodes.isNotEmpty, true);
+      expect(FuegoRPCService.defaultRemoteNodes.first, '207.244.247.64:18180');
     });
 
     test('should update node correctly', () {

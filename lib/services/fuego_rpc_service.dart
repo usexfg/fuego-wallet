@@ -13,12 +13,7 @@ class FuegoRPCService {
 
   // Default remote Fuego nodes (public community nodes)
   static const List<String> defaultRemoteNodes = [
-    '207.244.247.64:18180',
-    'node1.usexfg.org',
-    'node2.usexfg.org',
-    'fuego.seednode1.com',
-    'fuego.seednode2.com',
-    'fuego.communitynode.net',
+    '207.244.247.64:18180'
   ];
 
   FuegoRPCService({
@@ -153,16 +148,26 @@ class FuegoRPCService {
     }
   }
 
-  Future<String> createIntegratedAddress(String paymentId) async {
-    try {
-      final address = await getAddress();
-      // Simple integrated address format - in real implementation, this would
-      // use proper CryptoNote integrated address encoding
-      return '${address}_$paymentId';
-    } catch (e) {
-      throw FuegoRPCException('Failed to create integrated address: $e');
+Future<String> createIntegratedAddress(String paymentId) async {
+  try {
+    // Validate payment ID (must be 64 hex characters)
+    if (paymentId.length != 64 || !RegExp(r'^[0-9a-fA-F]+$').hasMatch(paymentId)) {
+      throw FuegoRPCException('Invalid payment ID: must be 64 hex characters');
     }
+
+    final address = await getAddress();
+    
+    // Call RPC method if available
+    final response = await _makeWalletRPCCall('create_integrated', {
+      'address': address,
+      'payment_id': paymentId,
+    });
+    
+    return response['integrated_address'] as String;
+  } catch (e) {
+    throw FuegoRPCException('Failed to create integrated address: $e');
   }
+}
 
   Future<String> generatePaymentId() async {
     final bytes = List<int>.generate(32, (i) => 
