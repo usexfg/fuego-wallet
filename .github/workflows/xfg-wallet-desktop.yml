@@ -326,20 +326,20 @@ jobs:
           else
             # Create desktop file for AppImage
             cat > XF₲-Wallet.desktop << 'EOF'
-[Desktop Entry]
-Version=1.0
-Type=Application
-Name=XF₲ Wallet
-GenericName=Cryptocurrency Wallet
-Comment=Privacy-focused cryptocurrency wallet for XF₲
-Exec=fuego_wallet
-Icon=fuego_wallet
-Terminal=false
-Categories=Finance;Network;
-Keywords=cryptocurrency;wallet;privacy;fuego;xfg;
-StartupWMClass=fuego_wallet
-StartupNotify=true
-EOF
+           [Desktop Entry]
+          Version=1.0
+          Type=Application
+          Name=XF₲ Wallet
+          GenericName=Untraceable Cryptocurrency Banking Wallet
+          Comment=Privacy-focused cryptocurrency wallet for XF₲
+          Exec=fuego_wallet
+          Icon=fuego_wallet
+          Terminal=false
+          Categories=Finance;Network;
+          Keywords=cryptocurrency;wallet;banking;privacy;fuego;xfg;
+          StartupWMClass=fuego_wallet
+          StartupNotify=true
+          EOF
           fi
           # Create AppImage (using extraction to avoid FUSE)
           ./appimagetool-x86_64.AppImage --appimage-extract
