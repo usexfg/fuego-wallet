@@ -7,9 +7,7 @@ import 'package:dio/dio.dart';
 import '../models/wallet.dart';
 import '../models/network_config.dart';
 import 'package:flutter/foundation.dart';
-
-// Import FFI bindings when ready
-// import '../../native/crypto/bindings/crypto_bindings.dart';
+import '../../native/crypto/bindings/crypto_bindings.dart';
 
 /// Hybrid wallet adapter that uses native crypto for key operations
 /// and RPC calls for blockchain sync
@@ -48,14 +46,12 @@ class FuegoWalletAdapterNative {
 
   /// Initialize native crypto (if available)
   Future<bool> initNativeCrypto() async {
-    // TODO: Implement native crypto initialization
-    // const nativeCrypto = NativeCrypto.init();
-    // if (nativeCrypto) {
-    //   _useNativeCrypto = true;
-    //   debugPrint('Using native crypto for wallet operations');
-    //   return true;
-    // }
-    
+    final available = await NativeCrypto.init();
+    if (available) {
+      _useNativeCrypto = true;
+      debugPrint('Using native crypto for wallet operations');
+      return true;
+    }
     debugPrint('Native crypto not available, using RPC-based operations');
     return false;
   }
@@ -78,22 +74,19 @@ class FuegoWalletAdapterNative {
       }
 
       // Generate keys using native crypto
-      // final keys = NativeCrypto.generateKeys();
-      // _privateSpendKey = keys[0];
-      // _privateViewKey = keys[1];
-      // _publicSpendKey = keys[2];
-      // _publicViewKey = keys[3];
-      
+      final keys = NativeCrypto.generateKeys();
+      if (keys == null) throw Exception('Failed to generate keys using native crypto');
+      _privateSpendKey = Uint8List.fromList(keys['private_spend_key'] as List<int>);
+      _privateViewKey  = Uint8List.fromList(keys['private_view_key'] as List<int>);
+      _publicSpendKey  = Uint8List.fromList(keys['public_spend_key'] as List<int>);
+      _publicViewKey   = Uint8List.fromList(keys['public_view_key'] as List<int>);
       // Generate address
-      // final address = NativeCrypto.generateAddress(
-      //   _publicSpendKey!,
-      //   _publicViewKey!,
-      //   _networkConfig.addressPrefix,
-      // );
-
-      // Save wallet via RPC (still need fuego-walletd for blockchain sync)
-      // await _saveWalletViaRpc(address, password);
-
+      final address = NativeCrypto.generateAddress(
+        _publicSpendKey!,
+        _publicViewKey!,
+        _networkConfig.addressPrefix,
+      );
+      // (You can save the address, for display or wallet file)
       _isOpen = true;
       await _startSync();
       _emitEvent(WalletEvent.created());
@@ -292,6 +285,7 @@ class FuegoWalletAdapterNative {
     _syncTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
       await _updateSyncStatus();
     });
+    return;
   }
 
   Future<void> _updateSyncStatus() async {
@@ -375,4 +369,3 @@ enum WalletEventType {
   depositWithdrawalCreated,
   synchronizationProgress,
 }
-
