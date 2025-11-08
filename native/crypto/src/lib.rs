@@ -9,7 +9,7 @@ use rand::RngCore;
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
 
-// Fuego uses Ed25519 for key pairs (similar to CryptoNote)
+// Fuego uses Ed25519 for key pairs 
 // Public key and secret key are 32 bytes each
 pub const KEY_SIZE: usize = 32;
 pub const ADDRESS_SIZE: usize = 69; // Base58 encoded address with checksum
@@ -125,17 +125,18 @@ pub extern "C" fn fuego_generate_address(
             Err(_) => return -1,
         };
 
-        // Build address structure: [prefix_byte][public_spend][public_view][checksum]
-        let mut address_bytes = Vec::with_capacity(69);
-        
-        // Add network prefix (simplified - in real implementation this varies by network)
-        address_bytes.push(0x1E); // FUEGO mainnet prefix
-        
-        // Add public spend key
-        address_bytes.extend_from_slice(&spend_key);
-        
-        // Add public view key  
-        address_bytes.extend_from_slice(&view_key);
+        // Build address structure: [prefix_bytes][public_spend][public_view][checksum]
+let mut address_bytes = Vec::with_capacity(69);
+
+// Add network prefix (CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX = 0x1ac067 = 1753191)
+// "fire" address prefix for Fuego mainnet
+address_bytes.extend_from_slice(&[0x1a, 0xc0, 0x67]);
+
+// Add public spend key
+address_bytes.extend_from_slice(&spend_key);
+
+// Add public view key  
+address_bytes.extend_from_slice(&view_key);
         
         // Calculate checksum using Keccak/SHA3
         let mut hasher = Sha256::new();
@@ -181,13 +182,23 @@ pub extern "C" fn fuego_validate_address(
             Err(_) => return 0,
         };
 
-        // Check prefix
-        if !address_str.starts_with("FUEGO") {
+        // Check total length (fire + 96 = 100)
+        if address_str.len() != 100 {
             return 0;
         }
 
-        // Extract base58 part
-        let base58_part = &address_str[5..];
+        // Check prefix
+        if !address_str.starts_with("fire") {
+            return 0;
+        }
+
+        // Extract base58 part (starts at index 4, not 5)
+        let base58_part = &address_str[4..];
+        
+        // Validate base58 part length (should be 96)
+        if base58_part.len() != 96 {
+            return 0;
+        }
         
         // Decode from base58
         let address_bytes = match bs58::decode(base58_part).into_vec() {
@@ -195,7 +206,7 @@ pub extern "C" fn fuego_validate_address(
             Err(_) => return 0,
         };
 
-        // Check minimum length
+        // Check minimum length (prefix bytes + keys + checksum)
         if address_bytes.len() < 5 {
             return 0;
         }

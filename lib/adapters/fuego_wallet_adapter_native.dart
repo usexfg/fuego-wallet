@@ -24,7 +24,7 @@ class FuegoWalletAdapterNative {
   Wallet? _wallet;
   bool _isOpen = false;
   bool _isSynchronized = false;
-  bool _useNativeCrypto = false; // Set to true when native lib is available
+  bool _useNativeCrypto = true; // Set to true when native lib is available
   
   Timer? _syncTimer;
   StreamController<WalletEvent>? _eventController;
@@ -285,7 +285,7 @@ class FuegoWalletAdapterNative {
     _syncTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
       await _updateSyncStatus();
     });
-    return;
+    return null;
   }
 
   Future<void> _updateSyncStatus() async {
