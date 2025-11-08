@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Fuego Developers
+// Copyright (c) 2025 Elderfire Privacy Group
+
 import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart';

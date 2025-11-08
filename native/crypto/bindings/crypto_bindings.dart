@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Fuego Developers
+// Copyright (c) 2025 Elderfire Privacy Group
+
 // FFI bindings for native crypto operations
 // This will call into a shared library (.so, .dylib, .dll) that implements
 // Fuego's crypto primitives directly in the app
@@ -9,7 +12,7 @@ import 'package:ffi/ffi.dart';
 import 'package:flutter/foundation.dart';
 
 /// Native crypto library for wallet operations
-/// This provides in-process crypto primitives without needing fuego-walletd
+/// This provides in-process crypto primitives without needing to call fuego's walletd
 class NativeCrypto {
   static DynamicLibrary? _library;
   static bool _initialized = false;
@@ -43,7 +46,7 @@ class NativeCrypto {
       Int32 Function(Pointer<Uint8>),
       int Function(Pointer<Uint8>)>('fuego_validate_mnemonic');
   
-  // Add these new function signatures
+  // Add function signatures
   static late final _Hash = _lib.lookupFunction<
       Int32 Function(Pointer<Uint8>, Size, Pointer<Uint8>),
       int Function(Pointer<Uint8>, int, Pointer<Uint8>)>('fuego_hash');
@@ -63,7 +66,7 @@ class NativeCrypto {
     if (_initialized) return true;
 
     try {
-      // Try to load the native library
+      // Try to load native library
       String libraryPath;
       
       if (Platform.isAndroid) {
@@ -82,7 +85,7 @@ class NativeCrypto {
       _initialized = true;
       return true;
     } catch (e) {
-      // Library not available - fallback to RPC
+      // if library not available - fallback to RPC
       debugPrint('Native crypto library not available: $e');
       debugPrint('Falling back to RPC-based wallet operations');
       return false;
@@ -92,7 +95,7 @@ class NativeCrypto {
   /// Check if native crypto is available
   static bool get isAvailable => _initialized && _library != null;
 
-  /// Generate a new wallet key pair
+  /// Generate new wallet key pair
   /// Returns: Map with keys or null on failure
   static Map<String, Uint8List>? generateKeys() {
     if (!isAvailable) return null;

@@ -1,5 +1,5 @@
-// Hybrid wallet adapter that uses native crypto when available
-// Falls back to RPC-based operations when native lib is not available
+// Copyright (c) 2025 Fuego Developers
+// Copyright (c) 2025 Elderfire Privacy Group
 
 import 'dart:async';
 import 'dart:io';
@@ -7,10 +7,10 @@ import 'package:dio/dio.dart';
 import '../models/wallet.dart';
 import '../models/network_config.dart';
 import 'package:flutter/foundation.dart';
-import '../../native/crypto/bindings/crypto_bindings.dart';
+import 'package:xfg_wallet/native/crypto/bindings/crypto_bindings.dart' 
+    if (dart.library.io) '../../native/crypto/bindings/crypto_bindings.dart';
 
-/// Hybrid wallet adapter that uses native crypto for key operations
-/// and RPC calls for blockchain sync
+/// Hybrid wallet adapter that uses native crypto for key operations and RPC calls for blockchain sync
 class FuegoWalletAdapterNative {
   static FuegoWalletAdapterNative? _instance;
   static FuegoWalletAdapterNative get instance {
@@ -281,12 +281,11 @@ class FuegoWalletAdapterNative {
     }
   }
 
-  Future<void> _startSync() {
-    _syncTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
-      await _updateSyncStatus();
-    });
-    return null;
-  }
+ Future<void> _startSync() async {
+  _syncTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
+    await _updateSyncStatus();
+  });
+}
 
   Future<void> _updateSyncStatus() async {
     try {
