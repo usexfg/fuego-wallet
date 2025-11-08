@@ -43,6 +43,19 @@ class NativeCrypto {
       Int32 Function(Pointer<Uint8>),
       int Function(Pointer<Uint8>)>('fuego_validate_mnemonic');
   
+  // Add these new function signatures
+  static late final _Hash = _lib.lookupFunction<
+      Int32 Function(Pointer<Uint8>, Size, Pointer<Uint8>),
+      int Function(Pointer<Uint8>, int, Pointer<Uint8>)>('fuego_hash');
+  
+  static late final _Sign = _lib.lookupFunction<
+      Int32 Function(Pointer<Uint8>, Pointer<Uint8>, Size, Pointer<Uint8>),
+      int Function(Pointer<Uint8>, Pointer<Uint8>, int, Pointer<Uint8>)>('fuego_sign');
+  
+  static late final _VerifySignature = _lib.lookupFunction<
+      Int32 Function(Pointer<Uint8>, Pointer<Uint8>, Size, Pointer<Uint8>),
+      int Function(Pointer<Uint8>, Pointer<Uint8>, int, Pointer<Uint8>)>('fuego_verify_signature');
+  
   static late final DynamicLibrary _lib;
 
   /// Initialize the native crypto library
@@ -225,35 +238,98 @@ class NativeCrypto {
     }
   }
 
-  /// Generate key image for ring signatures
+    /// Generate key image for ring signatures
   static Uint8List? generateKeyImage(Uint8List publicKey, Uint8List privateKey) {
     if (!isAvailable) return null;
+    
+    // Validate input lengths (must be 32 bytes each)
+    if (publicKey.length != 32 || privateKey.length != 32) {
+      return null;
+    }
 
-    // TODO: Implement key image generation FFI binding
-    return null;
+    final publicPtr = calloc<Uint8>(32);
+    final privatePtr = calloc<Uint8>(32);
+    final keyImagePtr = calloc<Uint8>(32);
+
+    publicPtr.asTypedList(32).setAll(0, publicKey);
+    privatePtr.asTypedList(32).setAll(0, privateKey);
+
+    try {
+      final result = _GenerateKeyImage(publicPtr, privatePtr, keyImagePtr);
+      if (result != 0) return null;
+
+      return keyImagePtr.asTypedList(32).toList();
+    } finally {
+      calloc.free(publicPtr);
+      calloc.free(privatePtr);
+      calloc.free(keyImagePtr);
+    }
   }
 
-  /// Hash data
+    /// Hash data using SHA512
   static Uint8List? hash(Uint8List data) {
     if (!isAvailable) return null;
 
-    // TODO: Implement hash FFI binding
-    return null;
+    final dataPtr = calloc<Uint8>(data.length);
+    final hashPtr = calloc<Uint8>(64); // SHA512 output is 64 bytes
+
+    dataPtr.asTypedList(data.length).setAll(0, data);
+
+    try {
+      final result = _Hash(dataPtr, data.length, hashPtr);
+      if (result != 0) return null;
+
+      return hashPtr.asTypedList(64).toList();
+    } finally {
+      calloc.free(dataPtr);
+      calloc.free(hashPtr);
+    }
   }
 
-  /// Sign message
+   /// Sign message with private key using Ed25519
   static Uint8List? signMessage(Uint8List privateKey, Uint8List message) {
-    if (!isAvailable) return null;
+    if (!isAvailable || privateKey.length != 32) return null;
 
-    // TODO: Implement signing FFI binding
-    return null;
+    final privatePtr = calloc<Uint8>(32);
+    final messagePtr = calloc<Uint8>(message.length);
+    final signaturePtr = calloc<Uint8>(64); // Ed25519 signature is 64 bytes
+
+    privatePtr.asTypedList(32).setAll(0, privateKey);
+    messagePtr.asTypedList(message.length).setAll(0, message);
+
+    try {
+      final result = _Sign(privatePtr, messagePtr, message.length, signaturePtr);
+      if (result != 0) return null;
+
+      return signaturePtr.asTypedList(64).toList();
+    } finally {
+      calloc.free(privatePtr);
+      calloc.free(messagePtr);
+      calloc.free(signaturePtr);
+    }
   }
 
-  /// Verify signature
+   /// Verify Ed25519 signature
   static bool verifySignature(Uint8List publicKey, Uint8List message, Uint8List signature) {
-    if (!isAvailable) return false;
+    if (!isAvailable || publicKey.length != 32 || signature.length != 64) {
+      return false;
+    }
 
-    // TODO: Implement verification FFI binding
-    return false;
+    final publicPtr = calloc<Uint8>(32);
+    final messagePtr = calloc<Uint8>(message.length);
+    final signaturePtr = calloc<Uint8>(64);
+
+    publicPtr.asTypedList(32).setAll(0, publicKey);
+    messagePtr.asTypedList(message.length).setAll(0, message);
+    signaturePtr.asTypedList(64).setAll(0, signature);
+
+    try {
+      final result = _VerifySignature(publicPtr, messagePtr, message.length, signaturePtr);
+      return result == 1; // 1 = valid, 0 = invalid
+    } finally {
+      calloc.free(publicPtr);
+      calloc.free(messagePtr);
+      calloc.free(signaturePtr);
+    }
   }
 }
