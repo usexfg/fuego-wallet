@@ -7,8 +7,7 @@ import 'package:dio/dio.dart';
 import '../models/wallet.dart';
 import '../models/network_config.dart';
 import 'package:flutter/foundation.dart';
-import 'package:xfg_wallet/native/crypto/bindings/crypto_bindings.dart' 
-    if (dart.library.io) '../../native/crypto/bindings/crypto_bindings.dart';
+import 'package:xfg_wallet/native/crypto/bindings/crypto_bindings.dart';
 
 /// Hybrid wallet adapter that uses native crypto for key operations and RPC calls for blockchain sync
 class FuegoWalletAdapterNative {
@@ -25,7 +24,7 @@ class FuegoWalletAdapterNative {
   bool _isOpen = false;
   bool _isSynchronized = false;
   bool _useNativeCrypto = true; // Set to true when native lib is available
-  
+
   Timer? _syncTimer;
   StreamController<WalletEvent>? _eventController;
 
@@ -125,12 +124,12 @@ class FuegoWalletAdapterNative {
       // _privateSpendKey = Uint8List.fromList(
       //   List.generate(spendKey.length ~/ 2, (i) => int.parse(spendKey.substring(i * 2, i * 2 + 2), radix: 16))
       // );
-      
+
       // Generate public keys from private keys
       // _publicSpendKey = NativeCrypto.generatePublicKey(_privateSpendKey!);
       // _privateViewKey = NativeCrypto.generateViewKeyFromSpend(_privateSpendKey!);
       // _publicViewKey = NativeCrypto.generatePublicKey(_privateViewKey!);
-      
+
       // Generate address
       // final address = NativeCrypto.generateAddress(
       //   _publicSpendKey!,
@@ -310,13 +309,13 @@ class FuegoWalletAdapterNative {
     _syncTimer?.cancel();
     _isOpen = false;
     _isSynchronized = false;
-    
+
     // Clear keys from memory
     _privateSpendKey = null;
     _privateViewKey = null;
     _publicSpendKey = null;
     _publicViewKey = null;
-    
+
     _emitEvent(WalletEvent.closed());
     _eventController?.close();
   }
