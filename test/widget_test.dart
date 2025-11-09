@@ -11,7 +11,7 @@ void main() {
     await tester.pumpWidget(const XFGWalletApp());
 
     // Verify that our app starts with the splash screen
-    expect(find.text('XF₲ WALLET'), findsOneWidget);
+    expect(find.text('Fyrefly - XF₲ Wallet'), findsOneWidget);
     expect(find.text('Privacy Blockchain Banking'), findsOneWidget);
   });
 }

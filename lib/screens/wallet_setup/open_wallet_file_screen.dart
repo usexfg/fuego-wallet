@@ -1,7 +1,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
 import '../../utils/theme.dart';
+import '../../providers/wallet_provider_hybrid.dart';
+import '../../models/network_config.dart';
+import '../../services/wallet_daemon_service.dart';
 import '../auth/pin_entry_screen.dart';
 
 class OpenWalletFileScreen extends StatefulWidget {
@@ -21,21 +26,24 @@ class _OpenWalletFileScreenState extends State<OpenWalletFileScreen>
   bool _isLoading = false;
   String? _selectedFilePath;
   String? _selectedFileName;
+  String? _errorMessage;
+  WalletProviderHybrid? _walletProvider;
 
   @override
   void initState() {
     super.initState();
     _setupAnimations();
+    _initializeWalletProvider();
   }
 
   void _setupAnimations() {
     _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 1000),
+      duration: const Duration(milliseconds: 800),
       vsync: this,
     );
 
     _slideController = AnimationController(
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 600),
       vsync: this,
     );
 
@@ -56,127 +64,174 @@ class _OpenWalletFileScreenState extends State<OpenWalletFileScreen>
     ));
 
     _fadeController.forward();
-    Future.delayed(const Duration(milliseconds: 300), () {
+    Future.delayed(const Duration(milliseconds: 200), () {
       if (mounted) _slideController.forward();
     });
+  }
+
+  void _initializeWalletProvider() {
+    _walletProvider = WalletProviderHybrid();
   }
 
   @override
   void dispose() {
     _fadeController.dispose();
     _slideController.dispose();
+    _walletProvider?.dispose();
     super.dispose();
   }
 
   Future<void> _pickWalletFile() async {
     try {
+      // Try to open common wallet directories
+      String? initialDirectory = await _getDefaultDirectory();
+
       FilePickerResult? result = await FilePicker.platform.pickFiles(
-          type: FileType.custom,
-          allowedExtensions: ['wallet', 'keys', 'dat'],
-          dialogTitle: 'Select XF₲ Wallet File',
-          withData: false,
-          withReadStream: false,
-          allowMultiple: false,
-        );
+        type: FileType.custom,
+        allowedExtensions: ['wallet', 'keys', 'dat'],
+        dialogTitle: 'Select XF₲ Wallet File',
+        initialDirectory: initialDirectory,
+        allowMultiple: false,
+      );
 
       if (result != null && result.files.isNotEmpty) {
-        final file = result.files.single;
-        if (file.path != null) {
-          // Additional validation for file extension
-          final fileName = file.name.toLowerCase();
-          final validExtensions = ['.wallet', '.keys', '.dat'];
-          final hasValidExtension = validExtensions.any((ext) => fileName.endsWith(ext));
-
-          if (!hasValidExtension) {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Please select a valid wallet file (.wallet, .keys, or .dat)'),
-                  backgroundColor: AppTheme.errorColor,
-                ),
-              );
-            }
-            return;
-          }
-
-          setState(() {
-            _selectedFilePath = file.path;
-            _selectedFileName = file.name;
-          });
-        } else {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Unable to access selected file path'),
-                backgroundColor: AppTheme.errorColor,
-              ),
-            );
-          }
-        }
+        await _processSelectedFile(result.files.single.path!);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error selecting file: $e'),
-            backgroundColor: AppTheme.errorColor,
-          ),
-        );
+        setState(() {
+          _errorMessage = 'Error selecting file: $e';
+        });
       }
     }
   }
 
-  bool _validateWalletFile() {
+  Future<String?> _getDefaultDirectory() async {
+    try {
+      if (Platform.isAndroid || Platform.isIOS) {
+        final directory = await getExternalStorageDirectory();
+        return directory?.path;
+      } else {
+        // Desktop - try common wallet locations
+        final homeDir = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+        if (homeDir != null) {
+          final commonPaths = [
+            path.join(homeDir, 'Documents', 'XF₲ Wallet'),
+            path.join(homeDir, 'Documents', 'Fuego Wallet'),
+            path.join(homeDir, 'Documents', 'Wallets'),
+            path.join(homeDir, 'Desktop'),
+            path.join(homeDir, 'Downloads'),
+            path.join(homeDir, 'Documents'),
+          ];
+
+          for (final dirPath in commonPaths) {
+            if (await Directory(dirPath).exists()) {
+              return dirPath;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      // Fallback to current directory
+    }
+    return null;
+  }
+
+  Future<void> _processSelectedFile(String filePath) async {
+    if (!mounted) return;
+
+    setState(() {
+      _selectedFilePath = filePath;
+      _selectedFileName = path.basename(filePath);
+      _errorMessage = null;
+    });
+
+    // Quick validation
+    if (!_quickValidateFile()) {
+      return;
+    }
+  }
+
+  bool _quickValidateFile() {
     if (_selectedFilePath == null) return false;
 
     final file = File(_selectedFilePath!);
 
-    // Check if file exists and is readable
+    // Check if file exists
     if (!file.existsSync()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Selected file does not exist'),
-          backgroundColor: AppTheme.errorColor,
-        ),
-      );
+      setState(() {
+        _errorMessage = 'Selected file does not exist';
+      });
       return false;
     }
 
-    // Check file size (reasonable wallet file size)
+    // Check file size
     final fileSize = file.lengthSync();
-    if (fileSize == 0 || fileSize > 10 * 1024 * 1024) { // Max 10MB
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Invalid wallet file size'),
-          backgroundColor: AppTheme.errorColor,
-        ),
-      );
+    if (fileSize == 0) {
+      setState(() {
+        _errorMessage = 'File is empty';
+      });
+      return false;
+    }
+
+    if (fileSize > 50 * 1024 * 1024) { // Max 50MB
+      setState(() {
+        _errorMessage = 'File is too large (max 50MB)';
+      });
       return false;
     }
 
     return true;
   }
 
+  void _clearSelection() {
+    setState(() {
+      _selectedFilePath = null;
+      _selectedFileName = null;
+      _errorMessage = null;
+    });
+  }
+
   void _openWallet() async {
-    if (!_validateWalletFile()) return;
+    if (_selectedFilePath == null) return;
 
     setState(() {
       _isLoading = true;
+      _errorMessage = null;
     });
 
     try {
-      // TODO: Implement actual wallet file parsing and loading
-      // This would involve:
-      // 1. Reading and parsing the wallet file
-      // 2. Extracting keys and wallet data
-      // 3. Validating the wallet integrity
-      // 4. Setting up wallet in wallet provider
-      // 5. Navigating to PIN setup
+      // Final validation
+      if (!_quickValidateFile()) {
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
 
-      await Future.delayed(const Duration(seconds: 2)); // Simulate processing
+      // Initialize wallet daemon service
+      await WalletDaemonService.initialize(
+        daemonAddress: '127.0.0.1',
+        daemonPort: 20020,
+        networkConfig: NetworkConfig.mainnet,
+      );
+
+      // Try to open wallet
+      final success = await _walletProvider!.openWallet(
+        walletPath: _selectedFilePath!,
+        password: '', // Try empty password first
+      );
+
+      if (!success) {
+        setState(() {
+          _errorMessage = 'Failed to open wallet. The file may be password protected or corrupted.';
+          _isLoading = false;
+        });
+        return;
+      }
 
       if (mounted) {
-        // Navigate to PIN entry screen for wallet setup
+        // Navigate to PIN setup
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(
             builder: (context) => const PinEntryScreen(),
@@ -186,16 +241,8 @@ class _OpenWalletFileScreenState extends State<OpenWalletFileScreen>
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to open wallet: $e'),
-            backgroundColor: AppTheme.errorColor,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
         setState(() {
+          _errorMessage = 'Failed to open wallet: $e';
           _isLoading = false;
         });
       }
@@ -210,267 +257,166 @@ class _OpenWalletFileScreenState extends State<OpenWalletFileScreen>
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppTheme.textPrimary),
+          icon: Icon(
+            Icons.arrow_back_ios,
+            color: AppTheme.textPrimary,
+          ),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
-          'Open Wallet File',
+        title: Text(
+          'Open Wallet',
           style: TextStyle(
             color: AppTheme.textPrimary,
-            fontWeight: FontWeight.bold,
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            children: [
-              FadeTransition(
-                opacity: _fadeAnimation,
-                child: Column(
-                  children: [
-                    // Icon
-                    Container(
-                      width: 100,
-                      height: 100,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: AppTheme.primaryGradient,
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppTheme.primaryColor.withOpacity(0.3),
-                            blurRadius: 20,
-                            spreadRadius: 2,
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: SlideTransition(
+          position: _slideAnimation,
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Header
+                Text(
+                  'Open Your XF₲ Wallet',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textPrimary,
+                    height: 1.2,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Select your existing wallet file to continue',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: AppTheme.textSecondary,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 32),
+
+                // Main content
+                Expanded(
+                  child: _buildFileSelectionArea(),
+                ),
+
+                // Error message
+                if (_errorMessage != null) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.errorColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppTheme.errorColor.withOpacity(0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.error,
+                          color: AppTheme.errorColor,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _errorMessage!,
+                            style: TextStyle(
+                              color: AppTheme.errorColor,
+                              fontSize: 14,
+                            ),
                           ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.folder_open,
-                        color: Colors.white,
-                        size: 50,
-                      ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 24),
+                  ),
+                ],
 
-                    // Title
-                    const Text(
-                      'Open Wallet File',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.textPrimary,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 16),
+                // File type info
+                const SizedBox(height: 16),
+                _buildFileTypeInfo(),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
-                    // Description
-                    Text(
-                      'Select a wallet file from your device to open an existing XF₲ wallet.',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: AppTheme.textSecondary,
-                        height: 1.5,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
+  Widget _buildFileSelectionArea() {
+    if (_selectedFilePath != null) {
+      return _buildSelectedFileWidget();
+    } else {
+      return _buildFilePickerWidget();
+    }
+  }
+
+  Widget _buildFilePickerWidget() {
+    return GestureDetector(
+      onTap: _pickWalletFile,
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppTheme.textMuted.withOpacity(0.2),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.textPrimary.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.folder_open,
+                size: 64,
+                color: AppTheme.textMuted,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Select Wallet File',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary,
                 ),
               ),
-
-              const SizedBox(height: 32),
-
-              SlideTransition(
-                position: _slideAnimation,
-                child: Column(
-                  children: [
-                    // File selection area
-                    GestureDetector(
-                      onTap: _pickWalletFile,
-                      child: Container(
-                        padding: const EdgeInsets.all(32),
-                        decoration: BoxDecoration(
-                          color: AppTheme.surfaceColor,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: _selectedFilePath != null
-                                ? AppTheme.primaryColor.withOpacity(0.5)
-                                : AppTheme.textMuted.withOpacity(0.3),
-                            width: _selectedFilePath != null ? 2 : 1,
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            Icon(
-                              _selectedFilePath != null
-                                  ? Icons.file_present
-                                  : Icons.file_upload,
-                              size: 48,
-                              color: _selectedFilePath != null
-                                  ? AppTheme.primaryColor
-                                  : AppTheme.textMuted,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              _selectedFilePath != null
-                                  ? 'File Selected'
-                                  : 'Tap to Select Wallet File',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: _selectedFilePath != null
-                                    ? AppTheme.primaryColor
-                                    : AppTheme.textPrimary,
-                              ),
-                            ),
-                            if (_selectedFileName != null) ...[
-                              const SizedBox(height: 8),
-                              Text(
-                                _selectedFileName!,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: AppTheme.textSecondary,
-                                  fontFamily: 'monospace',
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                            const SizedBox(height: 8),
-                            Text(
-                              'Supported formats: .wallet, .keys, .dat',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppTheme.textMuted,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 32),
-
-                    // Open wallet button
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: (_isLoading || _selectedFilePath == null)
-                            ? null
-                            : _openWallet,
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.all(20),
-                          backgroundColor: AppTheme.primaryColor,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.lock_open,
-                                    size: 24,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Text(
-                                    'Open Wallet',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // File info
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppTheme.surfaceColor,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: AppTheme.textMuted.withOpacity(0.3),
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Supported Wallet Files',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          _buildFileTypeInfo(
-                            'XF₲ Wallet (.wallet)',
-                            'Standard XF₲ wallet file containing encrypted keys',
-                          ),
-                          const SizedBox(height: 8),
-                          _buildFileTypeInfo(
-                            'Key File (.keys)',
-                            'File containing view and spend keys',
-                          ),
-                          const SizedBox(height: 8),
-                          _buildFileTypeInfo(
-                            'Legacy Format (.dat)',
-                            'Older wallet format compatibility',
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Security notice
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppTheme.warningColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: AppTheme.warningColor.withOpacity(0.3),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.security,
-                            color: AppTheme.warningColor,
-                            size: 24,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'Ensure your wallet file is from a trusted source. Back up your wallet file regularly and keep it secure.',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: AppTheme.warningColor,
-                                height: 1.4,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+              const SizedBox(height: 8),
+              Text(
+                'Supported formats: .wallet, .keys, .dat',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppTheme.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: _pickWalletFile,
+                icon: const Icon(Icons.folder_open),
+                label: const Text('Choose File'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
                 ),
               ),
             ],
@@ -480,9 +426,148 @@ class _OpenWalletFileScreenState extends State<OpenWalletFileScreen>
     );
   }
 
-  Widget _buildFileTypeInfo(String fileType, String description) {
+  Widget _buildSelectedFileWidget() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppTheme.primaryColor.withOpacity(0.3),
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.check_circle,
+            size: 48,
+            color: AppTheme.primaryColor,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Wallet file selected',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _selectedFileName!,
+            style: TextStyle(
+              fontSize: 14,
+              color: AppTheme.textSecondary,
+              fontFamily: 'monospace',
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              OutlinedButton.icon(
+                onPressed: _clearSelection,
+                icon: const Icon(Icons.clear),
+                label: const Text('Change'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.textSecondary,
+                  side: BorderSide(
+                    color: AppTheme.textMuted.withOpacity(0.3),
+                  ),
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: _isLoading ? null : _openWallet,
+                icon: _isLoading
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Icon(Icons.check),
+                label: Text(_isLoading ? 'Opening...' : 'Open Wallet'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFileTypeInfo() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppTheme.textMuted.withOpacity(0.2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Supported Wallet Files',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildFileTypeRow(
+            'XF₲ Wallet (.wallet)',
+            'Standard XF₲ wallet file',
+          ),
+          const SizedBox(height: 8),
+          _buildFileTypeRow(
+            'Key File (.keys)',
+            'View and spend keys file',
+          ),
+          const SizedBox(height: 8),
+          _buildFileTypeRow(
+            'Legacy Format (.dat)',
+            'Older wallet format',
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Icon(
+                Icons.info,
+                size: 16,
+                color: AppTheme.primaryColor,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Files are processed locally and never uploaded.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFileTypeRow(String fileType, String description) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(
           Icons.check_circle,
@@ -498,7 +583,7 @@ class _OpenWalletFileScreenState extends State<OpenWalletFileScreen>
                 fileType,
                 style: TextStyle(
                   fontSize: 14,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w500,
                   color: AppTheme.textPrimary,
                 ),
               ),
@@ -507,7 +592,6 @@ class _OpenWalletFileScreenState extends State<OpenWalletFileScreen>
                 style: TextStyle(
                   fontSize: 12,
                   color: AppTheme.textSecondary,
-                  height: 1.3,
                 ),
               ),
             ],
@@ -517,4 +601,3 @@ class _OpenWalletFileScreenState extends State<OpenWalletFileScreen>
     );
   }
 }
-

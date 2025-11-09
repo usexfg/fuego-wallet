@@ -1,24 +1,40 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  // Fuego brand colors
-  static const Color primaryColor = Color(0xFFFF6B35); // Fuego orange/red
+  // Fuego brand colors - Rich reddish-orange inspired by Bitcoin/Monero/Reddit
+  static const Color primaryColor = Color(0xFFD84315); // Main reddish-orange
   static const Color secondaryColor = Color(0xFF1A1A1A); // Dark gray
   static const Color accentColor = Color(0xFFFFD700); // Gold accent
-  static const Color backgroundColor = Color(0xFF0A0E14); // Even darker blue-gray
+  static const Color backgroundColor =
+      Color(0xFF0A0E14); // Even darker blue-gray
   static const Color surfaceColor = Color(0xFF1A1F26); // Darker surface
   static const Color cardColor = Color(0xFF252B33); // Darker card background
-  
+
+  // Comprehensive reddish-orange color palette
+  static const Color primaryLight = Color(0xFFFF5722); // Lighter reddish-orange
+  static const Color primaryDark = Color(0xFFBF360C); // Darker reddish-orange
+  static const Color primaryAccent = Color(0xFFFF8A65); // Accent reddish-orange
+  static const Color primaryVariant = Color(0xFFE64A19); // Primary variant
+
+  // Complementary colors for better UX
+  static const Color successColor = Color(0xFF4CAF50); // Success green
+  static const Color warningColor = Color(0xFFFF9800); // Warning orange
+  static const Color errorColor = Color(0xFFF44336); // Error red
+  static const Color infoColor = Color(0xFF2196F3); // Info blue
+
+  // Enhanced surface variations
+  static const Color surfaceLight = Color(0xFF2A2F36); // Lighter surface
+  static const Color surfaceDark = Color(0xFF151A20); // Darker surface
+  static const Color cardLight = Color(0xFF2E343C); // Lighter card
+  static const Color cardDark = Color(0xFF1E2228); // Darker card
+
   // Text colors
   static const Color textPrimary = Color(0xFFFFFFFF);
   static const Color textSecondary = Color(0xFFB3B3B3);
   static const Color textMuted = Color(0xFF7D8590);
-  
-  // Status colors
-  static const Color successColor = Color(0xFF28A745);
-  static const Color warningColor = Color(0xFFFFC107);
-  static const Color errorColor = Color(0xFFDC3545);
-  
+
+  // Status colors (moved above for organization)
+
   static ThemeData get darkTheme {
     return ThemeData(
       useMaterial3: true,
@@ -140,12 +156,18 @@ class AppTheme {
         space: 1,
       ),
       textTheme: const TextTheme(
-        displayLarge: TextStyle(color: textPrimary, fontWeight: FontWeight.bold),
-        displayMedium: TextStyle(color: textPrimary, fontWeight: FontWeight.bold),
-        displaySmall: TextStyle(color: textPrimary, fontWeight: FontWeight.bold),
-        headlineLarge: TextStyle(color: textPrimary, fontWeight: FontWeight.bold),
-        headlineMedium: TextStyle(color: textPrimary, fontWeight: FontWeight.w600),
-        headlineSmall: TextStyle(color: textPrimary, fontWeight: FontWeight.w600),
+        displayLarge:
+            TextStyle(color: textPrimary, fontWeight: FontWeight.bold),
+        displayMedium:
+            TextStyle(color: textPrimary, fontWeight: FontWeight.bold),
+        displaySmall:
+            TextStyle(color: textPrimary, fontWeight: FontWeight.bold),
+        headlineLarge:
+            TextStyle(color: textPrimary, fontWeight: FontWeight.bold),
+        headlineMedium:
+            TextStyle(color: textPrimary, fontWeight: FontWeight.w600),
+        headlineSmall:
+            TextStyle(color: textPrimary, fontWeight: FontWeight.w600),
         titleLarge: TextStyle(color: textPrimary, fontWeight: FontWeight.w600),
         titleMedium: TextStyle(color: textPrimary, fontWeight: FontWeight.w500),
         titleSmall: TextStyle(color: textPrimary, fontWeight: FontWeight.w500),
@@ -169,7 +191,8 @@ class AppTheme {
           return textMuted;
         }),
         trackColor: MaterialStateProperty.resolveWith((states) {
-          if (states.contains(MaterialState.selected)) return primaryColor.withOpacity(0.5);
+          if (states.contains(MaterialState.selected))
+            return primaryColor.withOpacity(0.5);
           return textMuted.withOpacity(0.3);
         }),
       ),
@@ -237,8 +260,36 @@ class AppTheme {
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [
+      primaryDark,
       primaryColor,
-      Color(0xFFFF8A65),
+      primaryLight,
+    ],
+  );
+
+  static const LinearGradient subtleGradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [
+      primaryColor.withOpacity(0.1),
+      primaryLight.withOpacity(0.05),
+    ],
+  );
+
+  static const LinearGradient buttonGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      primaryLight,
+      primaryColor,
+    ],
+  );
+
+  static const LinearGradient accentGradient = LinearGradient(
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+    colors: [
+      primaryAccent,
+      primaryLight,
     ],
   );
 
@@ -251,7 +302,7 @@ class AppTheme {
     ],
   );
 
-  // Text styles
+  // Text styles with enhanced colors
   static const TextStyle balanceTextStyle = TextStyle(
     fontSize: 32,
     fontWeight: FontWeight.bold,
@@ -267,9 +318,16 @@ class AppTheme {
   static const TextStyle transactionAmountStyle = TextStyle(
     fontSize: 18,
     fontWeight: FontWeight.bold,
+    color: primaryColor,
   );
 
-  // Box shadows
+  static const TextStyle primaryButtonTextStyle = TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.w600,
+    color: Colors.white,
+  );
+
+  // Box shadows with reddish-orange tint
   static const List<BoxShadow> cardShadow = [
     BoxShadow(
       color: Colors.black12,
@@ -277,4 +335,47 @@ class AppTheme {
       offset: Offset(0, 2),
     ),
   ];
+
+  static const List<BoxShadow> primaryShadow = [
+    BoxShadow(
+      color: primaryColor.withOpacity(0.3),
+      blurRadius: 12,
+      offset: Offset(0, 4),
+      spreadRadius: 2,
+    ),
+  ];
+
+  static const List<BoxShadow> subtleShadow = [
+    BoxShadow(
+      color: Colors.black26,
+      blurRadius: 6,
+      offset: Offset(0, 2),
+    ),
+  ];
+
+  // Color utility methods
+  static Color getPrimaryWithOpacity(double opacity) {
+    return primaryColor.withOpacity(opacity);
+  }
+
+  static Color getSuccessWithOpacity(double opacity) {
+    return successColor.withOpacity(opacity);
+  }
+
+  static Color getWarningWithOpacity(double opacity) {
+    return warningColor.withOpacity(opacity);
+  }
+
+  static Color getErrorWithOpacity(double opacity) {
+    return errorColor.withOpacity(opacity);
+  }
+
+  // Material Design 3 inspired color schemes
+  static const Map<String, Color> cryptoColorPalette = {
+    'bitcoin': Color(0xFFF7931A),
+    'ethereum': Color(0xFF627EEA),
+    'monero': Color(0xFF4C82FB),
+    'reddit': Color(0xFFFF4500),
+    'fuego': primaryColor,
+  };
 }
