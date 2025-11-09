@@ -261,7 +261,7 @@ jobs:
       - name: Build fuego from source
         run: |
           # Clone fuego from newpath branch
-          git clone -b newpath https://github.com/usexfg/fuego.git fuego-source
+          git clone -b newpath https://github.com/colinritman/fuego.git fuego-source
           cd fuego-source
 
           # Install build dependencies
@@ -423,7 +423,7 @@ jobs:
       - name: Build fuego from source
         run: |
           # Clone fuego from newpath branch
-          git clone -b newpath https://github.com/usexfg/fuego.git fuego-source
+          git clone -b newpath https://github.com/colinritman/fuego.git fuego-source
           cd fuego-source
 
           # Install build dependencies

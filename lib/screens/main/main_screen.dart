@@ -21,9 +21,9 @@ class _MainScreenState extends State<MainScreen> {
     const HomeScreen(),
     const MessagingScreen(),
     const BankingScreen(),
-    const ElderfierScreen(),
-    const SettingsScreen(),
     const BurnDepositsScreen(),
+    const SettingsScreen(),
+    const ElderfierScreen(),
   ];
 
   @override
@@ -55,18 +55,18 @@ class _MainScreenState extends State<MainScreen> {
                   index: 0,
                 ),
                 _buildNavItem(
-                  icon: Icons.account_balance,
-                  label: 'CD Banking',
+                  icon: Icons.message,
+                  label: 'Messages',
                   index: 1,
                 ),
                 _buildNavItem(
-                  icon: Icons.message,
-                  label: 'Messages',
+                  icon: Icons.account_balance,
+                  label: 'Banking',
                   index: 2,
                 ),
                 _buildNavItem(
-                  icon: Icons.account_tree,
-                  label: 'Elderfiers',
+                  icon: Icons.local_fire_department,
+                  label: 'Mint Ξmbers',
                   index: 3,
                 ),
                 _buildNavItem(
@@ -75,8 +75,8 @@ class _MainScreenState extends State<MainScreen> {
                   index: 4,
                 ),
                 _buildNavItem(
-                  icon: Icons.local_fire_department,
-                  label: 'Mint Ξmbers',
+                  icon: Icons.account_tree,
+                  label: 'Elderfiers',
                   index: 5,
                 ),
               ],
@@ -93,7 +93,7 @@ class _MainScreenState extends State<MainScreen> {
     required int index,
   }) {
     final isSelected = _currentIndex == index;
-    
+
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -103,7 +103,7 @@ class _MainScreenState extends State<MainScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected 
+          color: isSelected
               ? AppTheme.primaryColor.withOpacity(0.1)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
