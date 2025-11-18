@@ -70,8 +70,25 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: "stable"
 
-      - name: Download required binaries
-        run: ./scripts/ensure-binaries.sh
+      - name: Build fuego from source
+        run: |
+          # Clone fuego from dynamigo branch
+          git clone -b dynamigo https://github.com/usexfg/fuego.git fuego-source
+          cd fuego-source
+
+          # Install build dependencies
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake pkg-config libboost-all-dev libssl-dev libzmq3-dev
+
+          # Build fuego-walletd
+          mkdir build && cd build
+          cmake .. -DBUILD_ALL=ON -DBUILD_TESTS=OFF
+          make -j$(nproc) fuego-walletd
+
+          # Copy binary to assets
+          mkdir -p ../../assets/bin
+          cp src/fuegowallet/fuego-walletd ../../assets/bin/
+          chmod +x ../../assets/bin/fuego-walletd
 
       - name: Enable Linux desktop support
         run: |
@@ -135,8 +152,25 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: "stable"
 
-      - name: Download required binaries
-        run: ./scripts/ensure-binaries.sh
+      - name: Build fuego from source
+        run: |
+          # Clone fuego from dynamigo branch
+          git clone -b dynamigo https://github.com/usexfg/fuego.git fuego-source
+          cd fuego-source
+
+          # Install build dependencies
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake pkg-config libboost-all-dev libssl-dev libzmq3-dev
+
+          # Build fuego-walletd
+          mkdir build && cd build
+          cmake .. -DBUILD_ALL=ON -DBUILD_TESTS=OFF
+          make -j$(nproc) fuego-walletd
+
+          # Copy binary to assets
+          mkdir -p ../../assets/bin
+          cp src/fuegowallet/fuego-walletd ../../assets/bin/
+          chmod +x ../../assets/bin/fuego-walletd
 
       - name: Install Flatpak and dependencies
         run: |
@@ -204,8 +238,25 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: "stable"
 
-      - name: Download required binaries
-        run: ./scripts/ensure-binaries.sh
+      - name: Build fuego from source
+        run: |
+          # Clone fuego from dynamigo branch
+          git clone -b dynamigo https://github.com/usexfg/fuego.git fuego-source
+          cd fuego-source
+
+          # Install build dependencies
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake pkg-config libboost-all-dev libssl-dev libzmq3-dev
+
+          # Build fuego-walletd
+          mkdir build && cd build
+          cmake .. -DBUILD_ALL=ON -DBUILD_TESTS=OFF
+          make -j$(nproc) fuego-walletd
+
+          # Copy binary to assets
+          mkdir -p ../../assets/bin
+          cp src/fuegowallet/fuego-walletd ../../assets/bin/
+          chmod +x ../../assets/bin/fuego-walletd
 
       - name: Enable Linux desktop support
         run: |

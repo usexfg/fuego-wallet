@@ -2,31 +2,31 @@ name: XF₲ Wallet Android Build & Release
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
     paths:
-      - 'lib/**'
-      - 'android/**'
-      - 'pubspec.yaml'
-      - '.github/workflows/android-release.yml'
+      - "lib/**"
+      - "android/**"
+      - "pubspec.yaml"
+      - ".github/workflows/android-release.yml"
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
     paths:
-      - 'lib/**'
-      - 'android/**'
-      - 'pubspec.yaml'
-      - '.github/workflows/android-release.yml'
+      - "lib/**"
+      - "android/**"
+      - "pubspec.yaml"
+      - ".github/workflows/android-release.yml"
   workflow_dispatch:
     inputs:
       build_type:
-        description: 'Build type'
+        description: "Build type"
         required: true
-        default: 'release'
+        default: "release"
         type: choice
         options:
-        - release
-        - debug
+          - release
+          - debug
       upload_to_play_store:
-        description: 'Upload to Play Store'
+        description: "Upload to Play Store"
         required: false
         default: false
         type: boolean
@@ -36,13 +36,13 @@ on:
       contents: write
 
 env:
-  FLUTTER_VERSION: '3.24.0'
+  FLUTTER_VERSION: "3.24.0"
 
 jobs:
   build-android:
     name: Build XF₲ Wallet (Android)
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -50,14 +50,14 @@ jobs:
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: "temurin"
+          java-version: "17"
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: 'stable'
+          channel: "stable"
 
       - name: Enable Android support
         run: flutter config --enable-android
@@ -76,11 +76,25 @@ jobs:
           mv "$BINARY_PATH" assets/bin/xfg-stark-cli-linux
           rm xfg-stark-cli-linux.tar.gz
 
-      - name: Download fuego-walletd
+      - name: Build fuego from source
         run: |
-          curl -L -o fuego-walletd-linux "https://github.com/usexfg/fuego/releases/latest/download/fuego-walletd-linux"
-          chmod +x fuego-walletd-linux
-          mv fuego-walletd-linux assets/bin/
+          # Clone fuego from dynamigo branch
+          git clone -b dynamigo https://github.com/usexfg/fuego.git fuego-source
+          cd fuego-source
+
+          # Install build dependencies
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake pkg-config libboost-all-dev libssl-dev libzmq3-dev
+
+          # Build fuego-walletd
+          mkdir build && cd build
+          cmake .. -DBUILD_ALL=ON -DBUILD_TESTS=OFF
+          make -j$(nproc) fuego-walletd
+
+          # Copy binary to assets
+          mkdir -p ../../assets/bin
+          cp src/fuegowallet/fuego-walletd ../../assets/bin/
+          chmod +x ../../assets/bin/fuego-walletd
 
       - name: Install dependencies
         run: flutter pub get
@@ -187,7 +201,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-android
     if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.upload_to_play_store == 'true')
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -220,7 +234,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-android
     if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.build_type == 'release')
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -249,7 +263,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-android, upload-to-play-store]
     if: always() && github.event_name == 'release'
-    
+
     steps:
       - name: Notify Discord
         if: env.DISCORD_WEBHOOK_URL != ''
@@ -259,11 +273,11 @@ jobs:
         with:
           args: |
             🚀 **XF₲ Wallet Android Release ${{ github.ref_name }}**
-            
+
             ✅ Android APK and AAB builds completed
             📱 Ready for distribution
             🔗 [Download from GitHub Releases](https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }})
-            
+
             **Build Details:**
             - Version: ${{ github.ref_name }}
             - Commit: ${{ github.sha }}

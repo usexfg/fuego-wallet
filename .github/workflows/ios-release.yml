@@ -2,36 +2,36 @@ name: XF₲ Wallet iOS Build & Release
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
     paths:
-      - 'lib/**'
-      - 'ios/**'
-      - 'pubspec.yaml'
-      - '.github/workflows/ios-release.yml'
+      - "lib/**"
+      - "ios/**"
+      - "pubspec.yaml"
+      - ".github/workflows/ios-release.yml"
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
     paths:
-      - 'lib/**'
-      - 'ios/**'
-      - 'pubspec.yaml'
-      - '.github/workflows/ios-release.yml'
+      - "lib/**"
+      - "ios/**"
+      - "pubspec.yaml"
+      - ".github/workflows/ios-release.yml"
   workflow_dispatch:
     inputs:
       build_type:
-        description: 'Build type'
+        description: "Build type"
         required: true
-        default: 'release'
+        default: "release"
         type: choice
         options:
-        - release
-        - debug
+          - release
+          - debug
       upload_to_testflight:
-        description: 'Upload to TestFlight'
+        description: "Upload to TestFlight"
         required: false
         default: false
         type: boolean
       upload_to_app_store:
-        description: 'Upload to App Store'
+        description: "Upload to App Store"
         required: false
         default: false
         type: boolean
@@ -41,15 +41,15 @@ on:
       contents: write
 
 env:
-  FLUTTER_VERSION: '3.24.0'
-  IOS_BUNDLE_ID: 'com.fuego.fuego_wallet'
-  IOS_SCHEME: 'Runner'
+  FLUTTER_VERSION: "3.24.0"
+  IOS_BUNDLE_ID: "com.fuego.fuego_wallet"
+  IOS_SCHEME: "Runner"
 
 jobs:
   build-ios:
     name: Build XF₲ Wallet (iOS)
     runs-on: macos-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -58,7 +58,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: 'stable'
+          channel: "stable"
 
       - name: Enable iOS support
         run: flutter config --enable-ios
@@ -72,11 +72,24 @@ jobs:
           mv xfg-stark-cli-macos assets/bin/
           rm xfg-stark-cli-macos.tar.gz
 
-      - name: Download fuego-walletd
+      - name: Build fuego from source
         run: |
-          curl -L -o fuego-walletd-macos "https://github.com/usexfg/fuego/releases/latest/download/fuego-walletd-macos"
-          chmod +x fuego-walletd-macos
-          mv fuego-walletd-macos assets/bin/
+          # Clone fuego from dynamigo branch
+          git clone -b dynamigo https://github.com/usexfg/fuego.git fuego-source
+          cd fuego-source
+
+          # Install build dependencies
+          brew install cmake pkg-config boost openssl zeromq
+
+          # Build fuego-walletd
+          mkdir build && cd build
+          cmake .. -DBUILD_ALL=ON -DBUILD_TESTS=OFF
+          make -j$(sysctl -n hw.ncpu) fuego-walletd
+
+          # Copy binary to assets
+          mkdir -p ../../assets/bin
+          cp src/fuegowallet/fuego-walletd ../../assets/bin/
+          chmod +x ../../assets/bin/fuego-walletd
 
       - name: Install dependencies
         run: flutter pub get
@@ -189,7 +202,7 @@ jobs:
     runs-on: macos-latest
     needs: build-ios
     if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.upload_to_testflight == 'true')
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -219,7 +232,7 @@ jobs:
     runs-on: macos-latest
     needs: build-ios
     if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.upload_to_app_store == 'true')
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -249,7 +262,7 @@ jobs:
     runs-on: macos-latest
     needs: build-ios
     if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.build_type == 'release')
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -270,7 +283,7 @@ jobs:
         run: |
           # Basic security checks for iOS app
           echo "Running iOS security analysis..."
-          
+
           # Check for hardcoded secrets
           echo "Checking for hardcoded secrets..."
           if grep -r "password\|secret\|key\|token" ios/Runner/ --include="*.swift" --include="*.m" --include="*.h" | grep -v "//"; then
@@ -278,7 +291,7 @@ jobs:
           else
             echo "✅ No hardcoded secrets found"
           fi
-          
+
           # Check Info.plist for security configurations
           echo "Checking Info.plist security configurations..."
           if grep -q "NSAppTransportSecurity" ios/Runner/Info.plist; then
@@ -286,7 +299,7 @@ jobs:
           else
             echo "⚠️ ATS configuration not found"
           fi
-          
+
           # Check for debug configurations in release build
           echo "Checking for debug configurations..."
           if grep -q "DEBUG" ios/Runner/Info.plist; then
@@ -299,7 +312,7 @@ jobs:
         run: |
           # Run Flutter security analysis
           flutter analyze --fatal-infos
-          
+
           # Check for known security issues in dependencies
           flutter pub deps --json | jq -r '.packages[] | select(.kind == "direct") | .name' > direct_deps.txt
           echo "Direct dependencies:"
@@ -310,7 +323,7 @@ jobs:
     runs-on: macos-latest
     needs: build-ios
     if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.build_type == 'release')
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -319,7 +332,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: 'stable'
+          channel: "stable"
 
       - name: Install dependencies
         run: flutter pub get
@@ -328,13 +341,13 @@ jobs:
         run: |
           # Run Flutter analyze with all checks
           flutter analyze --fatal-infos
-          
+
           # Run tests with coverage
           flutter test --coverage
-          
+
           # Generate coverage report
           genhtml coverage/lcov.info -o coverage/html
-          
+
           # Check test coverage
           lcov --summary coverage/lcov.info
 
@@ -350,7 +363,7 @@ jobs:
     runs-on: macos-latest
     needs: [build-ios, upload-to-testflight, upload-to-app-store]
     if: always() && github.event_name == 'release'
-    
+
     steps:
       - name: Notify Discord
         if: env.DISCORD_WEBHOOK_URL != ''
@@ -360,11 +373,11 @@ jobs:
         with:
           args: |
             🚀 **XF₲ Wallet iOS Release ${{ github.ref_name }}**
-            
+
             ✅ iOS app build completed
             📱 Ready for distribution
             🔗 [Download from GitHub Releases](https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }})
-            
+
             **Build Details:**
             - Version: ${{ github.ref_name }}
             - Commit: ${{ github.sha }}
