@@ -73,7 +73,7 @@ jobs:
       - name: Build fuego from source
         run: |
           # Clone fuego from dynamigo branch
-          git clone -b dynamigo https://github.com/usexfg/fuego.git fuego-source
+          git clone -b master https://github.com/colinritman/fuego.git fuego-source
           cd fuego-source
 
           # Install build dependencies
@@ -155,7 +155,7 @@ jobs:
       - name: Build fuego from source
         run: |
           # Clone fuego from dynamigo branch
-          git clone -b dynamigo https://github.com/usexfg/fuego.git fuego-source
+          git clone -b master https://github.com/colinritman/fuego.git fuego-source
           cd fuego-source
 
           # Install build dependencies
@@ -241,7 +241,7 @@ jobs:
       - name: Build fuego from source
         run: |
           # Clone fuego from dynamigo branch
-          git clone -b dynamigo https://github.com/usexfg/fuego.git fuego-source
+          git clone -b master https://github.com/colinritman/fuego.git fuego-source
           cd fuego-source
 
           # Install build dependencies

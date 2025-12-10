@@ -3,20 +3,17 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:xfg_wallet/providers/wallet_provider_hybrid.dart';
 import 'package:xfg_wallet/adapters/fuego_wallet_adapter_native.dart';
-import 'package:xfg_wallet/adapters/fuego_node_adapter.dart';
+// Node adapter no longer needed for hybrid approach
 import 'package:xfg_wallet/models/network_config.dart';
 
 void main() {
   group('WalletProviderHybrid Integration Tests', () {
     late WalletProviderHybrid provider;
-    late FuegoNodeAdapter nodeAdapter;
     late FuegoWalletAdapterNative walletAdapter;
 
     setUp(() {
-      nodeAdapter = FuegoNodeAdapter.instance;
       walletAdapter = FuegoWalletAdapterNative.instance;
       provider = WalletProviderHybrid(
-        nodeAdapter: nodeAdapter,
         walletAdapter: walletAdapter,
       );
     });
@@ -33,7 +30,7 @@ void main() {
 
     test('provider can create wallet from mnemonic', () async {
       const testMnemonic = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
-      
+
       final success = await provider.createWalletFromMnemonic(
         mnemonic: testMnemonic,
         password: 'testpass',
@@ -63,7 +60,7 @@ void main() {
 
     test('provider gracefully handles native crypto unavailability', () {
       final success = !provider.useNativeCrypto;
-      
+
       // Should gracefully fall back to RPC
       expect(success || provider.useNativeCrypto, true);
     });
@@ -118,7 +115,7 @@ void main() {
 
     test('adapter can initialize native crypto', () async {
       final success = await adapter.initNativeCrypto();
-      
+
       // Should complete without error
       expect(success, isA<bool>());
     });
@@ -168,7 +165,7 @@ void main() {
 
       // Wait a bit for events
       await Future.delayed(Duration(milliseconds: 100));
-      
+
       // Event may or may not fire depending on implementation
       expect(eventReceived || true, true);
     });
@@ -202,39 +199,8 @@ void main() {
     });
   });
 
-  group('FuegoNodeAdapter Tests', () {
-    late FuegoNodeAdapter adapter;
-
-    setUp(() {
-      adapter = FuegoNodeAdapter.instance;
-    });
-
-    test('adapter initializes correctly', () {
-      expect(adapter.nodeUrl, isA<String>());
-      expect(adapter.networkConfig, isA<NetworkConfig>());
-    });
-
-    test('adapter can initialize node connection', () async {
-      final success = await adapter.init(
-        nodeUrl: 'http://207.244.247.64:18180',
-        networkConfig: NetworkConfig.mainnet,
-      );
-
-      // May fail in test environment
-      expect(success, isA<bool>());
-    });
-
-    test('adapter gets block height correctly', () async {
-      // May return 0 in test environment
-      final height = await adapter.getLastKnownBlockHeight();
-      expect(height, isA<int>());
-    });
-
-    test('adapter deinitializes correctly', () async {
-      await adapter.deinit();
-      expect(() => adapter.deinit(), returnsNormally);
-    });
-  });
+  // Note: FuegoNodeAdapter tests removed since they're not used in the hybrid approach
+  // The hybrid provider uses native crypto for key operations and RPC for blockchain sync
 }
 
 // Extensions for testing
@@ -245,4 +211,3 @@ extension WalletProviderHybridTestExtension on WalletProviderHybrid {
     // We expose it for testing purposes only
   }
 }
-

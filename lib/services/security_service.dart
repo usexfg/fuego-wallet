@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:crypto/crypto.dart' as crypto;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:cryptography/cryptography.dart';
@@ -13,7 +12,7 @@ class SecurityService {
       accessibility: KeychainAccessibility.first_unlock_this_device,
     ),
   );
-  
+
   final LocalAuthentication _localAuth = LocalAuthentication();
   static const String _pinKey = 'wallet_pin_hash';
   static const String _seedKey = 'wallet_seed';
@@ -36,14 +35,14 @@ class SecurityService {
     try {
       final stored = await _storage.read(key: _pinKey);
       if (stored == null) return false;
-      
+
       final parts = stored.split(':');
       if (parts.length != 2) return false;
-      
+
       final salt = parts[0];
       final storedHash = parts[1];
       final inputHash = await _hashPIN(pin, salt);
-      
+
       return storedHash == inputHash;
     } catch (e) {
       return false;
@@ -94,7 +93,7 @@ class SecurityService {
           stickyAuth: true,
         ),
       );
-      
+
       return isAuthenticated;
     } catch (e) {
       return false;
@@ -125,7 +124,7 @@ class SecurityService {
     try {
       final encrypted = await _storage.read(key: _seedKey);
       if (encrypted == null) return null;
-      
+
       return await _decryptData(encrypted, pin);
     } catch (e) {
       return null;
@@ -143,7 +142,7 @@ class SecurityService {
         'spendKey': spendKey,
         'timestamp': DateTime.now().millisecondsSinceEpoch,
       });
-      
+
       final encrypted = await _encryptData(keysJson, pin);
       await _storage.write(key: _keysKey, value: encrypted);
       return true;
@@ -156,10 +155,10 @@ class SecurityService {
     try {
       final encrypted = await _storage.read(key: _keysKey);
       if (encrypted == null) return null;
-      
+
       final decrypted = await _decryptData(encrypted, pin);
       final keysData = json.decode(decrypted) as Map<String, dynamic>;
-      
+
       return {
         'viewKey': keysData['viewKey'] as String,
         'spendKey': keysData['spendKey'] as String,
@@ -184,7 +183,7 @@ class SecurityService {
 
   // Private helper methods
   String _generateSalt() {
-    final bytes = List<int>.generate(32, (i) => 
+    final bytes = List<int>.generate(32, (i) =>
         DateTime.now().microsecondsSinceEpoch + i);
     return base64Encode(bytes);
   }
@@ -193,19 +192,19 @@ class SecurityService {
     final saltBytes = base64Decode(salt);
     final pinBytes = utf8.encode(pin);
     final combined = [...pinBytes, ...saltBytes];
-    
+
     // Use PBKDF2 for key derivation
     final algorithm = Pbkdf2(
       macAlgorithm: Hmac(Sha256()),
       iterations: 100000,
       bits: 256,
     );
-    
+
     final secretKey = await algorithm.deriveKey(
       secretKey: SecretKey(combined),
       nonce: saltBytes.take(12).toList(),
     );
-    
+
     final keyBytes = await secretKey.extractBytes();
     return base64Encode(keyBytes);
   }
@@ -213,34 +212,34 @@ class SecurityService {
   Future<String> _encryptData(String data, String pin) async {
     final algorithm = AesCbc.with256bits(macAlgorithm: Hmac(Sha256()));
     final secretKey = await _deriveKeyFromPIN(pin);
-    
+
     final encrypted = await algorithm.encrypt(
       utf8.encode(data),
       secretKey: secretKey,
     );
-    
+
     final result = {
       'iv': base64Encode(encrypted.nonce),
       'data': base64Encode(encrypted.cipherText),
       'mac': base64Encode(encrypted.mac.bytes),
     };
-    
+
     return base64Encode(utf8.encode(json.encode(result)));
   }
 
   Future<String> _decryptData(String encryptedData, String pin) async {
     final algorithm = AesCbc.with256bits(macAlgorithm: Hmac(Sha256()));
     final secretKey = await _deriveKeyFromPIN(pin);
-    
-    final decoded = json.decode(utf8.decode(base64Decode(encryptedData))) 
+
+    final decoded = json.decode(utf8.decode(base64Decode(encryptedData)))
         as Map<String, dynamic>;
-    
+
     final secretBox = SecretBox(
       base64Decode(decoded['data'] as String),
       nonce: base64Decode(decoded['iv'] as String),
       mac: Mac(base64Decode(decoded['mac'] as String)),
     );
-    
+
     final decrypted = await algorithm.decrypt(secretBox, secretKey: secretKey);
     return utf8.decode(decrypted);
   }
@@ -251,9 +250,9 @@ class SecurityService {
       iterations: 100000,
       bits: 256,
     );
-    
+
     final salt = List<int>.filled(16, 42); // Static salt for key derivation
-    
+
     return await algorithm.deriveKey(
       secretKey: SecretKey(utf8.encode(pin)),
       nonce: salt,
@@ -269,14 +268,14 @@ class SecurityService {
       'absurd', 'abuse', 'access', 'accident', 'account', 'accuse', 'achieve', 'acid',
       'acoustic', 'acquire', 'across', 'act', 'action', 'actor', 'actress', 'actual'
     ];
-    
+
     final random = DateTime.now().millisecondsSinceEpoch;
     final selected = <String>[];
-    
+
     for (int i = 0; i < 25; i++) {
       selected.add(words[(random + i) % words.length]);
     }
-    
+
     return selected.join(' ');
   }
 

@@ -2,16 +2,15 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../models/wallet.dart';
 import '../models/network_config.dart';
-import '../adapters/fuego_node_adapter.dart';
+// Import not needed for hybrid approach
 import '../adapters/fuego_wallet_adapter_native.dart';
 import '../services/wallet_daemon_service.dart';
 
 /// Hybrid wallet provider that uses native crypto when available
 /// and falls back to RPC for blockchain sync
 class WalletProviderHybrid extends ChangeNotifier {
-  final FuegoNodeAdapter _nodeAdapter;
   final FuegoWalletAdapterNative _walletAdapter;
-  
+
   Wallet? _wallet;
   List<WalletTransaction> _transactions = [];
   bool _isLoading = false;
@@ -25,27 +24,22 @@ class WalletProviderHybrid extends ChangeNotifier {
   bool _useNativeCrypto = false;
 
   WalletProviderHybrid({
-    FuegoNodeAdapter? nodeAdapter,
     FuegoWalletAdapterNative? walletAdapter,
-  }) : _nodeAdapter = nodeAdapter ?? FuegoNodeAdapter.instance,
-       _walletAdapter = walletAdapter ?? FuegoWalletAdapterNative.instance {
+  }) : _walletAdapter = walletAdapter ?? FuegoWalletAdapterNative.instance {
     _init();
   }
 
   Future<void> _init() async {
     // Try to initialize native crypto
     _useNativeCrypto = await _walletAdapter.initNativeCrypto();
-    
-    // Listen to node adapter events
-    _listenToNodeEvents();
-    
+
+    // Node adapter events are handled by the native crypto service
+
     // Listen to wallet adapter events
     _listenToWalletEvents();
   }
 
-  void _listenToNodeEvents() {
-    // Handle node adapter events
-  }
+  // Node adapter events are no longer needed in the hybrid approach
 
   void _listenToWalletEvents() {
     // Handle wallet adapter events for UI updates
@@ -69,7 +63,7 @@ class WalletProviderHybrid extends ChangeNotifier {
   Future<bool> createWallet({String? password}) async {
     try {
       _setLoading(true);
-      
+
       bool success;
       if (_useNativeCrypto) {
         success = await _walletAdapter.createWalletNative(
@@ -104,7 +98,7 @@ class WalletProviderHybrid extends ChangeNotifier {
   }) async {
     try {
       _setLoading(true);
-      
+
       // First, try to derive private keys from mnemonic using native crypto
       if (_useNativeCrypto) {
         // TODO: Implement mnemonic-to-keys conversion
@@ -138,13 +132,13 @@ class WalletProviderHybrid extends ChangeNotifier {
   Future<bool> openWallet({required String walletPath, String? password}) async {
     try {
       _setLoading(true);
-      
+
       // Start wallet daemon if not running
       await _startWalletDaemon();
 
       // TODO: Implement wallet opening via adapter
       await _loadWalletData();
-      
+
       _setError(null);
       return true;
     } catch (e) {
@@ -183,14 +177,14 @@ class WalletProviderHybrid extends ChangeNotifier {
         return false;
       }
 
-      final txHash = await _walletAdapter.sendTransactionNative(
+      await _walletAdapter.sendTransactionNative(
         destinations: {recipient: amount},
         paymentId: paymentId,
       );
 
       // Refresh wallet data
       await _loadWalletData();
-      
+
       return true;
     } catch (e) {
       _setError('Failed to send transaction: $e');
@@ -260,4 +254,3 @@ class WalletProviderHybrid extends ChangeNotifier {
     super.dispose();
   }
 }
-

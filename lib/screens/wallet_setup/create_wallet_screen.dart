@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../../providers/wallet_provider.dart';
 import '../../providers/wallet_provider_hybrid.dart';
 import '../../services/security_service.dart';
 import '../../utils/theme.dart';
-import '../../widgets/mnemonic_display.dart';
-import '../../widgets/mnemonic_input.dart';
 import '../auth/pin_setup_screen.dart';
 
 class CreateWalletScreen extends StatefulWidget {
@@ -38,7 +35,7 @@ class _CreateWalletScreenState extends State<CreateWalletScreen> {
     try {
       // Try to generate mnemonic using native crypto (hybrid provider)
       final hybridProvider = Provider.of<WalletProviderHybrid>(context, listen: false);
-      
+
       if (hybridProvider.useNativeCrypto) {
         // Use native crypto if available
         final mnemonic = await hybridProvider.getMnemonicSeed();
@@ -51,7 +48,7 @@ class _CreateWalletScreenState extends State<CreateWalletScreen> {
           return;
         }
       }
-      
+
       // Fallback to SecurityService
       setState(() {
         _mnemonic = SecurityService.generateMnemonic();

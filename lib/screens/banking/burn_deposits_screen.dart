@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+
 import 'package:provider/provider.dart';
 
 import '../../services/cli_service.dart';
-import '../../services/wallet_service.dart';
-import '../../models/transaction_model.dart';
+
 import '../../providers/wallet_provider.dart';
 import '../../models/wallet.dart';
-import '../../utils/theme.dart';
+
 
 class BurnDepositsScreen extends StatefulWidget {
   const BurnDepositsScreen({Key? key}) : super(key: key);
@@ -33,20 +32,20 @@ class _BurnDepositsScreenState extends State<BurnDepositsScreen> {
     try {
       // Get wallet provider to access transactions
       final walletProvider = Provider.of<WalletProvider>(context, listen: false);
-      
+
       // Refresh transactions to get the latest data
       await walletProvider.refreshTransactions();
-      
+
       // Get all transactions and find burn transactions
       final transactions = walletProvider.transactions;
-      
+
       // Filter for burn transactions (outgoing transactions with specific characteristics)
-      final burnTransactions = transactions.where((tx) => 
+      final burnTransactions = transactions.where((tx) =>
         tx.isSpending && // Outgoing transaction
         tx.amount > 0 && // Has amount
         tx.confirmations > 0 // Confirmed transaction
       ).toList();
-      
+
       if (burnTransactions.isNotEmpty) {
         setState(() {
           _lastBurnTransaction = burnTransactions.last;
@@ -179,7 +178,7 @@ class _BurnDepositsScreenState extends State<BurnDepositsScreen> {
                 labelText: 'Ethereum Recipient Address',
                 hintText: '0x...',
                 errorText: _isAddressValid ? null : 'Invalid Ethereum address',
-                suffixIcon: _isAddressValid 
+                suffixIcon: _isAddressValid
                     ? const Icon(Icons.check_circle, color: Colors.green)
                     : const Icon(Icons.error, color: Colors.red),
               ),
@@ -210,9 +209,9 @@ class _BurnDepositsScreenState extends State<BurnDepositsScreen> {
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _isAddressValid && !_isProcessing && _lastBurnTransaction != null
-                  ? _performBurnDeposit 
+                  ? _performBurnDeposit
                   : null,
-              child: _isProcessing 
+              child: _isProcessing
                   ? const CircularProgressIndicator()
                   : const Text('Generate Burn Proof'),
             ),
@@ -283,5 +282,3 @@ class _BurnDepositsScreenState extends State<BurnDepositsScreen> {
     );
   }
 }
-
-

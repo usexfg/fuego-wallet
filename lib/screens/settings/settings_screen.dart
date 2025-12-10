@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/wallet_provider.dart';
 import '../../services/fuego_rpc_service.dart';
 import '../../services/security_service.dart';
-import '../../models/network_config.dart';
+
 import '../../utils/theme.dart';
 import '../wallet_setup/setup_screen.dart';
 import 'network_selection_screen.dart';
@@ -40,11 +40,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _showError('Biometric authentication not available on this device');
         return;
       }
-      
+
       final authenticated = await _securityService.authenticateWithBiometrics(
         reason: 'Enable biometric authentication for XF₲ Wallet',
       );
-      
+
       if (!authenticated) {
         return; // User cancelled or authentication failed
       }
@@ -54,11 +54,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _biometricEnabled = enabled;
     });
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          enabled 
+          enabled
               ? 'Biometric authentication enabled'
               : 'Biometric authentication disabled',
         ),
@@ -158,7 +158,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     try {
       await _securityService.clearWalletData();
-      
+
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const SetupScreen()),
@@ -414,9 +414,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 },
                 trailing: const Icon(Icons.chevron_right),
               ),
-              
+
               const SizedBox(height: 24),
-              
+
               // Security section
               _buildSectionHeader('Security'),
               _buildSettingsTile(
@@ -437,9 +437,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 },
                 trailing: const Icon(Icons.chevron_right),
               ),
-              
+
               const SizedBox(height: 24),
-              
+
               // Network section
               _buildSectionHeader('Network'),
               _buildSettingsTile(
@@ -452,8 +452,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   width: 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: walletProvider.isConnected 
-                        ? AppTheme.successColor 
+                    color: walletProvider.isConnected
+                        ? AppTheme.successColor
                         : AppTheme.errorColor,
                     shape: BoxShape.circle,
                   ),
@@ -467,13 +467,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 trailing: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: walletProvider.networkConfig.isTestnet 
+                    color: walletProvider.networkConfig.isTestnet
                         ? Colors.orange.withOpacity(0.2)
                         : Colors.green.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: walletProvider.networkConfig.isTestnet 
-                          ? Colors.orange 
+                      color: walletProvider.networkConfig.isTestnet
+                          ? Colors.orange
                           : Colors.green,
                       width: 1,
                     ),
@@ -483,8 +483,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
-                      color: walletProvider.networkConfig.isTestnet 
-                          ? Colors.orange 
+                      color: walletProvider.networkConfig.isTestnet
+                          ? Colors.orange
                           : Colors.green,
                     ),
                   ),
@@ -500,16 +500,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _buildSettingsTile(
                 icon: Icons.sync,
                 title: 'Sync Status',
-                subtitle: walletProvider.isWalletSynced 
-                    ? 'Synchronized' 
+                subtitle: walletProvider.isWalletSynced
+                    ? 'Synchronized'
                     : 'Syncing ${(walletProvider.syncProgress * 100).toStringAsFixed(1)}%',
                 onTap: () {
                   // TODO: Show sync details
                 },
               ),
-              
+
               const SizedBox(height: 24),
-              
+
               // App section
               _buildSectionHeader('App'),
               _buildSettingsTile(
@@ -528,9 +528,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 },
                 trailing: const Icon(Icons.chevron_right),
               ),
-              
+
               const SizedBox(height: 32),
-              
+
               // Danger zone
               Container(
                 padding: const EdgeInsets.all(16),
@@ -566,7 +566,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       width: double.infinity,
                       child: OutlinedButton.icon(
                         onPressed: _isLoading ? null : _showResetWalletDialog,
-                        icon: _isLoading 
+                        icon: _isLoading
                             ? const SizedBox(
                                 width: 16,
                                 height: 16,

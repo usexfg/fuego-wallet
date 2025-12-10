@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../providers/wallet_provider.dart';
+import '../../providers/wallet_provider_hybrid.dart';
 import '../../services/security_service.dart';
 import '../../utils/theme.dart';
 import '../auth/pin_setup_screen.dart';
@@ -36,7 +35,7 @@ class _RestoreWalletScreenState extends State<RestoreWalletScreen> {
   void _validateMnemonic() {
     final text = _mnemonicController.text.trim();
     final words = text.isEmpty ? [] : text.split(RegExp(r'\s+'));
-    
+
     setState(() {
       _wordCount = words.length;
       _isValidMnemonic = SecurityService.validateMnemonic(text);
@@ -54,7 +53,7 @@ class _RestoreWalletScreenState extends State<RestoreWalletScreen> {
 
     try {
       final mnemonic = _mnemonicController.text.trim();
-      
+
       // Navigate to PIN setup with the mnemonic
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
