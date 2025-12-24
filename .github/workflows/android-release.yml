@@ -86,15 +86,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential cmake pkg-config libboost-all-dev libssl-dev libzmq3-dev
 
-          # Build fuego-walletd
+          # Build walletd
           mkdir build && cd build
           cmake .. -DBUILD_ALL=ON -DBUILD_TESTS=OFF
-          make -j$(nproc) fuego-walletd
+          make -j$(nproc) walletd
 
           # Copy binary to assets
           mkdir -p ../../assets/bin
-          cp src/fuegowallet/fuego-walletd ../../assets/bin/
-          chmod +x ../../assets/bin/fuego-walletd
+          cp src/walletd/walletd ../../assets/bin/
+          chmod +x ../../assets/bin/walletd
 
       - name: Install dependencies
         run: flutter pub get

@@ -130,12 +130,12 @@ build_fuego() {
         -DCMAKE_BUILD_TYPE=Release
 
     print_info "Building fuego-walletd..."
-    make -j$(nproc) fuego-walletd
+    make -j$(nproc) walletd
 
     print_success "Build completed"
 
     # Output binary path
-    local binary_path="$build_dir/build/src/fuegowallet/fuego-walletd"
+    local binary_path="$build_dir/build/src/walletd/walletd"
     echo "$binary_path"
 }
 

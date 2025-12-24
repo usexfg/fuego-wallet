@@ -123,15 +123,15 @@ if [ "$MODE" = "build" ]; then
     cd fuego-source
     mkdir build && cd build
     cmake .. -DBUILD_ALL=ON -DBUILD_TESTS=OFF
-    make -j$(nproc) fuego-walletd
+    make -j$(nproc) walletd
 
-    # Copy binary
+    # Copy binary and rename to fuego-walletd for the wallet app
     cd ../..
     mkdir -p assets/bin
     if [ "$PLATFORM" = "windows" ]; then
-        copy "fuego-source/build/src/fuegowallet/fuego-walletd.exe" "assets/bin/fuego-walletd-$PLATFORM.exe"
+        copy "fuego-source/build/src/walletd/walletd.exe" "assets/bin/fuego-walletd-$PLATFORM.exe"
     else
-        cp "fuego-source/build/src/fuegowallet/fuego-walletd" "assets/bin/fuego-walletd-$PLATFORM"
+        cp "fuego-source/build/src/walletd/walletd" "assets/bin/fuego-walletd-$PLATFORM"
         chmod +x "assets/bin/fuego-walletd-$PLATFORM"
     fi
 
