@@ -80,10 +80,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential git cmake libboost-all-dev libjsoncpp-dev libssl-dev libzmq3-dev
 
-          # Build all executables
+          # Fix json include path for HEAT branch
+          sed -i .bak "s/#include <json/json.h>/#include <jsoncpp/json.h>/g" src/CryptoNoteCore/ProofStructures.h
+          cat src/CryptoNoteCore/ProofStructures.h | grep json
+
+          # Build PaymentGateService (walletd)
           mkdir build && cd build
           cmake .. -DBUILD_TESTS=OFF -DCMAKE_CXX_FLAGS="-I /usr/include"
-          make -j$(nproc)
+          make -j$(nproc) PaymentGateService
 
           # Find and copy walletd binary
           mkdir -p ../../assets/bin
@@ -162,10 +166,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential git cmake libboost-all-dev libjsoncpp-dev libssl-dev libzmq3-dev
 
-          # Build all executables
+          # Fix json include path for HEAT branch
+          sed -i .bak "s/#include <json/json.h>/#include <jsoncpp/json.h>/g" src/CryptoNoteCore/ProofStructures.h
+          cat src/CryptoNoteCore/ProofStructures.h | grep json
+
+          # Build PaymentGateService (walletd)
           mkdir build && cd build
           cmake .. -DBUILD_TESTS=OFF -DCMAKE_CXX_FLAGS="-I /usr/include"
-          make -j$(nproc)
+          make -j$(nproc) PaymentGateService
 
           # Find and copy walletd binary
           mkdir -p ../../assets/bin
@@ -248,10 +256,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential git cmake libboost-all-dev libjsoncpp-dev libssl-dev libzmq3-dev
 
-          # Build all executables
+          # Fix json include path for HEAT branch
+          sed -i .bak "s/#include <json/json.h>/#include <jsoncpp/json.h>/g" src/CryptoNoteCore/ProofStructures.h
+          cat src/CryptoNoteCore/ProofStructures.h | grep json
+
+          # Build PaymentGateService (walletd)
           mkdir build && cd build
           cmake .. -DBUILD_TESTS=OFF -DCMAKE_CXX_FLAGS="-I /usr/include"
-          make -j$(nproc)
+          make -j$(nproc) PaymentGateService
 
           # Find and copy walletd binary
           mkdir -p ../../assets/bin

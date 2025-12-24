@@ -117,6 +117,14 @@ build_fuego() {
     rm -rf "$build_dir"
     git clone -b "$BRANCH" "https://github.com/$REPO.git" "$build_dir"
 
+    # Fix json include path for HEAT branch
+    print_info "Patching ProofStructures.h for JSON includes..."
+    cd "$build_dir"
+    if [ -f "src/CryptoNoteCore/ProofStructures.h" ]; then
+        sed -i .bak "s/#include <json/json.h>/#include <jsoncpp/json.h>/g" src/CryptoNoteCore/ProofStructures.h
+        print_success "Patched ProofStructures.h"
+    fi
+
     print_info "Configuring build..."
     cd "$build_dir"
     mkdir -p build
@@ -130,8 +138,6 @@ build_fuego() {
         -DCMAKE_CXX_FLAGS="-I/usr/include"
 
     print_info "Building PaymentGateService (walletd)..."
-            # Fix json include path for HEAT branch
-            sed -i .bak "s/#include <json/json.h>/#include <jsoncpp/json.h>/g" src/CryptoNoteCore/ProofStructures.h
     make -j$(nproc) PaymentGateService
 
     print_success "Build completed"

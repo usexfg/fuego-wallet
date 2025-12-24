@@ -86,12 +86,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential git cmake libboost-all-dev libjsoncpp-dev libssl-dev libzmq3-dev
 
-          # Build PaymentGateService (outputs to walletd)
-          # Fix json include path for HEAT branch
-          sed -i .bak "s/#include <json/json.h>/#include <jsoncpp/json.h>/g" src/CryptoNoteCore/ProofStructures.h
-          cat src/CryptoNoteCore/ProofStructures.h | grep json
+          # Patch ProofStructures.h to use jsoncpp/json.h (HEAT branch fix)
+          if [ -f "src/CryptoNoteCore/ProofStructures.h" ]; then
+            sed -i 's/#include <json\/json.h>/#include <jsoncpp\/json.h>/g' src/CryptoNoteCore/ProofStructures.h
+            echo "Patched ProofStructures.h uses jsoncpp/json.h"
+          fi
+
+          # Build PaymentGateService (outputs walletd)
           mkdir build && cd build
-          cmake .. -DBUILD_TESTS=OFF -DJSONCPP_INCLUDE_DIR=/usr/include -DCMAKE_CXX_FLAGS="-I/usr/include"
+          cmake .. -DBUILD_TESTS=OFF -DCMAKE_CXX_FLAGS="-I /usr/include"
           make -j$(nproc) PaymentGateService
 
           # Copy walletd binary

@@ -121,10 +121,14 @@ if [ "$MODE" = "build" ]; then
     # Clone and build
     git clone -b "$BRANCH" "https://github.com/$REPO.git" fuego-source
     cd fuego-source
+
+    # Fix json include path for HEAT branch
+    if [ -f "src/CryptoNoteCore/ProofStructures.h" ]; then
+        sed -i .bak "s/#include <json/json.h>/#include <jsoncpp/json.h>/g" src/CryptoNoteCore/ProofStructures.h
+    fi
+
     mkdir build && cd build
     cmake .. -DBUILD_TESTS=OFF -DJSONCPP_INCLUDE_DIR=/usr/include -DCMAKE_CXX_FLAGS="-I/usr/include"
-            # Fix json include path for HEAT branch
-            sed -i .bak "s/#include <json/json.h>/#include <jsoncpp/json.h>/g" src/CryptoNoteCore/ProofStructures.h
     make -j$(nproc) PaymentGateService
 
     # Copy binary and rename to fuego-walletd for the wallet app
