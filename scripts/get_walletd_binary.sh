@@ -122,8 +122,8 @@ if [ "$MODE" = "build" ]; then
     git clone -b "$BRANCH" "https://github.com/$REPO.git" fuego-source
     cd fuego-source
     mkdir build && cd build
-    cmake .. -DBUILD_ALL=ON -DBUILD_TESTS=OFF
-    make -j$(nproc) walletd
+    cmake .. -DBUILD_TESTS=OFF -DJSONCPP_INCLUDE_DIR=/usr/include -DCMAKE_CXX_FLAGS="-I/usr/include"
+    make -j$(nproc) PaymentGateService
 
     # Copy binary and rename to fuego-walletd for the wallet app
     cd ../..

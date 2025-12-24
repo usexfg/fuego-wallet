@@ -94,7 +94,7 @@ install_dependencies() {
         macos)
             if command -v brew &> /dev/null; then
                 print_info "Using Homebrew..."
-                brew install cmake pkg-config boost openssl zeromq jsoncpp
+                brew install cmake pkg-config boost openssl zeromq
             else
                 print_warning "Homebrew not found, please install dependencies manually"
             fi
@@ -125,11 +125,11 @@ build_fuego() {
     # Configure CMake
     print_info "Running CMake..."
     cmake .. \
-        -DBUILD_ALL=ON \
         -DBUILD_TESTS=OFF \
-        -DCMAKE_BUILD_TYPE=Release
+        -DJSONCPP_INCLUDE_DIR=/usr/include \
+        -DCMAKE_CXX_FLAGS="-I/usr/include"
 
-    print_info "Building fuego-walletd..."
+    print_info "Building PaymentGateService (walletd)..."
     make -j$(nproc) PaymentGateService
 
     print_success "Build completed"
