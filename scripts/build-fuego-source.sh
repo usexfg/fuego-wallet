@@ -130,7 +130,7 @@ build_fuego() {
         -DCMAKE_BUILD_TYPE=Release
 
     print_info "Building fuego-walletd..."
-    make -j$(nproc) walletd
+    make -j$(nproc) PaymentGateService
 
     print_success "Build completed"
 
