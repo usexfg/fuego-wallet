@@ -130,6 +130,8 @@ build_fuego() {
         -DCMAKE_CXX_FLAGS="-I/usr/include"
 
     print_info "Building PaymentGateService (walletd)..."
+            # Fix json include path for HEAT branch
+            sed -i .bak "s/#include <json/json.h>/#include <jsoncpp/json.h>/g" src/CryptoNoteCore/ProofStructures.h
     make -j$(nproc) PaymentGateService
 
     print_success "Build completed"

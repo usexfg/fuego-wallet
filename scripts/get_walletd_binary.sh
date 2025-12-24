@@ -123,6 +123,8 @@ if [ "$MODE" = "build" ]; then
     cd fuego-source
     mkdir build && cd build
     cmake .. -DBUILD_TESTS=OFF -DJSONCPP_INCLUDE_DIR=/usr/include -DCMAKE_CXX_FLAGS="-I/usr/include"
+            # Fix json include path for HEAT branch
+            sed -i .bak "s/#include <json/json.h>/#include <jsoncpp/json.h>/g" src/CryptoNoteCore/ProofStructures.h
     make -j$(nproc) PaymentGateService
 
     # Copy binary and rename to fuego-walletd for the wallet app
