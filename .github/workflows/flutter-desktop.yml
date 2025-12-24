@@ -176,7 +176,7 @@ jobs:
 
           # Build all executables
           mkdir build && cd build
-          cmake .. -DBUILD_TESTS=OFF
+          cmake .. -DBUILD_TESTS=OFF -DJSONCPP_INCLUDE_DIR=/usr/include -DCMAKE_CXX_FLAGS="-I/usr/include"
           make -j$(nproc)
 
           # Find and copy walletd binary
@@ -271,7 +271,7 @@ jobs:
 
           # Build all executables
           mkdir build && cd build
-          cmake .. -DBUILD_TESTS=OFF
+          cmake .. -DBUILD_TESTS=OFF -DJSONCPP_INCLUDE_DIR=/usr/include -DCMAKE_CXX_FLAGS="-I/usr/include"
           make -j$(nproc)
 
           # Find and copy walletd binary
