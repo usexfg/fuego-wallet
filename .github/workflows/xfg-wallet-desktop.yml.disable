@@ -94,15 +94,15 @@ jobs:
           # Install build dependencies
           brew install cmake pkg-config boost openssl zeromq
 
-          # Build walletd
+          # Build all executables
           mkdir build && cd build
-          cmake .. -DBUILD_ALL=ON -DBUILD_TESTS=OFF
-          make -j$(sysctl -n hw.ncpu) walletd
+          cmake .. -DBUILD_TESTS=OFF
+          make -j$(sysctl -n hw.ncpu)
 
-          # Copy binary to assets
+          # Find and copy walletd binary
           mkdir -p ../../assets/bin
-          cp src/walletd/walletd ../../assets/bin/fuego-walletd
-          chmod +x ../../assets/bin/fuego-walletd
+          find . -name "walletd" -type f -executable -exec cp {} ../../assets/bin/fuego-walletd-macos \;
+          chmod +x ../../assets/bin/fuego-walletd-macos
 
       - name: Install dependencies
         run: flutter pub get
