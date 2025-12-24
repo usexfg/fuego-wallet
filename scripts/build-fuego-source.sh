@@ -94,7 +94,7 @@ install_dependencies() {
         macos)
             if command -v brew &> /dev/null; then
                 print_info "Using Homebrew..."
-                brew install cmake pkg-config boost openssl zeromq
+                brew install cmake pkg-config boost openssl zeromq jsoncpp
             else
                 print_warning "Homebrew not found, please install dependencies manually"
             fi

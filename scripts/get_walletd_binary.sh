@@ -109,7 +109,7 @@ if [ "$MODE" = "build" ]; then
             ;;
         macos-*)
             echo "Installing macOS dependencies..."
-            brew install cmake pkg-config boost openssl zeromq
+            brew install cmake pkg-config boost openssl zeromq jsoncpp
             ;;
         windows)
             echo "Windows build requires vcpkg and Visual Studio Build Tools"

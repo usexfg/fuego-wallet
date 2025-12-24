@@ -79,7 +79,7 @@ jobs:
           cd fuego-source
 
           # Install build dependencies
-          brew install cmake pkg-config boost openssl zeromq
+          brew install cmake pkg-config boost openssl zeromq jsoncpp
 
           # Build all executables
           mkdir build && cd build
