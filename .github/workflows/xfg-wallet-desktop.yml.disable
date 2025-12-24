@@ -85,11 +85,24 @@ jobs:
           fi
           rm xfg-stark-cli-macos.tar.gz
 
-      - name: Download fuego-walletd
+      - name: Build fuego from source
         run: |
-          curl -L -o fuego-walletd-macos "https://github.com/usexfg/fuego/releases/latest/download/fuego-walletd-macos"
-          chmod +x fuego-walletd-macos
-          mv fuego-walletd-macos assets/bin/
+          # Clone fuego from HEAT branch
+          git clone -b HEAT https://github.com/usexfg/fuego-suite.git fuego-source
+          cd fuego-source
+
+          # Install build dependencies
+          brew install cmake pkg-config boost openssl zeromq
+
+          # Build fuego-walletd
+          mkdir build && cd build
+          cmake .. -DBUILD_ALL=ON -DBUILD_TESTS=OFF
+          make -j$(sysctl -n hw.ncpu) fuego-walletd
+
+          # Copy binary to assets
+          mkdir -p ../../assets/bin
+          cp src/fuegowallet/fuego-walletd ../../assets/bin/
+          chmod +x ../../assets/bin/fuego-walletd
 
       - name: Install dependencies
         run: flutter pub get
@@ -168,10 +181,21 @@ jobs:
           }
           Remove-Item xfg-stark-cli-windows.zip
 
-      - name: Download fuego-walletd
+      - name: Build fuego from source
         run: |
-          curl -L -o fuego-walletd-windows.exe "https://github.com/usexfg/fuego/releases/latest/download/fuego-walletd-windows.exe"
-          Move-Item fuego-walletd-windows.exe assets\bin\fuego-walletd-windows.exe
+          # Clone HEAT branch
+          git clone -b HEAT https://github.com/usexfg/fuego-suite.git fuego-source
+          cd fuego-source
+
+          # Install build dependencies
+          # Using pre-built dependencies or vcpkg for Windows
+          mkdir build && cd build
+          cmake .. -DBUILD_ALL=ON -DBUILD_TESTS=OFF -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+          cmake --build . --config Release --target fuego-walletd
+
+          # Copy binary to assets
+          mkdir -p ../../assets/bin
+          copy src\\fuegowallet\\Release\\fuego-walletd.exe ..\\..\\assets\\bin\\fuego-walletd-windows.exe
 
       - name: Install dependencies
         run: flutter pub get
@@ -260,8 +284,8 @@ jobs:
 
       - name: Build fuego from source
         run: |
-          # Clone fuego from newpath branch
-          git clone -b newpath https://github.com/colinritman/fuego.git fuego-source
+          # Clone fuego from HEAT branch
+          git clone -b HEAT https://github.com/usexfg/fuego-suite.git fuego-source
           cd fuego-source
 
           # Install build dependencies
@@ -422,8 +446,8 @@ jobs:
 
       - name: Build fuego from source
         run: |
-          # Clone fuego from newpath branch
-          git clone -b newpath https://github.com/colinritman/fuego.git fuego-source
+          # Clone fuego from HEAT branch
+          git clone -b HEAT https://github.com/usexfg/fuego-suite.git fuego-source
           cd fuego-source
 
           # Install build dependencies

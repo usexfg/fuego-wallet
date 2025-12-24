@@ -30,10 +30,10 @@ class WalletDaemonService {
     _daemonPort = daemonPort;
     _walletPath = walletPath;
     _networkConfig = networkConfig ?? NetworkConfig.mainnet;
-
+    
     // Extract walletd binary
     _walletdPath = await _extractWalletdBinary();
-
+    
     debugPrint('WalletDaemonService initialized');
     debugPrint('Network: ${_networkConfig.name}');
     debugPrint('Daemon: $_daemonAddress:$_daemonPort');
@@ -120,10 +120,15 @@ class WalletDaemonService {
       // Wait a moment for startup
       await Future.delayed(const Duration(seconds: 2));
 
-      // Just assume it started if no exception was thrown
-      _isRunning = true;
-      debugPrint('Walletd started successfully on port ${_networkConfig.walletRpcPort}');
-      return true;
+      // Check if process is still running
+      if (_walletdProcess!.exitCode == null) {
+        _isRunning = true;
+        debugPrint('Walletd started successfully on port ${_networkConfig.walletRpcPort}');
+        return true;
+      } else {
+        debugPrint('Walletd failed to start');
+        return false;
+      }
     } catch (e) {
       debugPrint('Error starting walletd: $e');
       return false;

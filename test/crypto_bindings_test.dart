@@ -1,6 +1,8 @@
 // Tests for native crypto bindings
 
 import 'package:flutter_test/flutter_test.dart';
+import 'dart:ffi';
+import 'dart:io';
 
 void main() {
   group('NativeCrypto Tests', () {
@@ -17,7 +19,7 @@ void main() {
     });
 
     test('test signature verification logic', () {
-      // Placeholder for signature tests
+      // Placeholder for signature tests  
       // Will test once native library is available
       expect(true, true);
     });
@@ -35,3 +37,4 @@ void main() {
     });
   });
 }
+

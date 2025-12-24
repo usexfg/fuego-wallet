@@ -1,5 +1,6 @@
 // Basic Flutter widget test for XF₲ Wallet
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:xfg_wallet/main.dart';

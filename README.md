@@ -227,7 +227,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🔗 Links
 
 - **Fuego Website**: [https://usexfg.org](https://usexfg.org)
-- **Main Repository**: [https://github.com/usexfg/fuego](https://github.com/usexfg/fuego)
+- **Main Repository**: [https://github.com/usexfg/fuego-suite](https://github.com/usexfg/fuego-suite) (HEAT branch)
 - **Discord**: [https://discord.gg/5UJcJJg](https://discord.gg/5UJcJJg)
 - **Twitter**: [https://twitter.com/useXFG](https://twitter.com/useXFG)
 

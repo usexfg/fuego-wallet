@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
@@ -61,12 +63,12 @@ class CLIService {
   /// Determines the correct path for the CLI binary based on the current platform
   static Future<String> _getBinaryPath() async {
     final Directory appDir = await getApplicationSupportDirectory();
-    final String binaryName = Platform.isWindows
-        ? 'xfg-stark-cli.exe'
-        : Platform.isMacOS
-            ? 'xfg-stark-cli-macos'
+    final String binaryName = Platform.isWindows 
+        ? 'xfg-stark-cli.exe' 
+        : Platform.isMacOS 
+            ? 'xfg-stark-cli-macos' 
             : 'xfg-stark-cli-linux';
-
+    
     return path.join(appDir.path, 'bin', binaryName);
   }
 
@@ -74,14 +76,14 @@ class CLIService {
   static Future<String> _extractBinary() async {
     try {
       final Directory tempDir = await getTemporaryDirectory();
-      final String binaryName = Platform.isWindows
-          ? 'xfg-stark-cli.exe'
-          : Platform.isMacOS
-              ? 'xfg-stark-cli-macos'
+      final String binaryName = Platform.isWindows 
+          ? 'xfg-stark-cli.exe' 
+          : Platform.isMacOS 
+              ? 'xfg-stark-cli-macos' 
               : 'xfg-stark-cli-linux';
-
+      
       final File binaryFile = File(path.join(tempDir.path, binaryName));
-
+      
       // Extract binary from assets
       final ByteData data = await rootBundle.load('assets/bin/$binaryName');
       await binaryFile.create(recursive: true);
@@ -102,8 +104,8 @@ class CLIService {
 
   /// Generates a STARK proof for a burn transaction
   static Future<BurnProofResult> generateBurnProof({
-    required String transactionHash,
-    required String recipientAddress,
+    required String transactionHash, 
+    required String recipientAddress, 
     required int burnAmount,
     String burnType = 'Standard Burn'
   }) async {
@@ -120,7 +122,7 @@ class CLIService {
 
       // Extract or get the CLI binary path
       final String binaryPath = await _extractBinary();
-
+      
       // Prepare the process arguments
       final List<String> args = [
         'burn-proof',
@@ -137,7 +139,7 @@ class CLIService {
       if (result.exitCode == 0) {
         // Parse the output to extract proof details
         final Map<String, dynamic> proofDetails = _parseProofOutput(result.stdout);
-
+        
         final BurnProofResult proofResult = BurnProofResult(
           proofHash: proofDetails['proofHash'],
           burnAmount: burnAmount,

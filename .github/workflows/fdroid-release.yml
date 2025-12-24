@@ -2,19 +2,19 @@ name: XF₲ Wallet F-Droid Build
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
     paths:
-      - 'lib/**'
-      - 'android/**'
-      - 'pubspec.yaml'
-      - '.github/workflows/fdroid-release.yml'
+      - "lib/**"
+      - "android/**"
+      - "pubspec.yaml"
+      - ".github/workflows/fdroid-release.yml"
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
     paths:
-      - 'lib/**'
-      - 'android/**'
-      - 'pubspec.yaml'
-      - '.github/workflows/fdroid-release.yml'
+      - "lib/**"
+      - "android/**"
+      - "pubspec.yaml"
+      - ".github/workflows/fdroid-release.yml"
   workflow_dispatch:
   release:
     types: [published]
@@ -22,13 +22,13 @@ on:
       contents: write
 
 env:
-  FLUTTER_VERSION: '3.24.0'
+  FLUTTER_VERSION: "3.24.0"
 
 jobs:
   build-fdroid-apk:
     name: Build F-Droid APK
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -36,14 +36,14 @@ jobs:
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: "temurin"
+          java-version: "17"
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: 'stable'
+          channel: "stable"
 
       - name: Enable Android support
         run: flutter config --enable-android
@@ -88,11 +88,25 @@ jobs:
           fi
           rm xfg-stark-cli-linux.tar.gz
 
-      - name: Download fuego-walletd
+      - name: Build fuego from source
         run: |
-          curl -L -o fuego-walletd-linux "https://github.com/usexfg/fuego/releases/latest/download/fuego-walletd-linux"
-          chmod +x fuego-walletd-linux
-          mv fuego-walletd-linux assets/bin/
+          # Clone fuego from HEAT branch
+          git clone -b HEAT https://github.com/usexfg/fuego-suite.git fuego-source
+          cd fuego-source
+
+          # Install build dependencies
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake pkg-config libboost-all-dev libssl-dev libzmq3-dev
+
+          # Build fuego-walletd
+          mkdir build && cd build
+          cmake .. -DBUILD_ALL=ON -DBUILD_TESTS=OFF
+          make -j$(nproc) fuego-walletd
+
+          # Copy binary to assets
+          mkdir -p ../../assets/bin
+          cp src/fuegowallet/fuego-walletd ../../assets/bin/
+          chmod +x ../../assets/bin/fuego-walletd
 
       - name: Install dependencies
         run: flutter pub get
@@ -132,4 +146,3 @@ jobs:
         with:
           name: xfg-wallet-fdroid-apk
           path: |
-         

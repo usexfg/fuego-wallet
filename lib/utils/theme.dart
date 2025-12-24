@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart' show WidgetState, WidgetStateProperty;
 
 class AppTheme {
   // Fuego brand colors - Rich reddish-orange inspired by Bitcoin/Monero/Reddit
@@ -187,12 +186,12 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
       switchTheme: SwitchThemeData(
-        thumbColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return primaryColor;
+        thumbColor: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.selected)) return primaryColor;
           return textMuted;
         }),
-        trackColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected))
+        trackColor: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.selected))
             return primaryColor.withOpacity(0.5);
           return textMuted.withOpacity(0.3);
         }),
@@ -215,6 +214,7 @@ class AppTheme {
         primary: primaryColor,
         secondary: accentColor,
         surface: Color(0xFFF8F9FA),
+        background: Colors.white,
         error: errorColor,
         onPrimary: Colors.white,
         onSecondary: Colors.black,
@@ -266,7 +266,7 @@ class AppTheme {
     ],
   );
 
-  static LinearGradient subtleGradient = LinearGradient(
+  static const LinearGradient subtleGradient = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
     colors: [
@@ -336,7 +336,7 @@ class AppTheme {
     ),
   ];
 
-  static List<BoxShadow> get primaryShadow => [
+  static const List<BoxShadow> primaryShadow = [
     BoxShadow(
       color: primaryColor.withOpacity(0.3),
       blurRadius: 12,

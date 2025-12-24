@@ -164,6 +164,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on contributing to this pr
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/usexfg/fuego-flutter/issues)
+- **Issues**: [GitHub Issues](https://github.com/usexfg/fuego-suite/issues)
 - **Discord**: [Fuego Community](https://discord.gg/5UJcJJg)
-- **Documentation**: [Project Wiki](https://github.com/usexfg/fuego-flutter/wiki)
+- **Documentation**: [Project Wiki](https://github.com/usexfg/fuego-suite/wiki)

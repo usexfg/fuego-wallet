@@ -30,7 +30,8 @@ class _PinInputWidgetState extends State<PinInputWidget>
   int _currentIndex = 0;
   late AnimationController _shakeController;
   late Animation<double> _shakeAnimation;
-
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
@@ -51,6 +52,16 @@ class _PinInputWidgetState extends State<PinInputWidget>
       parent: _shakeController,
       curve: Curves.elasticIn,
     ));
+
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+
+    _fadeAnimation = Tween<double>(
+      begin: 1,
+      end: 0,
+    ).animate(_fadeController);
   }
 
   @override
@@ -320,6 +331,7 @@ class _PinInputWidgetState extends State<PinInputWidget>
   @override
   void dispose() {
     _shakeController.dispose();
+    _fadeController.dispose();
     super.dispose();
   }
 }

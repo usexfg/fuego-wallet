@@ -25,8 +25,9 @@ We welcome feature suggestions! Please:
 
 1. **Fork the repository**
    ```bash
-   git clone https://github.com/usexfg/fuego-flutter.git
-   cd fuego-flutter
+   git clone https://github.com/usexfg/fuego-suite.git
+   cd fuego-suite
+   git checkout HEAT
    ```
 
 2. **Create a feature branch**

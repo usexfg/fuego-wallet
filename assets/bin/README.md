@@ -21,4 +21,5 @@ These binaries are automatically downloaded during the GitHub Actions build proc
 ## Sources
 
 - STARK CLI binaries: https://github.com/ColinRitman/xfgwin/releases/tag/v0.8.8
-- Wallet daemon binaries: https://github.com/usexfg/fuego/releases/latest
+- Wallet daemon binaries: https://github.com/usexfg/fuego-suite (HEAT branch)
+- Build from source using the HEAT branch for latest features

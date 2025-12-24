@@ -2,7 +2,7 @@
 // Copyright (c) 2025 Elderfire Privacy Group
 
 import 'dart:async';
-
+import 'dart:io';
 import 'package:dio/dio.dart';
 import '../models/wallet.dart';
 import '../models/network_config.dart';
@@ -80,12 +80,11 @@ class FuegoWalletAdapterNative {
       _publicSpendKey  = Uint8List.fromList(keys['public_spend_key'] as List<int>);
       _publicViewKey   = Uint8List.fromList(keys['public_view_key'] as List<int>);
       // Generate address
-      // Generate address
-      // final address = NativeCrypto.generateAddress(
-      //   _publicSpendKey!,
-      //   _publicViewKey!,
-      //   _networkConfig.addressPrefix,
-      // );
+      final address = NativeCrypto.generateAddress(
+        _publicSpendKey!,
+        _publicViewKey!,
+        _networkConfig.addressPrefix,
+      );
       // (You can save the address, for display or wallet file)
       _isOpen = true;
       await _startSync();

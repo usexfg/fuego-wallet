@@ -18,18 +18,52 @@ class NativeCrypto {
   static bool _initialized = false;
 
   // FFI function signatures
-  static late int Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>) _generateKeys;
-  static late int Function(Pointer<Uint8>, Pointer<Uint8>) _privateToPublic;
-  static late int Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>, Pointer<Int8>, int) _generateAddress;
-  static late int Function(Pointer<Uint8>) _validateAddress;
+  static late final _GenerateKeys = _lib.lookupFunction<
+      Int32 Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>),
+      int Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>)>('fuego_generate_keys');
 
-  static late int Function(Pointer<Uint8>, Pointer<Int8>, int) _keyToMnemonic;
-  static late int Function(Pointer<Uint8>, Pointer<Uint8>) _mnemonicToKey;
-  static late int Function(Pointer<Uint8>) _validateMnemonic;
-  static late int Function(Pointer<Uint8>, int, Pointer<Uint8>) _hash;
-  static late int Function(Pointer<Uint8>, Pointer<Uint8>, int, Pointer<Uint8>) _sign;
-  static late int Function(Pointer<Uint8>, Pointer<Uint8>, int, Pointer<Uint8>) _verifySignature;
-  static late int Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>) _generateKeyImage;
+  static late final _PrivateToPublic = _lib.lookupFunction<
+      Int32 Function(Pointer<Uint8>, Pointer<Uint8>),
+      int Function(Pointer<Uint8>, Pointer<Uint8>)>('fuego_private_to_public');
+
+  static late final _GenerateAddress = _lib.lookupFunction<
+      Int32 Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>, Pointer<Int8>, Size),
+      int Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>, Pointer<Int8>, int)>('fuego_generate_address');
+
+  static late final _ValidateAddress = _lib.lookupFunction<
+      Int32 Function(Pointer<Uint8>),
+      int Function(Pointer<Uint8>)>('fuego_validate_address');
+
+  static late final _KeyToMnemonic = _lib.lookupFunction<
+      Int32 Function(Pointer<Uint8>, Pointer<Int8>, Size),
+      int Function(Pointer<Uint8>, Pointer<Int8>, int)>('fuego_key_to_mnemonic');
+
+  static late final _MnemonicToKey = _lib.lookupFunction<
+      Int32 Function(Pointer<Uint8>, Pointer<Uint8>),
+      int Function(Pointer<Uint8>, Pointer<Uint8>)>('fuego_mnemonic_to_key');
+
+  static late final _ValidateMnemonic = _lib.lookupFunction<
+      Int32 Function(Pointer<Uint8>),
+      int Function(Pointer<Uint8>)>('fuego_validate_mnemonic');
+
+  // Add function signatures
+  static late final _Hash = _lib.lookupFunction<
+      Int32 Function(Pointer<Uint8>, Size, Pointer<Uint8>),
+      int Function(Pointer<Uint8>, int, Pointer<Uint8>)>('fuego_hash');
+
+  static late final _Sign = _lib.lookupFunction<
+      Int32 Function(Pointer<Uint8>, Pointer<Uint8>, Size, Pointer<Uint8>),
+      int Function(Pointer<Uint8>, Pointer<Uint8>, int, Pointer<Uint8>)>('fuego_sign');
+
+  static late final _VerifySignature = _lib.lookupFunction<
+      Int32 Function(Pointer<Uint8>, Pointer<Uint8>, Size, Pointer<Uint8>),
+      int Function(Pointer<Uint8>, Pointer<Uint8>, int, Pointer<Uint8>)>('fuego_verify_signature');
+
+  static late final _GenerateKeyImage = _lib.lookupFunction<
+      Int32 Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>),
+      int Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>)>('fuego_generate_key_image');
+
+  static late final DynamicLibrary _lib;
 
   /// Initialize the native crypto library
   static Future<bool> init() async {
@@ -52,52 +86,6 @@ class NativeCrypto {
       }
 
       _library = DynamicLibrary.open(libraryPath);
-
-      // Initialize function pointers after the library is loaded
-      _generateKeys = _library!.lookupFunction<
-          Int32 Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>),
-          int Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>)>('fuego_generate_keys');
-
-      _privateToPublic = _library!.lookupFunction<
-          Int32 Function(Pointer<Uint8>, Pointer<Uint8>),
-          int Function(Pointer<Uint8>, Pointer<Uint8>)>('fuego_private_to_public');
-
-      _generateAddress = _library!.lookupFunction<
-          Int32 Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>, Pointer<Int8>, Int32),
-          int Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>, Pointer<Int8>, int)>('fuego_generate_address');
-
-      _validateAddress = _library!.lookupFunction<
-          Int32 Function(Pointer<Uint8>),
-          int Function(Pointer<Uint8>)>('fuego_validate_address');
-
-      _keyToMnemonic = _library!.lookupFunction<
-          Int32 Function(Pointer<Uint8>, Pointer<Int8>, Int32),
-          int Function(Pointer<Uint8>, Pointer<Int8>, int)>('fuego_key_to_mnemonic');
-
-      _mnemonicToKey = _library!.lookupFunction<
-          Int32 Function(Pointer<Uint8>, Pointer<Uint8>),
-          int Function(Pointer<Uint8>, Pointer<Uint8>)>('fuego_mnemonic_to_key');
-
-      _validateMnemonic = _library!.lookupFunction<
-          Int32 Function(Pointer<Uint8>),
-          int Function(Pointer<Uint8>)>('fuego_validate_mnemonic');
-
-      _hash = _library!.lookupFunction<
-          Int32 Function(Pointer<Uint8>, Int32, Pointer<Uint8>),
-          int Function(Pointer<Uint8>, int, Pointer<Uint8>)>('fuego_hash');
-
-      _sign = _library!.lookupFunction<
-          Int32 Function(Pointer<Uint8>, Pointer<Uint8>, Int32, Pointer<Uint8>),
-          int Function(Pointer<Uint8>, Pointer<Uint8>, int, Pointer<Uint8>)>('fuego_sign');
-
-      _verifySignature = _library!.lookupFunction<
-          Int32 Function(Pointer<Uint8>, Pointer<Uint8>, Int32, Pointer<Uint8>),
-          int Function(Pointer<Uint8>, Pointer<Uint8>, int, Pointer<Uint8>)>('fuego_verify_signature');
-
-      _generateKeyImage = _library!.lookupFunction<
-          Int32 Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>),
-          int Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>)>('fuego_generate_key_image');
-
       _initialized = true;
       return true;
     } catch (e) {
@@ -122,7 +110,7 @@ class NativeCrypto {
     final viewPub = calloc<Uint8>(32);
 
     try {
-      final result = _generateKeys(spendPriv, viewPriv, spendPub, viewPub);
+      final result = _GenerateKeys(spendPriv, viewPriv, spendPub, viewPub);
       if (result != 0) return null;
 
       return {
@@ -149,7 +137,7 @@ class NativeCrypto {
     final pubPtr = calloc<Uint8>(32);
 
     try {
-      final result = _privateToPublic(privPtr, pubPtr);
+      final result = _PrivateToPublic(privPtr, pubPtr);
       if (result != 0) return null;
 
       return Uint8List.fromList(pubPtr.asTypedList(32));
@@ -178,7 +166,7 @@ class NativeCrypto {
     viewPtr.asTypedList(32).setAll(0, publicViewKey);
 
     try {
-      final result = _generateAddress(spendPtr, viewPtr, addrPtr.cast(), prefixCStr.cast(), 200);
+      final result = _GenerateAddress(spendPtr, viewPtr, addrPtr.cast(), prefixCStr.cast(), 200);
       if (result != 0) return null;
 
       final address = addrPtr.cast<Utf8>().toDartString();
@@ -198,7 +186,7 @@ class NativeCrypto {
     final addrCStr = address.toNativeUtf8();
 
     try {
-      final result = _validateAddress(addrCStr.cast());
+      final result = _ValidateAddress(addrCStr.cast());
       return result == 1;
     } finally {
       malloc.free(addrCStr);
@@ -214,7 +202,7 @@ class NativeCrypto {
     final mnemonicPtr = calloc<Int8>(300);
 
     try {
-      final result = _keyToMnemonic(privPtr, mnemonicPtr, 300);
+      final result = _KeyToMnemonic(privPtr, mnemonicPtr, 300);
       if (result != 0) return null;
 
       final mnemonic = mnemonicPtr.cast<Utf8>().toDartString();
@@ -233,7 +221,7 @@ class NativeCrypto {
     final keyPtr = calloc<Uint8>(32);
 
     try {
-      final result = _mnemonicToKey(mnemonicCStr.cast(), keyPtr);
+      final result = _MnemonicToKey(mnemonicCStr.cast(), keyPtr);
       if (result != 0) return null;
 
       return Uint8List.fromList(keyPtr.asTypedList(32));
@@ -250,7 +238,7 @@ class NativeCrypto {
     final mnemonicCStr = seedPhrase.toNativeUtf8();
 
     try {
-      final result = _validateMnemonic(mnemonicCStr.cast());
+      final result = _ValidateMnemonic(mnemonicCStr.cast());
       return result == 1;
     } finally {
       malloc.free(mnemonicCStr);
@@ -274,7 +262,7 @@ class NativeCrypto {
     privatePtr.asTypedList(32).setAll(0, privateKey);
 
     try {
-      final result = _generateKeyImage(publicPtr, privatePtr, keyImagePtr);
+      final result = _GenerateKeyImage(publicPtr, privatePtr, keyImagePtr);
       if (result != 0) return null;
 
       return Uint8List.fromList(keyImagePtr.asTypedList(32));
@@ -295,7 +283,7 @@ class NativeCrypto {
     dataPtr.asTypedList(data.length).setAll(0, data);
 
     try {
-      final result = _hash(dataPtr, data.length, hashPtr);
+      final result = _Hash(dataPtr, data.length, hashPtr);
       if (result != 0) return null;
 
       return Uint8List.fromList(hashPtr.asTypedList(64));
@@ -317,7 +305,7 @@ class NativeCrypto {
     messagePtr.asTypedList(message.length).setAll(0, message);
 
     try {
-      final result = _sign(privatePtr, messagePtr, message.length, signaturePtr);
+      final result = _Sign(privatePtr, messagePtr, message.length, signaturePtr);
       if (result != 0) return null;
 
       return Uint8List.fromList(signaturePtr.asTypedList(64));
@@ -343,7 +331,7 @@ class NativeCrypto {
     signaturePtr.asTypedList(64).setAll(0, signature);
 
     try {
-      final result = _verifySignature(publicPtr, messagePtr, message.length, signaturePtr);
+      final result = _VerifySignature(publicPtr, messagePtr, message.length, signaturePtr);
       return result == 1; // 1 = valid, 0 = invalid
     } finally {
       calloc.free(publicPtr);
