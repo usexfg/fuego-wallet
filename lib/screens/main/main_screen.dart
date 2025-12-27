@@ -5,7 +5,6 @@ import '../elderfier/elderfier_screen.dart';
 import '../messaging/messaging_screen.dart';
 import '../banking/banking_screen.dart';
 import '../settings/settings_screen.dart';
-import '../banking/burn_deposits_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -20,8 +19,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = [
     const HomeScreen(),
     const MessagingScreen(),
-    const BankingScreen(),
-    const BurnDepositsScreen(),
+    const BankingScreen(), // Now includes Ξternal Flame + COLD
     const SettingsScreen(),
     const ElderfierScreen(),
   ];
@@ -63,21 +61,18 @@ class _MainScreenState extends State<MainScreen> {
                   icon: Icons.account_balance,
                   label: 'Banking',
                   index: 2,
-                ),
-                _buildNavItem(
-                  icon: Icons.local_fire_department,
-                  label: 'Mint Ξmbers',
-                  index: 3,
+                  icon2: Icons.local_fire_department,
+                  label2: 'HEAT',
                 ),
                 _buildNavItem(
                   icon: Icons.settings,
                   label: 'Settings',
-                  index: 4,
+                  index: 3,
                 ),
                 _buildNavItem(
                   icon: Icons.account_tree,
                   label: 'Elderfiers',
-                  index: 5,
+                  index: 4,
                 ),
               ],
             ),
@@ -91,6 +86,8 @@ class _MainScreenState extends State<MainScreen> {
     required IconData icon,
     required String label,
     required int index,
+    IconData? icon2,
+    String? label2,
   }) {
     final isSelected = _currentIndex == index;
 
@@ -101,7 +98,7 @@ class _MainScreenState extends State<MainScreen> {
         });
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
               ? AppTheme.primaryColor.withOpacity(0.1)
@@ -111,20 +108,53 @@ class _MainScreenState extends State<MainScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              color: isSelected ? AppTheme.primaryColor : AppTheme.textMuted,
-              size: 24,
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                Icon(
+                  icon,
+                  color: isSelected ? AppTheme.primaryColor : AppTheme.textMuted,
+                  size: 24,
+                ),
+                if (icon2 != null)
+                  Positioned(
+                    right: -4,
+                    top: -4,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        icon2,
+                        color: Colors.white,
+                        size: 10,
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 4),
             Text(
               label,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                 color: isSelected ? AppTheme.primaryColor : AppTheme.textMuted,
               ),
             ),
+            if (label2 != null) ...[
+              const SizedBox(height: 2),
+              Text(
+                label2,
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                  color: isSelected ? AppTheme.primaryColor : AppTheme.textMuted,
+                ),
+              ),
+            ],
           ],
         ),
       ),

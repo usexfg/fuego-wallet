@@ -22,3 +22,8 @@ coverage/
 
 # Environment
 .env
+
+# RAG DB indexes
+rag_db/
+.rag_db/
+rag-db/
