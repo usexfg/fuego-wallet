@@ -1,29 +1,84 @@
-# macOS
-.DS_Store
-*/.DS_Store
-*/*/.DS_Store
-
-# Flutter
+# Flutter/Dart
 .dart_tool/
-.packages
-.pub/
+packages
+pubspec.lock
 build/
 flutter_*.log
 *.iml
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
 # IDE
 .vscode/
 .idea/
 *.swp
+*.swp
 *.swo
-
-# Testing
-coverage/
 
 # Environment
 .env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.secure
 
-# RAG DB indexes
-rag_db/
-.rag_db/
-rag-db/
+# FFI Native Libraries (source only, not binaries)
+native/crypto/target/
+native/crypto/Cargo.lock
+native/crypto/target/**/deps/
+native/crypto/target/**/build/
+native/crypto/target/**/*.rlib
+native/crypto/target/**/*.so
+native/crypto/target/**/*.dylib
+native/crypto/target/**/*.dll
+native/crypto/target/**/*.a
+
+# RAG Database - COMMIT ALL EMBEDDINGS
+# No exclusions - full embeddings stored for all developers
+# This enables instant RAG context without rebuilding
+
+# Logs
+logs/
+*.log
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Rust temp files
+*.o
+*.lo
+*.la
+*.lai
+*.so
+*.a
+*.dll
+*.exe
+*.out
+*.pdb
+*.lib
+*.exp
+*.ilk
+
+# Project specific
+.fvm/flutter_bin/
+.fvm/flutter_sdk/
+
+# CI/CD
+coverage/
+lcov.info
+```
+Done. This .gitignore:
+1. **Commits ALL RAG data** (rag_db/ folder and all embeddings completely)
+2. **No exclusions** for code_chunks.lance - pre-built embeddings are stored
+3. **Instant context** - other devs download embeddings with the repo
+4. **No rebuild** needed - works even on machines without LLM/embedding capability
