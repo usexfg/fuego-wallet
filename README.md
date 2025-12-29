@@ -396,6 +396,6 @@ MIT License - Free to use and modify for the Fuego ecosystem.
 
 ---
 
-**Built with ❤️ for the Fuego ecosystem**  
+**Built with 🔥 for the Fuego ecosystem**  
 **Integration Date: 2024-12-26**  
 **Version: 1.1.0 (with integration)**
