@@ -33,6 +33,10 @@ class AppTheme {
   static const Color textSecondary = Color(0xFFB3B3B3);
   static const Color textMuted = Color(0xFF7D8590);
 
+  // Interactive and divider colors
+  static const Color interactiveColor = Color(0xFF2196F3);
+  static const Color dividerColor = Color(0xFF333333);
+
   // Status colors (moved above for organization)
 
   static ThemeData get darkTheme {
@@ -64,7 +68,7 @@ class AppTheme {
         ),
         iconTheme: IconThemeData(color: textPrimary),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: cardColor,
         elevation: 2,
         shape: RoundedRectangleBorder(
@@ -145,7 +149,7 @@ class AppTheme {
         type: BottomNavigationBarType.fixed,
         elevation: 8,
       ),
-      tabBarTheme: const TabBarTheme(
+      tabBarTheme: const TabBarThemeData(
         labelColor: primaryColor,
         unselectedLabelColor: textMuted,
         indicatorColor: primaryColor,
@@ -233,7 +237,7 @@ class AppTheme {
         ),
         iconTheme: IconThemeData(color: Colors.black87),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: Colors.white,
         elevation: 2,
         shape: RoundedRectangleBorder(
@@ -270,8 +274,8 @@ class AppTheme {
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
     colors: [
-      primaryColor.withOpacity(0.1),
-      primaryLight.withOpacity(0.05),
+      Color(0xFFD84315), // primaryColor at 0.1
+      Color(0xFFFF5722), // primaryLight at 0.05
     ],
   );
 
@@ -338,7 +342,7 @@ class AppTheme {
 
   static const List<BoxShadow> primaryShadow = [
     BoxShadow(
-      color: primaryColor.withOpacity(0.3),
+      color: Color(0xFFD84315), // primaryColor at 0.3
       blurRadius: 12,
       offset: Offset(0, 4),
       spreadRadius: 2,

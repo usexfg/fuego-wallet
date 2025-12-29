@@ -1,0 +1,1686 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+
+import '../../services/cli_service.dart';
+import '../../services/walletd_service.dart';
+import '../../services/web3_multi_chain_service.dart';
+import '../../config/cold_tokens_config.dart';
+import '../../models/transaction_model.dart';
+import '../../providers/wallet_provider.dart';
+import '../../models/wallet.dart';
+import '../../utils/theme.dart';
+import 'burn_deposits_screen.dart';
+
+/// Updated Banking Screen with Ξternal Flame (HEAT) and COLD Interest (Multi-Chain)
+/// - ETH & Solana support for COLD
+/// - Chain selector for COLD menu
+/// - Official C0LD + Fuego Mob offerings
+class BankingScreen extends StatefulWidget {
+  const BankingScreen({super.key});
+  @override
+  State<BankingScreen> createState() => _BankingScreenState();
+}
+
+class _BankingScreenState extends State<BankingScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  // 🔥 Ξternal Flame Tab State
+  String _selectedBurnOption = 'standard';
+  bool _isBurning = false;
+
+  // ❄️ COLD Tab State
+  bool _isConnectingChain = false;
+  bool _isChainConnected = false;
+  Blockchain _selectedChain = Blockchain.ethereum;
+  String _coldAddress = '';
+  Map<String, dynamic>? _coldBalance;
+  String _web3Log = '';
+
+  // Walletd Integration State
+  bool _isWalletdRunning = false;
+  bool _isOptimizerRunning = false;
+  bool _isCliReady = false;
+  String _serviceLog = '';
+
+  // COLD Token Selection
+  ColdTokenInfo? _selectedCOLDToken;
+  List<ColdTokenInfo> _availableTokens = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _initializeServices();
+    _checkCliAvailability();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  /// Initialize all services
+  Future<void> _initializeServices() async {
+    // Walletd service
+    await WalletdService.instance.initialize();
+    WalletdService.instance.setWalletdLogCallback((log) {
+      if (mounted) setState(() => _serviceLog = 'walletd: $log\n$_serviceLog');
+    });
+    WalletdService.instance.setOptimizerLogCallback((log) {
+      if (mounted) setState(() => _serviceLog = 'optimizer: $log\n$_serviceLog');
+    });
+    WalletdService.instance.setStatusCallbacks(
+      onWalletd: (running) => mounted ? setState(() => _isWalletdRunning = running) : null,
+      onOptimizer: (running) => mounted ? setState(() => _isOptimizerRunning = running) : null,
+    );
+
+    // Multi-chain Web3 service
+    await Web3MultiChainService.instance.initialize();
+    Web3MultiChainService.instance.setLogCallback((log) {
+      if (mounted) setState(() => _web3Log = '$log\n$_web3Log');
+    });
+    Web3MultiChainService.instance.setChainStatusCallback((connected) {
+      if (mounted) setState(() => _isChainConnected = connected);
+    });
+    Web3MultiChainService.instance.setBalanceCallback((balance) {
+      if (mounted) setState(() => _coldBalance = balance);
+    });
+  }
+
+  /// Check CLI binary availability
+  Future<void> _checkCliAvailability() async {
+    try {
+      final binaryPath = await _getCliBinaryPath();
+      final file = File(binaryPath);
+      if (await file.exists()) {
+        setState(() => _isCliReady = true);
+      }
+    } catch (e) {
+      setState(() => _isCliReady = false);
+    }
+  }
+
+  Future<String> _getCliBinaryPath() async {
+    final Directory appDir = await getApplicationSupportDirectory();
+    final String binaryName = Platform.isWindows
+        ? 'xfg-stark-cli.exe'
+        : Platform.isMacOS
+            ? 'xfg-stark-cli-macos'
+            : 'xfg-stark-cli-linux';
+    return path.join(appDir.path, 'bin', binaryName);
+  }
+
+  // 🔥 ΞTERNAL FLAME HEAT MINTING FUNCTIONS ---------------------------------
+
+  Future<void> _burnXFG(String option) async {
+    double burnAmount;
+    String heatAmount;
+
+    if (option == 'standard') {
+      burnAmount = 0.8;
+      heatAmount = '8 Million HEAT';
+    } else {
+      burnAmount = 800.0;
+      heatAmount = '8 Billion HEAT';
+    }
+
+    setState(() => _isBurning = true);
+
+    try {
+      // Check for integrated walletd
+      if (_isWalletdRunning) {
+        _showInfoDialog(
+          'Integrated Burn',
+          'Using walletd integrated burn proof generation:\n\n'
+          'Amount: $burnAmount XFG\n'
+          'Mint: $heatAmount\n'
+          'Destination: Ethereum L1 via Arbitrum L2',
+        );
+        await WalletdService.instance.optimizeWallet();
+      } else if (_isCliReady) {
+        _showInfoDialog(
+          'CLI Burn',
+          'Generating STARK proof via xfg-stark-cli:\n\n'
+          'Amount: $burnAmount XFG\n'
+          'Mint: $heatAmount\n'
+          'Using: Local CLI generation',
+        );
+      } else {
+        _showInfoDialog(
+          'Burn Available',
+          'Run scripts/ensure-binaries.sh to enable burn proofs:\n\n'
+          'Standard: 0.8 XFG → 8 Million HEAT\n'
+          'Large: 800 XFG → 8 Billion HEAT',
+        );
+        return;
+      }
+
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => BurnDepositsScreen()),
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Burn process initiated for $burnAmount XFG → $heatAmount'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Burn failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isBurning = false);
+    }
+  }
+
+  // ❄️ COLD MULTI-CHAIN FUNCTIONS -------------------------------------------
+
+  /// Connect to selected blockchain (ETH or SOL)
+  Future<void> _connectChain() async {
+    if (_coldAddress.isEmpty) {
+      _showSnackBar('Please enter a valid address', Colors.orange);
+      return;
+    }
+
+    if (_selectedChain == Blockchain.solana && !Web3MultiChainService.instance.isChainConnected(Blockchain.solana)) {
+      _showSnackBar('Solana integration requires additional program. Using ETH fallback.', Colors.blue);
+      return;
+    }
+
+    setState(() => _isConnectingChain = true);
+
+    try {
+      // Connect to the selected chain
+      final connected = await Web3MultiChainService.instance.connectChain(_selectedChain);
+
+      if (!connected) {
+        _showSnackBar('Failed to connect to ${ColdTokenPresentation.getChainDisplayName(_selectedChain)}', Colors.red);
+        setState(() => _isConnectingChain = false);
+        return;
+      }
+
+      // Load available tokens for this chain
+      await _loadAvailableTokens();
+
+      // Get balance for selected token
+      if (_selectedCOLDToken != null) {
+        await _getBalance();
+      }
+
+      _showSnackBar('Connected to ${ColdTokenPresentation.getChainDisplayName(_selectedChain)}', Colors.green);
+
+    } catch (e) {
+      _showSnackBar('Connection error: $e', Colors.red);
+    } finally {
+      if (mounted) setState(() => _isConnectingChain = false);
+    }
+  }
+
+  /// Load available tokens for current chain
+  Future<void> _loadAvailableTokens() async {
+    final tokens = ColdTokenRepository.instance.getActiveTokens(_selectedChain, includeOfficial: true);
+
+    if (mounted) {
+      setState(() {
+        _availableTokens = tokens;
+        if (tokens.isNotEmpty) {
+          _selectedCOLDToken ??= tokens.first;
+        }
+      });
+    }
+  }
+
+  /// Get COLD token balance
+  Future<void> _getBalance() async {
+    if (_coldAddress.isEmpty || _selectedCOLDToken == null) return;
+
+    if (!Web3MultiChainService.instance.isChainConnected(_selectedChain)) {
+      _showSnackBar('Not connected to chain', Colors.red);
+      return;
+    }
+
+    setState(() => _isConnectingChain = true);
+
+    try {
+      final balance = await Web3MultiChainService.instance.getBalance(
+        address: _coldAddress,
+        chain: _selectedChain,
+        tokenContract: _selectedCOLDToken!.contractAddress,
+      );
+
+      if (balance != null) {
+        _showSnackBar('Balance refreshed: ${balance['balance']} ${balance['symbol']}', Colors.green);
+      } else {
+        _showSnackBar('Failed to get balance', Colors.red);
+      }
+    } catch (e) {
+      _showSnackBar('Balance error: $e', Colors.red);
+    } finally {
+      if (mounted) setState(() => _isConnectingChain = false);
+    }
+  }
+
+  /// Transfer COLD tokens (Sends to DAO for listing)
+  Future<void> _transferCOLD() async {
+    if (_coldAddress.isEmpty || _selectedCOLDToken == null) {
+      _showSnackBar('Select token and enter address', Colors.orange);
+      return;
+    }
+
+    // Show transfer dialog
+    final amountController = TextEditingController();
+    final recipientController = TextEditingController();
+    final keyController = TextEditingController();
+
+    _showTransferDialog(amountController, recipientController, keyController);
+  }
+
+  void _showTransferDialog(
+    TextEditingController amount,
+    TextEditingController recipient,
+    TextEditingController key,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: Text('Transfer ${_selectedCOLDToken?.symbol}'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: amount,
+                    decoration: const InputDecoration(labelText: 'Amount'),
+                    keyboardType: TextInputType.number,
+                  ),
+                  TextField(
+                    controller: recipient,
+                    decoration: const InputDecoration(labelText: 'Recipient Address (0x...)'),
+                  ),
+                  TextField(
+                    controller: key,
+                    decoration: const InputDecoration(
+                      labelText: 'Private Key',
+                      hintText: '0x...',
+                    ),
+                    obscureText: true,
+                  ),
+                  const SizedBox(height: 8),
+                  if (_selectedCOLDToken?.requiresDaoVote == true) ...[
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      color: Colors.blue.withOpacity(0.1),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '⚠️ DAO Listing Transfer',
+                            style: TextStyle(
+                              color: Colors.blue[900],
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'This transfer requires:\n'
+                            '1. 1 C0LD burn to Fuego DAO\n'
+                            '2. Fuego Mob vote (51%+)\n'
+                            '3. Token added to COLD offerings',
+                            style: TextStyle(
+                              color: Colors.blue[800],
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  await _performTransfer(amount.text, recipient.text, key.text);
+                },
+                child: const Text('Send'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _performTransfer(String amount, String recipient, String privateKey) async {
+    if (amount.isEmpty || recipient.isEmpty || privateKey.isEmpty) {
+      _showSnackBar('All fields required', Colors.red);
+      return;
+    }
+
+    setState(() => _isConnectingChain = true);
+
+    try {
+      final result = await Web3MultiChainService.instance.transfer(
+        fromAddress: _coldAddress,
+        toAddress: recipient,
+        amount: amount,
+        recipient: recipient,
+        chain: _selectedChain,
+        tokenContract: _selectedCOLDToken!.contractAddress,
+        privateKey: privateKey,
+      );
+
+      if (result != null && result['success'] == true) {
+        _showSnackBar(
+          'Transfer sent: ${result['txHash']}\n'
+          'View on ${_selectedChain == Blockchain.ethereum ? 'Etherscan' : 'Solana Explorer'}',
+          Colors.green,
+        );
+        onLog('Transfer: ${result['txHash']}');
+      } else {
+        _showSnackBar('Transfer failed or pending', Colors.red);
+      }
+    } catch (e) {
+      _showSnackBar('Transfer error: $e', Colors.red);
+    } finally {
+      if (mounted) setState(() => _isConnectingChain = false);
+    }
+  }
+
+  /// Switch blockchain (ETH ↔ SOL)
+  Future<void> _switchChain(Blockchain newChain) async {
+    if (_selectedChain == newChain) return;
+
+    setState(() {
+      _selectedChain = newChain;
+      _coldBalance = null;
+      _availableTokens = [];
+      _selectedCOLDToken = null;
+    });
+
+    _showSnackBar(
+      'Switched to ${ColdTokenPresentation.getChainDisplayName(newChain)}',
+      Colors.blue,
+    );
+
+    // Auto-connect if previously connected
+    if (Web3MultiChainService.instance.isChainConnected(newChain)) {
+      await _loadAvailableTokens();
+    }
+  }
+
+  /// Propose new token for DAO listing
+  Future<void> _proposeToken() async {
+    final nameController = TextEditingController();
+    final symbolController = TextEditingController();
+    final contractController = TextEditingController();
+    final rateController = TextEditingController();
+    final descController = TextEditingController();
+    final docController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Propose new Fuego Mob Token'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Requirements:\n'
+                '• DAO vote by Fuego Mob\n'
+                '• Burn 1 full C0LD token\n'
+                '• Minimum 51% approval\n',
+                style: TextStyle(
+                  color: Colors.blue[900],
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Token Name')),
+              TextField(controller: symbolController, decoration: const InputDecoration(labelText: 'Symbol')),
+              TextField(controller: contractController, decoration: const InputDecoration(labelText: 'Contract Address')),
+              TextField(controller: rateController, decoration: const InputDecoration(labelText: 'Interest Rate (e.g., 15%)')),
+              TextField(controller: descController, decoration: const InputDecoration(labelText: 'Description')),
+              TextField(controller: docController, decoration: const InputDecoration(labelText: 'Documentation URL')),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              final result = await ColdTokenRepository.instance.proposeToken(
+                name: nameController.text,
+                symbol: symbolController.text,
+                contractAddress: contractController.text,
+                chain: _selectedChain,
+                interestRate: rateController.text,
+                description: descController.text,
+                documentation: docController.text,
+              );
+              _showSnackBar(result, Colors.blue);
+            },
+            child: const Text('Submit to DAO'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Show C0LD burn requirements for listing
+  void _showBurnRequirements() {
+    final token = _selectedCOLDToken;
+    if (token == null) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('C0LD Burn Requirements'),
+        content: Text(
+          'To list ${token.symbol} on Fuego Mob:\n\n'
+          '1. Burn 1 C0LD token via Ξternal Flame menu\n'
+          '2. Generate STARK proof\n'
+          '3. Submit proof to Fuego DAO\n'
+          '4. Fuego Mob votes (51%+)\n'
+          '5. Token activated after approval\n\n'
+          'Current Status: ${token.isActive ? "Active" : "Proposed"}\n'
+          'DAO Required: ${token.requiresDaoVote ? "Yes" : "No"}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _burnXFG('standard'); // Burn for listing
+            },
+            child: const Text('Burn 1 C0LD'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ✅ HELPER FUNCTIONS ------------------------------------------------------
+
+  void _showInfoDialog(String title, String content) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(content),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSnackBar(String message, Color color) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
+  }
+
+  void onLog(String message) {
+    setState(() => _web3Log = '$message\n$_web3Log');
+  }
+
+  // 🎨 UI BUILDERS ----------------------------------------------------------
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Banking'),
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: AppTheme.primaryColor,
+          labelColor: AppTheme.primaryColor,
+          unselectedLabelColor: AppTheme.textSecondary,
+          tabs: const [
+            Tab(text: 'Ξternal Flame'),
+            Tab(text: 'COLD'),
+          ],
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildEternalFlameTab(),
+          _buildCOLDTab(),
+        ],
+      ),
+    );
+  }
+
+  // 🔥 ΞTERNAL FLAME TAB ----------------------------------------------------
+
+  Widget _buildEternalFlameTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: AppTheme.primaryGradient,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.local_fire_department, color: Colors.white, size: 32),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Ξternal Flame',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Burn XFG to mint Fuego Ξmbers (HEAT)',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.white.withOpacity(0.9),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // Walletd integration
+          _buildWalletdIntegrationPanel(),
+
+          const SizedBox(height: 16),
+
+          // Burn options
+          Text(
+            'Select Burn Amount',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          _buildBurnOptionCard(
+            title: 'Standard Burn',
+            burnAmount: '0.8 XFG',
+            heatAmount: '8 Million HEAT',
+            description: 'Standard burn for C0DL3 gas fees',
+            isSelected: _selectedBurnOption == 'standard',
+            onTap: () => setState(() => _selectedBurnOption = 'standard'),
+          ),
+
+          const SizedBox(height: 8),
+
+          _buildBurnOptionCard(
+            title: 'Large Burn',
+            burnAmount: '800 XFG',
+            heatAmount: '8 Billion HEAT',
+            description: 'Large HEAT mint for privacy',
+            isSelected: _selectedBurnOption == 'large',
+            onTap: () => setState(() => _selectedBurnOption = 'large'),
+          ),
+
+          const SizedBox(height: 20),
+
+          // Burn action
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _isBurning ? null : () => _burnXFG(_selectedBurnOption),
+              icon: _isBurning
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Icon(Icons.local_fire_department),
+              label: Text(
+                _isBurning
+                  ? 'Processing Burn...'
+                  : _selectedBurnOption == 'standard'
+                      ? 'Burn 0.8 XFG & Mint HEAT'
+                      : 'Burn 800 XFG & Mint HEAT',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.errorColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Info card
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppTheme.dividerColor),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'About Ξternal Flame (HEAT)',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Fuego Ξmbers (HEAT) are atomic equivalent ERC20 tokens of XFG, '
+                  'minted on Ethereum L1 using Arbitrum L2 for gas-efficiency. '
+                  'HEAT functions as the gas token of Fuego\'s C0DL3 rollup.',
+                  style: TextStyle(
+                    color: AppTheme.textSecondary,
+                    height: 1.4,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ❄️ COLD TAB (Multi-Chain) ----------------------------------------------
+
+  Widget _buildCOLDTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: ColdTokenPresentation.getChainColor(_selectedChain) == const Color(0xFF627EEA)
+                  ? const LinearGradient(
+                      colors: [Color(0xFF4A90E2), Color(0xFF2D5F8D)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : const LinearGradient(
+                      colors: [Color(0xFF9945FF), Color(0xFF5E1A9F)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.savings, color: Colors.white, size: 32),
+                    const SizedBox(width: 12),
+                    Text(
+                      'COLD Interest Lounge',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${ColdTokenPresentation.getChainDisplayName(_selectedChain)} • C0DL3 Interest',                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.white.withOpacity(0.9),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // Chain Selector
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppTheme.dividerColor),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Blockchain',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _buildChainButton(Blockchain.ethereum, 'Ξ Ethereum'),
+                    _buildChainButton(Blockchain.solana, '◎ Solana'),
+                    // Future chains can be added here:
+                    // _buildChainButton(Blockchain.zksync_era, '⚡ ZKsync Era'),
+                    // _buildChainButton(Blockchain.zk_c0dl3, '❄️ zkC0DL3'),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Web3 Connection Panel
+          _buildWeb3ConnectionPanel(),
+
+          const SizedBox(height: 16),
+
+          // Token Selection (only if connected)
+          if (_isChainConnected && _availableTokens.isNotEmpty) ...[
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.surfaceColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppTheme.dividerColor),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Select COLD Token',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  if (_availableTokens.length == 1) ...[
+                    _buildTokenCard(_availableTokens.first),
+                  ] else ...[
+                    ..._availableTokens.map((token) => _buildTokenCard(token)),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // Balance Display
+          if (_coldBalance != null && _selectedCOLDToken != null) ...[
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.surfaceColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: _isChainConnected
+                      ? AppTheme.successColor.withOpacity(0.3)
+                      : AppTheme.dividerColor,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '${_selectedCOLDToken!.symbol} Balance',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.refresh, color: AppTheme.primaryColor, size: 20),
+                        onPressed: _isConnectingChain ? null : _getBalance,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '${_coldBalance!['balance']} ${_coldBalance!['symbol']}',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.primaryColor,
+                        ),
+                      ),
+                      if (_coldBalance!['interestRate'] != null)
+                        Text(
+                          _coldBalance!['interestRate'],
+                          style: TextStyle(
+                            color: Colors.green[700],
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _coldBalance!['name'] ?? 'COLD Token',
+                    style: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // Interest Information (for active tokens)
+          if (_selectedCOLDToken != null && _selectedCOLDToken!.isActive) ...[
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E3A5F).withOpacity(0.3),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF4A90E2)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.interests, color: const Color(0xFF4A90E2), size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        'C0DL3 Interest Generation',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF4A90E2),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _selectedCOLDToken!.type == TokenType.official
+                        ? '• Official C0LD interest via C0DL3 rollup\n'
+                          '• Variable rate: ${_selectedCOLDToken!.interestRate}\n'
+                          '• Interest paid in HEAT tokens\n'
+                          '• Withdraw to any Ethereum address'
+                        : '• Community offering for ${_selectedCOLDToken!.symbol}\n'
+                          '• Required: 1 C0LD burn + DAO vote\n'
+                          '• Interest: ${_selectedCOLDToken!.interestRate}\n'
+                          '• Powered by Fuego Mob',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // Action Buttons
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _isConnectingChain ? null : _connectChain,
+                  icon: _isConnectingChain
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : Icon(Icons.link, size: 18),
+                  label: Text(_isChainConnected ? 'Refresh Balance' : 'Connect'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor:
+                        _isChainConnected ? const Color(0xFF4A90E2) : AppTheme.successColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _isWalletdRunning ? _stopWalletd : _startWalletd,
+                  icon: Icon(
+                    _isWalletdRunning ? Icons.stop : Icons.play_arrow,
+                    size: 18,
+                  ),
+                  label: Text(_isWalletdRunning ? 'Stop walletd' : 'Start walletd'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor:
+                        _isWalletdRunning ? Colors.red : AppTheme.successColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 8),
+
+          // Advanced Actions
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _isChainConnected ? _transferCOLD : null,
+                  icon: Icon(Icons.send, size: 18),
+                  label: const Text('Transfer COLD'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _isChainConnected ? Colors.orange : AppTheme.textMuted,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _isChainConnected ? _showBurnRequirements : null,
+                  icon: Icon(Icons.how_to_vote, size: 18),
+                  label: const text('DAO Listing'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _isChainConnected ? Colors.blue : AppTheme.textMuted,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 8),
+
+          // Propose Token
+          if (_isChainConnected)
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _proposeToken,
+                icon: Icon(Icons.add_circle_outline, size: 18),
+                label: const Text('Propose New Token'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.purple[700],
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
+
+          const SizedBox(height: 16),
+
+          // Service Logs
+          if (_isWalletdRunning || _isChainConnected) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.backgroundColor,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppTheme.dividerColor),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Activity Log',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Container(
+                    height: 80,
+                    child: SingleChildScrollView(
+                      child: Text(
+                        (_serviceLog.isNotEmpty ? _serviceLog : '') + (_web3Log.isNotEmpty ? _web3Log : ''),
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontFamily: 'monospace',
+                          color: AppTheme.textMuted,
+                          height: 1.2,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // Proposed Tokens (if any exist)
+          if (_isChainConnected) ...[
+            FutureBuilder<List<ColdTokenInfo>>(
+              future: Future.value(ColdTokenRepository.instance.getProposedTokens()),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'DAO Proposal Queue',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ...snapshot.data!.map((token) => _buildProposedTokenCard(token)),
+                  ],
+                );
+              },
+            ),
+          ],
+
+          const SizedBox(height: 24),
+
+          // Official C0LD Info - Always Available
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0A0E14).withOpacity(0.5),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.blue[900]!),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.warning_amber, color: Colors.blue[900], size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Official C0LD Offerings',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue[900],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                if (_selectedChain == Blockchain.ethereum) ...[
+                  Text(
+                    '• Contract: ${ColdTokenRepository.instance.getOfficialC0LD().contractAddress.substring(0, 25)}...\n'
+                    '• Interest: 12.5% - 33% (paid in HEAT)\n'
+                    '• Chain: Ethereum (Ξ) Mainnet\n'
+                    '• Status: Active',
+                    style: TextStyle(
+                      color: Colors.grey[800]!.withOpacity(0.8),
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
+                  ),
+                ] else ...[
+                  Text(
+                    '• C0LD is an Ethereum ERC20 token\n'
+                    '• Switch to Ethereum to view official C0LD\n'
+                    '• Solana integration for C0LD: Future',
+                    style: TextStyle(
+                      color: Colors.grey[800]!.withOpacity(0.8),
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Future Roadmap
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceColor,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppTheme.dividerColor),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Future COLD Offerings',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'ZKsync Era • zkC0DL3 • Arbitrum • Polygon • Fuego-SOL',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: AppTheme.textMuted,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 🎨 UI COMPONENTS --------------------------------------------------------
+
+  Widget _buildChainButton(Blockchain chain, String label) {
+    final isSelected = _selectedChain == chain;
+    final isConnected = Web3MultiChainService.instance.isChainConnected(chain);
+
+    return ActionChip(
+      avatar: Icon(
+        chain == Blockchain.ethereum ? Icons.currency_bitcoin : Icons.grain,
+        color: isSelected ? Colors.white : ColdTokenPresentation.getChainColor(chain),
+        size: 16,
+      ),
+      label: Text(label, style: TextStyle(color: isSelected ? Colors.white : null)),
+      backgroundColor: isSelected
+          ? ColdTokenPresentation.getChainColor(chain)
+          : Colors.grey[200],
+      onPressed: () => _switchChain(chain),
+      side: BorderSide(
+        color: isSelected
+            ? ColdTokenPresentation.getChainColor(chain)
+            : Colors.grey[400]!,
+        width: isSelected ? 2.0 : 1.0,
+      ),
+    );
+  }
+
+  Widget _buildTokenCard(ColdTokenInfo token) {
+    return Card(
+      elevation: _selectedCOLDToken == token ? 4 : 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: _selectedCOLDToken == token
+              ? ColdTokenPresentation.getChainColor(token.chain)
+              : AppTheme.dividerColor,
+          width: _selectedCOLDToken == token ? 2.0 : 1.0,
+        ),
+      ),
+      child: ListTile(
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: ColdTokenPresentation.getChainColor(token.chain).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            token.chainIcon,
+            style: TextStyle(
+              fontSize: 18,
+              color: ColdTokenPresentation.getChainColor(token.chain),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        title: Text(
+          token.symbol,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: AppTheme.textPrimary,
+          ),
+        ),
+        subtitle: Text(
+          token.name + (token.type == TokenType.official ? ' - OFFICIAL' : ''),
+          style: TextStyle(
+            fontSize: 12,
+            color: token.isActive ? AppTheme.textSecondary : Colors.grey,
+            fontWeight: token.type == TokenType.official ? FontWeight.w600 : FontWeight.normal,
+          ),
+        ),
+        trailing: Text(
+          token.interestRate,
+          style: TextStyle(
+            color: token.isActive ? Colors.green[700] : Colors.grey,
+            fontWeight: FontWeight.w600,
+            fontSize: 12,
+          ),
+        ),
+        selected: _selectedCOLDToken == token,
+        selectedTileColor: ColdTokenPresentation.getChainColor(token.chain).withOpacity(0.1),
+        onTap: () {
+          setState(() => _selectedCOLDToken = token);
+          if (_isChainConnected) {
+            _getBalance();
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildProposedTokenCard(ColdTokenInfo token) {
+    return Card(
+      color: Colors.grey[300],
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey[400]!),
+      ),
+      child: ListTile(
+        leading: const Icon(Icons.how_to_vote, color: Colors.blue),
+        title: Text(
+          token.symbol,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        subtitle: Text(
+          'DAO Required • 1 C0LD Burn • ${token.interestRate}',
+          style: TextStyle(
+            fontSize: 11,
+            color: Colors.grey[700],
+          ),
+        ),
+        trailing: const Text(
+          'PROPOSED',
+          style: TextStyle(
+            color: Colors.blue,
+            fontWeight: FontWeight.bold,
+            fontSize: 10,
+          ),
+        ),
+        onTap: () => _showBurnRequirements(),
+      ),
+    );
+  }
+
+  Widget _buildWalletdIntegrationPanel() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                _isWalletdRunning ? Icons.check_circle : Icons.info_outline,
+                color: _isWalletdRunning ? AppTheme.successColor : AppTheme.warningColor,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Walletd Integration',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              const Spacer(),
+              Switch(
+                value: _isWalletdRunning,
+                onChanged: (value) {
+                  if (value) {
+                    _startWalletd();
+                  } else {
+                    _stopWalletd();
+                  }
+                },
+                activeColor: AppTheme.successColor,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _isWalletdRunning
+                ? 'Optimized for HEAT minting via integrated GUI'
+                : 'Enable walletd for faster, integrated burn proofs',
+            style: TextStyle(
+              color: AppTheme.textSecondary,
+              fontSize: 12,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildServiceIndicator('walletd', _isWalletdRunning),
+          const SizedBox(height: 4),
+          _buildServiceIndicator('optimizer', _isOptimizerRunning),
+          const SizedBox(height: 4),
+          _buildServiceIndicator('xfg-stark-cli', _isCliReady),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeb3ConnectionPanel() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: _isChainConnected
+              ? AppTheme.successColor.withOpacity(0.4)
+              : AppTheme.dividerColor,
+          width: _isChainConnected ? 2.0 : 1.0,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.link,
+                color: _isChainConnected ? AppTheme.successColor : AppTheme.textMuted,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '${ColdTokenPresentation.getChainDisplayName(_selectedChain)} Connection',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _isChainConnected
+                      ? AppTheme.successColor.withOpacity(0.2)
+                      : AppTheme.textMuted.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  _isChainConnected ? 'Connected' : 'Disconnected',
+                  style: TextStyle(
+                    color: _isChainConnected ? AppTheme.successColor : AppTheme.textMuted,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            decoration: InputDecoration(
+              labelText: _selectedCOLDToken != null
+                  ? '${_selectedCOLDToken!.symbol} Address'
+                  : 'Address (0x... or Solana address)',
+              hintText: _selectedChain == Blockchain.ethereum ? '0x...' : 'Solana address',
+              prefixIcon: Icon(Icons.account_balance_wallet, size: 18),
+              filled: true,
+              fillColor: AppTheme.backgroundColor,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: AppTheme.dividerColor),
+              ),
+            ),
+            style: TextStyle(
+              fontSize: 12,
+              fontFamily: 'monospace',
+            ),
+            onChanged: (value) => setState(() => _coldAddress = value),
+            onSubmitted: (_) => _connectChain(),
+          ),
+          if (Web3MultiChainService.instance.currentChain != _selectedChain) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Note: Service configured for ${ColdTokenRepository.instance.getOfficialC0LD().contractAddress.substring(0, 25)}...',
+              style: TextStyle(
+                fontSize: 10,
+                color: AppTheme.textMuted,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBurnOptionCard({
+    required String title,
+    required String burnAmount,
+    required String heatAmount,
+    required String description,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.primaryColor.withOpacity(0.1) : AppTheme.surfaceColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? AppTheme.primaryColor : AppTheme.dividerColor,
+            width: isSelected ? 2.0 : 1.0,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                  color: isSelected ? AppTheme.primaryColor : AppTheme.textMuted,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '$burnAmount → Mint $heatAmount',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.primaryColor,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              description,
+              style: TextStyle(
+                fontSize: 12,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildServiceIndicator(String service, bool isRunning) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: isRunning ? AppTheme.successColor : AppTheme.textMuted,
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          service,
+          style: TextStyle(
+            fontSize: 11,
+            color: isRunning ? AppTheme.textPrimary : AppTheme.textMuted,
+            fontWeight: isRunning ? FontWeight.w600 : FontWeight.normal,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCOLDTabOLD() {
+    // Legacy template - useful if something breaks
+    return const Center(
+      child: Text('COLD Interest Lounge with Ethereum & Solana'),
+    );
+  }
+
+  // 🔧 WALLETD CONTROL FUNCTIONS -------------------------------------------
+
+  Future<void> _startWalletd() async {
+    setState(() => _isWalletdRunning = true);
+    final started = await WalletdService.instance.startWalletd(
+      enableRpc: true,
+      daemonAddress: 'localhost:8081',
+    );
+    if (!started && mounted) {
+      _showSnackBar('Failed to start walletd', Colors.red);
+      setState(() => _isWalletdRunning = false);
+    }
+  }
+
+  Future<void> _stopWalletd() async {
+    await WalletdService.instance.stopWalletd();
+    setState(() => _isWalletdRunning = false);
+  }
+
+  Future<void> _startOptimizer() async {
+    setState(() => _isOptimizerRunning = true);
+    final started = await WalletdService.instance.startOptimizer(
+      autoOptimize: true,
+      scanInterval: 300,
+    );
+    if (!started && mounted) {
+      _showSnackBar('Failed to start optimizer', Colors.red);
+      setState(() => _isOptimizerRunning = false);
+    }
+  }
+
+  Future<void> _stopOptimizer() async {
+    await WalletdService.instance.stopOptimizer();
+    setState(() => _isOptimizerRunning = false);
+  }
+}

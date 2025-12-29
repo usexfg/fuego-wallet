@@ -2,6 +2,7 @@
 // Inspired by the QT wallet's WalletAdapter pattern
 
 import 'dart:async';
+import 'dart:async';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import '../models/wallet.dart';
@@ -24,7 +25,7 @@ class FuegoWalletAdapter {
 
   final Dio _dio;
   final String _walletRpcUrl;
-  NetworkConfig _networkConfig;
+  NetworkConfig _networkConfig = NetworkConfig.mainnet;
   Wallet? _wallet;
   bool _isOpen = false;
   bool _isSynchronized = false;
@@ -73,7 +74,7 @@ class FuegoWalletAdapter {
       }
 
       _isOpen = true;
-      await _startSync();
+      Future.sync(() => _startSync());
       _emitEvent(WalletEvent.opened());
       return true;
     } catch (e) {
@@ -115,8 +116,8 @@ class FuegoWalletAdapter {
       }
 
       _isOpen = true;
-      await _startSync();
-      _emitEvent(WalletEvent.created());
+      Future.sync(() => _startSync());
+      _emitEvent(WalletEvent.opened());
       return true;
     } catch (e) {
       debugPrint('WalletAdapter createWallet failed: $e');
@@ -161,7 +162,7 @@ class FuegoWalletAdapter {
       }
 
       _isOpen = true;
-      await _startSync();
+      Future.sync(() => _startSync());
       _emitEvent(WalletEvent.opened());
       return true;
     } catch (e) {
@@ -445,4 +446,3 @@ enum WalletEventType {
   depositWithdrawalCreated,
   synchronizationProgress,
 }
-

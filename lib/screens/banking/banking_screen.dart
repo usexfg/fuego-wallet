@@ -535,14 +535,14 @@ class _BankingScreenState extends State<BankingScreen>
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  'Fuego Ξmbers (HEAT) is an erc20 token of atomic equivalence for the smallest unit of Fuego's native XFG currency- called ħeat '
-                  'minted on Ethereum L1 using Arbitrum L2 for gas-efficiency. '
-                  'HEAT will function as the gas token (fwei) on Fuego\'s C0DL3 rollup '
-                  'powering CD, PARA, COLDAO, & Fuego Mob interest yield assets.',
-                  style: TextStyle(
-                    color: AppTheme.textSecondary,
-                    height: 1.4,
+              Text(
+                'Ξthereal XFG (HEAT) is the erc20 token equivalent of XFG by atomic unit (ħeat), '
+                'minted on Ethereum L1 using Arbitrum L2 for gas-efficiency. '
+                'HEAT will function as the gas token of Fuego\'s C0DL3 rollup '
+                'powering CD, PARA, COLDAO, & Fuego Mob interest yield assets.',
+                style: TextStyle(
+                  color: AppTheme.textSecondary,
+                  height: 1.4,
                     fontSize: 12,
                   ),
                 ),
