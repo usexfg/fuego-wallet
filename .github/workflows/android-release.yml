@@ -2,14 +2,14 @@ name: XF₲ Wallet Android Build & Release
 
 on:
   push:
-    branches: [main, master]
+    branches: [HEATMINT, main, master]
     paths:
       - "lib/**"
       - "android/**"
       - "pubspec.yaml"
       - ".github/workflows/android-release.yml"
   pull_request:
-    branches: [main, master]
+    branches: [HEATMINT, main, master]
     paths:
       - "lib/**"
       - "android/**"

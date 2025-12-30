@@ -2,7 +2,7 @@ name: XF₲ Wallet Desktop Build & Release
 
 on:
   push:
-    branches: [HEATMINT, master]
+    branches: [HEATMINT, main, master]
     paths:
       - "lib/**"
       - "android/**"
@@ -11,9 +11,9 @@ on:
       - "windows/**"
       - "linux/**"
       - "pubspec.yaml"
-      - ".github/workflows/flutter-desktop.yml"
+      - ".github/workflows/xfg-wallet-desktop.yml"
   pull_request:
-    branches: [HEATMINT, master]
+    branches: [HEATMINT, main, master]
     paths:
       - "lib/**"
       - "android/**"
@@ -22,7 +22,7 @@ on:
       - "windows/**"
       - "linux/**"
       - "pubspec.yaml"
-      - ".github/workflows/flutter-desktop.yml"
+      - ".github/workflows/xfg-wallet-desktop.yml"
   workflow_dispatch:
   release:
     types: [published]
