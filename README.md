@@ -1,4 +1,4 @@
-# 🔥❄️ Winterfire Wallet  
+# 🔥Fuego (WinterFire) Wallet❄️   
 ## Fuego wallet for managing XFG, HEAT, & C0LD
 ### Walletd, Optimizer & Web3 COLD Token Support
 
