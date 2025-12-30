@@ -383,28 +383,28 @@ jobs:
           fi
 
           # Create desktop file
-          cat > XF-G-Wallet.desktop << 'EOF'
-[Desktop Entry]
-Version=1.0
-Type=Application
-Name=XF Wallet
-GenericName=Untraceable Cryptocurrency Banking Wallet
-Comment=Privacy-focused cryptocurrency wallet for XF
-Exec=fuego_wallet
-Icon=XF-G-Wallet
-Categories=Finance;Network;
-Keywords=wallet;banking;fuego;
-Terminal=false
-EOF
+          cat > fuego_wallet.desktop << 'EOF'
+            [Desktop Entry]
+            Version=1.0
+            Type=Application
+            Name=Fuego Wallet
+            GenericName=Cryptocurrency Wallet
+            Comment=Privacy-focused cryptocurrency wallet for Fuego
+            Exec=fuego_wallet
+            Icon=fuego_wallet
+            Categories=Finance;Network;
+            Keywords=wallet;banking;fuego;
+            Terminal=false
+            EOF
 
           # Rename icon to match desktop file reference
           if [ -f fuego_wallet.png ]; then
-            cp fuego_wallet.png XF-G-Wallet.png
+            cp fuego_wallet.png fuego_wallet.png
           fi
 
           # Build AppImage
           chmod +x appimagetool-x86_64.AppImage
-          ./appimagetool-x86_64.AppImage . XF-G-Wallet-Linux-GLIBC-2.35.AppImage
+          ./appimagetool-x86_64.AppImage . fuego_wallet-Linux-GLIBC-2.35.AppImage
 
           # Clean up
           rm -f appimagetool-x86_64.AppImage
@@ -413,15 +413,15 @@ EOF
         uses: actions/upload-artifact@v4
         with:
           name: xfg-wallet-linux-glibc-235-appimage
-          path: build/linux/x64/release/bundle/XF-G-Wallet-Linux-GLIBC-2.35.AppImage
+          path: build/linux/x64/release/bundle/fuego_wallet-Linux-GLIBC-2.35.AppImage
           retention-days: 30
 
       - name: Upload AppImage to Release
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v1
         with:
-          files: build/linux/x64/release/bundle/XF-G-Wallet-Linux-GLIBC-2.35.AppImage
-          name: XF-G-Wallet-Linux-GLIBC-2.35.AppImage
+          files: build/linux/x64/release/bundle/fuego_wallet-Linux-GLIBC-2.35.AppImage
+          name: fuego_wallet-Linux-GLIBC-2.35.AppImage
 
   build-linux-latest:
     name: Build XF₲ Wallet (Linux - Latest)
