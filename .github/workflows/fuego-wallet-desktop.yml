@@ -1,8 +1,8 @@
-name: XF₲ Wallet Desktop Build & Release
+name: Fuego Wallet Desktop Build & Release
 
 on:
   push:
-    branches: [HEATMINT, main, master]
+    branches: [HEATMINT, master]
     paths:
       - "lib/**"
       - "android/**"
@@ -11,9 +11,9 @@ on:
       - "windows/**"
       - "linux/**"
       - "pubspec.yaml"
-      - ".github/workflows/xfg-wallet-desktop.yml"
+      - ".github/workflows/flutter-desktop.yml"
   pull_request:
-    branches: [HEATMINT, main, master]
+    branches: [HEATMINT, master]
     paths:
       - "lib/**"
       - "android/**"
@@ -22,7 +22,7 @@ on:
       - "windows/**"
       - "linux/**"
       - "pubspec.yaml"
-      - ".github/workflows/xfg-wallet-desktop.yml"
+      - ".github/workflows/flutter-desktop.yml"
   workflow_dispatch:
   release:
     types: [published]
@@ -31,7 +31,7 @@ on:
 
 jobs:
   build-macos:
-    name: Build XF₲ Wallet (macOS)
+    name: Build Fuego Wallet (macOS)
     runs-on: macos-latest
 
     steps:
@@ -139,7 +139,7 @@ jobs:
           files: build/macos/Build/Products/Release/Fuego-Wallet-macOS.zip
 
   build-windows:
-    name: Build XF₲ Wallet (Windows)
+    name: Build Fuego Wallet (Windows)
     runs-on: windows-latest
 
     steps:
@@ -242,7 +242,7 @@ jobs:
           files: Fuego-Wallet-Windows.zip
 
   build-linux-compat:
-    name: Build XF₲ Wallet (Linux - GLIBC 2.35)
+    name: Build Fuego Wallet (Linux - GLIBC 2.35)
     runs-on: ubuntu-22.04
 
     steps:
@@ -300,7 +300,7 @@ jobs:
           sudo apt-get install -y build-essential git cmake libboost-all-dev libjsoncpp-dev libssl-dev libzmq3-dev
 
           # Fix json include path for HEAT branch
-          sed -i.bak "s/#include <json/json.h>/#include <jsoncpp/json.h>/g" src/CryptoNoteCore/ProofStructures.h
+          sed -i .bak "s/#include <json/json.h>/#include <jsoncpp/json.h>/g" src/CryptoNoteCore/ProofStructures.h
           cat src/CryptoNoteCore/ProofStructures.h | grep json
 
           # Build PaymentGateService (walletd) and other executables
@@ -346,21 +346,21 @@ jobs:
       - name: Create app archive
         run: |
           cd build/linux/x64/release/bundle
-          tar -czf XF₲-Wallet-Linux-GLIBC-2.31.tar.gz *
+          tar -czf Fuego-Wallet-Linux-GLIBC-2.31.tar.gz *
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: xfg-wallet-linux-glibc-231
-          path: build/linux/x64/release/bundle/XF₲-Wallet-Linux-GLIBC-2.31.tar.gz
+          name: fuego-wallet-linux-glibc-231
+          path: build/linux/x64/release/bundle/Fuego-Wallet-Linux-GLIBC-2.31.tar.gz
           retention-days: 30
 
       - name: Upload to Release
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v1
         with:
-          files: build/linux/x64/release/bundle/XF₲-Wallet-Linux-GLIBC-2.31.tar.gz
-          name: XF₲-Wallet-Linux-GLIBC-2.31.tar.gz
+          files: build/linux/x64/release/bundle/Fuego-Wallet-Linux-GLIBC-2.31.tar.gz
+          name: Fuego-Wallet-Linux-GLIBC-2.31.tar.gz
 
       - name: Create AppImage (GLIBC 2.35)
         run: |
@@ -382,29 +382,14 @@ jobs:
             touch fuego_wallet.png
           fi
 
-          # Create desktop file
-          cat > fuego_wallet.desktop << 'EOF'
-            [Desktop Entry]
-            Version=1.0
-            Type=Application
-            Name=Fuego Wallet
-            GenericName=Cryptocurrency Wallet
-            Comment=Privacy-focused cryptocurrency wallet for Fuego
-            Exec=fuego_wallet
-            Icon=fuego_wallet
-            Categories=Finance;Network;
-            Keywords=wallet;banking;fuego;
-            Terminal=false
-            EOF
-
           # Rename icon to match desktop file reference
           if [ -f fuego_wallet.png ]; then
-            cp fuego_wallet.png fuego_wallet.png
+            cp fuego_wallet.png FuegoWallet.png
           fi
 
           # Build AppImage
           chmod +x appimagetool-x86_64.AppImage
-          ./appimagetool-x86_64.AppImage . fuego_wallet-Linux-GLIBC-2.35.AppImage
+          ./appimagetool-x86_64.AppImage . Fuego-Wallet-Linux-GLIBC-2.35.AppImage
 
           # Clean up
           rm -f appimagetool-x86_64.AppImage
@@ -412,19 +397,19 @@ jobs:
       - name: Upload AppImage artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: xfg-wallet-linux-glibc-235-appimage
-          path: build/linux/x64/release/bundle/fuego_wallet-Linux-GLIBC-2.35.AppImage
+          name: fuego-wallet-linux-glibc-235-appimage
+          path: build/linux/x64/release/bundle/Fuego-Wallet-Linux-GLIBC-2.35.AppImage
           retention-days: 30
 
       - name: Upload AppImage to Release
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v1
         with:
-          files: build/linux/x64/release/bundle/fuego_wallet-Linux-GLIBC-2.35.AppImage
-          name: fuego_wallet-Linux-GLIBC-2.35.AppImage
+          files: build/linux/x64/release/bundle/Fuego-Wallet-Linux-GLIBC-2.35.AppImage
+          name: Fuego-Wallet-Linux-GLIBC-2.35.AppImage
 
   build-linux-latest:
-    name: Build XF₲ Wallet (Linux - Latest)
+    name: Build Fuego Wallet (Linux - Latest)
     runs-on: ubuntu-latest
 
     steps:
@@ -494,18 +479,18 @@ jobs:
       - name: Create app archive
         run: |
           cd build/linux/x64/release/bundle
-          tar -czf XF₲-Wallet-Linux-Latest.tar.gz *
+          tar -czf Fuego-Wallet-Linux-Latest.tar.gz *
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: xfg-wallet-linux-latest
-          path: build/linux/x64/release/bundle/XF₲-Wallet-Linux-Latest.tar.gz
+          name: fuego-wallet-linux-latest
+          path: build/linux/x64/release/bundle/Fuego-Wallet-Linux-Latest.tar.gz
           retention-days: 30
 
       - name: Upload to Release
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v1
         with:
-          files: build/linux/x64/release/bundle/XF₲-Wallet-Linux-Latest.tar.gz
-          name: XF₲-Wallet-Linux-Latest.tar.gz
+          files: build/linux/x64/release/bundle/Fuego-Wallet-Linux-Latest.tar.gz
+          name: Fuego-Wallet-Linux-Latest.tar.gz
