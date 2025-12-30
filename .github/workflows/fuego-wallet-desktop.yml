@@ -382,21 +382,6 @@ jobs:
             touch fuego_wallet.png
           fi
 
-          # Create desktop file
-          cat > Fuego-Wallet.desktop << 'EOF'
-[Desktop Entry]
-Version=1.0
-Type=Application
-Name=Fuego Wallet
-GenericName=Untraceable Cryptocurrency Banking Wallet
-Comment=Privacy banking wallet for XFG
-Exec=fuego_wallet
-Icon=FuegoWallet
-Categories=Finance;Network;
-Keywords=wallet;banking;fuego;
-Terminal=false
-EOF
-
           # Rename icon to match desktop file reference
           if [ -f fuego_wallet.png ]; then
             cp fuego_wallet.png FuegoWallet.png
