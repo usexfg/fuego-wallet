@@ -94,9 +94,7 @@ jobs:
           # Install build dependencies
           brew install cmake pkg-config boost openssl zeromq jsoncpp
 
-          # Fix json include path for HEAT branch
-          sed -i .bak "s/#include <json/json.h>/#include <jsoncpp/json.h>/g" src/CryptoNoteCore/ProofStructures.h
-          cat src/CryptoNoteCore/ProofStructures.h | grep json
+
 
           # Build PaymentGateService (walletd) and other executables
           mkdir build && cd build
@@ -299,10 +297,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential git cmake libboost-all-dev libjsoncpp-dev libssl-dev libzmq3-dev
 
-          # Fix json include path for HEAT branch
-          sed -i.bak "s/#include <json/json.h>/#include <jsoncpp/json.h>/g" src/CryptoNoteCore/ProofStructures.h
-          cat src/CryptoNoteCore/ProofStructures.h | grep json
-
           # Build PaymentGateService (walletd) and other executables
           mkdir build && cd build
           cmake .. -DBUILD_TESTS=OFF -DJSONCPP_INCLUDE_DIR=/usr/include -DCMAKE_CXX_FLAGS="-I/usr/include"
@@ -450,6 +444,22 @@ jobs:
           fi
           rm xfg-stark-cli-linux.tar.gz
 
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up Rust cache
+        uses: swatinem/rust-cache@v2
+
+      - name: Build Rust crypto library
+        run: |
+          cd native/crypto
+          cargo build --release --target x86_64-unknown-linux-gnu
+
+      - name: Copy Rust library to assets
+        run: |
+          mkdir -p assets/bin
+          cp native/crypto/target/x86_64-unknown-linux-gnu/release/libfuego_crypto.so assets/bin/libfuego_crypto.so
+
       - name: Build fuego from source
         run: |
           # Clone HEAT branch
@@ -459,10 +469,6 @@ jobs:
           # Install build dependencies
           sudo apt-get update
           sudo apt-get install -y build-essential cmake pkg-config libboost-all-dev libssl-dev libzmq3-dev
-
-          # Fix json include path for HEAT branch
-          sed -i.bak "s/#include <json\/json.h>/#include <jsoncpp\/json.h>/g" src/CryptoNoteCore/ProofStructures.h
-          cat src/CryptoNoteCore/ProofStructures.h | grep json
 
           # Build PaymentGateService (walletd) and other executables
           mkdir build && cd build
