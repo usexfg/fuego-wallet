@@ -300,7 +300,7 @@ jobs:
           sudo apt-get install -y build-essential git cmake libboost-all-dev libjsoncpp-dev libssl-dev libzmq3-dev
 
           # Fix json include path for HEAT branch
-          sed -i .bak "s/#include <json/json.h>/#include <jsoncpp/json.h>/g" src/CryptoNoteCore/ProofStructures.h
+          sed -i.bak "s/#include <json/json.h>/#include <jsoncpp/json.h>/g" src/CryptoNoteCore/ProofStructures.h
           cat src/CryptoNoteCore/ProofStructures.h | grep json
 
           # Build PaymentGateService (walletd) and other executables
@@ -346,21 +346,21 @@ jobs:
       - name: Create app archive
         run: |
           cd build/linux/x64/release/bundle
-          tar -czf Fuego-Wallet-Linux-GLIBC-2.31.tar.gz *
+          tar -czf fuego-wallet-Linux-GLIBC-2.31.tar.gz *
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: fuego-wallet-linux-glibc-231
-          path: build/linux/x64/release/bundle/Fuego-Wallet-Linux-GLIBC-2.31.tar.gz
+          path: build/linux/x64/release/bundle/fuego-wallet-Linux-GLIBC-2.31.tar.gz
           retention-days: 30
 
       - name: Upload to Release
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v1
         with:
-          files: build/linux/x64/release/bundle/Fuego-Wallet-Linux-GLIBC-2.31.tar.gz
-          name: Fuego-Wallet-Linux-GLIBC-2.31.tar.gz
+          files: build/linux/x64/release/bundle/fuego-wallet-Linux-GLIBC-2.31.tar.gz
+          name: fuego-wallet-Linux-GLIBC-2.31.tar.gz
 
       - name: Create AppImage (GLIBC 2.35)
         run: |
@@ -382,14 +382,24 @@ jobs:
             touch fuego_wallet.png
           fi
 
-          # Rename icon to match desktop file reference
-          if [ -f fuego_wallet.png ]; then
-            cp fuego_wallet.png FuegoWallet.png
-          fi
+          # Create desktop file for AppImage
+          cat > fuego_wallet.desktop << 'EOF'
+            [Desktop Entry]
+            Version=1.0
+            Type=Application
+            Name=Fuego Wallet
+            GenericName=Cryptocurrency Wallet
+            Comment=Privacy-focused cryptocurrency wallet for Fuego
+            Exec=fuego_wallet
+            Icon=fuego_wallet
+            Categories=Finance;Network;
+            Keywords=wallet;banking;fuego;
+            Terminal=false
+            EOF
 
           # Build AppImage
           chmod +x appimagetool-x86_64.AppImage
-          ./appimagetool-x86_64.AppImage . Fuego-Wallet-Linux-GLIBC-2.35.AppImage
+          ./appimagetool-x86_64.AppImage . fuego-wallet-Linux-GLIBC-2.35.AppImage
 
           # Clean up
           rm -f appimagetool-x86_64.AppImage
@@ -398,15 +408,15 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: fuego-wallet-linux-glibc-235-appimage
-          path: build/linux/x64/release/bundle/Fuego-Wallet-Linux-GLIBC-2.35.AppImage
+          path: build/linux/x64/release/bundle/fuego-wallet-Linux-GLIBC-2.35.AppImage
           retention-days: 30
 
       - name: Upload AppImage to Release
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v1
         with:
-          files: build/linux/x64/release/bundle/Fuego-Wallet-Linux-GLIBC-2.35.AppImage
-          name: Fuego-Wallet-Linux-GLIBC-2.35.AppImage
+          files: build/linux/x64/release/bundle/fuego-wallet-Linux-GLIBC-2.35.AppImage
+          name: fuego-wallet-Linux-GLIBC-2.35.AppImage
 
   build-linux-latest:
     name: Build Fuego Wallet (Linux - Latest)
@@ -450,14 +460,18 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential cmake pkg-config libboost-all-dev libssl-dev libzmq3-dev
 
-          # Build walletd
-          mkdir build && cd build
-          cmake .. -DBUILD_ALL=ON -DBUILD_TESTS=OFF
-          make -j$(nproc) walletd
+          # Fix json include path for HEAT branch
+          sed -i.bak "s/#include <json\/json.h>/#include <jsoncpp\/json.h>/g" src/CryptoNoteCore/ProofStructures.h
+          cat src/CryptoNoteCore/ProofStructures.h | grep json
 
-          # Copy binary to assets
+          # Build PaymentGateService (walletd) and other executables
+          mkdir build && cd build
+          cmake .. -DBUILD_TESTS=OFF -DJSONCPP_INCLUDE_DIR=/usr/include -DCMAKE_CXX_FLAGS="-I/usr/include"
+          make -j$(nproc) PaymentGateService
+
+          # Find and copy walletd binary
           mkdir -p ../../assets/bin
-          cp src/walletd/walletd ../../assets/bin/fuego-walletd
+          find . -name "walletd" -type f -executable -exec cp {} ../../assets/bin/fuego-walletd \;
           chmod +x ../../assets/bin/fuego-walletd
 
       - name: Enable Linux desktop support
@@ -479,18 +493,18 @@ jobs:
       - name: Create app archive
         run: |
           cd build/linux/x64/release/bundle
-          tar -czf Fuego-Wallet-Linux-Latest.tar.gz *
+          tar -czf fuego-wallet-Linux-Latest.tar.gz *
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: fuego-wallet-linux-latest
-          path: build/linux/x64/release/bundle/Fuego-Wallet-Linux-Latest.tar.gz
+          path: build/linux/x64/release/bundle/fuego-wallet-Linux-Latest.tar.gz
           retention-days: 30
 
       - name: Upload to Release
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v1
         with:
-          files: build/linux/x64/release/bundle/Fuego-Wallet-Linux-Latest.tar.gz
-          name: Fuego-Wallet-Linux-Latest.tar.gz
+          files: build/linux/x64/release/bundle/fuego-wallet-Linux-Latest.tar.gz
+          name: fuego-wallet-Linux-Latest.tar.gz

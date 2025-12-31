@@ -2,14 +2,14 @@ name: XF₲ Wallet F-Droid Build
 
 on:
   push:
-    branches: [HEATMINT, main, master]
+    branches: [HEATMINT, master]
     paths:
       - "lib/**"
       - "android/**"
       - "pubspec.yaml"
       - ".github/workflows/fdroid-release.yml"
   pull_request:
-    branches: [HEATMINT, main, master]
+    branches: [HEATMINT, master]
     paths:
       - "lib/**"
       - "android/**"

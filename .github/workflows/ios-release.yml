@@ -2,14 +2,14 @@ name: XF₲ Wallet iOS Build & Release
 
 on:
   push:
-    branches: [HEATMINT, main, master]
+    branches: [HEATMINT, master]
     paths:
       - "lib/**"
       - "ios/**"
       - "pubspec.yaml"
       - ".github/workflows/ios-release.yml"
   pull_request:
-    branches: [HEATMINT, main, master]
+    branches: [HEATMINT, master]
     paths:
       - "lib/**"
       - "ios/**"
