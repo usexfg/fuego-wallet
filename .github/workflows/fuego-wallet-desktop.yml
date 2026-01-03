@@ -88,7 +88,7 @@ jobs:
       - name: Build fuego from source
         run: |
           # Clone HEAT branch
-          git clone -b HEAT https://github.com/usexfg/fuego-suite.git fuego-source
+          git clone -b HE4T https://github.com/usexfg/fuego-suite.git fuego-source
           cd fuego-source
 
           # Install build dependencies
@@ -185,7 +185,7 @@ jobs:
 
       - name: Build fuego from source
         run: |
-          # Clone HEAT branch
+          # Clone HE4T branch
           git clone -b HEAT https://github.com/usexfg/fuego-suite.git fuego-source
           cd fuego-source
 
@@ -290,7 +290,7 @@ jobs:
       - name: Build fuego from source
         run: |
           # Clone HEAT branch
-          git clone -b HEAT https://github.com/usexfg/fuego-suite.git fuego-source
+          git clone -b HE4T https://github.com/usexfg/fuego-suite.git fuego-source
           cd fuego-source
 
           # Install build dependencies
@@ -382,8 +382,8 @@ jobs:
             Version=1.0
             Type=Application
             Name=Fuego Wallet
-            GenericName=Cryptocurrency Wallet
-            Comment=Privacy-focused cryptocurrency wallet for Fuego
+            GenericName=Crypto Wallet
+            Comment=Privacy cryptocurrency banking wallet for Fuego XFG
             Exec=fuego_wallet
             Icon=fuego_wallet
             Categories=Finance;Network;
@@ -462,8 +462,8 @@ jobs:
 
       - name: Build fuego from source
         run: |
-          # Clone HEAT branch
-          git clone -b HEAT https://github.com/usexfg/fuego-suite.git fuego-source
+          # Clone HE4T branch
+          git clone -b HE4T https://github.com/usexfg/fuego-suite.git fuego-source
           cd fuego-source
 
           # Install build dependencies
