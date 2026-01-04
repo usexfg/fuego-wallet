@@ -102,7 +102,9 @@ jobs:
           fi
           # Build PaymentGateService (walletd) and other executables
           mkdir build && cd build
-          cmake .. -DBUILD_TESTS=OFF
+          # Set CMAKE_PREFIX_PATH to help find Boost libraries
+          export CMAKE_PREFIX_PATH="/usr/local/opt/boost:$CMAKE_PREFIX_PATH"
+          cmake .. -DBUILD_TESTS=OFF -DCMAKE_PREFIX_PATH="/usr/local/opt/boost"
           make -j$(sysctl -n hw.ncpu) PaymentGateService
           # Find and copy walletd binary
           mkdir -p ../../assets/bin
