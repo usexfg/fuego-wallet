@@ -1,6 +1,6 @@
-# 🔥Fuego (WinterFire) Wallet❄️   
-## Fuego wallet for managing XFG, HEAT, & C0LD
-### Walletd, Optimizer & Web3 COLD Token Support
+# Fuego (🔥WinterFire) Wallet❄️   
+## Fuego GUI wallet for managing XFG, HEAT, & C0LD assets
+### Walletd, Optimizer & C0LD Web3 Token Support
 
 ### 🎯 What's New - December 2024
 ```
