@@ -2,7 +2,7 @@ name: fuego_wallet
 description: "Fuego's WinterFire Wallet - Decentralized Privacy Banking"
 publish_to: "none"
 
-version: 1.0.0+1
+version: 5.0.0+1
 
 environment:
   sdk: ">=3.4.3 <4.0.0"
@@ -86,9 +86,6 @@ flutter:
     - assets/icons/
     - assets/logo/
     - assets/bin/
-    - assets/bin/xfg-stark-cli-linux
-    - assets/bin/xfg-stark-cli-macos
-    - assets/bin/xfg-stark-cli-windows.exe
 
   # Note: fuego-walletd binaries are built from source during CI/CD workflow
   # See scripts/get_walletd_binary.sh for build instructions
