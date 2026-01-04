@@ -1,6 +1,6 @@
 # CLI Binaries
 
-This directory contains platform-specific CLI binaries for the XF₲ Wallet.
+This directory contains platform-specific CLI binaries for Fuego's Winterfire Wallet.
 
 ## Binaries
 
@@ -21,5 +21,5 @@ These binaries are automatically downloaded during the GitHub Actions build proc
 ## Sources
 
 - STARK CLI binaries: https://github.com/ColinRitman/xfgwin/releases/tag/v0.8.8
-- Wallet daemon binaries: https://github.com/usexfg/fuego-suite (HEAT branch)
-- Build from source using the HEAT branch for latest features
+- Wallet daemon binaries: https://github.com/usexfg/fuego-suite (HE4T branch)
+- Build from source using the HE4T branch for latest features
