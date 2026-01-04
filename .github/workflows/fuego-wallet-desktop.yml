@@ -41,7 +41,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.24.0"
+          flutter-version: "3.27.0"
           channel: "stable"
 
       - name: Install Rust
@@ -84,7 +84,7 @@ jobs:
           rm xfg-stark-cli-macos.tar.gz
       - name: Build fuego from source
         run: |
-          # Clone HEAT branch
+          # Clone HE4T branch
           git clone -b HE4T https://github.com/usexfg/fuego-suite.git fuego-source
           cd fuego-source
           # Install build dependencies
@@ -148,7 +148,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.24.0"
+          flutter-version: "3.27.0"
           channel: "stable"
 
       - name: Install Rust
@@ -192,9 +192,9 @@ jobs:
       - name: Build fuego from source
         run: |
           # Clone HE4T branch
-          git clone -b HEAT https://github.com/usexfg/fuego-suite.git fuego-source
+          git clone -b HE4T https://github.com/usexfg/fuego-suite.git fuego-source
           cd fuego-source
-          # Fix json include path for HEAT branch to work with vcpkg
+          # Fix json include path for HE4T branch to work with vcpkg
           if (Test-Path "src/CryptoNoteCore/ProofStructures.h") {
             (Get-Content src/CryptoNoteCore/ProofStructures.h) -replace '#include <json/json.h>', '#include <json/json.h>' | Set-Content src/CryptoNoteCore/ProofStructures.h
           }
@@ -265,7 +265,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.24.0"
+          flutter-version: "3.27.0"
           channel: "stable"
 
       - name: Install Rust
@@ -435,7 +435,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.24.0"
+          flutter-version: "3.27.0"
           channel: "stable"
 
       - name: Download xfg-stark-cli
