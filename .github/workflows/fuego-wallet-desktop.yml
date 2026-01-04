@@ -255,7 +255,7 @@ jobs:
           files: Fuego-Wallet-Windows.zip
 
   build-linux-compat:
-    name: Build Fuego Wallet (Linux - GLIBC 2.35)
+    name: Build Fuego Wallet (Linux/Ubuntu 22)
     runs-on: ubuntu-22.04
 
     steps:
@@ -396,13 +396,13 @@ jobs:
             [Desktop Entry]
             Version=1.0
             Type=Application
-            Name=Fuego Wallet
-            GenericName=Crypto Wallet
-            Comment=Privacy cryptocurrency banking wallet for Fuego XFG
+            Name=WinterFire Wallet
+            GenericName=Fuego's Winterfire Wallet
+            Comment=Decentralized Privacy Banking
             Exec=fuego_wallet
             Icon=fuego_wallet
             Categories=Finance;Network;
-            Keywords=wallet;banking;fuego;
+            Keywords=wallet;banking;fuego;xfg;
             Terminal=false
             EOF
           # Build AppImage
@@ -425,7 +425,7 @@ jobs:
           name: fuego-wallet-Linux-GLIBC-2.35.AppImage
 
   build-linux-latest:
-    name: Build Fuego Wallet (Linux - Latest)
+    name: Build Fuego Wallet (Linux/Ubuntu - Latest)
     runs-on: ubuntu-latest
 
     steps:
