@@ -135,7 +135,7 @@ fuego-wallet/
 
 ## ⚙️ How It Works
 
-### Flow 1: Ξternal Flame (Burn → Mint)
+### Flow 1: XFG Ξthereal Mint  (Burn → Mint)
 ```
 User selects burn amount
         ↓
@@ -248,7 +248,7 @@ Already handled by `scripts/ensure-binaries.sh`
 ## 🔥 Using the Wallet
 
 ### Start Walletd from GUI
-1. Navigate to Banking → Ξternal Flame or COLD
+1. Navigate to Banking → Ξthereal Mint or COLD
 2. Toggle walletd integration ON
 3. Wait for green status indicator
 4. Use optimizer controls
