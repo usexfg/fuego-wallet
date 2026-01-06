@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:crypto/crypto.dart' as crypto;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:cryptography/cryptography.dart';

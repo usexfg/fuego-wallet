@@ -164,7 +164,7 @@ class _PinEntryScreenState extends State<PinEntryScreen>
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              const Text(
                 'If you\'ve forgotten your PIN, you\'ll need to reset your wallet using your backup phrase.',
                 style: TextStyle(color: AppTheme.textSecondary),
               ),
@@ -178,14 +178,14 @@ class _PinEntryScreenState extends State<PinEntryScreen>
                     color: AppTheme.warningColor.withOpacity(0.3),
                   ),
                 ),
-                child: Row(
+                child: const Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.warning,
                       color: AppTheme.warningColor,
                       size: 20,
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'This will remove the current wallet from this device.',
@@ -293,7 +293,7 @@ class _PinEntryScreenState extends State<PinEntryScreen>
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Text(
+                      const Text(
                         'Enter your PIN to unlock your wallet',
                         style: TextStyle(
                           fontSize: 16,
@@ -363,8 +363,8 @@ class _PinEntryScreenState extends State<PinEntryScreen>
                 ),
                 
                 // Footer
-                Padding(
-                  padding: const EdgeInsets.all(16),
+                const Padding(
+                  padding: EdgeInsets.all(16),
                   child: Text(
                     'Your wallet is encrypted and stored securely on this device',
                     textAlign: TextAlign.center,

@@ -257,13 +257,13 @@ class _OpenWalletFileScreenState extends State<OpenWalletFileScreen>
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(
+          icon: const Icon(
             Icons.arrow_back_ios,
             color: AppTheme.textPrimary,
           ),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: Text(
+        title: const Text(
           'Open Wallet',
           style: TextStyle(
             color: AppTheme.textPrimary,
@@ -282,7 +282,7 @@ class _OpenWalletFileScreenState extends State<OpenWalletFileScreen>
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // Header
-                Text(
+                const Text(
                   'Open Your XF₲ Wallet',
                   style: TextStyle(
                     fontSize: 28,
@@ -293,7 +293,7 @@ class _OpenWalletFileScreenState extends State<OpenWalletFileScreen>
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
-                Text(
+                const Text(
                   'Select your existing wallet file to continue',
                   style: TextStyle(
                     fontSize: 16,
@@ -322,7 +322,7 @@ class _OpenWalletFileScreenState extends State<OpenWalletFileScreen>
                     ),
                     child: Row(
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.error,
                           color: AppTheme.errorColor,
                           size: 20,
@@ -331,7 +331,7 @@ class _OpenWalletFileScreenState extends State<OpenWalletFileScreen>
                         Expanded(
                           child: Text(
                             _errorMessage!,
-                            style: TextStyle(
+                            style: const TextStyle(
                               color: AppTheme.errorColor,
                               fontSize: 14,
                             ),
@@ -383,13 +383,13 @@ class _OpenWalletFileScreenState extends State<OpenWalletFileScreen>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
+              const Icon(
                 Icons.folder_open,
                 size: 64,
                 color: AppTheme.textMuted,
               ),
               const SizedBox(height: 16),
-              Text(
+              const Text(
                 'Select Wallet File',
                 style: TextStyle(
                   fontSize: 18,
@@ -398,7 +398,7 @@ class _OpenWalletFileScreenState extends State<OpenWalletFileScreen>
                 ),
               ),
               const SizedBox(height: 8),
-              Text(
+              const Text(
                 'Supported formats: .wallet, .keys, .dat',
                 style: TextStyle(
                   fontSize: 14,
@@ -439,13 +439,13 @@ class _OpenWalletFileScreenState extends State<OpenWalletFileScreen>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
+          const Icon(
             Icons.check_circle,
             size: 48,
             color: AppTheme.primaryColor,
           ),
           const SizedBox(height: 16),
-          Text(
+          const Text(
             'Wallet file selected',
             style: TextStyle(
               fontSize: 18,
@@ -456,7 +456,7 @@ class _OpenWalletFileScreenState extends State<OpenWalletFileScreen>
           const SizedBox(height: 8),
           Text(
             _selectedFileName!,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 14,
               color: AppTheme.textSecondary,
               fontFamily: 'monospace',
@@ -518,7 +518,7 @@ class _OpenWalletFileScreenState extends State<OpenWalletFileScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          const Text(
             'Supported Wallet Files',
             style: TextStyle(
               fontSize: 16,
@@ -542,14 +542,14 @@ class _OpenWalletFileScreenState extends State<OpenWalletFileScreen>
             'Older wallet format',
           ),
           const SizedBox(height: 16),
-          Row(
+          const Row(
             children: [
               Icon(
                 Icons.info,
                 size: 16,
                 color: AppTheme.primaryColor,
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Expanded(
                 child: Text(
                   'Files are processed locally and never uploaded.',
@@ -569,7 +569,7 @@ class _OpenWalletFileScreenState extends State<OpenWalletFileScreen>
   Widget _buildFileTypeRow(String fileType, String description) {
     return Row(
       children: [
-        Icon(
+        const Icon(
           Icons.check_circle,
           color: AppTheme.primaryColor,
           size: 16,
@@ -581,7 +581,7 @@ class _OpenWalletFileScreenState extends State<OpenWalletFileScreen>
             children: [
               Text(
                 fileType,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                   color: AppTheme.textPrimary,
@@ -589,7 +589,7 @@ class _OpenWalletFileScreenState extends State<OpenWalletFileScreen>
               ),
               Text(
                 description,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 12,
                   color: AppTheme.textSecondary,
                 ),

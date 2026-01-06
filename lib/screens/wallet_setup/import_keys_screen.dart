@@ -210,7 +210,7 @@ class _ImportKeysScreenState extends State<ImportKeysScreen>
                     const SizedBox(height: 16),
 
                     // Description
-                    Text(
+                    const Text(
                       'Enter your private keys to import an existing wallet. Keys should be 64 hexadecimal characters.',
                       style: TextStyle(
                         fontSize: 16,
@@ -245,7 +245,7 @@ class _ImportKeysScreenState extends State<ImportKeysScreen>
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
+                              const Text(
                                 'Use Separate View/Spend Keys',
                                 style: TextStyle(
                                   fontSize: 16,
@@ -260,7 +260,7 @@ class _ImportKeysScreenState extends State<ImportKeysScreen>
                                     _useSeparateKeys = value;
                                   });
                                 },
-                                activeColor: AppTheme.primaryColor,
+                                activeThumbColor: AppTheme.primaryColor,
                               ),
                             ],
                           ),
@@ -269,7 +269,7 @@ class _ImportKeysScreenState extends State<ImportKeysScreen>
                             _useSeparateKeys
                                 ? 'Enter both view and spend keys separately'
                                 : 'Enter a single private key',
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 14,
                               color: AppTheme.textSecondary,
                             ),
@@ -325,14 +325,14 @@ class _ImportKeysScreenState extends State<ImportKeysScreen>
                                   strokeWidth: 2,
                                 ),
                               )
-                            : Row(
+                            : const Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Icon(
                                     Icons.vpn_key,
                                     size: 24,
                                   ),
-                                  const SizedBox(width: 12),
+                                  SizedBox(width: 12),
                                   Text(
                                     'Import Keys',
                                     style: TextStyle(
@@ -357,14 +357,14 @@ class _ImportKeysScreenState extends State<ImportKeysScreen>
                           color: AppTheme.errorColor.withOpacity(0.3),
                         ),
                       ),
-                      child: Row(
+                      child: const Row(
                         children: [
                           Icon(
                             Icons.warning,
                             color: AppTheme.errorColor,
                             size: 24,
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: 12),
                           Expanded(
                             child: Text(
                               'Never share your private keys with anyone. Ensure you have backed up your keys securely.',
@@ -398,7 +398,7 @@ class _ImportKeysScreenState extends State<ImportKeysScreen>
       children: [
         Text(
           label,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
             color: AppTheme.textPrimary,
@@ -407,14 +407,14 @@ class _ImportKeysScreenState extends State<ImportKeysScreen>
         const SizedBox(height: 8),
         TextField(
           controller: controller,
-          style: TextStyle(
+          style: const TextStyle(
             color: AppTheme.textPrimary,
             fontFamily: 'monospace',
             fontSize: 14,
           ),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(
+            hintStyle: const TextStyle(
               color: AppTheme.textMuted,
               fontSize: 14,
             ),
@@ -434,7 +434,7 @@ class _ImportKeysScreenState extends State<ImportKeysScreen>
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(
+              borderSide: const BorderSide(
                 color: AppTheme.primaryColor,
                 width: 2,
               ),

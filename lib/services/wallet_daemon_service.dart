@@ -121,15 +121,9 @@ class WalletDaemonService {
       await Future.delayed(const Duration(seconds: 2));
 
       // Check if process is still running
-      if (_walletdProcess!.exitCode == null) {
-        _isRunning = true;
-        debugPrint('Walletd started successfully on port ${_networkConfig.walletRpcPort}');
-        return true;
-      } else {
-        debugPrint('Walletd failed to start');
-        return false;
-      }
-    } catch (e) {
+      debugPrint('Walletd failed to start');
+      return false;
+        } catch (e) {
       debugPrint('Error starting walletd: $e');
       return false;
     }

@@ -165,7 +165,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                                 totalRepeatCount: 1,
                               ),
                               const SizedBox(height: 20),
-                              Text(
+                              const Text(
                                 'Your gateway to secure, private banking and untraceable transactions.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
@@ -252,7 +252,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                               ),
                               const SizedBox(height: 32),
                               // Terms and privacy
-                              Text(
+                              const Text(
                                 'Fuego developers are unable to access or recover your private keys or mnemonic phrase. Please keep them safe & secure. Protecting access to your keys, protects access to your money.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
@@ -321,7 +321,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                                 totalRepeatCount: 1,
                               ),
                               const SizedBox(height: 16),
-                              Text(
+                              const Text(
                                 'Your Fuego L1 gateway to secure, private banking and untraceable transactions.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
@@ -399,7 +399,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                             ),
                             const SizedBox(height: 24),
                             // Terms and privacy
-                            Text(
+                            const Text(
                               'Fuego developers are unable to access or recover your private keys or mnemonic phrase. Please keep them safe and secure. Protecting access to your keys, protects access to your money.',
                               textAlign: TextAlign.center,
                               style: TextStyle(
@@ -464,7 +464,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                 const SizedBox(height: 4),
                 Text(
                   description,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 14,
                     color: AppTheme.textSecondary,
                   ),

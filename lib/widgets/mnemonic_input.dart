@@ -8,11 +8,11 @@ class MnemonicInput extends StatefulWidget {
   final int expectedWordCount;
 
   const MnemonicInput({
-    Key? key,
+    super.key,
     this.onMnemonicChanged,
     this.validateOnInput = true,
     this.expectedWordCount = 12,
-  }) : super(key: key);
+  });
 
   @override
   State<MnemonicInput> createState() => _MnemonicInputState();
@@ -116,7 +116,7 @@ class _MnemonicInputState extends State<MnemonicInput> {
           ),
         ),
         const SizedBox(height: 8),
-        Text(
+        const Text(
           'Enter each word in order',
           style: TextStyle(
             fontSize: 12,
@@ -139,7 +139,7 @@ class _MnemonicInputState extends State<MnemonicInput> {
                 ),
                 decoration: InputDecoration(
                   labelText: '${index + 1}',
-                  labelStyle: TextStyle(
+                  labelStyle: const TextStyle(
                     fontSize: 10,
                     color: AppTheme.textSecondary,
                   ),
@@ -201,13 +201,13 @@ class _MnemonicInputState extends State<MnemonicInput> {
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: Colors.green.withOpacity(0.3)),
             ),
-            child: Row(
+            child: const Row(
               children: [
-                const Icon(Icons.check_circle, size: 16, color: Colors.green),
-                const SizedBox(width: 8),
+                Icon(Icons.check_circle, size: 16, color: Colors.green),
+                SizedBox(width: 8),
                 Text(
                   'Valid seed phrase',
-                  style: const TextStyle(color: Colors.green, fontSize: 12),
+                  style: TextStyle(color: Colors.green, fontSize: 12),
                 ),
               ],
             ),

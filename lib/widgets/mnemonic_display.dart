@@ -9,11 +9,11 @@ class MnemonicDisplay extends StatelessWidget {
   final VoidCallback? onCopied;
 
   const MnemonicDisplay({
-    Key? key,
+    super.key,
     required this.mnemonic,
     this.showCopyButton = true,
     this.onCopied,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -84,7 +84,7 @@ class MnemonicDisplay extends StatelessWidget {
                   children: [
                     Text(
                       '${index + 1}.',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 10,
                         color: AppTheme.textSecondary,
                         fontWeight: FontWeight.bold,
@@ -114,14 +114,14 @@ class MnemonicDisplay extends StatelessWidget {
                 color: Colors.orange.withOpacity(0.3),
               ),
             ),
-            child: Row(
+            child: const Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.warning_amber_rounded,
                   size: 16,
                   color: Colors.orange,
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'Never share your seed phrase. Anyone with access to it can steal your funds.',

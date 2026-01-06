@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../../providers/wallet_provider.dart';
 import '../../services/fuego_rpc_service.dart';
 import '../../services/security_service.dart';
-import '../../models/network_config.dart';
 import '../../utils/theme.dart';
 import '../wallet_setup/setup_screen.dart';
 import 'network_selection_screen.dart';
@@ -90,7 +89,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              const Text(
                 'This will permanently remove your wallet from this device. Make sure you have your backup phrase saved!',
                 style: TextStyle(color: AppTheme.textSecondary),
               ),
@@ -104,14 +103,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     color: AppTheme.errorColor.withOpacity(0.3),
                   ),
                 ),
-                child: Row(
+                child: const Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.warning,
                       color: AppTheme.errorColor,
                       size: 20,
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'This action cannot be undone!',
@@ -247,7 +246,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       enabledBorder: OutlineInputBorder(
                         borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
                       ),
-                      focusedBorder: OutlineInputBorder(
+                      focusedBorder: const OutlineInputBorder(
                         borderSide: BorderSide(color: AppTheme.primaryColor),
                       ),
                     ),
@@ -265,7 +264,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: Text(
+                  child: const Text(
                     'Cancel',
                     style: TextStyle(color: AppTheme.textSecondary),
                   ),
@@ -331,7 +330,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ],
           ),
-          content: Column(
+          content: const Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -343,20 +342,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Text(
                 'A privacy-focused cryptocurrency wallet for XF₲ (XFG)',
                 style: TextStyle(color: AppTheme.textSecondary),
               ),
-              const SizedBox(height: 16),
-              const Text(
+              SizedBox(height: 16),
+              Text(
                 'Features:',
                 style: TextStyle(
                   color: AppTheme.textPrimary,
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Text(
                 '• Private transactions with ring signatures\n'
                 '• Encrypted blockchain messaging\n'
@@ -645,7 +644,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         subtitle: Text(
           subtitle,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 14,
             color: AppTheme.textSecondary,
           ),

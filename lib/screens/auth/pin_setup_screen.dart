@@ -218,7 +218,7 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          Text(
+          const Text(
             'Create a 6-digit PIN to secure your wallet',
             textAlign: TextAlign.center,
             style: TextStyle(
@@ -241,13 +241,13 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
                 color: AppTheme.primaryColor.withOpacity(0.3),
               ),
             ),
-            child: Row(
+            child: const Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.info_outline,
                   color: AppTheme.primaryColor,
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     'Your PIN is stored securely on this device and cannot be recovered if forgotten.',
@@ -286,7 +286,7 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          Text(
+          const Text(
             'Enter your PIN again to confirm',
             textAlign: TextAlign.center,
             style: TextStyle(
@@ -339,7 +339,7 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          Text(
+          const Text(
             'Choose additional security features for your wallet',
             textAlign: TextAlign.center,
             style: TextStyle(
@@ -367,11 +367,11 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
                   size: 32,
                 ),
                 const SizedBox(width: 16),
-                Expanded(
+                const Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Biometric Authentication',
                         style: TextStyle(
                           fontSize: 16,

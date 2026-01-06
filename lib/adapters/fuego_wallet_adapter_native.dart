@@ -1,6 +1,4 @@
-import 'dart:io';
 import '../models/wallet.dart';
-import '../models/network_config.dart';
 
 class FuegoWalletAdapterNative {
   static FuegoWalletAdapterNative? _instance;

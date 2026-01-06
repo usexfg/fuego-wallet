@@ -100,7 +100,7 @@ class _RegisterElderfierScreenState extends State<RegisterElderfierScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              const Text(
                 'Your Elderfier node has been successfully registered on the network.',
                 style: TextStyle(color: AppTheme.textSecondary),
               ),
@@ -117,7 +117,7 @@ class _RegisterElderfierScreenState extends State<RegisterElderfierScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       'Node Details:',
                       style: TextStyle(
                         color: AppTheme.textPrimary,
@@ -127,11 +127,11 @@ class _RegisterElderfierScreenState extends State<RegisterElderfierScreen> {
                     const SizedBox(height: 8),
                     Text(
                       'Name: ${_nameController.text.trim()}',
-                      style: TextStyle(color: AppTheme.textSecondary),
+                      style: const TextStyle(color: AppTheme.textSecondary),
                     ),
                     Text(
                       'Stake: ${_stakeAmount.toStringAsFixed(0)} XFG',
-                      style: TextStyle(color: AppTheme.textSecondary),
+                      style: const TextStyle(color: AppTheme.textSecondary),
                     ),
                   ],
                 ),
@@ -266,7 +266,7 @@ class _RegisterElderfierScreenState extends State<RegisterElderfierScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
+                              const Text(
                                 'Available Balance',
                                 style: TextStyle(
                                   fontSize: 14,
@@ -517,15 +517,15 @@ class _RegisterElderfierScreenState extends State<RegisterElderfierScreen> {
                         color: AppTheme.warningColor.withOpacity(0.3),
                       ),
                     ),
-                    child: Row(
+                    child: const Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.warning_amber,
                           color: AppTheme.warningColor,
                           size: 20,
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             'Your staked XFG will be locked for the duration of your Elderfier participation. '

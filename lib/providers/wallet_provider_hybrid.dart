@@ -13,13 +13,13 @@ class WalletProviderHybrid extends ChangeNotifier {
   final FuegoWalletAdapterNative _walletAdapter;
   
   Wallet? _wallet;
-  List<WalletTransaction> _transactions = [];
+  final List<WalletTransaction> _transactions = [];
   bool _isLoading = false;
   bool _isConnected = false;
   bool _isSyncing = false;
   String? _error;
   Timer? _syncTimer;
-  NetworkConfig _networkConfig = NetworkConfig.mainnet;
+  final NetworkConfig _networkConfig = NetworkConfig.mainnet;
 
   // Native crypto status
   bool _useNativeCrypto = false;

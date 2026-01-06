@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 
@@ -53,7 +52,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // Check for CLI binary
     try {
       final binaryPath = await _getCliBinaryPath();
-      final file = await File(binaryPath);
+      final file = File(binaryPath);
       if (await file.exists()) {
         setState(() {
           _isCliReady = true;
@@ -92,18 +91,18 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       body: Padding(
-        padding: EdgeInsets.all(16.w),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Welcome card
             Container(
-              padding: EdgeInsets.all(20.w),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 gradient: AppTheme.primaryGradient,
-                borderRadius: BorderRadius.circular(16.r),
+                borderRadius: BorderRadius.circular(16),
               ),
-              child: Column(
+              child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
@@ -111,24 +110,24 @@ class _HomeScreenState extends State<HomeScreen> {
                       Icon(
                         Icons.account_balance_wallet,
                         color: Colors.white,
-                        size: 32.w,
+                        size: 32,
                       ),
-                      SizedBox(width: 12.w),
+                      SizedBox(width: 12),
                       Text(
                         'Decentralized Privacy Banking',
                         style: TextStyle(
-                          fontSize: 18.sp,
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
                       ),
                     ],
                   ),
-                  SizedBox(height: 8.h),
+                  SizedBox(height: 8),
                   Text(
                     'Your gateway to Fuego ecosystem',
                     style: TextStyle(
-                      fontSize: 14.sp,
+                      fontSize: 14,
                       color: Colors.white70,
                     ),
                   ),
@@ -136,26 +135,26 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            SizedBox(height: 24.h),
+            const SizedBox(height: 24),
 
             // Quick Access
-            Text(
+            const Text(
               'Quick Access',
               style: TextStyle(
-                fontSize: 18.sp,
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: AppTheme.textPrimary,
               ),
             ),
 
-            SizedBox(height: 12.h),
+            const SizedBox(height: 12),
 
             Expanded(
               child: GridView.count(
                 shrinkWrap: true,
                 crossAxisCount: 2,
-                crossAxisSpacing: 12.w,
-                mainAxisSpacing: 12.h,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
                 children: [
                   _buildFeatureCard(
                     context,
@@ -201,40 +200,40 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            SizedBox(height: 24.h),
+            const SizedBox(height: 24),
 
             // Service Status
             Container(
-              padding: EdgeInsets.all(16.w),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: AppTheme.surfaceColor,
-                borderRadius: BorderRadius.circular(12.r),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppTheme.dividerColor),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  const Text(
                     'Service Status',
                     style: TextStyle(
-                      fontSize: 14.sp,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                       color: AppTheme.textPrimary,
                     ),
                   ),
-                  SizedBox(height: 8.h),
+                  const SizedBox(height: 8),
                   _buildStatusRow('Integrated Walletd', _isWalletdReady),
-                  SizedBox(height: 4.h),
+                  const SizedBox(height: 4),
                   _buildStatusRow('Optimizer (CLI/RPC)', _isCliReady || _isWalletdReady),
-                  SizedBox(height: 4.h),
+                  const SizedBox(height: 4),
                   _buildStatusRow('Web3 COLD Connection', _isWeb3Ready),
-                  SizedBox(height: 4.h),
+                  const SizedBox(height: 4),
                   _buildStatusRow('Burn2Mint (Ξternal Flame)', true),
                 ],
               ),
             ),
 
-            SizedBox(height: 16.h),
+            const SizedBox(height: 16),
 
             // Quick Actions
             Row(
@@ -247,7 +246,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     () => Navigator.pushNamed(context, '/banking'),
                   ),
                 ),
-                SizedBox(width: 8.w),
+                const SizedBox(width: 8),
                 Expanded(
                   child: _buildQuickAction(
                     'COLD',
@@ -275,32 +274,32 @@ class _HomeScreenState extends State<HomeScreen> {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12.r),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: InkWell(
         onTap: onPressed,
-        borderRadius: BorderRadius.circular(12.r),
+        borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: EdgeInsets.all(16.w),
+          padding: const EdgeInsets.all(16),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 32.w, color: color),
-              SizedBox(height: 8.h),
+              Icon(icon, size: 32, color: color),
+              const SizedBox(height: 8),
               Text(
                 title,
-                style: TextStyle(
-                  fontSize: 14.sp,
+                style: const TextStyle(
+                  fontSize: 14,
                   fontWeight: FontWeight.bold,
                   color: AppTheme.textPrimary,
                 ),
                 textAlign: TextAlign.center,
               ),
-              SizedBox(height: 4.h),
+              const SizedBox(height: 4),
               Text(
                 subtitle,
-                style: TextStyle(
-                  fontSize: 11.sp,
+                style: const TextStyle(
+                  fontSize: 11,
                   color: AppTheme.textSecondary,
                 ),
                 textAlign: TextAlign.center,
@@ -318,13 +317,13 @@ class _HomeScreenState extends State<HomeScreen> {
         Icon(
           status ? Icons.check_circle : Icons.cancel,
           color: status ? AppTheme.successColor : AppTheme.errorColor,
-          size: 16.w,
+          size: 16,
         ),
-        SizedBox(width: 8.w),
+        const SizedBox(width: 8),
         Text(
           label,
-          style: TextStyle(
-            fontSize: 12.sp,
+          style: const TextStyle(
+            fontSize: 12,
             color: AppTheme.textSecondary,
           ),
         ),
@@ -340,17 +339,17 @@ class _HomeScreenState extends State<HomeScreen> {
   ) {
     return ElevatedButton.icon(
       onPressed: onPressed,
-      icon: Icon(icon, size: 20.w),
+      icon: Icon(icon, size: 20),
       label: Text(label),
       style: ElevatedButton.styleFrom(
         backgroundColor: color,
         foregroundColor: Colors.white,
-        padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 8.w),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8.r),
+          borderRadius: BorderRadius.circular(8),
         ),
-        textStyle: TextStyle(
-          fontSize: 14.sp,
+        textStyle: const TextStyle(
+          fontSize: 14,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -362,12 +361,12 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('About XF₲ Wallet'),
-        content: SingleChildScrollView(
+        content: const SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 'Version: 1.0.1\n\n'
                 'Features:\n'
                 '• Integrated walletd & optimizer\n'

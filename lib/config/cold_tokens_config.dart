@@ -89,7 +89,7 @@ class ColdTokenRepository {
   ColdTokenRepository._internal();
 
   /// Official C0LD token (Ethereum Mainnet)
-  final ColdTokenInfo officialC0LD = ColdTokenInfo(
+  const ColdTokenInfo officialC0LD = ColdTokenInfo(
     name: 'C0LD',
     symbol: 'C0LD',
     contractAddress: '0x5aFe5e5C60940B5C6Ca0322dFe51c6D01d455755', // Mainnet
@@ -130,7 +130,7 @@ class ColdTokenRepository {
 
   /// Future proposed tokens (pending DAO + C0LD burn)
   final List<ColdTokenInfo> proposedTokens = [
-    ColdTokenInfo(
+    const ColdTokenInfo(
       name: 'zkC0DL3',
       symbol: 'zkC0DL3',
       contractAddress: '0x0000000000000000000000000000000000000000', // Placeholder
@@ -143,7 +143,7 @@ class ColdTokenRepository {
       burnRequirement: 1,
       requiresDaoVote: true,
     ),
-    ColdTokenInfo(
+    const ColdTokenInfo(
       name: 'HEAT',
       symbol: 'HEAT',
       contractAddress: '0x0000000000000000000000000000000000000000', // Placeholder
@@ -156,7 +156,7 @@ class ColdTokenRepository {
       burnRequirement: 1,
       requiresDaoVote: true,
     ),
-    ColdTokenInfo(
+    const ColdTokenInfo(
       name: 'Fuego-SOL',
       symbol: 'Fuego-SOL',
       contractAddress: 'VERSE_SOL_ADDRESS', // Solana program ID
@@ -590,7 +590,7 @@ class Web3MultiChainService {
       );
 
       final rawBalance = balanceResult[0] as BigInt;
-      final decimals = 18; // Standard for most tokens
+      const decimals = 18; // Standard for most tokens
 
       return {
         'balance': (rawBalance / BigInt.from(10).pow(decimals)).toStringAsFixed(2),
@@ -615,7 +615,7 @@ class Web3MultiChainService {
       );
 
       final data = response.body;
-      final balance = 0.0; // Parse from RPC response
+      const balance = 0.0; // Parse from RPC response
       return {
         'balance': balance.toString(),
         'symbol': 'SOL',
@@ -748,7 +748,7 @@ class Web3MultiChainService {
         final gas = await _ethClient!.getGasPrice();
         final gasGwei = gas.getInWei / BigInt.from(10).pow(9);
         return {
-          'gas': gasGwei.toStringAsFixed(2) + ' Gwei',
+          'gas': '${gasGwei.toStringAsFixed(2)} Gwei',
           'chain': 'ethereum',
           'network': 'Mainnet',
         };
@@ -763,6 +763,7 @@ class Web3MultiChainService {
       onLog?.call('ERROR: Failed to get native info: $e');
       return null;
     }
+    return null;
   }
 
   /// Get current chain

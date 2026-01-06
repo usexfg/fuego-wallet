@@ -222,7 +222,7 @@ class _MessagingScreenState extends State<MessagingScreen>
                               Expanded(
                                 child: Text(
                                   isReceived ? 'From:' : 'To:',
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontSize: 12,
                                     color: AppTheme.textSecondary,
                                   ),
@@ -253,7 +253,7 @@ class _MessagingScreenState extends State<MessagingScreen>
                     ),
                     Text(
                       _formatMessageTime(timestamp),
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 12,
                         color: AppTheme.textSecondary,
                       ),
@@ -265,7 +265,7 @@ class _MessagingScreenState extends State<MessagingScreen>
                 // Message preview
                 Text(
                   message['preview'] as String? ?? 'Encrypted message',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 14,
                     color: AppTheme.textSecondary,
                   ),
@@ -278,7 +278,7 @@ class _MessagingScreenState extends State<MessagingScreen>
                 Row(
                   children: [
                     if (hasAttachment) ...[
-                      Icon(
+                      const Icon(
                         Icons.attach_file,
                         size: 16,
                         color: AppTheme.textMuted,
@@ -286,13 +286,13 @@ class _MessagingScreenState extends State<MessagingScreen>
                       const SizedBox(width: 4),
                     ],
                     if (selfDestruct) ...[
-                      Icon(
+                      const Icon(
                         Icons.timer,
                         size: 16,
                         color: AppTheme.warningColor,
                       ),
                       const SizedBox(width: 4),
-                      Text(
+                      const Text(
                         'Self-destruct',
                         style: TextStyle(
                           fontSize: 11,
@@ -302,13 +302,13 @@ class _MessagingScreenState extends State<MessagingScreen>
                       ),
                       const SizedBox(width: 8),
                     ],
-                    Icon(
+                    const Icon(
                       Icons.lock,
                       size: 16,
                       color: AppTheme.successColor,
                     ),
                     const SizedBox(width: 4),
-                    Text(
+                    const Text(
                       'Encrypted',
                       style: TextStyle(
                         fontSize: 11,
@@ -333,7 +333,7 @@ class _MessagingScreenState extends State<MessagingScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
+            const Icon(
               Icons.inbox_outlined,
               size: 64,
               color: AppTheme.textMuted,
@@ -348,7 +348,7 @@ class _MessagingScreenState extends State<MessagingScreen>
               ),
             ),
             const SizedBox(height: 8),
-            Text(
+            const Text(
               'Your encrypted messages will appear here when received.',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -369,10 +369,10 @@ class _MessagingScreenState extends State<MessagingScreen>
                   color: AppTheme.primaryColor.withOpacity(0.3),
                 ),
               ),
-              child: Column(
+              child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
+                  Row(
                     children: [
                       Icon(
                         Icons.security,
@@ -389,7 +389,7 @@ class _MessagingScreenState extends State<MessagingScreen>
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   Text(
                     '• End-to-end encrypted on blockchain\n'
                     '• Messages cannot be censored\n'
@@ -417,7 +417,7 @@ class _MessagingScreenState extends State<MessagingScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
+            const Icon(
               Icons.send_outlined,
               size: 64,
               color: AppTheme.textMuted,
@@ -432,7 +432,7 @@ class _MessagingScreenState extends State<MessagingScreen>
               ),
             ),
             const SizedBox(height: 8),
-            Text(
+            const Text(
               'Messages you send will be stored here for your reference.',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -477,7 +477,7 @@ class _MessagingScreenState extends State<MessagingScreen>
                   ),
                   child: Row(
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.message,
                         color: AppTheme.primaryColor,
                       ),
@@ -509,7 +509,7 @@ class _MessagingScreenState extends State<MessagingScreen>
                         // From/To
                         Text(
                           message['type'] == 'received' ? 'From:' : 'To:',
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 12,
                             color: AppTheme.textSecondary,
                           ),
@@ -528,7 +528,7 @@ class _MessagingScreenState extends State<MessagingScreen>
                         // Timestamp
                         Text(
                           'Received: ${_formatFullDateTime(DateTime.fromMillisecondsSinceEpoch((message['timestamp'] as int) * 1000))}',
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 12,
                             color: AppTheme.textSecondary,
                           ),

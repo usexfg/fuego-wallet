@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../providers/wallet_provider.dart';
 import '../../services/security_service.dart';
 import '../../utils/theme.dart';
 import '../auth/pin_setup_screen.dart';
@@ -111,7 +109,7 @@ class _RestoreWalletScreenState extends State<RestoreWalletScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            Text(
+            const Text(
               'Enter your 25-word backup phrase to restore your existing Fuego wallet',
               style: TextStyle(
                 fontSize: 16,
@@ -244,10 +242,10 @@ class _RestoreWalletScreenState extends State<RestoreWalletScreen> {
                   color: AppTheme.primaryColor.withOpacity(0.3),
                 ),
               ),
-              child: Column(
+              child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
+                  Row(
                     children: [
                       Icon(
                         Icons.info_outline,
@@ -264,7 +262,7 @@ class _RestoreWalletScreenState extends State<RestoreWalletScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   Text(
                     '• Your backup phrase is case-insensitive\n'
                     '• Extra spaces will be automatically removed\n'
@@ -330,10 +328,10 @@ class _RestoreWalletScreenState extends State<RestoreWalletScreen> {
                   color: AppTheme.warningColor.withOpacity(0.3),
                 ),
               ),
-              child: Column(
+              child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
+                  Row(
                     children: [
                       Icon(
                         Icons.security,
@@ -350,7 +348,7 @@ class _RestoreWalletScreenState extends State<RestoreWalletScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Text(
                     'Never enter your backup phrase on untrusted devices or websites. '
                     'Anyone with access to your backup phrase can control your wallet.',

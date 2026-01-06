@@ -11,7 +11,7 @@ class WalletProvider extends ChangeNotifier {
   static final Logger _logger = Logger('WalletProvider');
   final FuegoRPCService _rpcService;
   final SecurityService _securityService;
-  
+
   Wallet? _wallet;
   List<WalletTransaction> _transactions = [];
   List<ElderfierNode> _elderfierNodes = [];
@@ -62,7 +62,7 @@ class WalletProvider extends ChangeNotifier {
   Future<String?> getPrivateKeyForBurn(String pin) async {
     try {
       _logger.info('Attempting to get private key for burn transaction');
-      
+
       final isValidPin = await _securityService.verifyPIN(pin);
       if (!isValidPin) {
         _logger.warning('Invalid PIN provided for private key access');
@@ -91,13 +91,13 @@ class WalletProvider extends ChangeNotifier {
       _setError('Wallet not loaded');
       return null;
     }
-    
+
     // Only return private key if wallet is synced and unlocked
     if (!isWalletSynced) {
       _setError('Wallet must be synced to access private key');
       return null;
     }
-    
+
     return _wallet?.spendKey;
   }
 
@@ -120,7 +120,7 @@ class WalletProvider extends ChangeNotifier {
     Connectivity().onConnectivityChanged.listen((ConnectivityResult result) {
       _connectivityResult = result;
       notifyListeners();
-      
+
       if (result != ConnectivityResult.none) {
         _checkConnection();
       } else {
@@ -140,7 +140,7 @@ class WalletProvider extends ChangeNotifier {
 
     try {
       final seed = mnemonic ?? SecurityService.generateMnemonic();
-      
+
       if (!SecurityService.validateMnemonic(seed)) {
         throw Exception('Invalid mnemonic phrase');
       }
@@ -153,7 +153,7 @@ class WalletProvider extends ChangeNotifier {
       // For now, we'll simulate this process
       final viewKey = 'view_key_placeholder_${DateTime.now().millisecondsSinceEpoch}';
       final spendKey = 'spend_key_placeholder_${DateTime.now().millisecondsSinceEpoch}';
-      
+
       await _securityService.storeWalletKeys(
         viewKey: viewKey,
         spendKey: spendKey,
@@ -188,7 +188,7 @@ class WalletProvider extends ChangeNotifier {
       // TODO Derive keys from mnemonic (placeholder implementation)
       final viewKey = 'restored_view_key_${DateTime.now().millisecondsSinceEpoch}';
       final spendKey = 'restored_spend_key_${DateTime.now().millisecondsSinceEpoch}';
-      
+
       await _securityService.storeWalletKeys(
         viewKey: viewKey,
         spendKey: spendKey,
@@ -222,7 +222,7 @@ class WalletProvider extends ChangeNotifier {
       // Initialize wallet with placeholder data
       // TODO: Open wallet with the keys
       await refreshWallet();
-      
+
       _setLoading(false);
       return true;
     } catch (e) {
@@ -260,9 +260,9 @@ class WalletProvider extends ChangeNotifier {
       // Get wallet balance and info
       final balance = await _rpcService.getBalance();
       final address = await _rpcService.getAddress();
-      
+
       _wallet = balance.copyWith(address: address);
-      
+
       // Start sync timer if not already running
       if (!isWalletSynced) {
         _startSyncTimer();
@@ -297,8 +297,8 @@ class WalletProvider extends ChangeNotifier {
 
     try {
       final atomicAmount = (amount * 10000000).round();
-      final fee = 10000000; // Default fee in atomic units
-      
+      const fee = 10000000; // Default fee in atomic units
+
       final request = SendTransactionRequest(
         address: address,
         amount: atomicAmount,
@@ -308,11 +308,11 @@ class WalletProvider extends ChangeNotifier {
       );
 
       final txHash = await _rpcService.sendTransaction(request);
-      
+
       // Refresh wallet after sending
       await refreshWallet();
       await refreshTransactions();
-      
+
       _setLoading(false);
       return txHash;
     } catch (e) {
@@ -335,12 +335,12 @@ class WalletProvider extends ChangeNotifier {
     try {
       _miningThreads = threads;
       final success = await _rpcService.startMining(threads: threads);
-      
+
       if (success) {
         _isMining = true;
         _startMiningStatusTimer();
       }
-      
+
       notifyListeners();
     } catch (e) {
       _setError('Failed to start mining: $e');
@@ -393,11 +393,11 @@ class WalletProvider extends ChangeNotifier {
         address: address,
         stakeAmount: atomicStake,
       );
-      
+
       if (success) {
         await refreshElderfierNodes();
       }
-      
+
       return success;
     } catch (e) {
       _setError('Failed to register Elderfier node: $e');
@@ -435,14 +435,14 @@ class WalletProvider extends ChangeNotifier {
   Future<void> updateNetworkConfig(NetworkConfig config) async {
     _networkConfig = config;
     _rpcService.updateNetworkConfig(config);
-    
+
     // Update node URL if it's using the old port
     if (_nodeUrl != null) {
       final uri = Uri.parse(_nodeUrl!);
       final newUrl = '${uri.scheme}://${uri.host}:${config.daemonRpcPort}';
       _nodeUrl = newUrl;
     }
-    
+
     notifyListeners();
   }
 
@@ -458,7 +458,7 @@ class WalletProvider extends ChangeNotifier {
   // Timer Management
   void _startSyncTimer() {
     if (_syncTimer?.isActive == true) return;
-    
+
     _syncTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
       if (_wallet != null && !isWalletSynced) {
         _refreshSyncStatus();
@@ -490,7 +490,7 @@ class WalletProvider extends ChangeNotifier {
       _isSyncing = true;
       final info = await _rpcService.getInfo();
       final balance = await _rpcService.getBalance();
-      
+
       if (_wallet != null) {
         _wallet = _wallet!.copyWith(
           blockchainHeight: info['height'] as int,
@@ -498,7 +498,7 @@ class WalletProvider extends ChangeNotifier {
           synced: (info['height'] - balance.localHeight) <= 1,
         );
       }
-      
+
       _isSyncing = false;
       notifyListeners();
     } catch (e) {
@@ -521,7 +521,7 @@ class WalletProvider extends ChangeNotifier {
         selfDestruct: selfDestruct,
         destructTime: destructTime,
       );
-      
+
       if (success) {
         // Message sent successfully
         return true;
@@ -538,7 +538,7 @@ class WalletProvider extends ChangeNotifier {
   Future<List<Map<String, dynamic>>> loadMessages() async {
     try {
       final messages = await _rpcService.getMessages();
-      
+
       // Transform messages for UI consumption
       return messages.map((msg) {
         return {

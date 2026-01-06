@@ -2,7 +2,6 @@
 // Copyright (c) 2025 Elderfire Privacy Group
 
 import 'dart:convert';
-import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:crypto/crypto.dart';
 import '../models/wallet.dart';

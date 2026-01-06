@@ -1,15 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-import '../../services/cli_service.dart';
 import '../../services/walletd_service.dart';
 import '../../services/web3_cold_service.dart';
-import '../../models/transaction_model.dart';
-import '../../providers/wallet_provider.dart';
-import '../../models/wallet.dart';
 import '../../utils/theme.dart';
 import 'burn_deposits_screen.dart';
 
@@ -153,7 +146,7 @@ class _BankingScreenState extends State<BankingScreen>
       await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => BurnDepositsScreen(),
+          builder: (context) => const BurnDepositsScreen(),
         ),
       );
 
@@ -408,14 +401,14 @@ class _BankingScreenState extends State<BankingScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                const Row(
                   children: [
                     Icon(
                       Icons.local_fire_department,
                       color: Colors.white,
                       size: 32,
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Text(
                       'Ξternal Flame',
                       style: TextStyle(
@@ -446,7 +439,7 @@ class _BankingScreenState extends State<BankingScreen>
           const SizedBox(height: 16),
 
           // Burn Options
-          Text(
+          const Text(
             'Select Burn Amount',
             style: TextStyle(
               fontSize: 18,
@@ -523,7 +516,7 @@ class _BankingScreenState extends State<BankingScreen>
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppTheme.dividerColor),
             ),
-            child: Column(
+            child: const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
@@ -534,7 +527,7 @@ class _BankingScreenState extends State<BankingScreen>
                     color: AppTheme.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
               Text(
                 'Ξthereal XFG (HEAT) is the erc20 token equivalent of XFG by atomic unit (ħeat), '
                 'minted on Ethereum L1 using Arbitrum L2 for gas-efficiency. '
@@ -565,10 +558,10 @@ class _BankingScreenState extends State<BankingScreen>
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
+              gradient: const LinearGradient(
                 colors: [
-                  const Color(0xFF4A90E2),
-                  const Color(0xFF2D5F8D),
+                  Color(0xFF4A90E2),
+                  Color(0xFF2D5F8D),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -578,14 +571,14 @@ class _BankingScreenState extends State<BankingScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                const Row(
                   children: [
                     Icon(
                       Icons.savings,
                       color: Colors.white,
                       size: 32,
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Text(
                       'COLD Interest Lounge',
                       style: TextStyle(
@@ -627,7 +620,7 @@ class _BankingScreenState extends State<BankingScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  const Text(
                     'COLD Balance',
                     style: TextStyle(
                       fontSize: 16,
@@ -641,14 +634,14 @@ class _BankingScreenState extends State<BankingScreen>
                     children: [
                       Text(
                         '${_coldBalance!['balance']} ${_coldBalance!['symbol']}',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
                           color: AppTheme.primaryColor,
                         ),
                       ),
                       IconButton(
-                        icon: Icon(Icons.refresh, color: AppTheme.primaryColor),
+                        icon: const Icon(Icons.refresh, color: AppTheme.primaryColor),
                         onPressed: _isConnectingWeb3 ? null : _refreshCOLDalance,
                       ),
                     ],
@@ -656,7 +649,7 @@ class _BankingScreenState extends State<BankingScreen>
                   const SizedBox(height: 4),
                   Text(
                     _coldBalance!['name'],
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: AppTheme.textSecondary,
                       fontSize: 12,
                     ),
@@ -664,7 +657,7 @@ class _BankingScreenState extends State<BankingScreen>
                   const SizedBox(height: 8),
                   Text(
                     'Address: ${_coldBalance!['address'].substring(0, 6)}...${_coldBalance!['address'].substring(38)}',
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: AppTheme.textMuted,
                       fontSize: 10,
                       fontFamily: 'monospace',
@@ -684,24 +677,24 @@ class _BankingScreenState extends State<BankingScreen>
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: const Color(0xFF4A90E2)),
               ),
-              child: Column(
+              child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.interests, color: const Color(0xFF4A90E2), size: 20),
-                      const SizedBox(width: 8),
+                      Icon(Icons.interests, color: Color(0xFF4A90E2), size: 20),
+                      SizedBox(width: 8),
                       Text(
                         'C0DL3 Interest Generation',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: const Color(0xFF4A90E2),
+                          color: Color(0xFF4A90E2),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Text(
                     '• COLD tokens generate interest via C0DL3 rollup\n'
                     '• Interest paid in HEAT tokens\n'
@@ -725,7 +718,7 @@ class _BankingScreenState extends State<BankingScreen>
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppTheme.dividerColor),
               ),
-              child: Center(
+              child: const Center(
                 child: Text(
                   'Connect your COLD token address to view balance and manage interest',
                   style: TextStyle(
@@ -753,7 +746,7 @@ class _BankingScreenState extends State<BankingScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  const Text(
                     'Web3 Activity Log',
                     style: TextStyle(
                       fontSize: 12,
@@ -762,12 +755,12 @@ class _BankingScreenState extends State<BankingScreen>
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Container(
+                  SizedBox(
                     height: 80,
                     child: SingleChildScrollView(
                       child: Text(
-                        _web3Log.length > 500 ? _web3Log.substring(0, 500) + '...' : _web3Log,
-                        style: TextStyle(
+                        _web3Log.length > 500 ? '${_web3Log.substring(0, 500)}...' : _web3Log,
+                        style: const TextStyle(
                           fontSize: 10,
                           fontFamily: 'monospace',
                           color: AppTheme.textMuted,
@@ -794,10 +787,10 @@ class _BankingScreenState extends State<BankingScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
+                  const Row(
                     children: [
                       Icon(Icons.sync, color: AppTheme.successColor, size: 20),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Text(
                         'Integrated Services',
                         style: TextStyle(
@@ -818,12 +811,12 @@ class _BankingScreenState extends State<BankingScreen>
                   ),
                   const SizedBox(height: 8),
                   if (_serviceLog.isNotEmpty) ...[
-                    Container(
+                    SizedBox(
                       height: 60,
                       child: SingleChildScrollView(
                         child: Text(
-                          _serviceLog.length > 300 ? _serviceLog.substring(0, 300) + '...' : _serviceLog,
-                          style: TextStyle(
+                          _serviceLog.length > 300 ? '${_serviceLog.substring(0, 300)}...' : _serviceLog,
+                          style: const TextStyle(
                             fontSize: 9,
                             fontFamily: 'monospace',
                             color: AppTheme.textMuted,
@@ -854,7 +847,7 @@ class _BankingScreenState extends State<BankingScreen>
                             valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
-                      : Icon(Icons.link),
+                      : const Icon(Icons.link),
                   label: Text(_isWeb3Connected ? 'Refresh Balance' : 'Connect Web3'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF4A90E2),
@@ -918,7 +911,7 @@ class _BankingScreenState extends State<BankingScreen>
                     // Show modal with COLD address input
                     _showCOLDAddressDialog();
                   },
-                  icon: Icon(Icons.edit, size: 18),
+                  icon: const Icon(Icons.edit, size: 18),
                   label: const Text('Set COLD Address'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.interactiveColor,
@@ -957,7 +950,7 @@ class _BankingScreenState extends State<BankingScreen>
                 size: 20,
               ),
               const SizedBox(width: 8),
-              Text(
+              const Text(
                 'Walletd Integration',
                 style: TextStyle(
                   fontSize: 14,
@@ -975,7 +968,7 @@ class _BankingScreenState extends State<BankingScreen>
                     _stopWalletd();
                   }
                 },
-                activeColor: AppTheme.successColor,
+                activeThumbColor: AppTheme.successColor,
               ),
             ],
           ),
@@ -984,7 +977,7 @@ class _BankingScreenState extends State<BankingScreen>
             _isWalletdRunning
                 ? 'walletd and optimizer are integrated directly into the GUI for seamless operation'
                 : 'Enable walletd for integrated optimization and RPC wallet server functionality',
-            style: TextStyle(
+            style: const TextStyle(
               color: AppTheme.textSecondary,
               fontSize: 12,
               height: 1.4,
@@ -1023,7 +1016,7 @@ class _BankingScreenState extends State<BankingScreen>
                 size: 20,
               ),
               const SizedBox(width: 8),
-              Text(
+              const Text(
                 'Ethereum Connection',
                 style: TextStyle(
                   fontSize: 14,
@@ -1056,15 +1049,15 @@ class _BankingScreenState extends State<BankingScreen>
             decoration: InputDecoration(
               labelText: 'COLD Token Address (0x...)',
               hintText: 'Enter your COLD token address',
-              prefixIcon: Icon(Icons.account_balance_wallet, size: 18),
+              prefixIcon: const Icon(Icons.account_balance_wallet, size: 18),
               filled: true,
               fillColor: AppTheme.backgroundColor,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: AppTheme.dividerColor),
+                borderSide: const BorderSide(color: AppTheme.dividerColor),
               ),
             ),
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 12,
               fontFamily: 'monospace',
             ),
@@ -1079,7 +1072,7 @@ class _BankingScreenState extends State<BankingScreen>
             const SizedBox(height: 8),
             Text(
               'RPC: ${Web3COLDService.instance.currentRpc}',
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 10,
                 color: AppTheme.textMuted,
                 fontFamily: 'monospace',
@@ -1125,7 +1118,7 @@ class _BankingScreenState extends State<BankingScreen>
                 const SizedBox(width: 8),
                 Text(
                   title,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: AppTheme.textPrimary,
@@ -1136,7 +1129,7 @@ class _BankingScreenState extends State<BankingScreen>
             const SizedBox(height: 8),
             Text(
               '$burnAmount → Mint $heatAmount',
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
                 color: AppTheme.primaryColor,
@@ -1145,7 +1138,7 @@ class _BankingScreenState extends State<BankingScreen>
             const SizedBox(height: 4),
             Text(
               description,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 12,
                 color: AppTheme.textSecondary,
               ),

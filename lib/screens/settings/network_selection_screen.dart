@@ -79,11 +79,11 @@ class _NetworkSelectionScreenState extends State<NetworkSelectionScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    const Row(
                       children: [
-                        const Icon(Icons.info_outline, color: Colors.orange),
-                        const SizedBox(width: 8),
-                        const Text(
+                        Icon(Icons.info_outline, color: Colors.orange),
+                        SizedBox(width: 8),
+                        Text(
                           'Testnet Information',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,

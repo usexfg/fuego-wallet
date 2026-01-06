@@ -138,7 +138,7 @@ class RecentTransactions extends StatelessWidget {
                   children: [
                     Text(
                       _formatDate(transaction.dateTime),
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 12,
                         color: AppTheme.textSecondary,
                       ),
@@ -151,7 +151,7 @@ class RecentTransactions extends StatelessWidget {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.tag,
                       size: 14,
                       color: AppTheme.textMuted,
@@ -160,7 +160,7 @@ class RecentTransactions extends StatelessWidget {
                     Expanded(
                       child: Text(
                         'ID: ${_truncateHash(transaction.txid)}',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 11,
                           color: AppTheme.textMuted,
                           fontFamily: 'monospace',
@@ -272,14 +272,14 @@ class RecentTransactions extends StatelessWidget {
   Widget _buildEmptyState() {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 32),
-      child: Column(
+      child: const Column(
         children: [
           Icon(
             Icons.receipt_long_outlined,
             size: 48,
             color: AppTheme.textMuted,
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Text(
             'No transactions yet',
             style: TextStyle(
@@ -288,7 +288,7 @@ class RecentTransactions extends StatelessWidget {
               color: AppTheme.textSecondary,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             'Your transaction history will appear here',
             style: TextStyle(

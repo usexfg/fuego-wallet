@@ -249,7 +249,7 @@ class _ElderfierScreenState extends State<ElderfierScreen>
                     ),
                     Text(
                       'ID: ${_truncateNodeId(node.nodeId)}',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 12,
                         color: AppTheme.textMuted,
                         fontFamily: 'monospace',
@@ -301,7 +301,7 @@ class _ElderfierScreenState extends State<ElderfierScreen>
           // Last seen
           Row(
             children: [
-              Icon(
+              const Icon(
                 Icons.update,
                 size: 16,
                 color: AppTheme.textMuted,
@@ -309,7 +309,7 @@ class _ElderfierScreenState extends State<ElderfierScreen>
               const SizedBox(width: 8),
               Text(
                 'Last seen: Block ${node.lastSeenBlock}',
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 12,
                   color: AppTheme.textMuted,
                 ),
@@ -354,7 +354,7 @@ class _ElderfierScreenState extends State<ElderfierScreen>
                 ),
                 Text(
                   '${node.stakeAmountXFG.toStringAsFixed(0)} XFG • ${node.consensusType}',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 12,
                     color: AppTheme.textSecondary,
                   ),
@@ -364,7 +364,7 @@ class _ElderfierScreenState extends State<ElderfierScreen>
           ),
           Text(
             '${(node.uptime / 3600).toStringAsFixed(0)}h',
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w500,
               color: AppTheme.textSecondary,
@@ -382,7 +382,7 @@ class _ElderfierScreenState extends State<ElderfierScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
+            const Icon(
               Icons.account_tree_outlined,
               size: 64,
               color: AppTheme.textMuted,
@@ -397,7 +397,7 @@ class _ElderfierScreenState extends State<ElderfierScreen>
               ),
             ),
             const SizedBox(height: 8),
-            Text(
+            const Text(
               'Register your first Elderfier node to start earning rewards and participating in network consensus.',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -424,10 +424,10 @@ class _ElderfierScreenState extends State<ElderfierScreen>
                   color: AppTheme.primaryColor.withOpacity(0.3),
                 ),
               ),
-              child: Column(
+              child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
+                  Row(
                     children: [
                       Icon(
                         Icons.info_outline,
@@ -444,7 +444,7 @@ class _ElderfierScreenState extends State<ElderfierScreen>
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   Text(
                     '• Requires 800 XFG minimum stake\n'
                     '• Earn rewards for network participation\n'
@@ -472,7 +472,7 @@ class _ElderfierScreenState extends State<ElderfierScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
+            const Icon(
               Icons.cloud_off,
               size: 64,
               color: AppTheme.textMuted,
@@ -487,7 +487,7 @@ class _ElderfierScreenState extends State<ElderfierScreen>
               ),
             ),
             const SizedBox(height: 8),
-            Text(
+            const Text(
               'Unable to load Elderfier network information. Check your connection and try again.',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -527,7 +527,7 @@ class _ElderfierScreenState extends State<ElderfierScreen>
         ),
         Text(
           label,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 12,
             color: AppTheme.textSecondary,
           ),
@@ -555,7 +555,7 @@ class _ElderfierScreenState extends State<ElderfierScreen>
         ),
         Text(
           label,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 10,
             color: AppTheme.textSecondary,
           ),

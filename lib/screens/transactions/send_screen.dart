@@ -98,12 +98,12 @@ class _SendScreenState extends State<SendScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              const Text(
                 'Your transaction has been broadcast to the network.',
                 style: TextStyle(color: AppTheme.textSecondary),
               ),
               const SizedBox(height: 16),
-              Text(
+              const Text(
                 'Transaction ID:',
                 style: TextStyle(
                   color: AppTheme.textPrimary,
@@ -510,15 +510,15 @@ class _SendScreenState extends State<SendScreen> {
                         color: AppTheme.warningColor.withOpacity(0.3),
                       ),
                     ),
-                    child: Row(
+                    child: const Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.info_outline,
                           color: AppTheme.warningColor,
                           size: 20,
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             'Transactions cannot be reversed. Please double-check the recipient address before sending.',

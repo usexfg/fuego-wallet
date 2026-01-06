@@ -2,8 +2,6 @@
 // Inspired by the QT wallet's WalletAdapter pattern
 
 import 'dart:async';
-import 'dart:async';
-import 'dart:io';
 import 'package:dio/dio.dart';
 import '../models/wallet.dart';
 import '../models/network_config.dart';
@@ -25,7 +23,7 @@ class FuegoWalletAdapter {
 
   final Dio _dio;
   final String _walletRpcUrl;
-  NetworkConfig _networkConfig = NetworkConfig.mainnet;
+  final NetworkConfig _networkConfig = NetworkConfig.mainnet;
   Wallet? _wallet;
   bool _isOpen = false;
   bool _isSynchronized = false;

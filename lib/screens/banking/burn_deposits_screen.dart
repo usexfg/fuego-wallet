@@ -1,16 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../services/cli_service.dart';
-import '../../services/wallet_service.dart';
-import '../../models/transaction_model.dart';
 import '../../providers/wallet_provider.dart';
 import '../../models/wallet.dart';
-import '../../utils/theme.dart';
 
 class BurnDepositsScreen extends StatefulWidget {
-  const BurnDepositsScreen({Key? key}) : super(key: key);
+  const BurnDepositsScreen({super.key});
 
   @override
   _BurnDepositsScreenState createState() => _BurnDepositsScreenState();
@@ -187,7 +183,7 @@ class _BurnDepositsScreenState extends State<BurnDepositsScreen> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: _selectedBurnType,
+              initialValue: _selectedBurnType,
               decoration: const InputDecoration(
                 labelText: 'Burn Type',
               ),

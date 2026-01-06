@@ -10,20 +10,20 @@ import 'utils/theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Initialize WalletDaemonService
   await WalletDaemonService.initialize(
     daemonAddress: '207.244.247.64',
     daemonPort: 18180,
     networkConfig: NetworkConfig.mainnet,
   );
-  
+
   // Set preferred orientations
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
-  
+
   // Set system UI overlay style
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -55,10 +55,10 @@ class XFGWalletApp extends StatelessWidget {
         ),
       ],
       child: MaterialApp(
-        title: 'XF₲ Wallet',
+        title: 'Fuego Wallet',
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.dark, // Default to dark theme for crypto aesthetic
+        themeMode: ThemeMode.dark,
         home: const SplashScreen(),
         debugShowCheckedModeBanner: false,
       ),

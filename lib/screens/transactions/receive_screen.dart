@@ -562,10 +562,10 @@ class _ReceiveScreenState extends State<ReceiveScreen>
                           color: AppTheme.primaryColor.withOpacity(0.3),
                         ),
                       ),
-                      child: Column(
+                      child: const Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Row(
+                          Row(
                             children: [
                               Icon(
                                 Icons.info_outline,
@@ -583,7 +583,7 @@ class _ReceiveScreenState extends State<ReceiveScreen>
                               ),
                             ],
                           ),
-                          const SizedBox(height: 12),
+                          SizedBox(height: 12),
                           Text(
                             '• Share your address or QR code with the sender\n'
                             '• Use payment IDs to identify specific payments\n'

@@ -109,7 +109,7 @@ class _SendMessageScreenState extends State<SendMessageScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              const Text(
                 'Your encrypted message has been broadcast to the blockchain.',
                 style: TextStyle(color: AppTheme.textSecondary),
               ),
@@ -367,7 +367,7 @@ class _SendMessageScreenState extends State<SendMessageScreen> {
                     ),
                     if (_selfDestruct) ...[
                       const SizedBox(height: 16),
-                      Text(
+                      const Text(
                         'Destruction Time',
                         style: TextStyle(
                           fontSize: 14,
@@ -376,7 +376,7 @@ class _SendMessageScreenState extends State<SendMessageScreen> {
                       ),
                       const SizedBox(height: 8),
                       DropdownButtonFormField<int>(
-                        value: _destructTime,
+                        initialValue: _destructTime,
                         decoration: const InputDecoration(
                           isDense: true,
                         ),
@@ -401,14 +401,14 @@ class _SendMessageScreenState extends State<SendMessageScreen> {
                           color: AppTheme.warningColor.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Row(
+                        child: const Row(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.info_outline,
                               color: AppTheme.warningColor,
                               size: 16,
                             ),
-                            const SizedBox(width: 8),
+                            SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 'Self-destruct messages are automatically deleted after the specified time.',
@@ -556,15 +556,15 @@ class _SendMessageScreenState extends State<SendMessageScreen> {
                     color: AppTheme.primaryColor.withOpacity(0.3),
                   ),
                 ),
-                child: Row(
+                child: const Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.privacy_tip,
                       color: AppTheme.primaryColor,
                       size: 20,
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         'Your message will be encrypted and stored on the Fuego blockchain. '
@@ -603,7 +603,7 @@ class _SendMessageScreenState extends State<SendMessageScreen> {
               children: [
                 Text(
                   title,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: AppTheme.textPrimary,
@@ -611,7 +611,7 @@ class _SendMessageScreenState extends State<SendMessageScreen> {
                 ),
                 Text(
                   description,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 12,
                     color: AppTheme.textSecondary,
                   ),

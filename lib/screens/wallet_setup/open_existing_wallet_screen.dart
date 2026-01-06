@@ -184,7 +184,7 @@ class _OpenExistingWalletScreenState extends State<OpenExistingWalletScreen>
                       const SizedBox(height: 16),
 
                       // Subtitle
-                      Text(
+                      const Text(
                         'Select how you want to access your existing wallet',
                         style: TextStyle(
                           fontSize: 16,
@@ -238,14 +238,14 @@ class _OpenExistingWalletScreenState extends State<OpenExistingWalletScreen>
                           color: AppTheme.warningColor.withOpacity(0.3),
                         ),
                       ),
-                      child: Row(
+                      child: const Row(
                         children: [
                           Icon(
                             Icons.security,
                             color: AppTheme.warningColor,
                             size: 24,
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: 12),
                           Expanded(
                             child: Text(
                               'Ensure you have backed up your wallet data. Never share your private keys or mnemonic phrase.',
@@ -320,7 +320,7 @@ class _OpenExistingWalletScreenState extends State<OpenExistingWalletScreen>
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 14,
                       color: AppTheme.textSecondary,
                       height: 1.3,

@@ -319,7 +319,7 @@ class _PinInputWidgetState extends State<PinInputWidget>
       child: Container(
         width: 70,
         height: 70,
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           shape: BoxShape.circle,
           color: Colors.transparent,
         ),

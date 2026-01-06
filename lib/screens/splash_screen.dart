@@ -97,7 +97,7 @@ class _SplashScreenState extends State<SplashScreen>
       }
     } catch (e) {
       if (!mounted) return;
-      
+
       setState(() {
         _initMessage = 'Error: ${e.toString()}';
       });
@@ -180,7 +180,7 @@ class _SplashScreenState extends State<SplashScreen>
                           AnimatedTextKit(
                             animatedTexts: [
                               TypewriterAnimatedText(
-                                'Fyrefly XF₲_wallet',
+                                'WinterFire Wallet',
                                 textStyle: const TextStyle(
                                   fontSize: 28,
                                   fontWeight: FontWeight.bold,

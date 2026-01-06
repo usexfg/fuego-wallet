@@ -1,8 +1,6 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
@@ -172,7 +170,7 @@ class CLIService {
       };
     } catch (e) {
       _logger.severe('Error parsing proof output: $e');
-      throw FormatException('Unable to parse burn proof output');
+      throw const FormatException('Unable to parse burn proof output');
     }
   }
 
