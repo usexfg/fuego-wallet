@@ -1,5 +1,5 @@
 # Fuego's 🔥WinterFire❄️ Wallet   
-## XFG wallet with web3 support for HEAT + C0LD assets
+## Fuego XFG wallet with support for HEAT + C0LD assets
 
 
 ![](https://github.com/ColinRitman/xfg_wallet/blob/a3cc073a4ef9ab3961dde35d5ca3616a36181be3/assets/images/xfgwalletdesktopsplash.gif)
