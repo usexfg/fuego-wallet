@@ -5,26 +5,11 @@
 ![](https://github.com/ColinRitman/xfg_wallet/blob/a3cc073a4ef9ab3961dde35d5ca3616a36181be3/assets/images/xfgwalletdesktopsplash.gif)
 
 
-### 🎯 What's New - December 2024
-```
-┌─────────────────────────────────────────────────────────┐
-│  BEFORE:        │  AFTER:                               │
-│  Burn2Mint      │  🔥 Ξternal Flame (HEAT)              │
-│  COLD Banking   │  ❄️ COLD Interest Lounge              │
-│  No GUI walletd │  ⚙️ Integrated walletd + optimizer    │
-│  No Web3        │  🌐 Web3 COLD on Ethereum             │
-└─────────────────────────────────────────────────────────┘
-```
-
-**This wallet now has walletd and fuego-optimizer compiled INTO the GUI**, just like other GUI wallets.
-
----
-
 ## ⚡ Quick Start (2 Minutes)
 
 ```bash
 # 1. Get the repository
-git clone https://github.com/ColinRitman/fuego-wallet.git
+git clone https://github.com/usexfg/fuego-wallet.git
 cd fuego-wallet
 
 # 2. Install Flutter dependencies
@@ -33,25 +18,22 @@ flutter pub get
 # 3. Download required binaries
 ./scripts/ensure-binaries.sh
 
-# 4. Build walletd (optional - for integrated mode)
+# 4. Build walletd 
 ./scripts/get_walletd_binary.sh build
 
 # 5. Run the wallet
 flutter run -d linux  # or macos, windows, android, ios
 ```
 
-**That's it!** The wallet now has integrated services.
-
 ---
 
 ## 🚀 New Features
 
-### 1. **Ξternal Flame** (Formerly Burn2Mint)
+### 1. **Ξternal Flame** 
 Burn XFG to mint Fuego Ξmbers (HEAT) on Ethereum L1
 - **Standard Burn:** 0.8 XFG → 8 Million HEAT
 - **Large Burn:** 800 XFG → 8 Billion HEAT
-- **Integrated Mode:** walletd + optimizer in GUI
-- **STARK Proofs:** Local generation or via walletd
+- **zkSTARK Proofs:** Local generation or via walletd
 
 ### 2. **COLD Interest Lounge** (Formerly COLD Banking)
 Manage COLD tokens on Ethereum with C0DL3 interest
@@ -59,14 +41,6 @@ Manage COLD tokens on Ethereum with C0DL3 interest
 - **Balance Tracking:** Real-time COLD token balance
 - **C0DL3 Interest:** Track earnings in HEAT tokens
 - **Token Transfer:** Send COLD to any address
-
-### 3. **Integrated Walletd Service**
-Walletd and optimizer compiled into the GUI
-- **Process Management:** Start/stop from UI
-- **JSON-RPC Server:** Port 8070 (configurable)
-- **Optimizer:** Auto-optimization via RPC
-- **Real-time Logs:** Service output in UI
-- **Status Indicators:** Visual feedback
 
 ---
 
@@ -103,38 +77,6 @@ fuego-wallet/
 ├── FINAL_SUMMARY.md                  ← Complete overview
 └── CHECKLIST.md                      ← User testing guide
 ```
-
----
-
-## 🔧 Wallet Modes Explained
-
-### **SimpleWallet (heat_wallet) - Interactive Mode**
-- **Does NOT start walletd** - Connects to daemon directly
-- `optimize` command built into SimpleWallet
-- Can authenticate with remote node for fees
-
-### **SimpleWallet - RPC Server Mode**
-- `--rpc-bind-port=8070` becomes RPC wallet server
-- Provides JSON-RPC interface similar to walletd
-- Handles deposits, optimization via RPC
-
-### **walletd (PaymentGateService)**
-- **Is a separate dedicated headless service**
-- **NOW COMPILED INTO GUI** for integrated experience
-- Manages multiple wallets in secure containers
-- Required for:
-  - fuego-optimizer (connects via JSON-RPC)
-  - Custom applications needing wallet access
-  - GUI wallets (remote connections)
-  - Batch operations
-
-### **GUI Integration**
-- walletd and optimizer can be compiled into GUI
-- **This wallet does exactly that**
-- Self-contained, no external services needed
-- Real-time process management
-
----
 
 ## ⚙️ How It Works
 
@@ -185,43 +127,6 @@ dependencies:
   path_provider: ^2.1.2      # App directories
   shared_preferences: ^2.2.2 # Config cache
 ```
-
----
-
-## 🔐 Security & Best Practices
-
-- ⚠️ **Never** hardcode private keys/passwords
-- ⚠️ **Always** use secure storage for credentials
-- ⚠️ **Verify** contract addresses before transfers
-- ⚠️ **Keep** walletd config files secure
-- ✅ Address validation before transactions
-- ✅ Transaction confirmation prompts
-- ✅ Process graceful shutdown (SIGTERM)
-- ✅ RPC timeout and retry logic
-
----
-
-## 🎨 UI Changes
-
-### Navigation
-- **Home** → Quick access + service status
-- **Messages** → Unchanged
-- **Banking** → Combined Ξternal Flame + COLD
-- **Settings** → Unchanged
-- **Elderfiers** → Unchanged
-- (BurnDeposits removed from nav - now in Banking)
-
-### Banking Screen
-┌─────────────────────────────────────┐
-│  🔥 Ξternal Flame  ❄️ COLD          │
-├─────────────────────────────────────┤
-│ [Burn options]  [Web3 connection]   │
-│ [walletd opt]   [COLD balance]      │
-│ [Start/Stop]    [Start/Stop]        │
-│ [Service logs]  [Web3 logs]         │
-└─────────────────────────────────────┘
-
----
 
 ## 📋 Required Binaries
 
@@ -316,69 +221,6 @@ Already handled by `scripts/ensure-binaries.sh`
 - Desktop is primary target
 - Web3 works on mobile for balance checks
 
----
-
-## 📊 Performance
-
-| Metric | Value |
-|--------|-------|
-| App startup | 2-3 seconds |
-| Web3 balance | < 500ms |
-| walletd start | ~2 seconds |
-| Optimizer start | ~1 second |
-| Memory usage | 50-100 MB (walletd) |
-| Binary size | 2-5 MB per platform |
-
----
-
-## ✅ Testing Checklist
-
-See `CHECKLIST.md` for complete testing guide.
-
-**Quick verification:**
-- [ ] Navigation has 5 items with updated labels
-- [ ] Banking screen has Ξternal Flame + COLD tabs
-- [ ] walletd service can be toggled ON
-- [ ] Web3 connects to Ethereum
-- [ ] COLD balance displays (if tokens exist)
-- [ ] Burn button works (with or without walletd)
-- [ ] Service logs stream in real-time
-- [ ] Status indicators update correctly
-- [ ] No crashes or errors in console
-
----
-
-## 📚 Documentation Files
-
-| File | Purpose |
-|------|---------|
-| `README.md` | This overview |
-| `INTEGRATION_CHANGES.md` | Full technical documentation |
-| `IMPLEMENTATION_SUMMARY.md` | Code statistics & details |
-| `FINAL_SUMMARY.md` | Complete feature list |
-| `CHECKLIST.md` | User testing guide |
-
----
-
-## 🎉 Result
-
-**You now have a fully integrated Fuego wallet with:**
-- ✅ walletd + optimizer in GUI
-- ✅ Ξternal Flame (HEAT) burn system
-- ✅ COLD Interest Lounge (Web3)
-- ✅ C0DL3 rollup support
-- ✅ Real-time service monitoring
-- ✅ Self-contained operation
-- ✅ Multi-platform support
-
-**Next steps:**
-1. Run `flutter pub get`
-2. Run `./scripts/ensure-binaries.sh`
-3. Build/download walletd
-4. Run `flutter run` or build for your platform
-5. Navigate to Banking and try the new features!
-
----
 
 ## 🤝 Contributing
 
@@ -400,6 +242,4 @@ MIT License - Free to use and modify for the Fuego ecosystem.
 
 ---
 
-**Built with 🔥 for the Fuego ecosystem**  
-**Integration Date: 2024-12-26**  
-**Version: 1.1.0 (with integration)**
+**Built with ❤️‍🔥 for the Fuego ecosystem**  
