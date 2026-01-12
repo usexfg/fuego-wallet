@@ -4,14 +4,8 @@
 # Detect architecture
 ARCH=$(uname -m)
 
-# Set Boost paths based on architecture
-if [ "$ARCH" = "arm64" ]; then
-    # Apple Silicon (ARM64) - Homebrew installs to /opt/homebrew
-    BOOST_ROOT="/opt/homebrew/opt/boost@1.85"
-else
-    # Intel Mac - Homebrew installs to /usr/local
-    BOOST_ROOT="/usr/local/opt/boost@1.85"
-fi
+# Use brew --prefix to get the correct Boost path
+BOOST_ROOT=$(brew --prefix boost@1.85)
 
 # Export environment variables
 export BOOST_ROOT
