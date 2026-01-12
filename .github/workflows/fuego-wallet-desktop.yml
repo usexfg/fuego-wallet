@@ -63,6 +63,12 @@ jobs:
           cp native/crypto/target/x86_64-apple-darwin/release/libfuego_crypto.dylib assets/bin/libfuego_crypto-x86_64.dylib || true
           cp native/crypto/target/aarch64-apple-darwin/release/libfuego_crypto.dylib assets/bin/libfuego_crypto-arm64.dylib || true
       - name: Enable macOS desktop support
+
+      - name: Set up Boost environment
+        run: |
+          echo "LDFLAGS=-L$(brew --prefix boost@1.85)/lib" >> $GITHUB_ENV
+          echo "CPPFLAGS=-I$(brew --prefix boost@1.85)/include" >> $GITHUB_ENV
+          echo "BOOST_ROOT=$(brew --prefix boost@1.85)" >> $GITHUB_ENV
         run: flutter config --enable-macos-desktop
 
       - name: Download xfg-stark-cli
@@ -189,6 +195,12 @@ jobs:
           New-Item -ItemType Directory -Force -Path assets\bin
           Copy-Item native\crypto\target\x86_64-pc-windows-msvc\release\fuego_crypto.dll assets\bin\fuego_crypto.dll
       - name: Enable Windows desktop support
+
+      - name: Set up Boost environment
+        run: |
+          echo "LDFLAGS=-LC:\vcpkg\installed\x64-windows\lib" >> $env:GITHUB_ENV
+          echo "CPPFLAGS=-IC:\vcpkg\installed\x64-windows\include" >> $env:GITHUB_ENV
+          echo "BOOST_ROOT=C:\vcpkg\installed\x64-windows" >> $env:GITHUB_ENV
         run: flutter config --enable-windows-desktop
 
       - name: Download xfg-stark-cli
@@ -372,6 +384,12 @@ jobs:
           find . -name "walletd" -type f -executable -exec cp {} ../../assets/bin/fuego-walletd \;
           chmod +x ../../assets/bin/fuego-walletd
       - name: Enable Linux desktop support
+
+      - name: Set up Boost environment
+        run: |
+          echo "LDFLAGS=-L/usr/lib/x86_64-linux-gnu" >> $GITHUB_ENV
+          echo "CPPFLAGS=-I/usr/include" >> $GITHUB_ENV
+          echo "BOOST_ROOT=/usr" >> $GITHUB_ENV
         run: |
           sudo apt-get update
           sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libsecret-1-dev
@@ -531,6 +549,12 @@ jobs:
           find . -name "walletd" -type f -executable -exec cp {} ../../assets/bin/fuego-walletd \;
           chmod +x ../../assets/bin/fuego-walletd
       - name: Enable Linux desktop support
+
+      - name: Set up Boost environment
+        run: |
+          echo "LDFLAGS=-L/usr/lib/x86_64-linux-gnu" >> $GITHUB_ENV
+          echo "CPPFLAGS=-I/usr/include" >> $GITHUB_ENV
+          echo "BOOST_ROOT=/usr" >> $GITHUB_ENV
         run: |
           sudo apt-get update
           sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libsecret-1-dev
