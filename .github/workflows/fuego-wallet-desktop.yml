@@ -30,9 +30,9 @@ on:
       contents: write
 
 jobs:
-  build-macos:
-    name: Build Fuego Wallet (macOS)
-    runs-on: macos-latest
+  build-macos-arm64:
+    name: Build Fuego Wallet (macOS ARM64)
+    runs-on: macos-14
 
     steps:
       - name: Checkout code
@@ -69,7 +69,17 @@ jobs:
           echo "LDFLAGS=-L$(brew --prefix boost@1.85)/lib" >> $GITHUB_ENV
           echo "CPPFLAGS=-I$(brew --prefix boost@1.85)/include" >> $GITHUB_ENV
           echo "BOOST_ROOT=$(brew --prefix boost@1.85)" >> $GITHUB_ENV
+          echo "BOOST_LIBRARYDIR=$(brew --prefix boost@1.85)/lib" >> $GITHUB_ENV
+          echo "BOOST_INCLUDEDIR=$(brew --prefix boost@1.85)/include" >> $GITHUB_ENV
+
+      - name: Enable macOS desktop support
         run: flutter config --enable-macos-desktop
+
+      - name: Set up macOS ARM64 environment
+        run: |
+          # Ensure we're building for ARM64
+          echo "ARCHS=arm64" >> $GITHUB_ENV
+          echo "CMAKE_OSX_ARCHITECTURES=arm64" >> $GITHUB_ENV
 
       - name: Download xfg-stark-cli
         run: |
@@ -98,14 +108,19 @@ jobs:
           # Add compatibility for newer Boost versions
           echo 'set(Boost_USE_STATIC_LIBS ON)' >> CMakeLists.txt
           echo 'set(Boost_USE_MULTITHREADED ON)' >> CMakeLists.txt
-          # Install build dependencies - try boost@1.86 first, fall back to boost
-          brew install cmake pkg-config zeromq jsoncpp openssl
-          brew install boost@1.86 || brew install boost
-          # Determine Boost root and version
-          export BOOST_ROOT=$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo "/opt/homebrew")
-          export BOOST_VERSION=$(brew list --versions boost 2>/dev/null | head -n1 | awk '{print $2}' || echo "unknown")
+          echo 'set(Boost_USE_STATIC_RUNTIME ON)' >> CMakeLists.txt
+          # Install build dependencies - use boost@1.85 specifically
+          brew install cmake pkg-config zeromq jsoncpp openssl@3 boost@1.85
+          # Set Boost environment variables
+          export BOOST_ROOT=$(brew --prefix boost@1.85)
+          export BOOST_LIBRARYDIR=$BOOST_ROOT/lib
+          export BOOST_INCLUDEDIR=$BOOST_ROOT/include
+          export CMAKE_PREFIX_PATH="$BOOST_ROOT:/opt/homebrew/opt/openssl@3:/opt/homebrew/opt/icu4c"
           echo "Using BOOST_ROOT: $BOOST_ROOT"
-          echo "Boost version: $BOOST_VERSION"
+          # Fix jsoncpp include path
+          sed -i .bak2 "s/#include <jsoncpp\/json\/json.h>/#include <json\/json.h>/g" src/CryptoNoteCore/ProofStructures.h
+          # Remove x86-specific flags for ARM64 compatibility
+          sed -i .bak3 "s/-maes//g; s/-msse2//g; s/-msse4.1//g; s/-msse4.2//g" CMakeLists.txt
           # Create symlinks for jsoncpp headers if needed
           if [ -d "/opt/homebrew/include/jsoncpp" ] && [ ! -d "/opt/homebrew/include/json" ]; then
             sudo ln -sf /opt/homebrew/include/jsoncpp/json /opt/homebrew/include/json
@@ -116,17 +131,27 @@ jobs:
           mkdir build && cd build
           # CMake configuration with explicit Boost paths
           cmake .. -DBUILD_TESTS=OFF \
-            -DCMAKE_PREFIX_PATH="$BOOST_ROOT" \
+            -DCMAKE_OSX_ARCHITECTURES="arm64" \
+            -DCMAKE_PREFIX_PATH="$BOOST_ROOT:/opt/homebrew/opt/openssl@3:/opt/homebrew/opt/icu4c" \
             -DBoost_NO_BOOST_CMAKE=ON \
-            -DBoost_DIR="$BOOST_ROOT/lib/cmake/Boost-*" \
+            -DBoost_NO_SYSTEM_PATHS=ON \
             -DBOOST_ROOT="$BOOST_ROOT" \
+            -DBoost_INCLUDE_DIRS="$BOOST_ROOT/include" \
+            -DBoost_LIBRARY_DIRS="$BOOST_ROOT/lib" \
             -DBoost_USE_STATIC_LIBS=ON \
+            -DBoost_USE_MULTITHREADED=ON \
+            -DBoost_USE_STATIC_RUNTIME=ON \
+            -DOPENSSL_ROOT_DIR="/opt/homebrew/opt/openssl@3" \
+            -DICU_ROOT="/opt/homebrew/opt/icu4c" \
             -DCMAKE_BUILD_TYPE=Release
           make -j$(sysctl -n hw.ncpu) PaymentGateService
           # Find and copy walletd binary
           mkdir -p ../../assets/bin
           find . -name "walletd" -type f -executable -exec cp {} ../../assets/bin/fuego-walletd-macos \;
           chmod +x ../../assets/bin/fuego-walletd-macos
+          # Also create ARM64-specific copy
+          cp ../../assets/bin/fuego-walletd-macos ../../assets/bin/fuego-walletd-macos-arm64
+          chmod +x ../../assets/bin/fuego-walletd-macos-arm64
       - name: Install dependencies
         run: |
           # Fix any outdated dependencies first
@@ -150,12 +175,12 @@ jobs:
       - name: Create app archive
         run: |
           cd build/macos/Build/Products/Release
-          zip -r Fuego-Wallet-macOS.zip "fuego_wallet.app"
+          zip -r Fuego-Wallet-macOS-ARM64.zip "fuego_wallet.app"
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: fuego-wallet-macos
-          path: build/macos/Build/Products/Release/Fuego-Wallet-macOS.zip
+          name: fuego-wallet-macos-arm64
+          path: build/macos/Build/Products/Release/Fuego-Wallet-macOS-ARM64.zip
           retention-days: 30
 
       - name: Upload to Release
@@ -164,7 +189,170 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          files: build/macos/Build/Products/Release/Fuego-Wallet-macOS.zip
+          files: build/macos/Build/Products/Release/Fuego-Wallet-macOS-ARM64.zip
+
+  build-macos-x86:
+    name: Build Fuego Wallet (macOS x86_64)
+    runs-on: macos-13
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.24.0"
+          channel: "stable"
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-apple-darwin
+
+      - name: Set up Rust cache
+        uses: swatinem/rust-cache@v2
+
+      - name: Build Rust crypto library
+        run: |
+          cd native/crypto
+          cargo build --target x86_64-apple-darwin --release
+          cd ../..
+
+      - name: Copy Rust library to assets
+        run: |
+          mkdir -p assets/lib/macos-x86
+          cp native/crypto/target/x86_64-apple-darwin/release/libcrypto.a assets/lib/macos-x86/
+          cp native/crypto/target/x86_64-apple-darwin/release/libcrypto.dylib assets/lib/macos-x86/
+
+      - name: Set up Boost environment
+        run: |
+          echo "LDFLAGS=-L$(brew --prefix boost@1.85)/lib" >> $GITHUB_ENV
+          echo "CPPFLAGS=-I$(brew --prefix boost@1.85)/include" >> $GITHUB_ENV
+          echo "BOOST_ROOT=$(brew --prefix boost@1.85)" >> $GITHUB_ENV
+          echo "BOOST_LIBRARYDIR=$(brew --prefix boost@1.85)/lib" >> $GITHUB_ENV
+          echo "BOOST_INCLUDEDIR=$(brew --prefix boost@1.85)/include" >> $GITHUB_ENV
+
+      - name: Enable macOS desktop support
+        run: flutter config --enable-macos-desktop
+
+      - name: Set up macOS x86_64 environment
+        run: |
+          # Ensure we're building for x86_64
+          echo "ARCHS=x86_64" >> $GITHUB_ENV
+          echo "CMAKE_OSX_ARCHITECTURES=x86_64" >> $GITHUB_ENV
+
+      - name: Download xfg-stark-cli
+        run: |
+          curl -L -o xfg-stark-cli-macos.tar.gz "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-macos.tar.gz"
+          tar -xzf xfg-stark-cli-macos.tar.gz
+          mkdir -p assets/bin
+          BINARY_PATH=$(find . -type f -name "xfg-stark-cli*" -perm +111 | head -n1 || true)
+          if [ -z "$BINARY_PATH" ]; then
+            BINARY_PATH=$(find . -type f -name "xfg-stark-cli*" | head -n1 || true)
+          fi
+          if [ -n "$BINARY_PATH" ]; then
+            chmod +x "$BINARY_PATH"
+            mv "$BINARY_PATH" assets/bin/xfg-stark-cli-macos
+          else
+            echo "xfg-stark-cli not found after extraction" >&2
+            exit 1
+          fi
+          rm xfg-stark-cli-macos.tar.gz
+
+      - name: Build fuego from source
+        run: |
+          # Clone HE4T branch
+          git clone -b HE4T https://github.com/usexfg/fuego-suite.git fuego-source-build
+          cd fuego-source-build
+          # Patch CMakeLists.txt to remove system component and update Boost handling
+          sed -i.bak 's/set(BOOST_COMPONENTS system filesystem thread date_time chrono regex serialization program_options)/set(BOOST_COMPONENTS filesystem thread date_time chrono regex serialization program_options)/' CMakeLists.txt
+          # Add compatibility for newer Boost versions
+          echo 'set(Boost_USE_STATIC_LIBS ON)' >> CMakeLists.txt
+          echo 'set(Boost_USE_MULTITHREADED ON)' >> CMakeLists.txt
+          echo 'set(Boost_USE_STATIC_RUNTIME ON)' >> CMakeLists.txt
+          # Install build dependencies - use boost@1.85 specifically
+          brew install cmake pkg-config zeromq jsoncpp openssl@3 boost@1.85
+          # Set Boost environment variables
+          export BOOST_ROOT=$(brew --prefix boost@1.85)
+          export BOOST_LIBRARYDIR=$BOOST_ROOT/lib
+          export BOOST_INCLUDEDIR=$BOOST_ROOT/include
+          export CMAKE_PREFIX_PATH="$BOOST_ROOT:/opt/homebrew/opt/openssl@3:/opt/homebrew/opt/icu4c"
+          echo "Using BOOST_ROOT: $BOOST_ROOT"
+          # Fix jsoncpp include path
+          sed -i .bak2 "s/#include <jsoncpp\/json\/json.h>/#include <json\/json.h>/g" src/CryptoNoteCore/ProofStructures.h
+          # Remove x86-specific flags for x86_64 compatibility
+          sed -i .bak3 "s/-maes//g; s/-msse2//g; s/-msse4.1//g; s/-msse4.2//g" CMakeLists.txt
+          # Create symlinks for jsoncpp headers if needed
+          if [ -d "/opt/homebrew/include/jsoncpp" ] && [ ! -d "/opt/homebrew/include/json" ]; then
+            sudo ln -sf /opt/homebrew/include/jsoncpp/json /opt/homebrew/include/json
+          elif [ -d "/usr/local/include/jsoncpp" ] && [ ! -d "/usr/local/include/json" ]; then
+            sudo ln -sf /usr/local/include/jsoncpp/json /usr/local/include/json
+          fi
+          # Build PaymentGateService (walletd) and other executables
+          mkdir build && cd build
+          # CMake configuration with explicit Boost paths
+          cmake .. -DBUILD_TESTS=OFF \
+            -DCMAKE_OSX_ARCHITECTURES="x86_64" \
+            -DCMAKE_PREFIX_PATH="$BOOST_ROOT:/opt/homebrew/opt/openssl@3:/opt/homebrew/opt/icu4c" \
+            -DBoost_NO_BOOST_CMAKE=ON \
+            -DBoost_NO_SYSTEM_PATHS=ON \
+            -DBOOST_ROOT="$BOOST_ROOT" \
+            -DBoost_INCLUDE_DIRS="$BOOST_ROOT/include" \
+            -DBoost_LIBRARY_DIRS="$BOOST_ROOT/lib" \
+            -DBoost_USE_STATIC_LIBS=ON \
+            -DBoost_USE_MULTITHREADED=ON \
+            -DBoost_USE_STATIC_RUNTIME=ON \
+            -DOPENSSL_ROOT_DIR="/opt/homebrew/opt/openssl@3" \
+            -DICU_ROOT="/opt/homebrew/opt/icu4c" \
+            -DCMAKE_BUILD_TYPE=Release
+          make -j$(sysctl -n hw.ncpu) PaymentGateService
+          # Find and copy walletd binary
+          mkdir -p ../../assets/bin
+          find . -name "walletd" -type f -executable -exec cp {} ../../assets/bin/fuego-walletd-macos-x86 \;
+          chmod +x ../../assets/bin/fuego-walletd-macos-x86
+          cd ../..
+
+      - name: Install dependencies
+        run: |
+          flutter pub get
+          # Install platform-specific dependencies
+          if [ "$(uname -m)" = "arm64" ]; then
+            # Running on Apple Silicon, need to ensure x86_64 compatibility
+            echo "Running on Apple Silicon, ensuring x86_64 compatibility"
+          fi
+
+      - name: Run tests
+        continue-on-error: true
+        run: flutter test
+
+      - name: Build macOS desktop app
+        run: |
+          flutter build macos --release --target-platform=arm64
+          # Copy the ARM64 walletd binary to the app bundle
+          cp assets/bin/fuego-walletd-macos-arm64 build/macos/Build/Products/Release/fuego_wallet.app/Contents/MacOS/
+
+      - name: Create app archive
+        run: |
+          cd build/macos/Build/Products/Release
+          zip -r Fuego-Wallet-macOS-x86_64.zip "fuego_wallet.app"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuego-wallet-macos-x86
+          path: build/macos/Build/Products/Release/Fuego-Wallet-macOS-x86_64.zip
+          retention-days: 30
+
+      - name: Upload to Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: build/macos/Build/Products/Release/Fuego-Wallet-macOS-x86_64.zip
+
+
 
   build-windows:
     name: Build Fuego Wallet (Windows)
@@ -223,7 +411,7 @@ jobs:
           .\bootstrap-vcpkg.bat
       - name: Install dependencies with vcpkg
         run: |
-          C:/vcpkg/vcpkg.exe install --triplet x64-windows jsoncpp boost-system boost-filesystem boost-thread boost-date-time boost-chrono boost-regex boost-program-options openssl zeromq
+          C:/vcpkg/vcpkg.exe install --triplet x64-windows-static jsoncpp boost-system boost-filesystem boost-thread boost-date-time boost-chrono boost-regex boost-program-options openssl zeromq
       - name: Build fuego from source
         run: |
           # Clone HE4T branch
@@ -235,7 +423,7 @@ jobs:
           }
           # Install build dependencies via vcpkg
           mkdir build && cd build
-          cmake .. -DBUILD_TESTS=OFF -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+          cmake .. -DBUILD_TESTS=OFF -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static -DBoost_USE_STATIC_LIBS=ON
           cmake --build . --config Release --target PaymentGateService
           # Copy binary to assets
           New-Item -ItemType Directory -Force -Path ..\\..\\assets\\bin
@@ -360,9 +548,12 @@ jobs:
           # Add Boost static linking compatibility
           echo 'set(Boost_USE_STATIC_LIBS ON)' >> CMakeLists.txt
           echo 'set(Boost_USE_MULTITHREADED ON)' >> CMakeLists.txt
+          echo 'set(Boost_USE_STATIC_RUNTIME ON)' >> CMakeLists.txt
           # Install build dependencies (Ubuntu 22 has boost 1.74)
           sudo apt-get update
           sudo apt-get install -y build-essential cmake libboost1.74-all-dev libssl-dev libzmq3-dev libjsoncpp-dev
+          # Fix jsoncpp include path
+          sed -i.bak "s/#include <jsoncpp\/json\/json.h>/#include <json\/json.h>/g" src/CryptoNoteCore/ProofStructures.h
           # Create symlinks for jsoncpp headers if needed
           if [ -d "/usr/include/jsoncpp" ] && [ ! -d "/usr/include/json" ]; then
             sudo ln -sf /usr/include/jsoncpp/json /usr/include/json
@@ -373,10 +564,14 @@ jobs:
           mkdir build && cd build
           cmake .. -DBUILD_TESTS=OFF \
             -DBoost_NO_BOOST_CMAKE=ON \
+            -DBoost_NO_SYSTEM_PATHS=ON \
             -DBOOST_ROOT=/usr \
+            -DBoost_INCLUDE_DIRS="/usr/include" \
+            -DBoost_LIBRARY_DIRS="/usr/lib/x86_64-linux-gnu" \
             -DCMAKE_PREFIX_PATH="/usr" \
-            -DBoost_DIR="/usr/lib/cmake/Boost-1.74.0" \
             -DBoost_USE_STATIC_LIBS=ON \
+            -DBoost_USE_MULTITHREADED=ON \
+            -DBoost_USE_STATIC_RUNTIME=ON \
             -DCMAKE_BUILD_TYPE=Release
           make -j$(nproc) PaymentGateService
           # Find and copy walletd binary
@@ -531,9 +726,12 @@ jobs:
           # Add Boost static linking compatibility
           echo 'set(Boost_USE_STATIC_LIBS ON)' >> CMakeLists.txt
           echo 'set(Boost_USE_MULTITHREADED ON)' >> CMakeLists.txt
+          echo 'set(Boost_USE_STATIC_RUNTIME ON)' >> CMakeLists.txt
           # Install build dependencies (Ubuntu 24.04 has boost 1.83)
           sudo apt-get update
           sudo apt-get install -y build-essential cmake libboost1.83-all-dev libssl-dev libzmq3-dev libjsoncpp-dev
+          # Fix jsoncpp include path
+          sed -i.bak "s/#include <jsoncpp\/json\/json.h>/#include <json\/json.h>/g" src/CryptoNoteCore/ProofStructures.h
           # Create symlinks for jsoncpp headers if needed
           if [ -d "/usr/include/jsoncpp" ] && [ ! -d "/usr/include/json" ]; then
             sudo ln -sf /usr/include/jsoncpp/json /usr/include/json
@@ -542,7 +740,17 @@ jobs:
           fi
           # Build PaymentGateService (walletd) and other executables with proper flags
           mkdir build && cd build
-          cmake .. -DBUILD_TESTS=OFF -DBoost_NO_BOOST_CMAKE=ON -DBOOST_ROOT=/usr -DCMAKE_PREFIX_PATH="/usr"
+          cmake .. -DBUILD_TESTS=OFF \
+            -DBoost_NO_BOOST_CMAKE=ON \
+            -DBoost_NO_SYSTEM_PATHS=ON \
+            -DBOOST_ROOT=/usr \
+            -DBoost_INCLUDE_DIRS="/usr/include" \
+            -DBoost_LIBRARY_DIRS="/usr/lib/x86_64-linux-gnu" \
+            -DCMAKE_PREFIX_PATH="/usr" \
+            -DBoost_USE_STATIC_LIBS=ON \
+            -DBoost_USE_MULTITHREADED=ON \
+            -DBoost_USE_STATIC_RUNTIME=ON \
+            -DCMAKE_BUILD_TYPE=Release
           make -j$(nproc) PaymentGateService
           # Find and copy walletd binary
           mkdir -p ../../assets/bin
