@@ -11,7 +11,7 @@ on:
       - "windows/**"
       - "linux/**"
       - "pubspec.yaml"
-      - ".github/workflows/flutter-desktop.yml"
+      - ".github/workflows/fuego-wallet-desktop.yml"
   pull_request:
     branches: [HEATMINT, master]
     paths:
@@ -22,7 +22,7 @@ on:
       - "windows/**"
       - "linux/**"
       - "pubspec.yaml"
-      - ".github/workflows/flutter-desktop.yml"
+      - ".github/workflows/fuego-wallet-desktop.yml"
   workflow_dispatch:
   release:
     types: [published]
@@ -41,7 +41,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.19.6"
+          flutter-version: "3.27.0"
           channel: "stable"
 
       - name: Install Rust
@@ -57,28 +57,27 @@ jobs:
           cd native/crypto
           cargo build --release --target x86_64-apple-darwin
           cargo build --release --target aarch64-apple-darwin
+
       - name: Copy Rust library to assets
         run: |
           mkdir -p assets/bin
           cp native/crypto/target/x86_64-apple-darwin/release/libfuego_crypto.dylib assets/bin/libfuego_crypto-x86_64.dylib || true
           cp native/crypto/target/aarch64-apple-darwin/release/libfuego_crypto.dylib assets/bin/libfuego_crypto-arm64.dylib || true
+
       - name: Enable macOS desktop support
         run: flutter config --enable-macos-desktop
 
       - name: Set up Boost environment
         run: |
+          brew install boost@1.85
           echo "LDFLAGS=-L$(brew --prefix boost@1.85)/lib" >> $GITHUB_ENV
           echo "CPPFLAGS=-I$(brew --prefix boost@1.85)/include" >> $GITHUB_ENV
           echo "BOOST_ROOT=$(brew --prefix boost@1.85)" >> $GITHUB_ENV
           echo "BOOST_LIBRARYDIR=$(brew --prefix boost@1.85)/lib" >> $GITHUB_ENV
           echo "BOOST_INCLUDEDIR=$(brew --prefix boost@1.85)/include" >> $GITHUB_ENV
 
-      - name: Enable macOS desktop support
-        run: flutter config --enable-macos-desktop
-
       - name: Set up macOS ARM64 environment
         run: |
-          # Ensure we're building for ARM64
           echo "ARCHS=arm64" >> $GITHUB_ENV
           echo "CMAKE_OSX_ARCHITECTURES=arm64" >> $GITHUB_ENV
 
@@ -99,45 +98,52 @@ jobs:
             exit 1
           fi
           rm xfg-stark-cli-macos.tar.gz
+
       - name: Build fuego from source
         run: |
           # Clone HE4T branch
           git clone -b HE4T https://github.com/usexfg/fuego-suite.git fuego-source-build
           cd fuego-source-build
+
           # Patch CMakeLists.txt to remove system component and update Boost handling
           sed -i.bak 's/set(BOOST_COMPONENTS system filesystem thread date_time chrono regex serialization program_options)/set(BOOST_COMPONENTS filesystem thread date_time chrono regex serialization program_options)/' CMakeLists.txt
+
           # Add compatibility for newer Boost versions
           echo 'set(Boost_USE_STATIC_LIBS ON)' >> CMakeLists.txt
           echo 'set(Boost_USE_MULTITHREADED ON)' >> CMakeLists.txt
           echo 'set(Boost_USE_STATIC_RUNTIME ON)' >> CMakeLists.txt
+
           # Install build dependencies - use boost@1.85 specifically
           brew install cmake pkg-config zeromq jsoncpp openssl@3 boost@1.85
+
           # Set Boost environment variables
           export BOOST_ROOT=$(brew --prefix boost@1.85)
           export BOOST_LIBRARYDIR=$BOOST_ROOT/lib
           export BOOST_INCLUDEDIR=$BOOST_ROOT/include
           export CMAKE_PREFIX_PATH="$BOOST_ROOT:/opt/homebrew/opt/openssl@3:/opt/homebrew/opt/icu4c"
           echo "Using BOOST_ROOT: $BOOST_ROOT"
+
           # Fix jsoncpp include path
           sed -i .bak2 "s/#include <jsoncpp\/json\/json.h>/#include <json\/json.h>/g" src/CryptoNoteCore/ProofStructures.h
+
           # Remove x86-specific flags for ARM64 compatibility
           sed -i .bak3 "s/-maes//g; s/-msse2//g; s/-msse4.1//g; s/-msse4.2//g" CMakeLists.txt
+
           # Fix Crypto target configuration issues by commenting out problematic lines
           echo "Patching CMakeLists.txt to avoid Crypto target configuration issues..."
-          # Remove Crypto target configuration lines that cause issues during CMake configuration
-          echo "Removing Crypto target configuration lines that cause CMake errors..."
           sed -i .bak_crypto_fix '/target_compile_options(Crypto PRIVATE/d' src/CMakeLists.txt 2>/dev/null || echo "No target_compile_options lines found"
           sed -i .bak_crypto_fix2 '/target_compile_definitions(Crypto PRIVATE/d' src/CMakeLists.txt 2>/dev/null || echo "No target_compile_definitions lines found"
-          echo "Crypto-related lines after removal:"
-          grep -n "target_compile.*Crypto\|target.*Crypto.*compile" src/CMakeLists.txt || echo "No Crypto configuration lines remaining"
+
           # Create symlinks for jsoncpp headers if needed
           if [ -d "/opt/homebrew/include/jsoncpp" ] && [ ! -d "/opt/homebrew/include/json" ]; then
             sudo ln -sf /opt/homebrew/include/jsoncpp/json /opt/homebrew/include/json
           elif [ -d "/usr/local/include/jsoncpp" ] && [ ! -d "/usr/local/include/json" ]; then
             sudo ln -sf /usr/local/include/jsoncpp/json /usr/local/include/json
           fi
+
           # Build PaymentGateService (walletd) and other executables
           mkdir build && cd build
+
           # CMake configuration with explicit Boost paths
           cmake .. -DBUILD_TESTS=OFF \
             -DCMAKE_OSX_ARCHITECTURES="arm64" \
@@ -153,21 +159,20 @@ jobs:
             -DOPENSSL_ROOT_DIR="/opt/homebrew/opt/openssl@3" \
             -DICU_ROOT="/opt/homebrew/opt/icu4c" \
             -DCMAKE_BUILD_TYPE=Release
+
           make -j$(sysctl -n hw.ncpu) Crypto PaymentGateService
+
           # Find and copy walletd binary
           mkdir -p ../../assets/bin
           find . -name "walletd" -type f -executable -exec cp {} ../../assets/bin/fuego-walletd-macos \;
           chmod +x ../../assets/bin/fuego-walletd-macos
+
           # Also create ARM64-specific copy
           cp ../../assets/bin/fuego-walletd-macos ../../assets/bin/fuego-walletd-macos-arm64
           chmod +x ../../assets/bin/fuego-walletd-macos-arm64
+
       - name: Install dependencies
         run: |
-          # Fix any outdated dependencies first
-          flutter pub upgrade --major-versions
-          flutter pub get
-          # Run dart fix for Flutter 3.24+ compatibility
-          dart fix --apply
           flutter pub get
 
       - name: Run tests
@@ -176,15 +181,13 @@ jobs:
 
       - name: Build macOS desktop app
         run: |
-          # Set environment variables for the build
-          export FLUTTER_BUILD_DIR=build
-          # Build with verbose output for debugging
-          flutter build macos --release --verbose
+          flutter build macos --release
 
       - name: Create app archive
         run: |
           cd build/macos/Build/Products/Release
           zip -r Fuego-Wallet-macOS-ARM64.zip "fuego_wallet.app"
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -202,7 +205,7 @@ jobs:
 
   build-macos-x86:
     name: Build Fuego Wallet (macOS x86_64)
-    runs-on: macos-15-intel
+    runs-on: macos-13
 
     steps:
       - name: Checkout code
@@ -211,7 +214,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.24.0"
+          flutter-version: "3.27.0"
           channel: "stable"
 
       - name: Install Rust
@@ -225,35 +228,21 @@ jobs:
       - name: Build Rust crypto library
         run: |
           cd native/crypto
-          # Try to build for x86_64 target
-          if cargo build --target x86_64-apple-darwin --release; then
-            echo "Successfully built x86_64 crypto library"
-          else
-            echo "Failed to build x86_64 crypto library, trying without target specification"
-            cargo build --release
-          fi
-          cd ../..
+          cargo build --release --target x86_64-apple-darwin
 
       - name: Copy Rust library to assets
         run: |
           mkdir -p assets/bin
-          # Check what files were actually built
-          echo "Checking built files..."
-          find native/crypto/target -name "*.a" -o -name "*.dylib" -o -name "*.so" -o -name "*.dll" | head -10 || true
-          # Copy the actual fuego crypto library files if they exist
           if [ -f "native/crypto/target/x86_64-apple-darwin/release/libfuego_crypto.a" ]; then
             cp native/crypto/target/x86_64-apple-darwin/release/libfuego_crypto.a assets/bin/libfuego_crypto-x86_64.a
           fi
           if [ -f "native/crypto/target/x86_64-apple-darwin/release/libfuego_crypto.dylib" ]; then
             cp native/crypto/target/x86_64-apple-darwin/release/libfuego_crypto.dylib assets/bin/libfuego_crypto-x86_64.dylib
           fi
-          # Fallback to generic names if specific ones don't exist
-          if [ ! -f "assets/bin/libfuego_crypto-x86_64.dylib" ]; then
-            echo "Warning: Expected crypto library files not found, continuing without them"
-          fi
 
       - name: Set up Boost environment
         run: |
+          brew install boost@1.85
           echo "LDFLAGS=-L$(brew --prefix boost@1.85)/lib" >> $GITHUB_ENV
           echo "CPPFLAGS=-I$(brew --prefix boost@1.85)/include" >> $GITHUB_ENV
           echo "BOOST_ROOT=$(brew --prefix boost@1.85)" >> $GITHUB_ENV
@@ -265,7 +254,6 @@ jobs:
 
       - name: Set up macOS x86_64 environment
         run: |
-          # Ensure we're building for x86_64
           echo "ARCHS=x86_64" >> $GITHUB_ENV
           echo "CMAKE_OSX_ARCHITECTURES=x86_64" >> $GITHUB_ENV
 
@@ -292,35 +280,39 @@ jobs:
           # Clone HE4T branch
           git clone -b HE4T https://github.com/usexfg/fuego-suite.git fuego-source-build
           cd fuego-source-build
+
           # Patch CMakeLists.txt to remove system component and update Boost handling
           sed -i.bak 's/set(BOOST_COMPONENTS system filesystem thread date_time chrono regex serialization program_options)/set(BOOST_COMPONENTS filesystem thread date_time chrono regex serialization program_options)/' CMakeLists.txt
+
           # Add compatibility for newer Boost versions
           echo 'set(Boost_USE_STATIC_LIBS ON)' >> CMakeLists.txt
           echo 'set(Boost_USE_MULTITHREADED ON)' >> CMakeLists.txt
           echo 'set(Boost_USE_STATIC_RUNTIME ON)' >> CMakeLists.txt
+
           # Install build dependencies - use boost@1.85 specifically
           brew install cmake pkg-config zeromq jsoncpp openssl@3 boost@1.85
+
           # Set Boost environment variables
           export BOOST_ROOT=$(brew --prefix boost@1.85)
           export BOOST_LIBRARYDIR=$BOOST_ROOT/lib
           export BOOST_INCLUDEDIR=$BOOST_ROOT/include
           export CMAKE_PREFIX_PATH="$BOOST_ROOT:/opt/homebrew/opt/openssl@3:/opt/homebrew/opt/icu4c"
           echo "Using BOOST_ROOT: $BOOST_ROOT"
+
           # Fix jsoncpp include path
           sed -i .bak2 "s/#include <jsoncpp\/json\/json.h>/#include <json\/json.h>/g" src/CryptoNoteCore/ProofStructures.h
+
           # Remove x86-specific flags for ARM64 compatibility
           sed -i .bak3 "s/-maes//g; s/-msse2//g; s/-msse4.1//g; s/-msse4.2//g" CMakeLists.txt
+
           # Fix Crypto target configuration issues by commenting out problematic lines
           echo "Patching CMakeLists.txt to avoid Crypto target configuration issues..."
-          # Remove Crypto target configuration lines that cause issues during CMake configuration
-          echo "Removing Crypto target configuration lines that cause CMake errors..."
           sed -i .bak_crypto_fix '/target_compile_options(Crypto PRIVATE/d' src/CMakeLists.txt 2>/dev/null || echo "No target_compile_options lines found"
           sed -i .bak_crypto_fix2 '/target_compile_definitions(Crypto PRIVATE/d' src/CMakeLists.txt 2>/dev/null || echo "No target_compile_definitions lines found"
-          echo "Crypto-related lines after removal:"
-          grep -n "target_compile.*Crypto\|target.*Crypto.*compile" src/CMakeLists.txt || echo "No Crypto configuration lines remaining"
-          fi
+
           # Build PaymentGateService (walletd) and other executables
           mkdir build && cd build
+
           # CMake configuration with explicit Boost paths
           cmake .. -DBUILD_TESTS=OFF \
             -DCMAKE_OSX_ARCHITECTURES="x86_64" \
@@ -336,21 +328,17 @@ jobs:
             -DOPENSSL_ROOT_DIR="/opt/homebrew/opt/openssl@3" \
             -DICU_ROOT="/opt/homebrew/opt/icu4c" \
             -DCMAKE_BUILD_TYPE=Release
+
           make -j$(sysctl -n hw.ncpu) Crypto PaymentGateService
+
           # Find and copy walletd binary
           mkdir -p ../../assets/bin
           find . -name "walletd" -type f -executable -exec cp {} ../../assets/bin/fuego-walletd-macos-x86 \;
           chmod +x ../../assets/bin/fuego-walletd-macos-x86
-          cd ../..
 
       - name: Install dependencies
         run: |
           flutter pub get
-          # Install platform-specific dependencies
-          if [ "$(uname -m)" = "arm64" ]; then
-            # Running on Apple Silicon, need to ensure x86_64 compatibility
-            echo "Running on Apple Silicon, ensuring x86_64 compatibility"
-          fi
 
       - name: Run tests
         continue-on-error: true
@@ -358,9 +346,7 @@ jobs:
 
       - name: Build macOS desktop app
         run: |
-          flutter build macos --release --target-platform=arm64
-          # Copy the ARM64 walletd binary to the app bundle
-          cp assets/bin/fuego-walletd-macos-arm64 build/macos/Build/Products/Release/fuego_wallet.app/Contents/MacOS/
+          flutter build macos --release
 
       - name: Create app archive
         run: |
@@ -406,10 +392,12 @@ jobs:
         run: |
           cd native/crypto
           cargo build --release --target x86_64-pc-windows-msvc
+
       - name: Copy Rust library to assets
         run: |
           New-Item -ItemType Directory -Force -Path assets\bin
           Copy-Item native\crypto\target\x86_64-pc-windows-msvc\release\fuego_crypto.dll assets\bin\fuego_crypto.dll
+
       - name: Enable Windows desktop support
         run: flutter config --enable-windows-desktop
 
@@ -418,7 +406,6 @@ jobs:
           echo "LDFLAGS=-LC:\vcpkg\installed\x64-windows\lib" >> $env:GITHUB_ENV
           echo "CPPFLAGS=-IC:\vcpkg\installed\x64-windows\include" >> $env:GITHUB_ENV
           echo "BOOST_ROOT=C:\vcpkg\installed\x64-windows" >> $env:GITHUB_ENV
-          flutter config --enable-windows-desktop
 
       - name: Download xfg-stark-cli
         run: |
@@ -433,27 +420,33 @@ jobs:
             exit 1
           }
           Remove-Item xfg-stark-cli-windows.zip
+
       - name: Setup vcpkg
         run: |
           git clone https://github.com/Microsoft/vcpkg.git C:/vcpkg
           cd C:/vcpkg
           .\bootstrap-vcpkg.bat
+
       - name: Install dependencies with vcpkg
         run: |
           C:/vcpkg/vcpkg.exe install --triplet x64-windows-static jsoncpp boost-system boost-filesystem boost-thread boost-date-time boost-chrono boost-regex boost-program-options openssl zeromq
+
       - name: Build fuego from source
         run: |
           # Clone HE4T branch
           git clone -b HE4T https://github.com/usexfg/fuego-suite.git fuego-source
           cd fuego-source
+
           # Fix json include path for HE4T branch to work with vcpkg
           if (Test-Path "src/CryptoNoteCore/ProofStructures.h") {
             (Get-Content src/CryptoNoteCore/ProofStructures.h) -replace '#include <json/json.h>', '#include <json/json.h>' | Set-Content src/CryptoNoteCore/ProofStructures.h
           }
+
           # Install build dependencies via vcpkg
           mkdir build && cd build
           cmake .. -DBUILD_TESTS=OFF -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static -DBoost_USE_STATIC_LIBS=ON
           cmake --build . --config Release --target Crypto --target PaymentGateService
+
           # Copy binary to assets
           New-Item -ItemType Directory -Force -Path ..\\..\\assets\\bin
           # Find the walletd executable
@@ -470,41 +463,28 @@ jobs:
               exit 1
             }
           }
+
       - name: Install dependencies
         run: |
-          # Fix any outdated dependencies first
-          flutter pub upgrade --major-versions
-          flutter pub get
-          # Fix theme compatibility issues for Flutter 3.24+
-          dart fix --apply
           flutter pub get
 
       - name: Run tests
         continue-on-error: true
         run: flutter test
 
-      - name: Fix theme compatibility issues
-        run: |
-          # Download fix script for theme API changes
-          curl -o fix_theme.sh https://gist.githubusercontent.com/placeholder/fix_theme.sh 2>/dev/null || echo "Using manual fix"
-          # Apply manual fixes
-          sed -i 's/const CardTheme(/const CardThemeData(/g' lib/utils/theme.dart
-          sed -i 's/const TabBarTheme(/const TabBarThemeData(/g' lib/utils/theme.dart
-
       - name: Build Windows desktop app
         run: flutter build windows --release
 
       - name: Create app archive
         run: |
-          if (Test-Path "build\windows\runner\Release") {
-            cd build\windows\runner\Release
-            Compress-Archive -Path * -DestinationPath ..\..\..\..\Fuego-Wallet-Windows.zip
-          } elseif (Test-Path "build\windows\x64\runner\Release") {
+          if (Test-Path "build\windows\x64\runner\Release") {
             cd build\windows\x64\runner\Release
             Compress-Archive -Path * -DestinationPath ..\..\..\..\..\Fuego-Wallet-Windows.zip
           } else {
-            Get-ChildItem build -Recurse | Where-Object { $_.Name -like "*.exe" } | Select-Object -First 1 | ForEach-Object { Compress-Archive -Path $_.DirectoryName -DestinationPath "Fuego-Wallet-Windows.zip" }
+            Write-Error "Windows build output directory not found"
+            exit 1
           }
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -544,12 +524,13 @@ jobs:
         run: |
           cd native/crypto
           cargo build --release --target x86_64-unknown-linux-gnu
-          # Verify binary was created
           ls -la target/x86_64-unknown-linux-gnu/release/libfuego_crypto.so || exit 1
+
       - name: Copy Rust library to assets
         run: |
           mkdir -p assets/bin
           cp native/crypto/target/x86_64-unknown-linux-gnu/release/libfuego_crypto.so assets/bin/libfuego_crypto.so
+
       - name: Download xfg-stark-cli
         run: |
           curl -L -o xfg-stark-cli-linux.tar.gz "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-linux.tar.gz"
@@ -567,38 +548,40 @@ jobs:
             exit 1
           fi
           rm xfg-stark-cli-linux.tar.gz
+
       - name: Build fuego from source
         run: |
           # Clone HE4T branch
           git clone -b HE4T https://github.com/usexfg/fuego-suite.git fuego-source-build
           cd fuego-source-build
+
           # Patch CMakeLists.txt to remove system component and update for newer Boost
           sed -i 's/set(BOOST_COMPONENTS system filesystem thread date_time chrono regex serialization program_options)/set(BOOST_COMPONENTS filesystem thread date_time chrono regex serialization program_options)/' CMakeLists.txt
+
           # Add Boost static linking compatibility
           echo 'set(Boost_USE_STATIC_LIBS ON)' >> CMakeLists.txt
           echo 'set(Boost_USE_MULTITHREADED ON)' >> CMakeLists.txt
           echo 'set(Boost_USE_STATIC_RUNTIME ON)' >> CMakeLists.txt
-          # Ensure Crypto target is built by building all necessary targets
-          # The Crypto target should be built as part of the dependencies
+
           # Install build dependencies (Ubuntu 22 has boost 1.74)
           sudo apt-get update
           sudo apt-get install -y build-essential cmake libboost1.74-all-dev libssl-dev libzmq3-dev libjsoncpp-dev
+
           # Fix jsoncpp include path
           sed -i.bak "s/#include <jsoncpp\/json\/json.h>/#include <json\/json.h>/g" src/CryptoNoteCore/ProofStructures.h
+
           # Fix Crypto target configuration issues by commenting out problematic lines
           echo "Patching CMakeLists.txt to avoid Crypto target configuration issues..."
-          # Remove Crypto target configuration lines that cause issues during CMake configuration
-          echo "Removing Crypto target configuration lines that cause CMake errors..."
           sed -i .bak_crypto_fix '/target_compile_options(Crypto PRIVATE/d' src/CMakeLists.txt 2>/dev/null || echo "No target_compile_options lines found"
           sed -i .bak_crypto_fix2 '/target_compile_definitions(Crypto PRIVATE/d' src/CMakeLists.txt 2>/dev/null || echo "No target_compile_definitions lines found"
-          echo "Crypto-related lines after removal:"
-          grep -n "target_compile.*Crypto\|target.*Crypto.*compile" src/CMakeLists.txt || echo "No Crypto configuration lines remaining"
+
           # Create symlinks for jsoncpp headers if needed
           if [ -d "/usr/include/jsoncpp" ] && [ ! -d "/usr/include/json" ]; then
             sudo ln -sf /usr/include/jsoncpp/json /usr/include/json
           elif [ -d "/usr/include/x86_64-linux-gnu/jsoncpp" ] && [ ! -d "/usr/include/json" ]; then
             sudo ln -sf /usr/include/x86_64-linux-gnu/jsoncpp/json /usr/include/json
           fi
+
           # Build PaymentGateService (walletd) and other executables with proper flags
           mkdir build && cd build
           cmake .. -DBUILD_TESTS=OFF \
@@ -612,11 +595,14 @@ jobs:
             -DBoost_USE_MULTITHREADED=ON \
             -DBoost_USE_STATIC_RUNTIME=ON \
             -DCMAKE_BUILD_TYPE=Release
+
           make -j$(nproc) Crypto PaymentGateService
+
           # Find and copy walletd binary
           mkdir -p ../../assets/bin
           find . -name "walletd" -type f -executable -exec cp {} ../../assets/bin/fuego-walletd \;
           chmod +x ../../assets/bin/fuego-walletd
+
       - name: Enable Linux desktop support
         run: |
           sudo apt-get update
@@ -628,9 +614,7 @@ jobs:
           echo "LDFLAGS=-L/usr/lib/x86_64-linux-gnu" >> $GITHUB_ENV
           echo "CPPFLAGS=-I/usr/include" >> $GITHUB_ENV
           echo "BOOST_ROOT=/usr" >> $GITHUB_ENV
-          sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libsecret-1-dev
-          flutter config --enable-linux-desktop
+
       - name: Install dependencies
         run: flutter pub get
 
@@ -641,23 +625,12 @@ jobs:
       - name: Build Linux desktop app (GLIBC 2.35)
         run: |
           flutter build linux --release
-          # Create a portable build by copying required libraries
-          cd build/linux/x64/release/bundle
-          mkdir -p lib
-          # Copy system libraries for better compatibility
-          cp /lib/x86_64-linux-gnu/libc.so.6 lib/ 2>/dev/null || echo "libc.so.6 not found"
-          cp /usr/lib/x86_64-linux-gnu/libstdc++.so.6 lib/ 2>/dev/null || echo "libstdc++.so.6 not found"
-          # Create a wrapper script that uses bundled libraries
-          cat > run_xfg_wallet.sh << 'EOF'
-          #!/bin/bash
-          export LD_LIBRARY_PATH="$(dirname "$0")/lib:$LD_LIBRARY_PATH"
-          exec "$(dirname "$0")/fuego_wallet" "$@"
-          EOF
-          chmod +x run_xfg_wallet.sh
+
       - name: Create app archive
         run: |
           cd build/linux/x64/release/bundle
           tar -czf fuego-wallet-Linux-GLIBC-2.31.tar.gz *
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -678,27 +651,25 @@ jobs:
           # Install appimagetool
           curl -LO https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
           chmod +x appimagetool-x86_64.AppImage
-          # Copy icon from project root (build starts from bundle dir, so go 5 levels up)
+          # Copy icon from project root
           cp ../../../../../app_icon_256.png fuego_wallet.png || echo "Using placeholder icon"
           # Create desktop file for AppImage
-          cat > fuego_wallet.desktop << 'EOF'
-            [Desktop Entry]
-            Version=1.0
-            Type=Application
-            Name=WinterFire Wallet
-            GenericName=Fuego's Winterfire Wallet
-            Comment=Decentralized Privacy Banking
-            Exec=fuego_wallet
-            Icon=fuego_wallet
-            Categories=Finance;Network;
-            Keywords=wallet;banking;fuego;xfg;
-            Terminal=false
-            EOF
+          echo "[Desktop Entry]" > fuego_wallet.desktop
+          echo "Version=1.0" >> fuego_wallet.desktop
+          echo "Type=Application" >> fuego_wallet.desktop
+          echo "Name=WinterFire Wallet" >> fuego_wallet.desktop
+          echo "GenericName=Fuego's Winterfire Wallet" >> fuego_wallet.desktop
+          echo "Comment=Decentralized Privacy Banking" >> fuego_wallet.desktop
+          echo "Exec=fuego_wallet" >> fuego_wallet.desktop
+          echo "Icon=fuego_wallet" >> fuego_wallet.desktop
+          echo "Categories=Finance;Network;" >> fuego_wallet.desktop
+          echo "Keywords=wallet;banking;fuego;xfg;" >> fuego_wallet.desktop
+          echo "Terminal=false" >> fuego_wallet.desktop
           # Build AppImage
-          chmod +x appimagetool-x86_64.AppImage
           ./appimagetool-x86_64.AppImage . fuego-wallet-Linux-GLIBC-2.35.AppImage
           # Clean up
           rm -f appimagetool-x86_64.AppImage
+
       - name: Upload AppImage artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -744,6 +715,7 @@ jobs:
             exit 1
           fi
           rm xfg-stark-cli-linux.tar.gz
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
@@ -754,42 +726,45 @@ jobs:
         run: |
           cd native/crypto
           cargo build --release --target x86_64-unknown-linux-gnu
+
       - name: Copy Rust library to assets
         run: |
           mkdir -p assets/bin
           cp native/crypto/target/x86_64-unknown-linux-gnu/release/libfuego_crypto.so assets/bin/libfuego_crypto.so
+
       - name: Build fuego from source
         run: |
           # Clone HE4T branch
           git clone -b HE4T https://github.com/usexfg/fuego-suite.git fuego-source-build
           cd fuego-source-build
+
           # Patch CMakeLists.txt to remove system component and update for newer Boost
           sed -i 's/set(BOOST_COMPONENTS system filesystem thread date_time chrono regex serialization program_options)/set(BOOST_COMPONENTS filesystem thread date_time chrono regex serialization program_options)/' CMakeLists.txt
+
           # Add Boost static linking compatibility
           echo 'set(Boost_USE_STATIC_LIBS ON)' >> CMakeLists.txt
           echo 'set(Boost_USE_MULTITHREADED ON)' >> CMakeLists.txt
           echo 'set(Boost_USE_STATIC_RUNTIME ON)' >> CMakeLists.txt
-          # Ensure Crypto target is built by building it explicitly
-          # The approach is to build both Crypto and PaymentGateService targets
+
           # Install build dependencies (Ubuntu 24.04 has boost 1.83)
           sudo apt-get update
           sudo apt-get install -y build-essential cmake libboost1.83-all-dev libssl-dev libzmq3-dev libjsoncpp-dev
+
           # Fix jsoncpp include path
           sed -i.bak "s/#include <jsoncpp\/json\/json.h>/#include <json\/json.h>/g" src/CryptoNoteCore/ProofStructures.h
+
           # Fix Crypto target configuration issues by commenting out problematic lines
           echo "Patching CMakeLists.txt to avoid Crypto target configuration issues..."
-          # Remove Crypto target configuration lines that cause issues during CMake configuration
-          echo "Removing Crypto target configuration lines that cause CMake errors..."
           sed -i .bak_crypto_fix '/target_compile_options(Crypto PRIVATE/d' src/CMakeLists.txt 2>/dev/null || echo "No target_compile_options lines found"
           sed -i .bak_crypto_fix2 '/target_compile_definitions(Crypto PRIVATE/d' src/CMakeLists.txt 2>/dev/null || echo "No target_compile_definitions lines found"
-          echo "Crypto-related lines after removal:"
-          grep -n "target_compile.*Crypto\|target.*Crypto.*compile" src/CMakeLists.txt || echo "No Crypto configuration lines remaining"
+
           # Create symlinks for jsoncpp headers if needed
           if [ -d "/usr/include/jsoncpp" ] && [ ! -d "/usr/include/json" ]; then
             sudo ln -sf /usr/include/jsoncpp/json /usr/include/json
           elif [ -d "/usr/include/x86_64-linux-gnu/jsoncpp" ] && [ ! -d "/usr/include/json" ]; then
             sudo ln -sf /usr/include/x86_64-linux-gnu/jsoncpp/json /usr/include/json
           fi
+
           # Build PaymentGateService (walletd) and other executables with proper flags
           mkdir build && cd build
           cmake .. -DBUILD_TESTS=OFF \
@@ -803,11 +778,14 @@ jobs:
             -DBoost_USE_MULTITHREADED=ON \
             -DBoost_USE_STATIC_RUNTIME=ON \
             -DCMAKE_BUILD_TYPE=Release
+
           make -j$(nproc) Crypto PaymentGateService
+
           # Find and copy walletd binary
           mkdir -p ../../assets/bin
           find . -name "walletd" -type f -executable -exec cp {} ../../assets/bin/fuego-walletd \;
           chmod +x ../../assets/bin/fuego-walletd
+
       - name: Enable Linux desktop support
         run: |
           sudo apt-get update
@@ -819,9 +797,7 @@ jobs:
           echo "LDFLAGS=-L/usr/lib/x86_64-linux-gnu" >> $GITHUB_ENV
           echo "CPPFLAGS=-I/usr/include" >> $GITHUB_ENV
           echo "BOOST_ROOT=/usr" >> $GITHUB_ENV
-          sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libsecret-1-dev
-          flutter config --enable-linux-desktop
+
       - name: Install dependencies
         run: flutter pub get
 
@@ -831,15 +807,13 @@ jobs:
 
       - name: Build Linux desktop app (Latest)
         run: |
-          flutter clean
-          flutter pub get
-          dart fix --apply
-          flutter build linux --release --verbose
+          flutter build linux --release
 
       - name: Create app archive
         run: |
           cd build/linux/x64/release/bundle
           tar -czf fuego-wallet-Linux-Latest.tar.gz *
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:

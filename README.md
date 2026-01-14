@@ -25,6 +25,23 @@ flutter pub get
 flutter run -d linux  # or macos, windows, android, ios
 ```
 
+## 🛠️ Build Instructions
+
+For detailed build instructions, see [BUILD_INSTRUCTIONS.md](BUILD_INSTRUCTIONS.md).
+
+### GitHub Actions Workflow
+
+The project includes a comprehensive GitHub Actions workflow (`.github/workflows/fuego-wallet-desktop.yml`) that:
+- Builds for all three platforms (macOS ARM64/x86_64, Windows, Linux)
+- Handles all dependencies automatically
+- Creates distributable packages
+- Uploads artifacts for release
+
+To trigger the workflow:
+1. Push to the `HEATMINT` or `master` branch
+2. Create a pull request
+3. Manually trigger via GitHub UI
+
 ---
 
 ## 🚀 New Features
