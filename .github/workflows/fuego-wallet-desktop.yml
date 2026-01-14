@@ -124,10 +124,12 @@ jobs:
           sed -i .bak3 "s/-maes//g; s/-msse2//g; s/-msse4.1//g; s/-msse4.2//g" CMakeLists.txt
           # Fix Crypto target configuration issues by commenting out problematic lines
           echo "Patching CMakeLists.txt to avoid Crypto target configuration issues..."
-          sed -i .bak_crypto1 's/target_compile_options(Crypto PRIVATE -maes -msse2 -msse4.1 -msse4.2)/#target_compile_options(Crypto PRIVATE -maes -msse2 -msse4.1 -msse4.2)/g' src/CMakeLists.txt 2>/dev/null || echo "Line not found, continuing..."
-          sed -i .bak_crypto2 's/target_compile_definitions(Crypto PRIVATE __AES__ __SSE2__ __SSE4_1__ __SSE4_2__ HAVE_AES_NI)/#target_compile_definitions(Crypto PRIVATE __AES__ __SSE2__ __SSE4_1__ __SSE4_2__ HAVE_AES_NI)/g' src/CMakeLists.txt 2>/dev/null || echo "Line not found, continuing..."
-          sed -i .bak_crypto3 's/target_compile_options(Crypto PRIVATE -msse2 -msse4.1)/#target_compile_options(Crypto PRIVATE -msse2 -msse4.1)/g' src/CMakeLists.txt 2>/dev/null || echo "Line not found, continuing..."
-          sed -i .bak_crypto4 's/target_compile_definitions(Crypto PRIVATE NO_AES)/#target_compile_definitions(Crypto PRIVATE NO_AES)/g' src/CMakeLists.txt 2>/dev/null || echo "Line not found, continuing..."
+          # Remove Crypto target configuration lines that cause issues during CMake configuration
+          echo "Removing Crypto target configuration lines that cause CMake errors..."
+          sed -i .bak_crypto_fix '/target_compile_options(Crypto PRIVATE/d' src/CMakeLists.txt 2>/dev/null || echo "No target_compile_options lines found"
+          sed -i .bak_crypto_fix2 '/target_compile_definitions(Crypto PRIVATE/d' src/CMakeLists.txt 2>/dev/null || echo "No target_compile_definitions lines found"
+          echo "Crypto-related lines after removal:"
+          grep -n "target_compile.*Crypto\|target.*Crypto.*compile" src/CMakeLists.txt || echo "No Crypto configuration lines remaining"
           # Create symlinks for jsoncpp headers if needed
           if [ -d "/opt/homebrew/include/jsoncpp" ] && [ ! -d "/opt/homebrew/include/json" ]; then
             sudo ln -sf /opt/homebrew/include/jsoncpp/json /opt/homebrew/include/json
@@ -310,10 +312,12 @@ jobs:
           sed -i .bak3 "s/-maes//g; s/-msse2//g; s/-msse4.1//g; s/-msse4.2//g" CMakeLists.txt
           # Fix Crypto target configuration issues by commenting out problematic lines
           echo "Patching CMakeLists.txt to avoid Crypto target configuration issues..."
-          sed -i .bak_crypto1 's/target_compile_options(Crypto PRIVATE -maes -msse2 -msse4.1 -msse4.2)/#target_compile_options(Crypto PRIVATE -maes -msse2 -msse4.1 -msse4.2)/g' src/CMakeLists.txt 2>/dev/null || echo "Line not found, continuing..."
-          sed -i .bak_crypto2 's/target_compile_definitions(Crypto PRIVATE __AES__ __SSE2__ __SSE4_1__ __SSE4_2__ HAVE_AES_NI)/#target_compile_definitions(Crypto PRIVATE __AES__ __SSE2__ __SSE4_1__ __SSE4_2__ HAVE_AES_NI)/g' src/CMakeLists.txt 2>/dev/null || echo "Line not found, continuing..."
-          sed -i .bak_crypto3 's/target_compile_options(Crypto PRIVATE -msse2 -msse4.1)/#target_compile_options(Crypto PRIVATE -msse2 -msse4.1)/g' src/CMakeLists.txt 2>/dev/null || echo "Line not found, continuing..."
-          sed -i .bak_crypto4 's/target_compile_definitions(Crypto PRIVATE NO_AES)/#target_compile_definitions(Crypto PRIVATE NO_AES)/g' src/CMakeLists.txt 2>/dev/null || echo "Line not found, continuing..."
+          # Remove Crypto target configuration lines that cause issues during CMake configuration
+          echo "Removing Crypto target configuration lines that cause CMake errors..."
+          sed -i .bak_crypto_fix '/target_compile_options(Crypto PRIVATE/d' src/CMakeLists.txt 2>/dev/null || echo "No target_compile_options lines found"
+          sed -i .bak_crypto_fix2 '/target_compile_definitions(Crypto PRIVATE/d' src/CMakeLists.txt 2>/dev/null || echo "No target_compile_definitions lines found"
+          echo "Crypto-related lines after removal:"
+          grep -n "target_compile.*Crypto\|target.*Crypto.*compile" src/CMakeLists.txt || echo "No Crypto configuration lines remaining"
           fi
           # Build PaymentGateService (walletd) and other executables
           mkdir build && cd build
@@ -583,10 +587,12 @@ jobs:
           sed -i.bak "s/#include <jsoncpp\/json\/json.h>/#include <json\/json.h>/g" src/CryptoNoteCore/ProofStructures.h
           # Fix Crypto target configuration issues by commenting out problematic lines
           echo "Patching CMakeLists.txt to avoid Crypto target configuration issues..."
-          sed -i.bak_crypto1 's/target_compile_options(Crypto PRIVATE -maes -msse2 -msse4.1 -msse4.2)/#target_compile_options(Crypto PRIVATE -maes -msse2 -msse4.1 -msse4.2)/g' src/CMakeLists.txt 2>/dev/null || echo "Line not found, continuing..."
-          sed -i.bak_crypto2 's/target_compile_definitions(Crypto PRIVATE __AES__ __SSE2__ __SSE4_1__ __SSE4_2__ HAVE_AES_NI)/#target_compile_definitions(Crypto PRIVATE __AES__ __SSE2__ __SSE4_1__ __SSE4_2__ HAVE_AES_NI)/g' src/CMakeLists.txt 2>/dev/null || echo "Line not found, continuing..."
-          sed -i.bak_crypto3 's/target_compile_options(Crypto PRIVATE -msse2 -msse4.1)/#target_compile_options(Crypto PRIVATE -msse2 -msse4.1)/g' src/CMakeLists.txt 2>/dev/null || echo "Line not found, continuing..."
-          sed -i.bak_crypto4 's/target_compile_definitions(Crypto PRIVATE NO_AES)/#target_compile_definitions(Crypto PRIVATE NO_AES)/g' src/CMakeLists.txt 2>/dev/null || echo "Line not found, continuing..."
+          # Remove Crypto target configuration lines that cause issues during CMake configuration
+          echo "Removing Crypto target configuration lines that cause CMake errors..."
+          sed -i .bak_crypto_fix '/target_compile_options(Crypto PRIVATE/d' src/CMakeLists.txt 2>/dev/null || echo "No target_compile_options lines found"
+          sed -i .bak_crypto_fix2 '/target_compile_definitions(Crypto PRIVATE/d' src/CMakeLists.txt 2>/dev/null || echo "No target_compile_definitions lines found"
+          echo "Crypto-related lines after removal:"
+          grep -n "target_compile.*Crypto\|target.*Crypto.*compile" src/CMakeLists.txt || echo "No Crypto configuration lines remaining"
           # Create symlinks for jsoncpp headers if needed
           if [ -d "/usr/include/jsoncpp" ] && [ ! -d "/usr/include/json" ]; then
             sudo ln -sf /usr/include/jsoncpp/json /usr/include/json
@@ -772,10 +778,12 @@ jobs:
           sed -i.bak "s/#include <jsoncpp\/json\/json.h>/#include <json\/json.h>/g" src/CryptoNoteCore/ProofStructures.h
           # Fix Crypto target configuration issues by commenting out problematic lines
           echo "Patching CMakeLists.txt to avoid Crypto target configuration issues..."
-          sed -i.bak_crypto1 's/target_compile_options(Crypto PRIVATE -maes -msse2 -msse4.1 -msse4.2)/#target_compile_options(Crypto PRIVATE -maes -msse2 -msse4.1 -msse4.2)/g' src/CMakeLists.txt 2>/dev/null || echo "Line not found, continuing..."
-          sed -i.bak_crypto2 's/target_compile_definitions(Crypto PRIVATE __AES__ __SSE2__ __SSE4_1__ __SSE4_2__ HAVE_AES_NI)/#target_compile_definitions(Crypto PRIVATE __AES__ __SSE2__ __SSE4_1__ __SSE4_2__ HAVE_AES_NI)/g' src/CMakeLists.txt 2>/dev/null || echo "Line not found, continuing..."
-          sed -i.bak_crypto3 's/target_compile_options(Crypto PRIVATE -msse2 -msse4.1)/#target_compile_options(Crypto PRIVATE -msse2 -msse4.1)/g' src/CMakeLists.txt 2>/dev/null || echo "Line not found, continuing..."
-          sed -i.bak_crypto4 's/target_compile_definitions(Crypto PRIVATE NO_AES)/#target_compile_definitions(Crypto PRIVATE NO_AES)/g' src/CMakeLists.txt 2>/dev/null || echo "Line not found, continuing..."
+          # Remove Crypto target configuration lines that cause issues during CMake configuration
+          echo "Removing Crypto target configuration lines that cause CMake errors..."
+          sed -i .bak_crypto_fix '/target_compile_options(Crypto PRIVATE/d' src/CMakeLists.txt 2>/dev/null || echo "No target_compile_options lines found"
+          sed -i .bak_crypto_fix2 '/target_compile_definitions(Crypto PRIVATE/d' src/CMakeLists.txt 2>/dev/null || echo "No target_compile_definitions lines found"
+          echo "Crypto-related lines after removal:"
+          grep -n "target_compile.*Crypto\|target.*Crypto.*compile" src/CMakeLists.txt || echo "No Crypto configuration lines remaining"
           # Create symlinks for jsoncpp headers if needed
           if [ -d "/usr/include/jsoncpp" ] && [ ! -d "/usr/include/json" ]; then
             sudo ln -sf /usr/include/jsoncpp/json /usr/include/json
