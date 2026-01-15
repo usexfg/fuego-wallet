@@ -1,4 +1,4 @@
-# Fuego ❄️WinterFire🔥 Wallet   
+# ❄️WinterFire🔥 Wallet   
 ## Fuego Privacy Banking XFG wallet plus support for HEAT + C0LD assets
 
 
