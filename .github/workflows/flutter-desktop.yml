@@ -11,7 +11,7 @@ on:
       - "windows/**"
       - "linux/**"
       - "pubspec.yaml"
-      - ".github/workflows/flutter-desktop.yml"
+      - ".github/workflows/fuego-wallet-desktop.yml"
   pull_request:
     branches: [HEATMINT, master]
     paths:
@@ -22,7 +22,7 @@ on:
       - "windows/**"
       - "linux/**"
       - "pubspec.yaml"
-      - ".github/workflows/flutter-desktop.yml"
+      - ".github/workflows/fuego-wallet-desktop.yml"
   workflow_dispatch:
   release:
     types: [published]
@@ -183,10 +183,10 @@ jobs:
           cmake .. -DBUILD_TESTS=OFF -DCMAKE_CXX_FLAGS="-I /usr/include"
           make -j$(nproc) PaymentGateService
 
-          # Find and copy walletd binary
+          # Find and copy walletd binary with platform-specific name
           mkdir -p ../../assets/bin
-          find . -name "walletd" -type f -executable -exec cp {} ../../assets/bin/fuego-walletd \;
-          chmod +x ../../assets/bin/fuego-walletd
+          find . -name "walletd" -type f -executable -exec cp {} ../../assets/bin/fuego-walletd-linux \;
+          chmod +x ../../assets/bin/fuego-walletd-linux
 
       - name: Enable Linux desktop support
         run: |
@@ -282,10 +282,10 @@ jobs:
           cmake .. -DBUILD_TESTS=OFF -DCMAKE_CXX_FLAGS="-I /usr/include"
           make -j$(nproc) PaymentGateService
 
-          # Find and copy walletd binary
+          # Find and copy walletd binary with platform-specific name
           mkdir -p ../../assets/bin
-          find . -name "walletd" -type f -executable -exec cp {} ../../assets/bin/fuego-walletd \;
-          chmod +x ../../assets/bin/fuego-walletd
+          find . -name "walletd" -type f -executable -exec cp {} ../../assets/bin/fuego-walletd-linux \;
+          chmod +x ../../assets/bin/fuego-walletd-linux
 
       - name: Enable Linux desktop support
         run: |

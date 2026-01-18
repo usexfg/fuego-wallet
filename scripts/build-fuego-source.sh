@@ -157,11 +157,33 @@ copy_binary() {
 
     if [ "$PLATFORM" = "windows" ]; then
         local target_name="fuego-walletd-windows.exe"
-        cp "$binary_path.exe" "$target_dir/$target_name"
+        if [ -f "$binary_path" ]; then
+            cp "$binary_path" "$target_dir/$target_name"
+        else
+            # Try to find the binary in the build directory
+            local found_binary=$(find . -name "walletd.exe" -type f | head -n1)
+            if [ -n "$found_binary" ]; then
+                cp "$found_binary" "$target_dir/$target_name"
+            else
+                print_error "Could not find walletd.exe binary"
+                return 1
+            fi
+        fi
         print_success "Copied: $target_dir/$target_name"
     else
         local target_name="fuego-walletd-$PLATFORM"
-        cp "$binary_path" "$target_dir/$target_name"
+        if [ -f "$binary_path" ]; then
+            cp "$binary_path" "$target_dir/$target_name"
+        else
+            # Try to find the binary in the build directory
+            local found_binary=$(find . -name "walletd" -type f -executable | head -n1)
+            if [ -n "$found_binary" ]; then
+                cp "$found_binary" "$target_dir/$target_name"
+            else
+                print_error "Could not find walletd binary"
+                return 1
+            fi
+        fi
         chmod +x "$target_dir/$target_name"
         print_success "Copied: $target_dir/$target_name"
     fi

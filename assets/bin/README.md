@@ -1,25 +1,19 @@
-# CLI Binaries
+# XFG STARK CLI Distribution
 
-This directory contains platform-specific CLI binaries for Fuego's Winterfire Wallet.
+This package contains the XFG Burn → HEAT Mint STARK CLI tool.
 
-## Binaries
+## Contents:
+- `xfg-stark-cli` - Main CLI binary
+- `auto_stark_proof.sh` - Automated proof generation script
+- `stark_proof_generator.py` - Python helper script
+- `progress_logger.py` - Progress tracking script
+- Integration guides and documentation
 
-### STARK Proof Generation
-- `xfg-stark-cli-linux` - Linux binary for STARK proof generation
-- `xfg-stark-cli-macos` - macOS binary for STARK proof generation  
-- `xfg-stark-cli.exe` - Windows binary for STARK proof generation
+## Usage:
+```bash
+./xfg-stark-cli --help
+./auto_stark_proof.sh
+```
 
-### Wallet Daemon
-- `fuego-walletd-linux` - Linux wallet daemon binary
-- `fuego-walletd-macos` - macOS wallet daemon binary
-- `fuego-walletd-windows.exe` - Windows wallet daemon binary
-
-## Usage
-
-These binaries are automatically downloaded during the GitHub Actions build process and bundled with the application. The services handle extracting and executing the appropriate binary for the current platform.
-
-## Sources
-
-- STARK CLI binaries: https://github.com/ColinRitman/xfgwin/releases/tag/v0.8.8
-- Wallet daemon binaries: https://github.com/usexfg/fuego-suite (HE4T branch)
-- Build from source using the HE4T branch for latest features
+## Integration:
+This CLI can be integrated with Fuego Wallet for automatic STARK proof generation.
