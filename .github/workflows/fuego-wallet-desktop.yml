@@ -72,18 +72,23 @@ jobs:
           curl -L -o xfg-stark-cli-macos.tar.gz "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-macos.tar.gz"
           tar -xzf xfg-stark-cli-macos.tar.gz
           mkdir -p assets/bin
-          BINARY_PATH=$(find . -type f -name "xfg-stark-cli*" -perm +111 | head -n1 || true)
+          # Find the binary with more flexible pattern matching
+          BINARY_PATH=$(find . -type f -name "xfg-stark-cli*" -not -name "*.tar.gz" -not -name "*.zip" | head -n1)
           if [ -z "$BINARY_PATH" ]; then
-            BINARY_PATH=$(find . -type f -name "xfg-stark-cli*" | head -n1 || true)
+            # Try alternative naming patterns
+            BINARY_PATH=$(find . -type f -executable -not -name "*.tar.gz" -not -name "*.zip" | head -n1)
           fi
           if [ -n "$BINARY_PATH" ]; then
             chmod +x "$BINARY_PATH"
             mv "$BINARY_PATH" assets/bin/xfg-stark-cli-macos
+            echo "Successfully extracted and moved xfg-stark-cli-macos"
           else
-            echo "xfg-stark-cli not found after extraction" >&2
+            echo "xfg-stark-cli not found after extraction, listing files for debugging:"
+            ls -la
+            find . -type f | head -20
             exit 1
           fi
-          rm xfg-stark-cli-macos.tar.gz
+          rm -f xfg-stark-cli-macos.tar.gz
 
       - name: Build fuego from source
         run: |
@@ -126,12 +131,24 @@ jobs:
             -DBOOST_ROOT="$BOOST_ROOT" \
             -DBoost_USE_STATIC_LIBS=ON \
             -DCMAKE_BUILD_TYPE=Release
-          make -j$(sysctl -n hw.ncpu) PaymentGateService
+          make -j$(sysctl -n hw.ncpu) PaymentGateService || {
+            echo "Build failed, showing error details:"
+            make -j$(sysctl -n hw.ncpu) PaymentGateService 2>&1
+            exit 1
+          }
 
           # Find and copy walletd binary with platform-specific names
           mkdir -p ../../assets/bin
-          find . -name "walletd" -type f -executable -exec cp {} ../../assets/bin/fuego-walletd-macos \;
-          chmod +x ../../assets/bin/fuego-walletd-macos
+          WALLET_BINARY=$(find . -name "walletd" -type f -executable | head -n1)
+          if [ -n "$WALLET_BINARY" ]; then
+            cp "$WALLET_BINARY" ../../assets/bin/fuego-walletd-macos
+            chmod +x ../../assets/bin/fuego-walletd-macos
+            echo "Successfully copied walletd binary"
+          else
+            echo "walletd binary not found, listing build directory:"
+            find . -name "*" -type f | grep -v ".o$" | grep -v ".d$" | head -20
+            exit 1
+          fi
 
       - name: Install dependencies
         run: |
@@ -203,13 +220,20 @@ jobs:
           curl -L -o xfg-stark-cli-windows.zip "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-windows.zip"
           Expand-Archive -Path xfg-stark-cli-windows.zip -DestinationPath .
           New-Item -ItemType Directory -Force -Path assets\bin
-          $binary = Get-ChildItem -Filter "xfg-stark-cli*.exe" -Recurse | Select-Object -First 1
-          if ($binary) {
-            Move-Item $binary.FullName assets\bin\xfg-stark-cli-windows.exe
-          } else {
+          # Find the binary with more flexible pattern matching
+          $binary = Get-ChildItem -Path "." -Include "xfg-stark-cli*.exe" -Recurse | Select-Object -First 1
+          if (-not $binary) {
+            # Try alternative patterns
+            $binary = Get-ChildItem -Path "." -Filter "*.exe" -Recurse | Where-Object { $_.Name -like "*xfg*" -or $_.Name -like "*stark*" } | Select-Object -First 1
+          }
+          if (-not $binary) {
+            # List files for debugging
+            Get-ChildItem -Recurse | Select-Object FullName
             Write-Error "xfg-stark-cli executable not found after extraction"
             exit 1
           }
+          Move-Item $binary.FullName assets\bin\xfg-stark-cli-windows.exe
+          Write-Host "Successfully extracted and moved xfg-stark-cli-windows.exe"
           Remove-Item xfg-stark-cli-windows.zip
 
       - name: Setup vcpkg
@@ -236,20 +260,28 @@ jobs:
           # Install build dependencies via vcpkg
           mkdir build && cd build
           cmake .. -DBUILD_TESTS=OFF -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
-          cmake --build . --config Release --target PaymentGateService
+          cmake --build . --config Release --target PaymentGateService || {
+            Write-Host "Build failed, showing error details:"
+            cmake --build . --config Release --target PaymentGateService
+            exit 1
+          }
 
           # Copy binary to assets with platform-specific name
           New-Item -ItemType Directory -Force -Path ..\\..\\assets\\bin
           # Find the walletd executable
-          $walletdPath = Get-ChildItem -Path . -Recurse -Name "walletd.exe" -ErrorAction SilentlyContinue
+          $walletdPath = Get-ChildItem -Path . -Recurse -Filter "walletd.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
           if ($walletdPath) {
-            Copy-Item $walletdPath ..\\..\\assets\\bin\\fuego-walletd-windows.exe
+            Copy-Item $walletdPath.FullName ..\\..\\assets\\bin\\fuego-walletd-windows.exe
+            Write-Host "Successfully copied walletd.exe"
           } else {
             Write-Warning "walletd.exe not found, looking for alternative names"
-            $altPath = Get-ChildItem -Path . -Recurse -Name "*wallet*" -Include "*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+            $altPath = Get-ChildItem -Path . -Recurse -Include "*.exe" -ErrorAction SilentlyContinue | Where-Object { $_.Name -like "*wallet*" } | Select-Object -First 1
             if ($altPath) {
-              Copy-Item $altPath ..\\..\\assets\\bin\\fuego-walletd-windows.exe
+              Copy-Item $altPath.FullName ..\\..\\assets\\bin\\fuego-walletd-windows.exe
+              Write-Host "Successfully copied alternative wallet executable"
             } else {
+              Write-Host "No wallet executable found, listing build directory for debugging:"
+              Get-ChildItem -Path . -Recurse -File | Select-Object FullName | Select-Object -First 20
               Write-Error "No wallet executable found"
               exit 1
             }
@@ -330,18 +362,23 @@ jobs:
           curl -L -o xfg-stark-cli-linux.tar.gz "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-linux.tar.gz"
           tar -xzf xfg-stark-cli-linux.tar.gz
           mkdir -p assets/bin
-          BINARY_PATH=$(find . -type f -name "xfg-stark-cli*" -perm -111 | head -n1 || true)
+          # Find the binary with more flexible pattern matching
+          BINARY_PATH=$(find . -type f -name "xfg-stark-cli*" -not -name "*.tar.gz" -not -name "*.zip" | head -n1)
           if [ -z "$BINARY_PATH" ]; then
-            BINARY_PATH=$(find . -type f -name "xfg-stark-cli*" | head -n1 || true)
+            # Try alternative naming patterns
+            BINARY_PATH=$(find . -type f -executable -not -name "*.tar.gz" -not -name "*.zip" | head -n1)
           fi
           if [ -n "$BINARY_PATH" ]; then
             chmod +x "$BINARY_PATH"
             mv "$BINARY_PATH" assets/bin/xfg-stark-cli-linux
+            echo "Successfully extracted and moved xfg-stark-cli-linux"
           else
-            echo "xfg-stark-cli not found after extraction" >&2
+            echo "xfg-stark-cli not found after extraction, listing files for debugging:"
+            ls -la
+            find . -type f | head -20
             exit 1
           fi
-          rm xfg-stark-cli-linux.tar.gz
+          rm -f xfg-stark-cli-linux.tar.gz
 
       - name: Build fuego from source
         run: |
@@ -376,12 +413,24 @@ jobs:
             -DBoost_DIR="/usr/lib/cmake/Boost-1.74.0" \
             -DBoost_USE_STATIC_LIBS=ON \
             -DCMAKE_BUILD_TYPE=Release
-          make -j$(nproc) PaymentGateService
+          make -j$(nproc) PaymentGateService || {
+            echo "Build failed, showing error details:"
+            make -j$(nproc) PaymentGateService 2>&1
+            exit 1
+          }
 
           # Find and copy walletd binary with platform-specific names
           mkdir -p ../../assets/bin
-          find . -name "walletd" -type f -executable -exec cp {} ../../assets/bin/fuego-walletd-linux \;
-          chmod +x ../../assets/bin/fuego-walletd-linux
+          WALLET_BINARY=$(find . -name "walletd" -type f -executable | head -n1)
+          if [ -n "$WALLET_BINARY" ]; then
+            cp "$WALLET_BINARY" ../../assets/bin/fuego-walletd-linux
+            chmod +x ../../assets/bin/fuego-walletd-linux
+            echo "Successfully copied walletd binary"
+          else
+            echo "walletd binary not found, listing build directory:"
+            find . -name "*" -type f | grep -v ".o$" | grep -v ".d$" | head -20
+            exit 1
+          fi
 
       - name: Enable Linux desktop support
         run: |
@@ -513,18 +562,23 @@ jobs:
           curl -L -o xfg-stark-cli-linux.tar.gz "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-linux.tar.gz"
           tar -xzf xfg-stark-cli-linux.tar.gz
           mkdir -p assets/bin
-          BINARY_PATH=$(find . -type f -name "xfg-stark-cli*" -perm -111 | head -n1 || true)
+          # Find the binary with more flexible pattern matching
+          BINARY_PATH=$(find . -type f -name "xfg-stark-cli*" -not -name "*.tar.gz" -not -name "*.zip" | head -n1)
           if [ -z "$BINARY_PATH" ]; then
-            BINARY_PATH=$(find . -type f -name "xfg-stark-cli*" | head -n1 || true)
+            # Try alternative naming patterns
+            BINARY_PATH=$(find . -type f -executable -not -name "*.tar.gz" -not -name "*.zip" | head -n1)
           fi
           if [ -n "$BINARY_PATH" ]; then
             chmod +x "$BINARY_PATH"
             mv "$BINARY_PATH" assets/bin/xfg-stark-cli-linux
+            echo "Successfully extracted and moved xfg-stark-cli-linux"
           else
-            echo "xfg-stark-cli not found after extraction" >&2
+            echo "xfg-stark-cli not found after extraction, listing files for debugging:"
+            ls -la
+            find . -type f | head -20
             exit 1
           fi
-          rm xfg-stark-cli-linux.tar.gz
+          rm -f xfg-stark-cli-linux.tar.gz
 
       - name: Build fuego from source
         run: |
@@ -553,12 +607,24 @@ jobs:
           # Build PaymentGateService (walletd) and other executables with proper flags
           mkdir build && cd build
           cmake .. -DBUILD_TESTS=OFF -DBoost_NO_BOOST_CMAKE=ON -DBOOST_ROOT=/usr -DCMAKE_PREFIX_PATH="/usr"
-          make -j$(nproc) PaymentGateService
+          make -j$(nproc) PaymentGateService || {
+            echo "Build failed, showing error details:"
+            make -j$(nproc) PaymentGateService 2>&1
+            exit 1
+          }
 
           # Find and copy walletd binary with platform-specific names
           mkdir -p ../../assets/bin
-          find . -name "walletd" -type f -executable -exec cp {} ../../assets/bin/fuego-walletd-linux \;
-          chmod +x ../../assets/bin/fuego-walletd-linux
+          WALLET_BINARY=$(find . -name "walletd" -type f -executable | head -n1)
+          if [ -n "$WALLET_BINARY" ]; then
+            cp "$WALLET_BINARY" ../../assets/bin/fuego-walletd-linux
+            chmod +x ../../assets/bin/fuego-walletd-linux
+            echo "Successfully copied walletd binary"
+          else
+            echo "walletd binary not found, listing build directory:"
+            find . -name "*" -type f | grep -v ".o$" | grep -v ".d$" | head -20
+            exit 1
+          fi
 
       - name: Enable Linux desktop support
         run: |
