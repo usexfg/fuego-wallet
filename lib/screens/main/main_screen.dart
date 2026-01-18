@@ -20,8 +20,8 @@ class _MainScreenState extends State<MainScreen> {
     const HomeScreen(),
     const MessagingScreen(),
     const BankingScreen(), // Now includes Ξternal Flame + COLD
-    const SettingsScreen(),
     const ElderfierScreen(),
+    const SettingsScreen(),
   ];
 
   @override
@@ -65,13 +65,13 @@ class _MainScreenState extends State<MainScreen> {
                   label2: 'HEAT',
                 ),
                 _buildNavItem(
-                  icon: Icons.settings,
-                  label: 'Settings',
+                  icon: Icons.account_tree,
+                  label: 'Elderfiers',
                   index: 3,
                 ),
                 _buildNavItem(
-                  icon: Icons.account_tree,
-                  label: 'Elderfiers',
+                  icon: Icons.settings,
+                  label: 'Settings',
                   index: 4,
                 ),
               ],

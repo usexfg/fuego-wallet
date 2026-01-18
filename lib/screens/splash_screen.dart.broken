@@ -6,6 +6,7 @@ import '../services/security_service.dart';
 import '../utils/theme.dart';
 import 'wallet_setup/setup_screen.dart';
 import 'auth/pin_entry_screen.dart';
+import 'main/main_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -21,7 +22,8 @@ class _SplashScreenState extends State<SplashScreen>
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
-  String _initMessage = 'Initializing Fuego Wallet...';
+  final bool _isInitializing = true;
+  String _initMessage = 'Initializing XF₲ Wallet...';
 
   @override
   void initState() {
@@ -65,7 +67,6 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _initializeApp() async {
-    debugPrint('SplashScreen: Initializing app...');
     try {
       // Simulate initialization delay for smooth animation
       await Future.delayed(const Duration(milliseconds: 2000));
@@ -73,43 +74,34 @@ class _SplashScreenState extends State<SplashScreen>
       if (!mounted) return;
 
       setState(() {
-        _initMessage = 'Initializing wallet services...';
-      });
-      debugPrint('SplashScreen: Initializing wallet services...');
-
-      // Get wallet daemon service and initialize if needed
-      final walletProvider = Provider.of<WalletProvider>(context, listen: false);
-
-      setState(() {
         _initMessage = 'Checking wallet status...';
       });
-      debugPrint('SplashScreen: Checking wallet status...');
 
       final securityService = SecurityService();
+      final walletProvider = Provider.of<WalletProvider>(context, listen: false);
 
       // Check if wallet exists
       final hasWallet = await walletProvider.hasWalletData();
-      debugPrint('SplashScreen: hasWallet = $hasWallet');
       final hasPIN = await securityService.hasPIN();
-      debugPrint('SplashScreen: hasPIN = $hasPIN');
 
       await Future.delayed(const Duration(milliseconds: 1000));
 
       if (!mounted) return;
 
-      // Navigation logic
-      debugPrint('SplashScreen: Navigating based on wallet status...');
-      if (hasWallet && hasPIN) {
-        // Wallet exists, go to PIN entry
-        debugPrint('SplashScreen: Navigating to PIN entry screen');
-        _navigateToScreen(const PinEntryScreen());
+      // Navigation logic for Fuego Wallet Desktop vs Fuego-Suite compatibility
+      if (hasWallet) {
+        if (hasPIN) {
+          // Fuego Wallet Desktop wallet - requires PIN
+          _navigateToScreen(const PinEntryScreen());
+        } else {
+          // Fuego-Suite wallet (no PIN) - go directly to main screen
+          _navigateToScreen(const MainScreen());
+        }
       } else {
-        // No wallet, go to setup
-        debugPrint('SplashScreen: Navigating to setup screen');
+        // No wallet exists, go to setup
         _navigateToScreen(const SetupScreen());
       }
     } catch (e) {
-      debugPrint('SplashScreen: Error during initialization: $e');
       if (!mounted) return;
 
       setState(() {
@@ -208,16 +200,14 @@ class _SplashScreenState extends State<SplashScreen>
                           ),
                           const SizedBox(height: 16),
                           // Subtitle
-                          Text(
-                            'Privacy Blockchain Banking',
+                          const Text(
+                            'WinterFire Wallet',
                             style: TextStyle(
                               fontSize: 16,
                               color: AppTheme.textSecondary,
                               fontWeight: FontWeight.w300,
                             ),
                           ),
-                        ],
-                      ),
                     ),
                   ),
                 ),
@@ -253,8 +243,8 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
               ),
               // Footer
-              Padding(
-                padding: const EdgeInsets.all(16),
+              const Padding(
+                padding: EdgeInsets.all(16),
                 child: Column(
                   children: [
                     Text(
@@ -265,7 +255,7 @@ class _SplashScreenState extends State<SplashScreen>
                         fontWeight: FontWeight.w300,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -274,7 +264,7 @@ class _SplashScreenState extends State<SplashScreen>
                           size: 16,
                           color: AppTheme.successColor,
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Text(
                           'Secure • Untraceable • Decentralized',
                           style: TextStyle(

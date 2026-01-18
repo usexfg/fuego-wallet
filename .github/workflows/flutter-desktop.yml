@@ -2,7 +2,7 @@ name: XF₲ Wallet Desktop Build & Release
 
 on:
   push:
-    branches: [HEATMINT, master]
+    branches: [master]
     paths:
       - "lib/**"
       - "android/**"

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'providers/wallet_provider.dart';
 import 'services/fuego_rpc_service.dart';
 import 'services/wallet_daemon_service.dart';
@@ -11,17 +12,12 @@ import 'utils/theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize WalletDaemonService with proper error handling
-  try {
-    await WalletDaemonService.initialize(
-      daemonAddress: '207.244.247.64',
-      daemonPort: 18180,
-      networkConfig: NetworkConfig.mainnet,
-    );
-    debugPrint('WalletDaemonService initialized successfully');
-  } catch (e) {
-    debugPrint('Failed to initialize WalletDaemonService: $e');
-  }
+  // Initialize WalletDaemonService
+  await WalletDaemonService.initialize(
+    daemonAddress: '207.244.247.64',
+    daemonPort: 18180,
+    networkConfig: NetworkConfig.mainnet,
+  );
 
   // Set preferred orientations
   SystemChrome.setPreferredOrientations([
@@ -53,19 +49,26 @@ class XFGWalletApp extends StatelessWidget {
           create: (_) => WalletProvider(
             rpcService: FuegoRPCService(
               host: '207.244.247.64',
-              port: NetworkConfig.mainnet.daemonRpcPort,
+              port: 18180,
               networkConfig: NetworkConfig.mainnet,
             ),
           ),
         ),
       ],
-      child: MaterialApp(
-        title: 'Fuego Wallet',
-        theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.dark,
-        home: const SplashScreen(),
-        debugShowCheckedModeBanner: false,
+      child: ScreenUtilInit(
+        designSize: const Size(375, 812),
+        minTextAdapt: true,
+        splitScreenMode: false,
+        builder: (context, child) {
+          return MaterialApp(
+            title: 'XF尕 Wallet',
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: ThemeMode.dark,
+            home: const SplashScreen(),
+            debugShowCheckedModeBanner: false,
+          );
+        },
       ),
     );
   }

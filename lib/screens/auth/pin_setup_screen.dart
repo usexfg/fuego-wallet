@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
 import '../../providers/wallet_provider.dart';
 import '../../services/security_service.dart';
 import '../../utils/theme.dart';
@@ -26,23 +28,12 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
   String _firstPin = '';
   String _confirmPin = '';
   bool _isLoading = false;
-  bool _biometricEnabled = false;
   String? _errorMessage;
+  final SecurityService _securityService = SecurityService();
 
   @override
   void initState() {
     super.initState();
-    _checkBiometricAvailability();
-  }
-
-  Future<void> _checkBiometricAvailability() async {
-    final securityService = SecurityService();
-    final available = await securityService.isBiometricAvailable();
-    if (mounted) {
-      setState(() {
-        _biometricEnabled = available;
-      });
-    }
   }
 
   void _nextPage() {
@@ -56,20 +47,14 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
     }
   }
 
-  void _previousPage() {
-    if (_currentPage > 0) {
-      _pageController.previousPage(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
-    }
-  }
+
 
   void _onFirstPinComplete(String pin) {
     setState(() {
       _firstPin = pin;
       _errorMessage = null;
     });
+
     _nextPage();
   }
 
@@ -97,27 +82,34 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
 
     try {
       final walletProvider = Provider.of<WalletProvider>(context, listen: false);
-      final securityService = SecurityService();
 
       bool success;
-      if (widget.isRestore) {
-        success = await walletProvider.restoreWallet(
-          mnemonic: widget.mnemonic,
-          pin: _firstPin,
-        );
+      if (widget.isRestore || widget.mnemonic.isEmpty) {
+        // For restored or existing wallets, just store the PIN
+        await _securityService.setPIN(_firstPin);
+        success = true;
       } else {
+        // For new wallets, create both the mnemonic storage and wallet file
         success = await walletProvider.createWallet(
           pin: _firstPin,
           mnemonic: widget.mnemonic,
         );
+
+        // Create wallet file for new wallet
+        if (success) {
+          final tempDir = await getTemporaryDirectory();
+          final walletPath = path.join(tempDir.path, 'wallet_${DateTime.now().millisecondsSinceEpoch}.wallet');
+          final walletCreated = await walletProvider.createWalletFile(
+            walletPath: walletPath,
+            password: _firstPin,
+          );
+          if (!walletCreated) {
+            throw Exception('Failed to create wallet file');
+          }
+        }
       }
 
       if (success) {
-        // Set up biometric authentication if enabled
-        if (_biometricEnabled) {
-          await securityService.setBiometricEnabled(true);
-        }
-
         // Navigate to main screen
         if (mounted) {
           Navigator.of(context).pushReplacement(
@@ -126,7 +118,7 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
         }
       } else {
         setState(() {
-          _errorMessage = walletProvider.error ?? 'Failed to create wallet';
+          _errorMessage = 'Failed to create wallet';
           _isLoading = false;
         });
       }
@@ -143,16 +135,7 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.isRestore ? 'Restore Wallet' : 'Create Wallet'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            if (_currentPage > 0) {
-              _previousPage();
-            } else {
-              Navigator.of(context).pop();
-            }
-          },
-        ),
+        backgroundColor: AppTheme.backgroundColor,
       ),
       body: Column(
         children: [
@@ -204,8 +187,8 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
         children: [
           const SizedBox(height: 32),
           const Icon(
-            Icons.lock_outline,
-            size: 64,
+            Icons.lock,
+            size: 80,
             color: AppTheme.primaryColor,
           ),
           const SizedBox(height: 24),
@@ -232,34 +215,6 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
             errorMessage: _errorMessage,
           ),
           const SizedBox(height: 32),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: AppTheme.primaryColor.withOpacity(0.3),
-              ),
-            ),
-            child: const Row(
-              children: [
-                Icon(
-                  Icons.info_outline,
-                  color: AppTheme.primaryColor,
-                ),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Your PIN is stored securely on this device and cannot be recovered if forgotten.',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppTheme.textSecondary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -272,8 +227,8 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
         children: [
           const SizedBox(height: 32),
           const Icon(
-            Icons.verified_outlined,
-            size: 64,
+            Icons.lock,
+            size: 80,
             color: AppTheme.primaryColor,
           ),
           const SizedBox(height: 24),
@@ -304,13 +259,11 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
             TextButton(
               onPressed: () {
                 setState(() {
-                  _firstPin = '';
-                  _confirmPin = '';
                   _errorMessage = null;
+                  _confirmPin = '';
                 });
-                _previousPage();
               },
-              child: const Text('Change PIN'),
+              child: const Text('Try Again'),
             ),
           ],
         ],
@@ -325,8 +278,8 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
         children: [
           const SizedBox(height: 32),
           const Icon(
-            Icons.fingerprint,
-            size: 64,
+            Icons.security,
+            size: 80,
             color: AppTheme.primaryColor,
           ),
           const SizedBox(height: 24),
@@ -340,7 +293,7 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Choose additional security features for your wallet',
+            'Your PIN is the only way to access your wallet. Store it securely.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 16,
@@ -348,60 +301,53 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
             ),
           ),
           const SizedBox(height: 48),
-          
-          // Biometric option
+
+          // Security tips
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppTheme.cardColor,
+              color: AppTheme.warningColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: AppTheme.textMuted.withOpacity(0.3),
+                color: AppTheme.warningColor.withOpacity(0.3),
               ),
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(
-                  Icons.fingerprint,
-                  color: AppTheme.primaryColor,
-                  size: 32,
+                const Row(
+                  children: [
+                    Icon(
+                      Icons.warning,
+                      color: AppTheme.warningColor,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      'Important Security Notice',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.warningColor,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 16),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Biometric Authentication',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.textPrimary,
-                        ),
-                      ),
-                      Text(
-                        'Use fingerprint or face recognition',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppTheme.textSecondary,
-                        ),
-                      ),
-                    ],
+                const SizedBox(height: 12),
+                const Text(
+                  '• Never share your PIN with anyone\n'
+                  '• If you forget your PIN, you\'ll need your backup phrase to restore your wallet\n'
+                  '• Fuego cannot recover lost PINs',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppTheme.textSecondary,
+                    height: 1.5,
                   ),
-                ),
-                Switch(
-                  value: _biometricEnabled,
-                  onChanged: (value) {
-                    setState(() {
-                      _biometricEnabled = value;
-                    });
-                  },
                 ),
               ],
             ),
           ),
           const SizedBox(height: 48),
-          
+
           // Create wallet button
           SizedBox(
             width: double.infinity,
@@ -419,7 +365,7 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
                   : Text(widget.isRestore ? 'Restore Wallet' : 'Create Wallet'),
             ),
           ),
-          
+
           if (_errorMessage != null) ...[
             const SizedBox(height: 16),
             Container(

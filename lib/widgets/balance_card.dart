@@ -162,7 +162,7 @@ class _BalanceCardState extends State<BalanceCard>
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            'Available: ${_showBalance ? '${wallet.unlockedBalanceXFG.toStringAsFixed(8)} XFG' : '••••••••'}',
+                            'Available: ${_showBalance ? '${wallet.formattedUnlockedBalance}' : '••••••••'}',
                             style: TextStyle(
                               color: Colors.white.withOpacity(0.9),
                               fontSize: 14,
@@ -180,8 +180,8 @@ class _BalanceCardState extends State<BalanceCard>
                         _buildStatusIndicator(
                           walletProvider.isConnected ? Icons.wifi : Icons.wifi_off,
                           walletProvider.isConnected ? 'Connected' : 'Offline',
-                          walletProvider.isConnected 
-                              ? AppTheme.successColor 
+                          walletProvider.isConnected
+                              ? AppTheme.successColor
                               : AppTheme.errorColor,
                         ),
                         const SizedBox(width: 16),

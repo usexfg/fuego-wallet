@@ -1,11 +1,12 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as path;
-
-import '../../services/walletd_service.dart';
-import '../../services/web3_cold_service.dart';
+import 'package:provider/provider.dart';
+import '../../providers/wallet_provider.dart';
 import '../../utils/theme.dart';
+import '../../widgets/balance_card.dart';
+import '../../widgets/quick_actions.dart';
+import '../../widgets/recent_transactions.dart';
+import '../transactions/send_screen.dart';
+import '../transactions/receive_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -14,378 +15,439 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  bool _isWalletdReady = false;
-  bool _isWeb3Ready = false;
-  bool _isCliReady = false;
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+  late AnimationController _refreshController;
+  late Animation<double> _refreshAnimation;
+  bool _isRefreshing = false;
 
   @override
   void initState() {
     super.initState();
-    _initializeServices();
+    _setupAnimations();
+    _initializeWallet();
   }
 
-  Future<void> _initializeServices() async {
-    // Check if binaries are available
-    try {
-      await WalletdService.instance.initialize();
-      setState(() {
-        _isWalletdReady = true;
-      });
-    } catch (e) {
-      setState(() {
-        _isWalletdReady = false;
-      });
-    }
+  void _setupAnimations() {
+    _refreshController = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    );
+
+    _refreshAnimation = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(
+      parent: _refreshController,
+      curve: Curves.easeInOut,
+    ));
+  }
+
+  Future<void> _initializeWallet() async {
+    final walletProvider = Provider.of<WalletProvider>(context, listen: false);
+    await walletProvider.refreshWallet();
+    await walletProvider.refreshTransactions();
+  }
+
+  Future<void> _onRefresh() async {
+    if (_isRefreshing) return;
+
+    setState(() {
+      _isRefreshing = true;
+    });
+
+    _refreshController.forward();
 
     try {
-      await Web3COLDService.instance.initialize();
+      final walletProvider = Provider.of<WalletProvider>(context, listen: false);
+      await Future.wait([
+        walletProvider.refreshWallet(),
+        walletProvider.refreshTransactions(),
+      ]);
+    } finally {
+      _refreshController.reset();
       setState(() {
-        _isWeb3Ready = true;
-      });
-    } catch (e) {
-      setState(() {
-        _isWeb3Ready = false;
-      });
-    }
-
-    // Check for CLI binary
-    try {
-      final binaryPath = await _getCliBinaryPath();
-      final file = File(binaryPath);
-      if (await file.exists()) {
-        setState(() {
-          _isCliReady = true;
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _isCliReady = false;
+        _isRefreshing = false;
       });
     }
   }
 
-  Future<String> _getCliBinaryPath() async {
-    final Directory appDir = await getApplicationSupportDirectory();
-    final String binaryName = Platform.isWindows
-        ? 'xfg-stark-cli.exe'
-        : Platform.isMacOS
-            ? 'xfg-stark-cli-macos'
-            : 'xfg-stark-cli-linux';
-    return path.join(appDir.path, 'bin', binaryName);
+  void _navigateToSend() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const SendScreen(),
+      ),
+    );
+  }
+
+  void _navigateToReceive() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const ReceiveScreen(),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('XF₲ Wallet'),
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.info_outline),
-            onPressed: () {
-              _showInfoDialog();
-            },
-          ),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Welcome card
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: AppTheme.primaryGradient,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.account_balance_wallet,
-                        color: Colors.white,
-                        size: 32,
-                      ),
-                      SizedBox(width: 12),
-                      Text(
-                        'Decentralized Privacy Banking',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: AppTheme.backgroundGradient,
+        ),
+        child: SafeArea(
+          child: RefreshIndicator(
+            onRefresh: _onRefresh,
+            color: AppTheme.primaryColor,
+            backgroundColor: AppTheme.cardColor,
+            child: CustomScrollView(
+              slivers: [
+                // App Bar
+                SliverAppBar(
+                  expandedHeight: 120,
+                  floating: true,
+                  pinned: true,
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  flexibleSpace: FlexibleSpaceBar(
+                    titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
+                    title: Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Consumer<WalletProvider>(
+                          builder: (context, walletProvider, child) {
+                            return Text(
+                              '${walletProvider.networkConfig.name}',
+                              style: TextStyle(
+                                color: AppTheme.textPrimary,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            );
+                          },
                         ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Your gateway to Fuego ecosystem',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.white70,
+                        Consumer<WalletProvider>(
+                          builder: (context, wallet, child) {
+                            return Text(
+                              wallet.isConnected
+                                  ? (wallet.isWalletSynced
+                                      ? 'Synchronized'
+                                      : 'Syncing...')
+                                  : 'Offline',
+                              style: TextStyle(
+                                color: wallet.isConnected
+                                    ? (wallet.isWalletSynced
+                                        ? AppTheme.successColor
+                                        : AppTheme.warningColor)
+                                    : AppTheme.errorColor,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Quick Access
-            const Text(
-              'Quick Access',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.textPrimary,
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            Expanded(
-              child: GridView.count(
-                shrinkWrap: true,
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                children: [
-                  _buildFeatureCard(
-                    context,
-                    icon: Icons.local_fire_department,
-                    title: 'Ξternal Flame',
-                    subtitle: 'Mint HEAT',
-                    color: AppTheme.errorColor,
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/banking');
-                    },
-                  ),
-                  _buildFeatureCard(
-                    context,
-                    icon: Icons.savings,
-                    title: 'COLD Interest',
-                    subtitle: 'Lounge',
-                    color: const Color(0xFF4A90E2),
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/banking');
-                    },
-                  ),
-                  _buildFeatureCard(
-                    context,
-                    icon: Icons.sync,
-                    title: 'Walletd',
-                    subtitle: _isWalletdReady ? 'Available' : 'Not Found',
-                    color: _isWalletdReady ? AppTheme.successColor : AppTheme.textMuted,
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/banking');
-                    },
-                  ),
-                  _buildFeatureCard(
-                    context,
-                    icon: Icons.rocket_launch,
-                    title: 'Optimizer',
-                    subtitle: _isCliReady ? 'Ready' : 'CLI Only',
-                    color: _isCliReady ? Colors.orange : AppTheme.textMuted,
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/banking');
-                    },
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Service Status
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppTheme.surfaceColor,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppTheme.dividerColor),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Service Status',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.textPrimary,
+                  actions: [
+                    Consumer<WalletProvider>(
+                      builder: (context, wallet, child) {
+                        return AnimatedBuilder(
+                          animation: _refreshAnimation,
+                          builder: (context, child) {
+                            return Transform.rotate(
+                              angle: _refreshAnimation.value * 2 * 3.14159,
+                              child: IconButton(
+                                icon: Icon(
+                                  Icons.refresh,
+                                  color: _isRefreshing
+                                      ? AppTheme.primaryColor
+                                      : AppTheme.textSecondary,
+                                ),
+                                onPressed: _isRefreshing ? null : _onRefresh,
+                              ),
+                            );
+                          },
+                        );
+                      },
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  _buildStatusRow('Integrated Walletd', _isWalletdReady),
-                  const SizedBox(height: 4),
-                  _buildStatusRow('Optimizer (CLI/RPC)', _isCliReady || _isWalletdReady),
-                  const SizedBox(height: 4),
-                  _buildStatusRow('Web3 COLD Connection', _isWeb3Ready),
-                  const SizedBox(height: 4),
-                  _buildStatusRow('Burn2Mint (Ξternal Flame)', true),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Quick Actions
-            Row(
-              children: [
-                Expanded(
-                  child: _buildQuickAction(
-                    'Ξternal Flame',
-                    Icons.local_fire_department,
-                    AppTheme.errorColor,
-                    () => Navigator.pushNamed(context, '/banking'),
-                  ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _buildQuickAction(
-                    'COLD',
-                    Icons.savings,
-                    const Color(0xFF4A90E2),
-                    () => Navigator.pushNamed(context, '/banking'),
+
+                // Content
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      // Balance Card
+                      const BalanceCard(),
+                      const SizedBox(height: 20),
+
+                      // Quick Actions
+                      QuickActions(
+                        onSendTap: _navigateToSend,
+                        onReceiveTap: _navigateToReceive,
+                        onScanTap: _onScanQR,
+                        onMineTap: _onToggleMining,
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Sync Progress (if syncing)
+                      Consumer<WalletProvider>(
+                        builder: (context, wallet, child) {
+                          if (!wallet.isSyncing || wallet.isWalletSynced) {
+                            return const SizedBox.shrink();
+                          }
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 20),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppTheme.cardColor,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: AppTheme.primaryColor.withOpacity(0.3),
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    // Animated sync icon
+                                    RotationTransition(
+                                      turns: _refreshAnimation,
+                                      child: const Icon(
+                                        Icons.sync,
+                                        color: AppTheme.primaryColor,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Synchronizing Blockchain',
+                                      style: TextStyle(
+                                        color: AppTheme.textPrimary,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    Text(
+                                      '${(wallet.syncProgress * 100).toStringAsFixed(1)}%',
+                                      style: TextStyle(
+                                        color: AppTheme.textSecondary,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                // Enhanced progress indicator with animation
+                                Stack(
+                                  children: [
+                                    Container(
+                                      height: 8,
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.surfaceColor,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                    ),
+                                    AnimatedContainer(
+                                      duration: const Duration(milliseconds: 300),
+                                      height: 8,
+                                      width: MediaQuery.of(context).size.width *
+                                             (wallet.syncProgress > 0 ? wallet.syncProgress : 0.01) * 0.6,
+                                      decoration: BoxDecoration(
+                                        gradient: AppTheme.primaryGradient,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  '${wallet.wallet?.localHeight ?? 0} / ${wallet.wallet?.blockchainHeight ?? 0} blocks',
+                                  style: TextStyle(
+                                    color: AppTheme.textMuted,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+
+                      // Recent Transactions
+                      const RecentTransactions(),
+                      const SizedBox(height: 20),
+
+                      // Mining Status (if applicable)
+                      Consumer<WalletProvider>(
+                        builder: (context, wallet, child) {
+                          if (!wallet.isMining) return const SizedBox.shrink();
+
+                          return Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppTheme.successColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: AppTheme.successColor.withOpacity(0.3),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.memory,
+                                  color: AppTheme.successColor,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Mining Active',
+                                        style: TextStyle(
+                                          color: AppTheme.successColor,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      Text(
+                                        '${wallet.miningSpeed} H/s with ${wallet.miningThreads} threads',
+                                        style: TextStyle(
+                                          color: AppTheme.textSecondary,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () => wallet.stopMining(),
+                                  child: const Text('Stop'),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ]),
                   ),
                 ),
               ],
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFeatureCard(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required Color color,
-    required VoidCallback onPressed,
-  }) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 32, color: color),
-              const SizedBox(height: 8),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textPrimary,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: AppTheme.textSecondary,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildStatusRow(String label, bool status) {
-    return Row(
-      children: [
-        Icon(
-          status ? Icons.check_circle : Icons.cancel,
-          color: status ? AppTheme.successColor : AppTheme.errorColor,
-          size: 16,
-        ),
-        const SizedBox(width: 8),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: AppTheme.textSecondary,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildQuickAction(
-    String label,
-    IconData icon,
-    Color color,
-    VoidCallback onPressed,
-  ) {
-    return ElevatedButton.icon(
-      onPressed: onPressed,
-      icon: Icon(icon, size: 20),
-      label: Text(label),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-        textStyle: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-        ),
+  void _onScanQR() {
+    // TODO: Implement QR code scanning
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('QR code scanning coming soon'),
+        backgroundColor: AppTheme.primaryColor,
       ),
     );
   }
 
-  void _showInfoDialog() {
+  void _onToggleMining() {
+    final walletProvider = Provider.of<WalletProvider>(context, listen: false);
+
+    if (walletProvider.isMining) {
+      walletProvider.stopMining();
+    } else {
+      _showMiningDialog();
+    }
+  }
+
+  void _showMiningDialog() {
+    int threads = 1;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('About XF₲ Wallet'),
-        content: const SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Version: 1.0.1\n\n'
-                'Features:\n'
-                '• Integrated walletd & optimizer\n'
-                '• Ξternal Flame (Burn XFG → HEAT)\n'
-                '• COLD Interest Lounge (Web3)\n'
-                '• C0DL3 rollup integration\n'
-                '• Multi-platform support\n\n'
-                'Built for the Fuego ecosystem',
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: AppTheme.cardColor,
+              title: const Text(
+                'Start Mining',
+                style: TextStyle(color: AppTheme.textPrimary),
               ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Choose the number of CPU threads to use for mining:',
+                    style: TextStyle(color: AppTheme.textSecondary),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      const Text(
+                        'Threads:',
+                        style: TextStyle(color: AppTheme.textPrimary),
+                      ),
+                      Expanded(
+                        child: Slider(
+                          value: threads.toDouble(),
+                          min: 1,
+                          max: 8,
+                          divisions: 7,
+                          label: threads.toString(),
+                          activeColor: AppTheme.primaryColor,
+                          onChanged: (value) {
+                            setState(() {
+                              threads = value.round();
+                            });
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(color: AppTheme.textSecondary),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    final walletProvider = Provider.of<WalletProvider>(
+                      context,
+                      listen: false,
+                    );
+                    walletProvider.startMining(threads: threads);
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Start Mining'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
+
+  @override
+  void dispose() {
+    _refreshController.dispose();
+    super.dispose();
+  }
 }
+
+// TODO: Create these widget files
+// - balance_card.dart
+// - quick_actions.dart
+// - recent_transactions.dart
+// - send_screen.dart
+// - receive_screen.dart

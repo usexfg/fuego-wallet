@@ -2,10 +2,14 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:logging/logging.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/wallet.dart';
 import '../models/network_config.dart';
 import '../services/fuego_rpc_service.dart';
 import '../services/security_service.dart';
+import '../services/wallet_daemon_service.dart';
 
 class WalletProvider extends ChangeNotifier {
   static final Logger _logger = Logger('WalletProvider');
@@ -23,6 +27,12 @@ class WalletProvider extends ChangeNotifier {
   String? _nodeUrl;
   Timer? _syncTimer;
   NetworkConfig _networkConfig = NetworkConfig.mainnet;
+
+  // Wallet file management
+  static const String _walletPathKey = 'wallet_file_path';
+
+  // Currency symbol (XFG for mainnet, TEST for testnet)
+  String _currencySymbol = 'XFG';
 
   // Mining status
   int _miningSpeed = 0;
@@ -58,7 +68,7 @@ class WalletProvider extends ChangeNotifier {
   bool get isWalletSynced => _wallet?.synced ?? false;
   double get syncProgress => _wallet?.syncProgress ?? 0.0;
 
-  // Get private key for burn transactions (requires PIN verification)
+  /// Get private key for burn transactions (requires PIN verification)
   Future<String?> getPrivateKeyForBurn(String pin) async {
     try {
       _logger.info('Attempting to get private key for burn transaction');
@@ -84,6 +94,9 @@ class WalletProvider extends ChangeNotifier {
       return null;
     }
   }
+
+  /// Get current currency symbol
+  String get currencySymbol => _currencySymbol;
 
   // Get private key without PIN verification (for internal use when wallet is unlocked)
   String? getPrivateKey() {
@@ -219,8 +232,52 @@ class WalletProvider extends ChangeNotifier {
         throw Exception('Wallet keys not found');
       }
 
-      // Initialize wallet with placeholder data
-      // TODO: Open wallet with the keys
+      // Start wallet daemon with stored wallet file if available
+      debugPrint('Starting wallet daemon for unlocked wallet...');
+      final storedWalletPath = await getStoredWalletPath();
+      bool walletStarted = false;
+
+      if (storedWalletPath != null) {
+        debugPrint('Opening stored wallet file: $storedWalletPath');
+        walletStarted = await WalletDaemonService.openWallet(
+          walletPath: storedWalletPath,
+          password: pin, // Using PIN as password for the wallet file
+        );
+        debugPrint('Wallet daemon open result: $walletStarted');
+        if (!walletStarted) {
+          _setError('Failed to open wallet file. The password may be incorrect or the file may be corrupted.');
+        }
+      } else {
+        debugPrint('No stored wallet file found, creating temporary wallet');
+        // Create a temporary wallet file for this session
+        final tempDir = await getTemporaryDirectory();
+        final walletPath = path.join(tempDir.path, 'temp_wallet_${DateTime.now().millisecondsSinceEpoch}.wallet');
+        debugPrint('Creating temporary wallet at: $walletPath');
+        final walletCreated = await WalletDaemonService.createWallet(
+          walletPath: walletPath,
+          password: pin,
+        );
+
+        if (walletCreated) {
+          debugPrint('Temporary wallet created successfully');
+          await _storeWalletPath(walletPath);
+          walletStarted = await WalletDaemonService.openWallet(
+            walletPath: walletPath,
+            password: pin,
+          );
+          debugPrint('Wallet daemon open result: $walletStarted');
+          if (!walletStarted) {
+            _setError('Failed to open newly created wallet file. Please try again.');
+          }
+        } else {
+          _setError('Failed to create wallet file. Please try again or restore from backup.');
+          _setLoading(false);
+          return false;
+        }
+      }
+
+      debugPrint('Wallet daemon start completed, result: $walletStarted');
+      // Initialize wallet with actual data
       await refreshWallet();
 
       _setLoading(false);
@@ -258,10 +315,56 @@ class WalletProvider extends ChangeNotifier {
       _clearError();
 
       // Get wallet balance and info
-      final balance = await _rpcService.getBalance();
-      final address = await _rpcService.getAddress();
+      debugPrint('Refreshing wallet data...');
+      final info = await _rpcService.getInfo();
+      debugPrint('Node info retrieved: ${info['height']}');
 
-      _wallet = balance.copyWith(address: address);
+      // Check if wallet daemon is available before trying to get wallet data
+      final isWalletdAvailable = await WalletDaemonService.isWalletRpcAvailable();
+      debugPrint('Wallet daemon availability: $isWalletdAvailable');
+
+      if (isWalletdAvailable) {
+        try {
+          // Get wallet data from RPC service
+          final balance = await _rpcService.getBalance();
+          debugPrint('Balance retrieved: ${balance.balance}');
+          final address = await _rpcService.getAddress();
+          debugPrint('Address retrieved: $address');
+
+          // Set currency symbol based on current network
+          balance.setCurrencySymbol(_networkConfig.addressPrefix == 'TEST' ? 'TEST' : 'XFG');
+
+          _wallet = balance;
+
+          debugPrint('Wallet created with balance: ${balance.balance}, address: $address, currency: ${balance.currencySymbol}');
+        } catch (walletError) {
+          debugPrint('Error getting wallet data: $walletError');
+          // Create a placeholder wallet with just node info
+          _wallet = Wallet(
+            address: 'Wallet not available',
+            viewKey: '',
+            spendKey: '',
+            balance: 0,
+            unlockedBalance: 0,
+            blockchainHeight: info['height'] as int,
+            localHeight: info['height'] as int,
+            synced: true,
+          );
+        }
+      } else {
+        debugPrint('Wallet daemon not available, creating placeholder wallet');
+        // Create a placeholder wallet with just node info
+        _wallet = Wallet(
+          address: 'Wallet daemon not running',
+          viewKey: '',
+          spendKey: '',
+          balance: 0,
+          unlockedBalance: 0,
+          blockchainHeight: info['height'] as int,
+          localHeight: info['height'] as int,
+          synced: true,
+        );
+      }
 
       // Start sync timer if not already running
       if (!isWalletSynced) {
@@ -408,8 +511,10 @@ class WalletProvider extends ChangeNotifier {
   // Connection Management
   Future<void> connectToNode(String url) async {
     _setLoading(true);
+    _clearError();
 
     try {
+      debugPrint('Connecting to node: $url');
       // Parse the URL to extract host and port
       final uri = Uri.parse(url);
       final host = uri.host;
@@ -424,7 +529,10 @@ class WalletProvider extends ChangeNotifier {
       if (_isConnected && hasWallet) {
         await refreshWallet();
       }
+
+      debugPrint('Node connection completed. Connected: $_isConnected');
     } catch (e) {
+      debugPrint('Failed to connect to node: $e');
       _setError('Invalid node URL: $e');
     }
 
@@ -436,6 +544,9 @@ class WalletProvider extends ChangeNotifier {
     _networkConfig = config;
     _rpcService.updateNetworkConfig(config);
 
+    // Update currency symbol based on network
+    _currencySymbol = config.addressPrefix == 'TEST' ? 'TEST' : 'XFG';
+
     // Update node URL if it's using the old port
     if (_nodeUrl != null) {
       final uri = Uri.parse(_nodeUrl!);
@@ -443,13 +554,113 @@ class WalletProvider extends ChangeNotifier {
       _nodeUrl = newUrl;
     }
 
+    // Update any existing wallet with new currency symbol
+    if (_wallet != null) {
+      _wallet!.setCurrencySymbol(_currencySymbol);
+    }
+
     notifyListeners();
   }
 
+  /// Open an existing wallet file
+  Future<bool> openWallet({
+    required String walletPath,
+    required String password,
+  }) async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      // Store wallet path for future use
+      await _storeWalletPath(walletPath);
+
+      // Start wallet daemon with the wallet file
+      final success = await WalletDaemonService.openWallet(
+        walletPath: walletPath,
+        password: password,
+      );
+
+      if (success) {
+        await refreshWallet();
+      }
+
+      _setLoading(false);
+      return success;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      return false;
+    }
+  }
+
+  /// Create a new wallet file
+  Future<bool> createWalletFile({
+    required String walletPath,
+    required String password,
+  }) async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      // Create wallet using wallet daemon service
+      final success = await WalletDaemonService.createWallet(
+        walletPath: walletPath,
+        password: password,
+      );
+
+      if (success) {
+        // Store wallet path for future use
+        await _storeWalletPath(walletPath);
+
+        // Open the newly created wallet
+        final openSuccess = await WalletDaemonService.openWallet(
+          walletPath: walletPath,
+          password: password,
+        );
+
+        if (openSuccess) {
+          await refreshWallet();
+        }
+
+        return openSuccess;
+      }
+
+      _setLoading(false);
+      return false;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      return false;
+    }
+  }
+
+  /// Manually trigger a sync status refresh
+  Future<void> refreshSyncStatus() async {
+    debugPrint('Manual sync status refresh triggered');
+    await _refreshSyncStatus();
+  }
+
+  /// Store wallet path in shared preferences
+  Future<void> _storeWalletPath(String path) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_walletPathKey, path);
+  }
+
+  /// Get stored wallet path from shared preferences
+  Future<String?> getStoredWalletPath() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_walletPathKey);
+  }
+
+
+
   Future<void> _checkConnection() async {
     try {
+      debugPrint('Checking connection to Fuego node...');
       _isConnected = await _rpcService.testConnection();
+      debugPrint('Connection check result: $_isConnected');
     } catch (e) {
+      debugPrint('Connection check failed: $e');
       _isConnected = false;
     }
     notifyListeners();
@@ -486,22 +697,62 @@ class WalletProvider extends ChangeNotifier {
   }
 
   Future<void> _refreshSyncStatus() async {
-    try {
-      _isSyncing = true;
-      final info = await _rpcService.getInfo();
-      final balance = await _rpcService.getBalance();
+    // Only refresh if we're connected
+    if (!_isConnected) {
+      debugPrint('Not refreshing sync status: Not connected to node');
+      return;
+    }
 
-      if (_wallet != null) {
-        _wallet = _wallet!.copyWith(
-          blockchainHeight: info['height'] as int,
-          localHeight: balance.localHeight,
-          synced: (info['height'] - balance.localHeight) <= 1,
-        );
+    try {
+      debugPrint('Refreshing sync status...');
+      _isSyncing = true;
+      notifyListeners();
+
+      final info = await _rpcService.getInfo();
+      debugPrint('Node info: ${info['height']} height');
+
+      // Check if wallet daemon is available and responding
+      final isWalletdAvailable = await WalletDaemonService.isWalletRpcAvailable();
+      debugPrint('Wallet daemon availability: $isWalletdAvailable');
+
+      if (isWalletdAvailable) {
+        try {
+          final balance = await _rpcService.getBalance();
+          debugPrint('Wallet balance: ${balance.balance}, local height: ${balance.localHeight}');
+
+          if (_wallet != null) {
+            final blockchainHeight = info['height'] as int;
+            final localHeight = balance.localHeight;
+            final isSynced = (blockchainHeight - localHeight) <= 1;
+
+            debugPrint('Sync status - Blockchain: $blockchainHeight, Local: $localHeight, Synced: $isSynced');
+
+            _wallet = _wallet!.copyWith(
+              blockchainHeight: blockchainHeight,
+              localHeight: localHeight,
+              synced: isSynced,
+            );
+          }
+        } catch (walletError) {
+          debugPrint('Error getting wallet balance: $walletError');
+          // Even if wallet RPC fails, we can still update node info
+        }
+      } else {
+        debugPrint('Wallet daemon not available, updating node info only');
+        if (_wallet != null) {
+          final blockchainHeight = info['height'] as int;
+          _wallet = _wallet!.copyWith(
+            blockchainHeight: blockchainHeight,
+            localHeight: blockchainHeight, // Assume synced if no wallet
+            synced: true,
+          );
+        }
       }
 
       _isSyncing = false;
       notifyListeners();
     } catch (e) {
+      debugPrint('Error refreshing sync status: $e');
       _isSyncing = false;
       notifyListeners();
     }

@@ -36,7 +36,7 @@ class FuegoWalletAdapter {
           receiveTimeout: const Duration(seconds: 30),
           headers: {'Content-Type': 'application/json'},
         )),
-        _walletRpcUrl = 'http://localhost:8070',
+        _walletRpcUrl = 'http://localhost:18183',
         _networkConfig = NetworkConfig.mainnet;
 
   /// Open an existing wallet file

@@ -7,7 +7,7 @@ import '../../utils/theme.dart';
 import '../../providers/wallet_provider_hybrid.dart';
 import '../../models/network_config.dart';
 import '../../services/wallet_daemon_service.dart';
-import '../auth/pin_entry_screen.dart';
+import '../auth/pin_setup_screen.dart';
 
 class OpenWalletFileScreen extends StatefulWidget {
   const OpenWalletFileScreen({super.key});
@@ -73,13 +73,78 @@ class _OpenWalletFileScreenState extends State<OpenWalletFileScreen>
     _walletProvider = WalletProviderHybrid();
   }
 
-  @override
-  void dispose() {
-    _fadeController.dispose();
-    _slideController.dispose();
-    _walletProvider?.dispose();
-    super.dispose();
+  /// Prompt user for wallet password
+  Future<String?> _promptForPassword() async {
+    String? password;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        final passwordController = TextEditingController();
+
+        return AlertDialog(
+          backgroundColor: AppTheme.cardColor,
+          title: const Text(
+            'Wallet Password Required',
+            style: TextStyle(color: AppTheme.textPrimary),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'This wallet file is password protected. Please enter the password to unlock it.',
+                style: TextStyle(color: AppTheme.textSecondary),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: passwordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Password',
+                  border: OutlineInputBorder(),
+                ),
+                onSubmitted: (value) {
+                  if (value.isNotEmpty) {
+                    Navigator.of(context).pop(value);
+                  }
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(null);
+              },
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: AppTheme.textSecondary),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (passwordController.text.isNotEmpty) {
+                  Navigator.of(context).pop(passwordController.text);
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+              ),
+              child: const Text('Unlock'),
+            ),
+          ],
+        );
+      },
+    ).then((value) => password = value);
+
+    return password;
   }
+
+
+
+
 
   Future<void> _pickWalletFile() async {
     try {
@@ -209,32 +274,46 @@ class _OpenWalletFileScreenState extends State<OpenWalletFileScreen>
         return;
       }
 
-      // Initialize wallet daemon service
+      // Initialize wallet daemon service with proper node address
+      final networkConfig = NetworkConfig.mainnet;
       await WalletDaemonService.initialize(
-        daemonAddress: '127.0.0.1',
-        daemonPort: 20020,
-        networkConfig: NetworkConfig.mainnet,
+        daemonAddress: networkConfig.defaultSeedNode.split(':')[0],
+        daemonPort: networkConfig.daemonRpcPort,
+        networkConfig: networkConfig,
       );
 
-      // Try to open wallet
+      // Prompt user for wallet password immediately
+      final password = await _promptForPassword();
+      if (password == null) {
+        // User cancelled password entry
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Try to open wallet with provided password
       final success = await _walletProvider!.openWallet(
         walletPath: _selectedFilePath!,
-        password: '', // Try empty password first
+        password: password,
       );
 
       if (!success) {
         setState(() {
-          _errorMessage = 'Failed to open wallet. The file may be password protected or corrupted.';
+          _errorMessage = 'Failed to open wallet. The password may be incorrect or the file may be corrupted.';
           _isLoading = false;
         });
         return;
       }
 
       if (mounted) {
-        // Navigate to PIN setup
+        // Navigate to PIN setup for existing wallet
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(
-            builder: (context) => const PinEntryScreen(),
+            builder: (context) => const PinSetupScreen(
+              mnemonic: '', // Empty mnemonic indicates existing wallet
+              isRestore: true, // Indicates this is for an existing wallet
+            ),
           ),
           (route) => false,
         );
@@ -599,5 +678,15 @@ class _OpenWalletFileScreenState extends State<OpenWalletFileScreen>
         ),
       ],
     );
+  }
+
+
+
+  @override
+  void dispose() {
+    _fadeController.dispose();
+    _slideController.dispose();
+    _walletProvider?.dispose();
+    super.dispose();
   }
 }

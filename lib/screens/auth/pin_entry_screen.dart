@@ -19,10 +19,10 @@ class _PinEntryScreenState extends State<PinEntryScreen>
   final SecurityService _securityService = SecurityService();
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
-  
+
   bool _isLoading = false;
   String? _errorMessage;
-  bool _canUseBiometric = false;
+  bool _isPasswordMode = false; // Toggle between PIN and password
   int _failedAttempts = 0;
   static const int maxFailedAttempts = 69;
 
@@ -30,8 +30,7 @@ class _PinEntryScreenState extends State<PinEntryScreen>
   void initState() {
     super.initState();
     _setupAnimations();
-    _checkBiometricCapability();
-    _tryBiometricAuth();
+    // Remove biometric auth initialization
   }
 
   void _setupAnimations() {
@@ -51,39 +50,7 @@ class _PinEntryScreenState extends State<PinEntryScreen>
     _fadeController.forward();
   }
 
-  Future<void> _checkBiometricCapability() async {
-    final available = await _securityService.isBiometricAvailable();
-    final enabled = await _securityService.isBiometricEnabled();
-    
-    setState(() {
-      _canUseBiometric = available && enabled;
-    });
-  }
-
-  Future<void> _tryBiometricAuth() async {
-    if (!_canUseBiometric) return;
-
-    // Delay to allow screen to render
-    await Future.delayed(const Duration(milliseconds: 800));
-
-    if (mounted) {
-      await _authenticateWithBiometric();
-    }
-  }
-
-  Future<void> _authenticateWithBiometric() async {
-    try {
-      final authenticated = await _securityService.authenticateWithBiometrics(
-        reason: 'Authenticate to access your XF₲ wallet',
-      );
-
-      if (authenticated && mounted) {
-        await _unlockWallet('biometric');
-      }
-    } catch (e) {
-      // Biometric auth failed or cancelled, user can still use PIN
-    }
-  }
+  // Removed biometric authentication methods
 
   Future<void> _onPinComplete(String pin) async {
     setState(() {
@@ -93,7 +60,7 @@ class _PinEntryScreenState extends State<PinEntryScreen>
 
     try {
       final isValid = await _securityService.verifyPIN(pin);
-      
+
       if (isValid) {
         await _unlockWallet(pin);
       } else {
@@ -110,9 +77,7 @@ class _PinEntryScreenState extends State<PinEntryScreen>
   Future<void> _unlockWallet(String credentials) async {
     try {
       final walletProvider = Provider.of<WalletProvider>(context, listen: false);
-      final success = await walletProvider.unlockWallet(
-        credentials == 'biometric' ? '' : credentials,
-      );
+      final success = await walletProvider.unlockWallet(credentials);
 
       if (success && mounted) {
         Navigator.of(context).pushReplacement(
@@ -136,12 +101,14 @@ class _PinEntryScreenState extends State<PinEntryScreen>
     setState(() {
       _failedAttempts++;
       _isLoading = false;
-      
+
       if (_failedAttempts >= maxFailedAttempts) {
         _errorMessage = 'Too many failed attempts. Please restore your wallet.';
       } else {
         final remainingAttempts = maxFailedAttempts - _failedAttempts;
-        _errorMessage = 'Incorrect PIN. $remainingAttempts attempts remaining.';
+        _errorMessage = _isPasswordMode
+            ? 'Incorrect password. Please enter the same password you used during setup. $remainingAttempts attempts remaining.'
+            : 'Incorrect PIN. $remainingAttempts attempts remaining.';
       }
     });
   }
@@ -164,9 +131,11 @@ class _PinEntryScreenState extends State<PinEntryScreen>
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'If you\'ve forgotten your PIN, you\'ll need to reset your wallet using your backup phrase.',
-                style: TextStyle(color: AppTheme.textSecondary),
+              Text(
+                _isPasswordMode
+                    ? 'If you\'ve forgotten your password, you\'ll need to reset your wallet using your backup phrase.'
+                    : 'If you\'ve forgotten your PIN, you\'ll need to reset your wallet using your backup phrase.',
+                style: const TextStyle(color: AppTheme.textSecondary),
               ),
               const SizedBox(height: 16),
               Container(
@@ -227,7 +196,7 @@ class _PinEntryScreenState extends State<PinEntryScreen>
   Future<void> _resetWallet() async {
     try {
       await _securityService.clearWalletData();
-      
+
       if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => const SetupScreen()),
@@ -293,12 +262,26 @@ class _PinEntryScreenState extends State<PinEntryScreen>
                         ),
                       ),
                       const SizedBox(height: 8),
-                      const Text(
-                        'Enter your PIN to unlock your wallet',
-                        style: TextStyle(
+                      Text(
+                        _isPasswordMode
+                            ? 'Enter your password to unlock your wallet'
+                            : 'Enter your PIN to unlock your wallet',
+                        style: const TextStyle(
                           fontSize: 16,
                           color: AppTheme.textSecondary,
                         ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _isPasswordMode
+                            ? 'Enter the same password you used during setup.\nIf you used a 6-digit PIN, click "Use 6-digit PIN instead".'
+                            : 'Enter the same 6-digit PIN you used during setup.\nIf you used a text password, click "Use text password instead".',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: AppTheme.textMuted,
+                          height: 1.3,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
                     ],
                   ),
@@ -325,16 +308,46 @@ class _PinEntryScreenState extends State<PinEntryScreen>
                             ),
                           ],
                         )
-                      else ...[
+                      else if (_isPasswordMode) ...[
+                        _buildPasswordInput(),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            TextButton(
+                              onPressed: () {
+                                setState(() {
+                                  _isPasswordMode = false;
+                                });
+                              },
+                              child: const Text('Use 6-digit PIN instead'),
+                            ),
+                          ],
+                        ),
+                      ] else ...[
                         PinInputWidget(
                           onComplete: _onPinComplete,
                           errorMessage: _errorMessage,
                           showForgotPin: _failedAttempts >= 3,
                           onForgotPin: _onForgotPin,
-                          canUseBiometric: _canUseBiometric,
-                          onBiometric: _authenticateWithBiometric,
+                          canUseBiometric: false, // Disable biometric
+                          onBiometric: null,
                         ),
-                        
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            TextButton(
+                              onPressed: () {
+                                setState(() {
+                                  _isPasswordMode = true;
+                                });
+                              },
+                              child: const Text('Use text password instead'),
+                            ),
+                          ],
+                        ),
+
                         // Failed attempts counter
                         if (_failedAttempts > 0) ...[
                           const SizedBox(height: 16),
@@ -361,7 +374,7 @@ class _PinEntryScreenState extends State<PinEntryScreen>
                     ],
                   ),
                 ),
-                
+
                 // Footer
                 const Padding(
                   padding: EdgeInsets.all(16),
@@ -386,5 +399,118 @@ class _PinEntryScreenState extends State<PinEntryScreen>
   void dispose() {
     _fadeController.dispose();
     super.dispose();
+  }
+
+  // Add password input widget
+  Widget _buildPasswordInput() {
+    final passwordController = TextEditingController();
+
+    return Column(
+      children: [
+        if (_errorMessage != null)
+          Container(
+            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: AppTheme.errorColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: AppTheme.errorColor.withOpacity(0.3),
+              ),
+            ),
+            child: Text(
+              _errorMessage!,
+              style: const TextStyle(
+                color: AppTheme.errorColor,
+                fontSize: 14,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppTheme.cardColor,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            children: [
+              const Text(
+                'Enter Password',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Enter the same password you used during wallet setup.\nIf you used a 6-digit PIN, click "Use 6-digit PIN instead".',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppTheme.textSecondary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: passwordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Password',
+                  border: OutlineInputBorder(),
+                ),
+                onSubmitted: (value) {
+                  if (value.isNotEmpty) {
+                    _onPasswordComplete(value);
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  if (passwordController.text.isNotEmpty) {
+                    _onPasswordComplete(passwordController.text);
+                  }
+                },
+                child: const Text('Unlock Wallet'),
+              ),
+              if (_failedAttempts >= 3)
+                TextButton(
+                  onPressed: _onForgotPin,
+                  child: const Text(
+                    'Forgot Password?',
+                    style: TextStyle(color: AppTheme.errorColor),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _onPasswordComplete(String password) async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final isValid = await _securityService.verifyPIN(password);
+
+      if (isValid) {
+        await _unlockWallet(password);
+      } else {
+        _handleFailedAttempt();
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = _isPasswordMode
+            ? 'Incorrect password. Please enter the same password you used during setup.'
+            : 'Authentication failed. Please try again.';
+        _isLoading = false;
+      });
+    }
   }
 }

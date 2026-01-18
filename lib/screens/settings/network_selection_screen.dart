@@ -1,5 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as path;
 import 'package:provider/provider.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../models/network_config.dart';
 import '../../providers/wallet_provider.dart';
@@ -46,7 +50,7 @@ class _NetworkSelectionScreenState extends State<NetworkSelectionScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            
+
             // Mainnet Option
             _buildNetworkCard(
               config: NetworkConfig.mainnet,
@@ -54,9 +58,9 @@ class _NetworkSelectionScreenState extends State<NetworkSelectionScreen> {
               color: Colors.green,
               description: 'Production network with real XFG tokens',
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Testnet Option
             _buildNetworkCard(
               config: NetworkConfig.testnet,
@@ -64,9 +68,9 @@ class _NetworkSelectionScreenState extends State<NetworkSelectionScreen> {
               color: Colors.orange,
               description: 'Testing network with test tokens',
             ),
-            
+
             const SizedBox(height: 32),
-            
+
             // Network Info Card
             if (_selectedNetwork.isTestnet) ...[
               Container(
@@ -115,7 +119,7 @@ class _NetworkSelectionScreenState extends State<NetworkSelectionScreen> {
               ),
               const SizedBox(height: 16),
             ],
-            
+
             // Connect Button
             ElevatedButton(
               onPressed: _isLoading ? null : _connectToNetwork,
@@ -158,7 +162,7 @@ class _NetworkSelectionScreenState extends State<NetworkSelectionScreen> {
     required String description,
   }) {
     final isSelected = _selectedNetwork == config;
-    
+
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -168,8 +172,8 @@ class _NetworkSelectionScreenState extends State<NetworkSelectionScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected 
-              ? color.withOpacity(0.1) 
+          color: isSelected
+              ? color.withOpacity(0.1)
               : AppTheme.backgroundColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
@@ -252,26 +256,99 @@ class _NetworkSelectionScreenState extends State<NetworkSelectionScreen> {
     try {
       // Get wallet provider
       final walletProvider = Provider.of<WalletProvider>(context, listen: false);
-      
+
+      // Stop any running wallet daemon first
+      await WalletDaemonService.stopWalletd();
+      debugPrint('Stopped existing wallet daemon');
+
       // Update network configuration
-      walletProvider.updateNetworkConfig(_selectedNetwork);
-      
-      // Update wallet daemon service
+      await walletProvider.updateNetworkConfig(_selectedNetwork);
+      debugPrint('Updated wallet provider network config');
+
+      // Reinitialize wallet daemon service with new configuration
+      // Use the first seed node's IP address for the daemon connection
+      String daemonAddress;
+      if (_selectedNetwork.seedNodes.isNotEmpty) {
+        final defaultNode = _selectedNetwork.seedNodes[0];
+        if (defaultNode.contains(':')) {
+          daemonAddress = defaultNode.split(':')[0];
+        } else {
+          daemonAddress = defaultNode;
+        }
+      } else {
+        daemonAddress = _selectedNetwork.defaultSeedNode.contains(':')
+            ? _selectedNetwork.defaultSeedNode.split(':')[0]
+            : _selectedNetwork.defaultSeedNode;
+      }
+
       await WalletDaemonService.initialize(
-        daemonAddress: _selectedNetwork.defaultSeedNode.split(':')[0],
+        daemonAddress: daemonAddress,
         daemonPort: _selectedNetwork.daemonRpcPort,
         networkConfig: _selectedNetwork,
       );
-      
+      debugPrint('Reinitialized wallet daemon service');
+
+      // Try to start wallet daemon with new network configuration
+      // We need to create a temporary wallet since walletd requires a container file
+      final tempDir = await getTemporaryDirectory();
+      final tempWalletPath = path.join(tempDir.path, 'temp_wallet_${DateTime.now().millisecondsSinceEpoch}.wallet');
+
+      // Create a temporary wallet for the new network
+      final walletCreated = await WalletDaemonService.createWallet(
+        walletPath: tempWalletPath,
+        password: 'temp_password', // Temporary password for the temporary wallet
+      );
+
+      if (walletCreated) {
+        // Start wallet daemon with the temporary wallet
+        final walletStarted = await WalletDaemonService.startWalletd(
+          walletPath: tempWalletPath,
+          password: 'temp_password',
+        );
+
+        if (walletStarted) {
+          debugPrint('Wallet daemon started successfully with new network config and temporary wallet');
+          // Add a small delay to ensure the daemon is fully initialized
+          await Future.delayed(const Duration(seconds: 2));
+
+          // Clean up the temporary wallet after a delay
+          Future.delayed(const Duration(seconds: 10), () {
+            try {
+              File(tempWalletPath).delete();
+              debugPrint('Temporary wallet file deleted: $tempWalletPath');
+            } catch (e) {
+              debugPrint('Failed to delete temporary wallet file: $e');
+            }
+          });
+        } else {
+          debugPrint('Failed to start wallet daemon with temporary wallet');
+        }
+      } else {
+        debugPrint('Failed to create temporary wallet for new network config');
+        // Even if we can't create a temporary wallet, we can still update the network config
+        // The user will need to unlock their wallet to get full functionality
+      }
+
+      // Refresh wallet data with new network
+      try {
+        await walletProvider.refreshWallet();
+        debugPrint('Refreshed wallet data after network switch');
+      } catch (e) {
+        debugPrint('Failed to refresh wallet data after network switch: $e');
+        // Continue anyway, as the network config has been updated
+      }
+
       // Show success message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Connected to ${_selectedNetwork.name}'),
+            content: Text(_selectedNetwork.isTestnet
+                ? 'Switched to Testnet. Note: Testnet node may be offline.'
+                : 'Switched to Mainnet'),
             backgroundColor: _selectedNetwork.isTestnet ? Colors.orange : Colors.green,
           ),
         );
-        
+
         // Navigate back or to main screen
         Navigator.of(context).pop();
       }

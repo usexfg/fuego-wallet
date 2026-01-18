@@ -21,7 +21,7 @@ class WalletdService {
 
   // Configuration
   String _walletdHost = '127.0.0.1';
-  int _walletdPort = 8070;
+  int _walletdPort = 18183; // Default to mainnet walletd port
   String? _configPath;
 
   // State tracking
