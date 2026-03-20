@@ -64,7 +64,7 @@ class AppTheme {
         ),
         iconTheme: IconThemeData(color: textPrimary),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: cardColor,
         elevation: 2,
         shape: RoundedRectangleBorder(
@@ -145,7 +145,7 @@ class AppTheme {
         type: BottomNavigationBarType.fixed,
         elevation: 8,
       ),
-      tabBarTheme: const TabBarTheme(
+      tabBarTheme: const TabBarThemeData(
         labelColor: primaryColor,
         unselectedLabelColor: textMuted,
         indicatorColor: primaryColor,
@@ -233,7 +233,7 @@ class AppTheme {
         ),
         iconTheme: IconThemeData(color: Colors.black87),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: Colors.white,
         elevation: 2,
         shape: RoundedRectangleBorder(
@@ -266,7 +266,7 @@ class AppTheme {
     ],
   );
 
-  static const LinearGradient subtleGradient = LinearGradient(
+  static final LinearGradient subtleGradient = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
     colors: [
@@ -336,11 +336,11 @@ class AppTheme {
     ),
   ];
 
-  static const List<BoxShadow> primaryShadow = [
+  static final List<BoxShadow> primaryShadow = [
     BoxShadow(
       color: primaryColor.withOpacity(0.3),
       blurRadius: 12,
-      offset: Offset(0, 4),
+      offset: const Offset(0, 4),
       spreadRadius: 2,
     ),
   ];
