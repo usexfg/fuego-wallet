@@ -49,10 +49,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Start/stop mining with thread configuration
 - Mining rewards tracking and display
 
-##### 🔥 Elderfier Staking Platform
-- Elderfier node registration with 800 XFG minimum stake
+##### 🔥  Staking Platform
+-  node registration with 800 XFG minimum stake
 - My Nodes management with comprehensive monitoring
-- Network overview showing all active Elderfier nodes
+- Network overview showing all active  nodes
 - Consensus participation support (Fast-Pass 2/2, Fall-Back 4/5, Full-Quorum 8/10)
 - Real-time node performance and uptime tracking
 - Stake amount validation and balance checking
@@ -150,7 +150,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Hardware wallet integration support
 - Advanced transaction fee customization
 - Multi-language support and localization
-- Enhanced Elderfier rewards tracking
+- Enhanced  rewards tracking
 - Message attachments and media support
 - Desktop application deployment
 - Advanced mining pool integration

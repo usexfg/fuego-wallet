@@ -74,8 +74,8 @@ Map<String, dynamic> _$SendTransactionRequestToJson(
       'mixins': instance.mixins,
     };
 
-ElderfierNode _$ElderfierNodeFromJson(Map<String, dynamic> json) =>
-    ElderfierNode(
+Node _$NodeFromJson(Map<String, dynamic> json) =>
+    Node(
       nodeId: json['nodeId'] as String,
       customName: json['customName'] as String,
       address: json['address'] as String,
@@ -86,7 +86,7 @@ ElderfierNode _$ElderfierNodeFromJson(Map<String, dynamic> json) =>
       consensusType: json['consensusType'] as String,
     );
 
-Map<String, dynamic> _$ElderfierNodeToJson(ElderfierNode instance) =>
+Map<String, dynamic> _$NodeToJson(Node instance) =>
     <String, dynamic>{
       'nodeId': instance.nodeId,
       'customName': instance.customName,

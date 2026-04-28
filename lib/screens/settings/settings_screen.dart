@@ -359,7 +359,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Text(
                 '• Private transactions with ring signatures\n'
                 '• Encrypted blockchain messaging\n'
-                '• Elderfier node participation\n'
+                '•  node participation\n'
                 '• Built-in mining capabilities\n'
                 '• Advanced security features',
                 style: TextStyle(

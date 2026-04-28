@@ -220,7 +220,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                                     const SizedBox(height: 16),
                                     _buildFeatureItem(
                                       Icons.account_tree,
-                                      'Elderfier Staking',
+                                      ' Staking',
                                       'New consensus nodes for zkSTARK proofs & cross-chain communication',
                                     ),
                                   ],
@@ -368,7 +368,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                               const SizedBox(height: 16),
                               _buildFeatureItem(
                                 Icons.account_tree,
-                                'Elderfier Stayking',
+                                ' Stayking',
                                 'Participate as a verified consensus node completing the "Elderfyre Stayking" ceremony',
                               ),
                             ],

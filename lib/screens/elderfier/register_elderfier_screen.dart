@@ -4,14 +4,14 @@ import 'package:provider/provider.dart';
 import '../../providers/wallet_provider.dart';
 import '../../utils/theme.dart';
 
-class RegisterElderfierScreen extends StatefulWidget {
-  const RegisterElderfierScreen({super.key});
+class RegisterScreen extends StatefulWidget {
+  const RegisterScreen({super.key});
 
   @override
-  State<RegisterElderfierScreen> createState() => _RegisterElderfierScreenState();
+  State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _RegisterElderfierScreenState extends State<RegisterElderfierScreen> {
+class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _stakeController = TextEditingController();
@@ -36,7 +36,7 @@ class _RegisterElderfierScreenState extends State<RegisterElderfierScreen> {
     super.dispose();
   }
 
-  Future<void> _registerElderfier() async {
+  Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
@@ -52,7 +52,7 @@ class _RegisterElderfierScreenState extends State<RegisterElderfierScreen> {
         throw Exception('Wallet address not available');
       }
 
-      final success = await walletProvider.registerElderfierNode(
+      final success = await walletProvider.registerNode(
         customName: _nameController.text.trim(),
         address: walletAddress,
         stakeAmount: _stakeAmount,
@@ -62,7 +62,7 @@ class _RegisterElderfierScreenState extends State<RegisterElderfierScreen> {
         _showSuccessDialog();
       } else {
         setState(() {
-          _errorMessage = walletProvider.error ?? 'Failed to register Elderfier node';
+          _errorMessage = walletProvider.error ?? 'Failed to register  node';
         });
       }
     } catch (e) {
@@ -101,7 +101,7 @@ class _RegisterElderfierScreenState extends State<RegisterElderfierScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Your Elderfier node has been successfully registered on the network.',
+                'Your  node has been successfully registered on the network.',
                 style: TextStyle(color: AppTheme.textSecondary),
               ),
               const SizedBox(height: 16),
@@ -181,7 +181,7 @@ class _RegisterElderfierScreenState extends State<RegisterElderfierScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Register Elderfier Node'),
+        title: const Text('Register  Node'),
         elevation: 0,
         backgroundColor: Colors.transparent,
       ),
@@ -217,7 +217,7 @@ class _RegisterElderfierScreenState extends State<RegisterElderfierScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text(
-                                'Become an Elderfier',
+                                'Become an ',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 20,
@@ -412,7 +412,7 @@ class _RegisterElderfierScreenState extends State<RegisterElderfierScreen> {
                             ),
                             SizedBox(width: 8),
                             Text(
-                              'Elderfier Requirements',
+                              ' Requirements',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
@@ -484,7 +484,7 @@ class _RegisterElderfierScreenState extends State<RegisterElderfierScreen> {
                     child: ElevatedButton(
                       onPressed: _isLoading || !canAffordMinStake 
                           ? null 
-                          : _registerElderfier,
+                          : _register,
                       child: _isLoading
                           ? const SizedBox(
                               height: 20,
@@ -497,7 +497,7 @@ class _RegisterElderfierScreenState extends State<RegisterElderfierScreen> {
                               ),
                             )
                           : const Text(
-                              'Register Elderfier Node',
+                              'Register  Node',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -528,7 +528,7 @@ class _RegisterElderfierScreenState extends State<RegisterElderfierScreen> {
                         SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            'Your staked XFG will be locked for the duration of your Elderfier participation. '
+                            'Your staked XFG will be locked for the duration of your  participation. '
                             'Make sure you can maintain network connectivity for optimal rewards.',
                             style: TextStyle(
                               color: AppTheme.textSecondary,

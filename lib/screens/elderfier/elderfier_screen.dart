@@ -5,14 +5,14 @@ import '../../models/wallet.dart';
 import '../../utils/theme.dart';
 import 'register_elderfier_screen.dart';
 
-class ElderfierScreen extends StatefulWidget {
-  const ElderfierScreen({super.key});
+class Screen extends StatefulWidget {
+  const Screen({super.key});
 
   @override
-  State<ElderfierScreen> createState() => _ElderfierScreenState();
+  State<Screen> createState() => _ScreenState();
 }
 
-class _ElderfierScreenState extends State<ElderfierScreen>
+class _ScreenState extends State<Screen>
     with TickerProviderStateMixin {
   late TabController _tabController;
   bool _isLoading = false;
@@ -21,17 +21,17 @@ class _ElderfierScreenState extends State<ElderfierScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _loadElderfierData();
+    _loadData();
   }
 
-  Future<void> _loadElderfierData() async {
+  Future<void> _loadData() async {
     setState(() {
       _isLoading = true;
     });
 
     try {
       final walletProvider = Provider.of<WalletProvider>(context, listen: false);
-      await walletProvider.refreshElderfierNodes();
+      await walletProvider.refreshNodes();
     } finally {
       if (mounted) {
         setState(() {
@@ -44,7 +44,7 @@ class _ElderfierScreenState extends State<ElderfierScreen>
   void _navigateToRegister() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => const RegisterElderfierScreen(),
+        builder: (context) => const RegisterScreen(),
       ),
     );
   }
@@ -53,7 +53,7 @@ class _ElderfierScreenState extends State<ElderfierScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Elderfier Nodes'),
+        title: const Text(' Nodes'),
         elevation: 0,
         backgroundColor: Colors.transparent,
         bottom: TabBar(
@@ -68,7 +68,7 @@ class _ElderfierScreenState extends State<ElderfierScreen>
         ),
         actions: [
           IconButton(
-            onPressed: _loadElderfierData,
+            onPressed: _loadData,
             icon: Icon(
               Icons.refresh,
               color: _isLoading ? AppTheme.primaryColor : AppTheme.textSecondary,
@@ -113,7 +113,7 @@ class _ElderfierScreenState extends State<ElderfierScreen>
         }
 
         return RefreshIndicator(
-          onRefresh: _loadElderfierData,
+          onRefresh: _loadData,
           color: AppTheme.primaryColor,
           child: ListView.builder(
             padding: const EdgeInsets.all(16),
@@ -145,7 +145,7 @@ class _ElderfierScreenState extends State<ElderfierScreen>
         }
 
         return RefreshIndicator(
-          onRefresh: _loadElderfierData,
+          onRefresh: _loadData,
           color: AppTheme.primaryColor,
           child: Column(
             children: [
@@ -203,7 +203,7 @@ class _ElderfierScreenState extends State<ElderfierScreen>
     );
   }
 
-  Widget _buildMyNodeCard(ElderfierNode node) {
+  Widget _buildMyNodeCard(Node node) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -321,7 +321,7 @@ class _ElderfierScreenState extends State<ElderfierScreen>
     );
   }
 
-  Widget _buildNetworkNodeCard(ElderfierNode node) {
+  Widget _buildNetworkNodeCard(Node node) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
@@ -389,7 +389,7 @@ class _ElderfierScreenState extends State<ElderfierScreen>
             ),
             const SizedBox(height: 16),
             const Text(
-              'No Elderfier Nodes',
+              'No  Nodes',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -398,7 +398,7 @@ class _ElderfierScreenState extends State<ElderfierScreen>
             ),
             const SizedBox(height: 8),
             const Text(
-              'Register your first Elderfier node to start earning rewards and participating in network consensus.',
+              'Register your first  node to start earning rewards and participating in network consensus.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 16,
@@ -410,7 +410,7 @@ class _ElderfierScreenState extends State<ElderfierScreen>
             ElevatedButton.icon(
               onPressed: _navigateToRegister,
               icon: const Icon(Icons.add),
-              label: const Text('Register Elderfier Node'),
+              label: const Text('Register  Node'),
             ),
             const SizedBox(height: 16),
             
@@ -435,7 +435,7 @@ class _ElderfierScreenState extends State<ElderfierScreen>
                       ),
                       SizedBox(width: 8),
                       Text(
-                        'About Elderfier Nodes',
+                        'About  Nodes',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -488,7 +488,7 @@ class _ElderfierScreenState extends State<ElderfierScreen>
             ),
             const SizedBox(height: 8),
             const Text(
-              'Unable to load Elderfier network information. Check your connection and try again.',
+              'Unable to load  network information. Check your connection and try again.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 16,
@@ -498,7 +498,7 @@ class _ElderfierScreenState extends State<ElderfierScreen>
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
-              onPressed: _loadElderfierData,
+              onPressed: _loadData,
               icon: const Icon(Icons.refresh),
               label: const Text('Retry'),
             ),
@@ -564,7 +564,7 @@ class _ElderfierScreenState extends State<ElderfierScreen>
     );
   }
 
-  double _calculateTotalStake(List<ElderfierNode> nodes) {
+  double _calculateTotalStake(List<Node> nodes) {
     return nodes.fold(0.0, (sum, node) => sum + node.stakeAmountXFG);
   }
 

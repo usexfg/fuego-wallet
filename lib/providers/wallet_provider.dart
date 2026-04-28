@@ -14,7 +14,7 @@ class WalletProvider extends ChangeNotifier {
 
   Wallet? _wallet;
   List<WalletTransaction> _transactions = [];
-  List<ElderfierNode> _elderfierNodes = [];
+  List<Node> _elderfierNodes = [];
   bool _isLoading = false;
   bool _isConnected = false;
   bool _isSyncing = false;
@@ -42,7 +42,7 @@ class WalletProvider extends ChangeNotifier {
   // Getters
   Wallet? get wallet => _wallet;
   List<WalletTransaction> get transactions => _transactions;
-  List<ElderfierNode> get elderfierNodes => _elderfierNodes;
+  List<Node> get elderfierNodes => _elderfierNodes;
   bool get isLoading => _isLoading;
   bool get isConnected => _isConnected;
   bool get isSyncing => _isSyncing;
@@ -370,37 +370,37 @@ class WalletProvider extends ChangeNotifier {
     }
   }
 
-  // Elderfier Operations
-  Future<void> refreshElderfierNodes() async {
+  //  Operations
+  Future<void> refreshNodes() async {
     try {
-      final nodes = await _rpcService.getElderfierNodes();
+      final nodes = await _rpcService.getNodes();
       _elderfierNodes = nodes;
       notifyListeners();
     } catch (e) {
-      // Elderfier functionality might not be available
+      //  functionality might not be available
     }
   }
 
-  Future<bool> registerElderfierNode({
+  Future<bool> registerNode({
     required String customName,
     required String address,
     required double stakeAmount,
   }) async {
     try {
       final atomicStake = (stakeAmount * 10000000).round();
-      final success = await _rpcService.registerElderfierNode(
+      final success = await _rpcService.registerNode(
         customName: customName,
         address: address,
         stakeAmount: atomicStake,
       );
 
       if (success) {
-        await refreshElderfierNodes();
+        await refreshNodes();
       }
 
       return success;
     } catch (e) {
-      _setError('Failed to register Elderfier node: $e');
+      _setError('Failed to register  node: $e');
       return false;
     }
   }

@@ -163,7 +163,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     subtitle: 'Mint HEAT',
                     color: AppTheme.errorColor,
                     onPressed: () {
-                      Navigator.pushNamed(context, '/banking');
+                      Navigator.pushNamed(context, '/heat');
                     },
                   ),
                   _buildFeatureCard(
@@ -173,17 +173,17 @@ class _HomeScreenState extends State<HomeScreen> {
                     subtitle: 'Lounge',
                     color: const Color(0xFF4A90E2),
                     onPressed: () {
-                      Navigator.pushNamed(context, '/banking');
+                      Navigator.pushNamed(context, '/cd');
                     },
                   ),
                   _buildFeatureCard(
                     context,
-                    icon: Icons.sync,
-                    title: 'Walletd',
-                    subtitle: _isWalletdReady ? 'Available' : 'Not Found',
-                    color: _isWalletdReady ? AppTheme.successColor : AppTheme.textMuted,
+                    icon: Icons.swap_horiz,
+                    title: 'Atomic Swaps',
+                    subtitle: 'Trade across chains',
+                    color: Colors.orangeAccent,
                     onPressed: () {
-                      Navigator.pushNamed(context, '/banking');
+                      Navigator.pushNamed(context, '/swaps');
                     },
                   ),
                   _buildFeatureCard(
