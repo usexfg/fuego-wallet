@@ -1,0 +1,4 @@
+[submodule "fuego"]
+	path = fuego
+	url = https://github.com/usexfg/fuego-suite.git
+	branch = HEAT
