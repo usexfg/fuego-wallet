@@ -82,3 +82,16 @@ Done. This .gitignore:
 2. **No exclusions** for code_chunks.lance - pre-built embeddings are stored
 3. **Instant context** - other devs download embeddings with the repo
 4. **No rebuild** needed - works even on machines without LLM/embedding capability
+
+# Fuego SDK build artifacts
+fuego-sdk/build/
+fuego-sdk/build-*/
+fuego-sdk/dart/build/
+fuego-sdk/flutter_plugin/build/
+fuego-sdk/sdk-install/
+fuego-sdk/sdk-install-*/
+*.so
+*.dylib
+*.dll
+*.framework
+

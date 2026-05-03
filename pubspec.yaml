@@ -48,6 +48,10 @@ dependencies:
   # FFI for native bindings
   ffi: ^2.1.0
 
+  # Fuego SDK (local path)
+  fuego_sdk:
+    path: fuego-sdk/dart
+
   # UI Components
   animated_text_kit: ^4.2.2
   shimmer: ^3.0.0

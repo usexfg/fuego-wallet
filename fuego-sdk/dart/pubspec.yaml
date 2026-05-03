@@ -1,0 +1,52 @@
+name: fuego_sdk
+description: Fuego Blockchain SDK - Dart FFI bindings for Fuego node, mining, CDs, atomic swaps, HEAT proofs, and aliases.
+version: 1.0.0
+homepage: https://fuego.money
+repository: https://github.com/usexfg/fuego-wallet
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: '>=3.10.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  ffi: ^2.0.0
+  path: ^1.8.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  ffigen: ^9.0.0
+  lints: ^2.0.0
+
+ffigen:
+  name: FuegoSDKBindings
+  description: Fuego SDK FFI bindings
+  output: 'lib/src/fuego_sdk_bindings.dart'
+  headers:
+    entry-points:
+      - '../include/fuego_sdk.h'
+  functions:
+    include:
+      - 'fuego_.*'
+  structs:
+    include:
+      - 'Fuego.*'
+  enums:
+    include:
+      - 'Fuego.*'
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        ffiPlugin: true
+      ios:
+        ffiPlugin: true
+      linux:
+        ffiPlugin: true
+      macos:
+        ffiPlugin: true
+      windows:
+        ffiPlugin: true
