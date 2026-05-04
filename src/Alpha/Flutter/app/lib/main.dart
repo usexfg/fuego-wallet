@@ -42,7 +42,7 @@ void main() async {
         create: (context) => ThemeModeProvider(),
       ),
     ],
-    child: MyApp(),
+    child: const MyApp(),
   ));
   WidgetsFlutterBinding.ensureInitialized();
 }

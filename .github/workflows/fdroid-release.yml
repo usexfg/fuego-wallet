@@ -2,14 +2,14 @@ name: XF₲ Wallet F-Droid Build
 
 on:
   push:
-    branches: [HEATMINT, master]
+    branches: [HEATMINT, master, azorahai]
     paths:
       - "lib/**"
       - "android/**"
       - "pubspec.yaml"
       - ".github/workflows/fdroid-release.yml"
   pull_request:
-    branches: [HEATMINT, master]
+    branches: [HEATMINT, master, azorahai]
     paths:
       - "lib/**"
       - "android/**"
@@ -72,8 +72,8 @@ jobs:
 
       - name: Download xfg-stark-cli
         run: |
-          curl -L -o xfg-stark-cli-linux.tar.gz "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-linux.tar.gz"
-          tar -xzf xfg-stark-cli-linux.tar.gz
+          curl -L -o xfg-stark-linux.tar.gz "https://github.com/usexfg/zk-fire/releases/latest/download/xfg-stark-linux.tar.gz"
+          tar -xzf xfg-stark-linux.tar.gz
           mkdir -p assets/bin
           BINARY_PATH=$(find . -type f -name "xfg-stark-cli*" -perm -111 | head -n1 || true)
           if [ -z "$BINARY_PATH" ]; then
@@ -81,12 +81,17 @@ jobs:
           fi
           if [ -n "$BINARY_PATH" ]; then
             chmod +x "$BINARY_PATH"
-            mv "$BINARY_PATH" assets/bin/xfg-stark-cli-linux
+            mv "$BINARY_PATH" assets/bin/xfg-stark-linux
           else
+            echo "xfg-stark not found" >&2
+            exit 1
+          fi
+          curl -L -o assets/bin/fuego-prover-linux "https://github.com/usexfg/zk-fire/releases/latest/download/fuego-prover-linux"
+          chmod +x assets/bin/fuego-prover-linux
             echo "xfg-stark-cli not found after extraction" >&2
             exit 1
           fi
-          rm xfg-stark-cli-linux.tar.gz
+          rm xfg-stark-linux.tar.gz
 
       - name: Build fuego from source
         run: |

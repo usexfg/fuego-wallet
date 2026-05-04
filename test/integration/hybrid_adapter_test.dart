@@ -167,7 +167,7 @@ void main() {
       );
 
       // Wait a bit for events
-      await Future.delayed(Duration(milliseconds: 100));
+      await Future.delayed(const Duration(milliseconds: 100));
       
       // Event may or may not fire depending on implementation
       expect(eventReceived || true, true);
