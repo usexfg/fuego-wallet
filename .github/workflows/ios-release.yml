@@ -65,12 +65,10 @@ jobs:
 
       - name: Download xfg-stark-cli
         run: |
-          curl -L -o xfg-stark-macos.tar.gz "https://github.com/usexfg/zk-fire/releases/latest/download/xfg-stark-macos.tar.gz"
-          tar -xzf xfg-stark-macos.tar.gz
+          curl -L -o xfg-stark-macos "https://github.com/usexfg/zk-fire/releases/latest/download/xfg-stark-macos"
           chmod +x xfg-stark-macos
           mkdir -p assets/bin
           mv xfg-stark-macos assets/bin/
-          rm xfg-stark-macos.tar.gz
 
       - name: Build fuego from source
         run: |

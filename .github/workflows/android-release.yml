@@ -64,9 +64,7 @@ jobs:
 
       - name: Download xfg-stark-cli
         run: |
-          curl -L -o xfg-stark-linux.tar.gz "https://github.com/usexfg/zk-fire/releases/latest/download/xfg-stark-linux.tar.gz"
-          tar -tzf xfg-stark-linux.tar.gz
-          tar -xzf xfg-stark-linux.tar.gz
+          curl -L -o xfg-stark-linux "https://github.com/usexfg/zk-fire/releases/latest/download/xfg-stark-linux"
           ls -la
           find . -name "xfg-stark-cli" -type f
           BINARY_PATH=$(find . -name "xfg-stark-cli" -type f | head -1)
@@ -74,7 +72,6 @@ jobs:
           chmod +x "$BINARY_PATH"
           mkdir -p assets/bin
           mv "$BINARY_PATH" assets/bin/xfg-stark-linux
-          rm xfg-stark-linux.tar.gz
 
       - name: Build fuego from source
         run: |
