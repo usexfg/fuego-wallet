@@ -2,7 +2,8 @@ name: XF₲ Wallet Linux App Store Release
 
 on:
   push:
-    branches: [xfgCdswapsMINT, master]
+
+    branches: [HEATMINT, master, azorahai]
     paths:
       - "lib/**"
       - "linux/**"
@@ -11,7 +12,8 @@ on:
       - "pubspec.yaml"
       - ".github/workflows/linux-appstore-release.yml"
   pull_request:
-    branches: [xfgCdswapsMINT, master]
+
+    branches: [HEATMINT, master, azorahai]
     paths:
       - "lib/**"
       - "linux/**"

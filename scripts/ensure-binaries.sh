@@ -46,7 +46,7 @@ if [ ! -f "assets/bin/xfg-stark-cli-linux" ]; then
     mv xfg-stark-cli-linux assets/bin/
     print_success "xfg-stark-cli-linux downloaded"
 else
-    print_success "xfg-stark-cli-linux already exists"
+    print_success "xfg-stark-linux already exists"
 fi
 
 # macOS binary
@@ -57,7 +57,7 @@ if [ ! -f "assets/bin/xfg-stark-cli-macos" ]; then
     mv xfg-stark-cli-macos assets/bin/
     print_success "xfg-stark-cli-macos downloaded"
 else
-    print_success "xfg-stark-cli-macos already exists"
+    print_success "xfg-stark-macos already exists"
 fi
 
 # Windows binary
@@ -67,7 +67,7 @@ if [ ! -f "assets/bin/xfg-stark-cli-windows.exe" ]; then
     mv xfg-stark-cli-windows.exe assets/bin/
     print_success "xfg-stark-cli-windows.exe downloaded"
 else
-    print_success "xfg-stark-cli-windows.exe already exists"
+    print_success "xfg-stark-windows.exe already exists"
 fi
 
 # Note: fuego-walletd is now built from source in CI/CD workflows
@@ -79,9 +79,9 @@ print_status "Note: fuego-walletd built from source during CI/CD"
 print_status "Verifying binaries..."
 
 required_binaries=(
-    "assets/bin/xfg-stark-cli-linux"
-    "assets/bin/xfg-stark-cli-macos"
-    "assets/bin/xfg-stark-cli-windows.exe"
+    "assets/bin/xfg-stark-linux"
+    "assets/bin/xfg-stark-macos"
+    "assets/bin/xfg-stark-windows.exe"
     # Note: fuego-walletd built from source in CI/CD workflows
     # Check .github/workflows/ for fuego build process
 )
@@ -122,3 +122,35 @@ for binary in "${required_binaries[@]}"; do
         echo "  $binary: $size"
     fi
 done
+
+# Download fuego-prover binaries
+print_status "Downloading fuego-prover binaries..."
+
+if [ ! -f "assets/bin/fuego-prover-linux" ]; then
+    print_status "Downloading fuego-prover-linux..."
+    curl -L -o fuego-prover-linux "https://github.com/usexfg/zk-fire/releases/latest/download/fuego-prover-linux"
+    chmod +x fuego-prover-linux
+    mv fuego-prover-linux assets/bin/
+    print_success "fuego-prover-linux downloaded"
+else
+    print_success "fuego-prover-linux already exists"
+fi
+
+if [ ! -f "assets/bin/fuego-prover-macos" ]; then
+    print_status "Downloading fuego-prover-macos..."
+    curl -L -o fuego-prover-macos "https://github.com/usexfg/zk-fire/releases/latest/download/fuego-prover-macos"
+    chmod +x fuego-prover-macos
+    mv fuego-prover-macos assets/bin/
+    print_success "fuego-prover-macos downloaded"
+else
+    print_success "fuego-prover-macos already exists"
+fi
+
+if [ ! -f "assets/bin/fuego-prover-windows.exe" ]; then
+    print_status "Downloading fuego-prover-windows.exe..."
+    curl -L -o fuego-prover-windows.exe "https://github.com/usexfg/zk-fire/releases/latest/download/fuego-prover-windows.exe"
+    mv fuego-prover-windows.exe assets/bin/
+    print_success "fuego-prover-windows.exe downloaded"
+else
+    print_success "fuego-prover-windows.exe already exists"
+fi

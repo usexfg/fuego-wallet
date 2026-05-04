@@ -2,7 +2,8 @@ name: Fuego Wallet Desktop Build & Release
 
 on:
   push:
-    branches: [xfgCdswapsMINT, master]
+
+    branches: [HEATMINT, master, azorahai]
     paths:
       - "lib/**"
       - "android/**"
@@ -13,7 +14,8 @@ on:
       - "pubspec.yaml"
       - ".github/workflows/flutter-desktop.yml"
   pull_request:
-    branches: [xfgCdswapsMINT, master]
+
+    branches: [HEATMINT, master, azorahai]
     paths:
       - "lib/**"
       - "android/**"
@@ -51,6 +53,9 @@ jobs:
 
       - name: Set up Rust cache
         uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "native/crypto"
+          workspaces: "native/crypto"
 
       - name: Build Rust crypto library
         run: |
@@ -76,12 +81,16 @@ jobs:
           fi
           if [ -n "$BINARY_PATH" ]; then
             chmod +x "$BINARY_PATH"
-            mv "$BINARY_PATH" assets/bin/xfg-stark-cli-macos
+            mv "$BINARY_PATH" assets/bin/xfg-stark-macos
           else
+            echo "xfg-stark not found" >&2
+            exit 1
+          fi
+          curl -L -o assets/bin/fuego-prover-macos "https://github.com/usexfg/zk-fire/releases/latest/download/fuego-prover-macos"
+          chmod +x assets/bin/fuego-prover-macos
             echo "xfg-stark-cli not found after extraction" >&2
             exit 1
           fi
-          rm xfg-stark-cli-macos.tar.gz
       - name: Build fuego from source
         run: |
           # Clone xfgCdswaps branch
@@ -94,7 +103,7 @@ jobs:
           echo 'set(Boost_USE_MULTITHREADED ON)' >> CMakeLists.txt
           # Install build dependencies - try boost@1.86 first, fall back to boost
           brew install cmake pkg-config zeromq jsoncpp openssl
-          brew install boost@1.86 || brew install boost
+          brew install boost
           # Determine Boost root and version
           export BOOST_ROOT=$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo "/opt/homebrew")
           export BOOST_VERSION=$(brew list --versions boost 2>/dev/null | head -n1 | awk '{print $2}' || echo "unknown")
@@ -148,6 +157,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
+          workspaces: "native/crypto"
           name: fuego-wallet-macos
           path: build/macos/Build/Products/Release/Fuego-Wallet-macOS.zip
           retention-days: 30
@@ -179,6 +189,9 @@ jobs:
 
       - name: Set up Rust cache
         uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "native/crypto"
+          workspaces: "native/crypto"
 
       - name: Build Rust crypto library
         run: |
@@ -203,7 +216,6 @@ jobs:
             Write-Error "xfg-stark-cli executable not found after extraction"
             exit 1
           }
-          Remove-Item xfg-stark-cli-windows.zip
       - name: Setup vcpkg
         run: |
           git clone https://github.com/Microsoft/vcpkg.git C:/vcpkg
@@ -279,6 +291,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
+          workspaces: "native/crypto"
           name: fuego-wallet-windows
           path: Fuego-Wallet-Windows.zip
           retention-days: 30
@@ -310,6 +323,9 @@ jobs:
 
       - name: Set up Rust cache
         uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "native/crypto"
+          workspaces: "native/crypto"
 
       - name: Build Rust crypto library
         run: |
@@ -332,12 +348,16 @@ jobs:
           fi
           if [ -n "$BINARY_PATH" ]; then
             chmod +x "$BINARY_PATH"
-            mv "$BINARY_PATH" assets/bin/xfg-stark-cli-linux
+            mv "$BINARY_PATH" assets/bin/xfg-stark-linux
           else
+            echo "xfg-stark not found" >&2
+            exit 1
+          fi
+          curl -L -o assets/bin/fuego-prover-linux "https://github.com/usexfg/zk-fire/releases/latest/download/fuego-prover-linux"
+          chmod +x assets/bin/fuego-prover-linux
             echo "xfg-stark-cli not found after extraction" >&2
             exit 1
           fi
-          rm xfg-stark-cli-linux.tar.gz
       - name: Build fuego from source
         run: |
           # Clone xfgCdswaps branch
@@ -406,6 +426,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
+          workspaces: "native/crypto"
           name: fuego-wallet-linux-glibc-231
           path: build/linux/x64/release/bundle/fuego-wallet-Linux-GLIBC-2.31.tar.gz
           retention-days: 30
@@ -483,17 +504,24 @@ jobs:
           fi
           if [ -n "$BINARY_PATH" ]; then
             chmod +x "$BINARY_PATH"
-            mv "$BINARY_PATH" assets/bin/xfg-stark-cli-linux
+            mv "$BINARY_PATH" assets/bin/xfg-stark-linux
           else
+            echo "xfg-stark not found" >&2
+            exit 1
+          fi
+          curl -L -o assets/bin/fuego-prover-linux "https://github.com/usexfg/zk-fire/releases/latest/download/fuego-prover-linux"
+          chmod +x assets/bin/fuego-prover-linux
             echo "xfg-stark-cli not found after extraction" >&2
             exit 1
           fi
-          rm xfg-stark-cli-linux.tar.gz
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
       - name: Set up Rust cache
         uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "native/crypto"
+          workspaces: "native/crypto"
 
       - name: Build Rust crypto library
         run: |
@@ -556,6 +584,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
+          workspaces: "native/crypto"
           name: fuego-wallet-linux-latest
           path: build/linux/x64/release/bundle/fuego-wallet-Linux-Latest.tar.gz
           retention-days: 30
@@ -566,3 +595,9 @@ jobs:
         with:
           files: build/linux/x64/release/bundle/fuego-wallet-Linux-Latest.tar.gz
           name: fuego-wallet-Linux-Latest.tar.gz
+      - name: Download fuego-prover
+        run: |
+          curl -L -o fuego-prover-linux "https://github.com/usexfg/zk-fire/releases/latest/download/fuego-prover-linux"
+          chmod +x fuego-prover-linux
+          mkdir -p assets/bin
+          mv fuego-prover-linux assets/bin/

@@ -1,22 +1,13 @@
-import 'dart:convert';
-import 'dart:io';
-import 'dart:ui';
 import 'dart:core';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:uuid/uuid.dart';
 import 'package:app/main.dart';
 import 'package:app/utils/polariscode_util.dart' as util;
 import 'package:app/utils/polaris_code_language.dart';
 import 'package:app/utils/global.dart';
 
 class Home extends StatefulWidget {
-  Home({super.key }){
-    
-
-  }
+  Home({super.key });
 
   
   @override
@@ -51,11 +42,6 @@ class HomeState extends State<Home> with SingleTickerProviderStateMixin {
     
   }
   
-  @override
-  void dispose(){
-    
-    super.dispose();
-  }
 
   void refresh() {
     if (mounted) {
@@ -66,7 +52,7 @@ class HomeState extends State<Home> with SingleTickerProviderStateMixin {
     }
   }
   
-  Function(void Function())? _dialogSetState = null;
+  Function(void Function())? _dialogSetState;
   void closeDrawer(){
     _dialogSetState = null;
   }
@@ -89,9 +75,9 @@ class HomeState extends State<Home> with SingleTickerProviderStateMixin {
       minTextAdapt: true,
       builder: (c, constraints) {
  
-      return Scaffold(
+      return const Scaffold(
           //Body
-          body: Container(
+          body: SizedBox(
             width: double.infinity,
             height: double.infinity,
           ),

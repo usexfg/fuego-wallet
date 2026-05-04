@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../utils/theme.dart';
 
 class CDPage extends StatelessWidget {
-  const CDPage({Key? key}) : super(key: key);
+  const CDPage({super.key});
 
   @override
   Widget build(BuildContext context) {

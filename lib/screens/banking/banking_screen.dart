@@ -1,5 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'heat_burns_screen.dart';
+import 'cd_lounge_screen.dart';
+import 'atomic_swaps_screen.dart';
+import 'aliases_screen.dart';
+
 
 import '../../services/walletd_service.dart';
 import '../../services/web3_cold_service.dart';
@@ -39,7 +44,7 @@ class _BankingScreenState extends State<BankingScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
 
     // Initialize services
     _initializeServices();
@@ -136,7 +141,7 @@ class _BankingScreenState extends State<BankingScreen>
         // Fallback to CLI-based burn proof
         _showInfoDialog(
           'CLI Burn',
-          'Generating burn proof using xfg-stark-cli...\n\n'
+          'Generating burn proof using xfg-stark...\n\n'
           'Amount: $burnAmount XFG\n'
           'Mint: $heatAmount',
         );
@@ -365,20 +370,29 @@ class _BankingScreenState extends State<BankingScreen>
         title: const Text('Banking'),
         bottom: TabBar(
           controller: _tabController,
+          isScrollable: true,
           indicatorColor: AppTheme.primaryColor,
           labelColor: AppTheme.primaryColor,
           unselectedLabelColor: AppTheme.textSecondary,
           tabs: const [
-            Tab(text: 'Ξternal Flame'), // Formerly "Mint HEAT"
-            Tab(text: 'COLD Labs'), // Formerly "COLD Banking"
+            Tab(text: 'Ξternal Flame'),
+            Tab(text: 'COLD Labs'),
+            Tab(text: 'HEAT Burns'),
+            Tab(text: 'CD Lounge'),
+            Tab(text: 'Atomic Swaps'),
+            Tab(text: 'Aliases'),
           ],
         ),
       ),
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildEternalFlameTab(), // Formerly Mint HEAT
-          _buildCOLDTab(), // Formerly COLD Banking
+          _buildEternalFlameTab(),
+          _buildCOLDTab(),
+          const HeatBurnsScreen(),
+          const CDLoungeScreen(),
+          const AtomicSwapsScreen(),
+          const AliasesScreen(),
         ],
       ),
     );

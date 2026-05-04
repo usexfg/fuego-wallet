@@ -69,8 +69,7 @@ jobs:
           tar -xzf xfg-stark-cli-macos.tar.gz
           chmod +x xfg-stark-cli-macos
           mkdir -p assets/bin
-          mv xfg-stark-cli-macos assets/bin/
-          rm xfg-stark-cli-macos.tar.gz
+          mv xfg-stark-macos assets/bin/
 
       - name: Build fuego from source
         run: |
