@@ -1,12 +1,12 @@
 #!/bin/bash
-# Script to build or download fuego-walletd binary from fuego-suite HEAT branch
+# Script to build or download fuego-walletd binary from fuego-suite xfgCdswaps branch
 # Can be called from CI workflows or manually
 
 set -e
 
 MODE="${1:-build}"  # Default to building from source, can be "download" for pre-built
 REPO="usexfg/fuego-suite"
-BRANCH="HEAT"
+BRANCH="xfgCdswaps"
 
 # Determine platform-specific binary name and architecture
 detect_platform() {
@@ -122,7 +122,7 @@ if [ "$MODE" = "build" ]; then
     git clone -b "$BRANCH" "https://github.com/$REPO.git" fuego-source
     cd fuego-source
 
-    # Fix json include path for HEAT branch
+    # Fix json include path for xfgCdswaps branch
     if [ -f "src/CryptoNoteCore/ProofStructures.h" ]; then
         sed -i .bak "s/#include <json/json.h>/#include <jsoncpp/json.h>/g" src/CryptoNoteCore/ProofStructures.h
     fi
