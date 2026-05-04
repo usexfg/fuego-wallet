@@ -123,7 +123,7 @@ print_success "iOS dependencies installed successfully"
 
 # Download xfg-stark-cli for macOS
 print_status "Downloading xfg-stark-cli for macOS..."
-curl -L -o xfg-stark-cli-macos "https://github.com/usexfg/zk-fire/releases/latest/download/xfg-stark-macos"
+curl -L -o xfg-stark-cli-macos "https://github.com/usexfg/zk-fire/releases/download/v0.8.8/xfg-stark-cli-macos"
 chmod +x xfg-stark-cli-macos
 mkdir -p assets/bin
 mv xfg-stark-cli-macos assets/bin/

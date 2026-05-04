@@ -39,33 +39,33 @@ mkdir -p assets/bin
 print_status "Downloading xfg-stark-cli binaries..."
 
 # Linux binary
-if [ ! -f "assets/bin/xfg-stark-linux" ]; then
-    print_status "Downloading xfg-stark-linux..."
-    curl -L -o xfg-stark-linux "https://github.com/usexfg/zk-fire/releases/latest/download/xfg-stark-linux"
-    chmod +x xfg-stark-linux
-    mv xfg-stark-linux assets/bin/
-    print_success "xfg-stark-linux downloaded"
+if [ ! -f "assets/bin/xfg-stark-cli-linux" ]; then
+    print_status "Downloading xfg-stark-cli-linux..."
+    curl -L -o xfg-stark-cli-linux "https://github.com/usexfg/zk-fire/releases/download/v0.8.8/xfg-stark-cli-linux"
+    chmod +x xfg-stark-cli-linux
+    mv xfg-stark-cli-linux assets/bin/
+    print_success "xfg-stark-cli-linux downloaded"
 else
     print_success "xfg-stark-linux already exists"
 fi
 
 # macOS binary
-if [ ! -f "assets/bin/xfg-stark-macos" ]; then
-    print_status "Downloading xfg-stark-macos..."
-    curl -L -o xfg-stark-macos "https://github.com/usexfg/zk-fire/releases/latest/download/xfg-stark-macos"
-    chmod +x xfg-stark-macos
-    mv xfg-stark-macos assets/bin/
-    print_success "xfg-stark-macos downloaded"
+if [ ! -f "assets/bin/xfg-stark-cli-macos" ]; then
+    print_status "Downloading xfg-stark-cli-macos..."
+    curl -L -o xfg-stark-cli-macos "https://github.com/usexfg/zk-fire/releases/download/v0.8.8/xfg-stark-cli-macos"
+    chmod +x xfg-stark-cli-macos
+    mv xfg-stark-cli-macos assets/bin/
+    print_success "xfg-stark-cli-macos downloaded"
 else
     print_success "xfg-stark-macos already exists"
 fi
 
 # Windows binary
-if [ ! -f "assets/bin/xfg-stark-windows.exe" ]; then
-    print_status "Downloading xfg-stark-windows.exe..."
-    curl -L -o xfg-stark-windows.exe "https://github.com/usexfg/zk-fire/releases/latest/download/xfg-stark-windows.exe"
-    mv xfg-stark-windows.exe assets/bin/
-    print_success "xfg-stark-windows.exe downloaded"
+if [ ! -f "assets/bin/xfg-stark-cli-windows.exe" ]; then
+    print_status "Downloading xfg-stark-cli-windows.exe..."
+    curl -L -o xfg-stark-cli-windows.exe "https://github.com/usexfg/zk-fire/releases/download/v0.8.8/xfg-stark-cli-windows.exe"
+    mv xfg-stark-cli-windows.exe assets/bin/
+    print_success "xfg-stark-cli-windows.exe downloaded"
 else
     print_success "xfg-stark-windows.exe already exists"
 fi

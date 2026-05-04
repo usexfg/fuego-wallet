@@ -248,6 +248,7 @@ class WalletProviderHybrid extends ChangeNotifier {
     notifyListeners();
   }
 
+  @visibleForTesting
   void _setError(String? error) {
     _error = error;
     notifyListeners();

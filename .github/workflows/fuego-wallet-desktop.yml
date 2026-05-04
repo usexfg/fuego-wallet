@@ -2,6 +2,7 @@ name: Fuego Wallet Desktop Build & Release
 
 on:
   push:
+
     branches: [HEATMINT, master, azorahai]
     paths:
       - "lib/**"
@@ -13,6 +14,7 @@ on:
       - "pubspec.yaml"
       - ".github/workflows/flutter-desktop.yml"
   pull_request:
+
     branches: [HEATMINT, master, azorahai]
     paths:
       - "lib/**"
@@ -70,7 +72,8 @@ jobs:
 
       - name: Download xfg-stark-cli
         run: |
-          curl -L -o xfg-stark-macos "https://github.com/usexfg/zk-fire/releases/latest/download/xfg-stark-macos"
+          curl -L -o xfg-stark-cli-macos.tar.gz "https://github.com/usexfg/zk-fire/releases/download/v0.8.8/xfg-stark-cli-macos.tar.gz"
+          tar -xzf xfg-stark-cli-macos.tar.gz
           mkdir -p assets/bin
           BINARY_PATH=$(find . -type f -name "xfg-stark-cli*" -perm +111 | head -n1 || true)
           if [ -z "$BINARY_PATH" ]; then
@@ -90,7 +93,7 @@ jobs:
           fi
       - name: Build fuego from source
         run: |
-          # Clone HE4T branch
+          # Clone xfgCdswaps branch
           git clone -b xfgCdswaps https://github.com/usexfg/fuego-suite.git fuego-source-build
           cd fuego-source-build
           # Patch CMakeLists.txt to remove system component and update Boost handling
@@ -203,7 +206,8 @@ jobs:
 
       - name: Download xfg-stark-cli
         run: |
-          curl -L -o xfg-stark-windows.exe "https://github.com/usexfg/zk-fire/releases/latest/download/xfg-stark-windows.exe"
+          curl -L -o xfg-stark-cli-windows.zip "https://github.com/usexfg/zk-fire/releases/download/v0.8.8/xfg-stark-cli-windows.zip"
+          Expand-Archive -Path xfg-stark-cli-windows.zip -DestinationPath .
           New-Item -ItemType Directory -Force -Path assets\bin
           $binary = Get-ChildItem -Filter "xfg-stark-cli*.exe" -Recurse | Select-Object -First 1
           if ($binary) {
@@ -222,10 +226,10 @@ jobs:
           C:/vcpkg/vcpkg.exe install --triplet x64-windows jsoncpp boost-system boost-filesystem boost-thread boost-date-time boost-chrono boost-regex boost-program-options openssl zeromq
       - name: Build fuego from source
         run: |
-          # Clone HE4T branch
+          # Clone xfgCdswaps branch
           git clone -b xfgCdswaps https://github.com/usexfg/fuego-suite.git fuego-source
           cd fuego-source
-          # Fix json include path for HE4T branch to work with vcpkg
+          # Fix json include path for xfgCdswaps branch to work with vcpkg
           if (Test-Path "src/CryptoNoteCore/ProofStructures.h") {
             (Get-Content src/CryptoNoteCore/ProofStructures.h) -replace '#include <json/json.h>', '#include <json/json.h>' | Set-Content src/CryptoNoteCore/ProofStructures.h
           }
@@ -335,7 +339,8 @@ jobs:
           cp native/crypto/target/x86_64-unknown-linux-gnu/release/libfuego_crypto.so assets/bin/libfuego_crypto.so
       - name: Download xfg-stark-cli
         run: |
-          curl -L -o xfg-stark-linux "https://github.com/usexfg/zk-fire/releases/latest/download/xfg-stark-linux"
+          curl -L -o xfg-stark-cli-linux.tar.gz "https://github.com/usexfg/zk-fire/releases/download/v0.8.8/xfg-stark-cli-linux.tar.gz"
+          tar -xzf xfg-stark-cli-linux.tar.gz
           mkdir -p assets/bin
           BINARY_PATH=$(find . -type f -name "xfg-stark-cli*" -perm -111 | head -n1 || true)
           if [ -z "$BINARY_PATH" ]; then
@@ -355,7 +360,7 @@ jobs:
           fi
       - name: Build fuego from source
         run: |
-          # Clone HE4T branch
+          # Clone xfgCdswaps branch
           git clone -b xfgCdswaps https://github.com/usexfg/fuego-suite.git fuego-source-build
           cd fuego-source-build
           # Patch CMakeLists.txt to remove system component and update for newer Boost
@@ -490,7 +495,8 @@ jobs:
 
       - name: Download xfg-stark-cli
         run: |
-          curl -L -o xfg-stark-linux "https://github.com/usexfg/zk-fire/releases/latest/download/xfg-stark-linux"
+          curl -L -o xfg-stark-cli-linux.tar.gz "https://github.com/usexfg/zk-fire/releases/download/v0.8.8/xfg-stark-cli-linux.tar.gz"
+          tar -xzf xfg-stark-cli-linux.tar.gz
           mkdir -p assets/bin
           BINARY_PATH=$(find . -type f -name "xfg-stark-cli*" -perm -111 | head -n1 || true)
           if [ -z "$BINARY_PATH" ]; then
@@ -527,7 +533,7 @@ jobs:
           cp native/crypto/target/x86_64-unknown-linux-gnu/release/libfuego_crypto.so assets/bin/libfuego_crypto.so
       - name: Build fuego from source
         run: |
-          # Clone HE4T branch
+          # Clone xfgCdswaps branch
           git clone -b xfgCdswaps https://github.com/usexfg/fuego-suite.git fuego-source-build
           cd fuego-source-build
           # Patch CMakeLists.txt to remove system component and update for newer Boost

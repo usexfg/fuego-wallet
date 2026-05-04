@@ -1,7 +1,7 @@
 // Unit tests for FuegoRPCService
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:xfg_wallet/services/fuego_rpc_service.dart';
+import 'package:fuego_wallet/services/fuego_rpc_service.dart';
 
 void main() {
   group('FuegoRPCService', () {
