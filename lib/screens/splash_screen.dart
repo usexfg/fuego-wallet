@@ -21,7 +21,7 @@ class _SplashScreenState extends State<SplashScreen>
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
-  bool _isInitializing = true;
+  final bool _isInitializing = true;
   String _initMessage = 'Initializing XF₲ Wallet...';
 
   @override
@@ -194,7 +194,7 @@ class _SplashScreenState extends State<SplashScreen>
                           ),
                           const SizedBox(height: 16),
                           // Subtitle
-                          Text(
+                          const Text(
                             'Privacy Blockchain Banking',
                             style: TextStyle(
                               fontSize: 16,
@@ -239,8 +239,8 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
               ),
               // Footer
-              Padding(
-                padding: const EdgeInsets.all(16),
+              const Padding(
+                padding: EdgeInsets.all(16),
                 child: Column(
                   children: [
                     Text(
@@ -251,7 +251,7 @@ class _SplashScreenState extends State<SplashScreen>
                         fontWeight: FontWeight.w300,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -260,7 +260,7 @@ class _SplashScreenState extends State<SplashScreen>
                           size: 16,
                           color: AppTheme.successColor,
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Text(
                           'Secure • Untraceable • Decentralized',
                           style: TextStyle(

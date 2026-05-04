@@ -2,7 +2,6 @@ import 'dart:ffi' as ffi;
 import 'dart:io';
 
 import 'package:ffi/ffi.dart';
-import 'package:path/path.dart' as path;
 
 import 'fuego_sdk_bindings.dart';
 

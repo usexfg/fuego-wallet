@@ -2,7 +2,6 @@ import 'dart:ffi';
 import 'package:ffi/ffi.dart';
 
 import 'fuego_sdk.dart';
-import 'fuego_sdk_bindings.dart';
 
 /// Node service for managing Fuego node connections
 class NodeService {

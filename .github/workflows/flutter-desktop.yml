@@ -159,10 +159,10 @@ jobs:
 
       - name: Download xfg-stark-cli
         run: |
-          curl -L -o xfg-stark-cli-linux "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-linux"
-          chmod +x xfg-stark-cli-linux
+          curl -L -o xfg-stark-linux "https://github.com/usexfg/zk-fire/releases/latest/download/xfg-stark-linux"
+          chmod +x xfg-stark-linux
           mkdir -p assets/bin
-          mv xfg-stark-cli-linux assets/bin/
+          mv xfg-stark-linux assets/bin/
 
       - name: Build fuego from source
         run: |
@@ -258,10 +258,10 @@ jobs:
 
       - name: Download xfg-stark-cli
         run: |
-          curl -L -o xfg-stark-cli-linux "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-linux"
-          chmod +x xfg-stark-cli-linux
+          curl -L -o xfg-stark-linux "https://github.com/usexfg/zk-fire/releases/latest/download/xfg-stark-linux"
+          chmod +x xfg-stark-linux
           mkdir -p assets/bin
-          mv xfg-stark-cli-linux assets/bin/
+          mv xfg-stark-linux assets/bin/
 
       - name: Build fuego from source
         run: |

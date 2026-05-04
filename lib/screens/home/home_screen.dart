@@ -68,10 +68,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<String> _getCliBinaryPath() async {
     final Directory appDir = await getApplicationSupportDirectory();
     final String binaryName = Platform.isWindows
-        ? 'xfg-stark-cli.exe'
+        ? 'xfg-stark-windows.exe'
         : Platform.isMacOS
-            ? 'xfg-stark-cli-macos'
-            : 'xfg-stark-cli-linux';
+            ? 'xfg-stark-macos'
+            : 'xfg-stark-linux';
     return path.join(appDir.path, 'bin', binaryName);
   }
 

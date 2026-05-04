@@ -24,7 +24,7 @@ abstract class MyExpansionIndicator extends ExpansionIndicator {
 
 abstract class MyExpansionIndicatorState<T extends MyExpansionIndicator>
     extends State<T> with TickerProviderStateMixin {
-  Duration animationDuration = Duration(milliseconds: 300);
+  Duration animationDuration = const Duration(milliseconds: 300);
   late final AnimationController _controller = AnimationController(
     duration: animationDuration,
     vsync: this,
@@ -40,10 +40,11 @@ abstract class MyExpansionIndicatorState<T extends MyExpansionIndicator>
   void _onExpandedChangeListener() {
     if (!mounted) return;
 
-    if (widget.tree.isExpanded)
+    if (widget.tree.isExpanded) {
       _controller.animateTo(1, curve: widget.curve);
-    else
+    } else {
       _controller.animateBack(0, curve: widget.curve);
+    }
   }
 
   @override

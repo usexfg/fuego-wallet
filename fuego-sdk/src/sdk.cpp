@@ -262,7 +262,7 @@ FUEGO_API FuegoError fuego_swap_extract_secret(const char* swap_id, const uint8_
 FUEGO_API FuegoError fuego_heat_generate_proof(uint32_t block_start, uint32_t block_end, const char* wallet_file, const char* wallet_password, FuegoHEATProof* proof) {
     if (!g_initialized || !wallet_file || !wallet_password || !proof) return FUEGO_ERROR_INVALID_PARAM;
     try {
-        return fuego::HEATProver::generateProof(block_start, block_end, wallet_file, wallet_password, proof);
+        return fuego::HEATProver::generateProof("http://127.0.0.1:18181", "", block_start, block_end, wallet_file, wallet_password, proof);
     } catch (...) {
         return FUEGO_ERROR_HEAT;
     }

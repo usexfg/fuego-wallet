@@ -7,7 +7,6 @@
 
 import 'dart:ffi';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:ffi/ffi.dart';
 import 'package:flutter/foundation.dart';
 
@@ -18,48 +17,48 @@ class NativeCrypto {
   static bool _initialized = false;
 
   // FFI function signatures
-  static late final _GenerateKeys = _lib.lookupFunction<
+  static final _GenerateKeys = _lib.lookupFunction<
       Int32 Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>),
       int Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>)>('fuego_generate_keys');
 
-  static late final _PrivateToPublic = _lib.lookupFunction<
+  static final _PrivateToPublic = _lib.lookupFunction<
       Int32 Function(Pointer<Uint8>, Pointer<Uint8>),
       int Function(Pointer<Uint8>, Pointer<Uint8>)>('fuego_private_to_public');
 
-  static late final _GenerateAddress = _lib.lookupFunction<
+  static final _GenerateAddress = _lib.lookupFunction<
       Int32 Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>, Pointer<Int8>, Size),
       int Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>, Pointer<Int8>, int)>('fuego_generate_address');
 
-  static late final _ValidateAddress = _lib.lookupFunction<
+  static final _ValidateAddress = _lib.lookupFunction<
       Int32 Function(Pointer<Uint8>),
       int Function(Pointer<Uint8>)>('fuego_validate_address');
 
-  static late final _KeyToMnemonic = _lib.lookupFunction<
+  static final _KeyToMnemonic = _lib.lookupFunction<
       Int32 Function(Pointer<Uint8>, Pointer<Int8>, Size),
       int Function(Pointer<Uint8>, Pointer<Int8>, int)>('fuego_key_to_mnemonic');
 
-  static late final _MnemonicToKey = _lib.lookupFunction<
+  static final _MnemonicToKey = _lib.lookupFunction<
       Int32 Function(Pointer<Uint8>, Pointer<Uint8>),
       int Function(Pointer<Uint8>, Pointer<Uint8>)>('fuego_mnemonic_to_key');
 
-  static late final _ValidateMnemonic = _lib.lookupFunction<
+  static final _ValidateMnemonic = _lib.lookupFunction<
       Int32 Function(Pointer<Uint8>),
       int Function(Pointer<Uint8>)>('fuego_validate_mnemonic');
 
   // Add function signatures
-  static late final _Hash = _lib.lookupFunction<
+  static final _Hash = _lib.lookupFunction<
       Int32 Function(Pointer<Uint8>, Size, Pointer<Uint8>),
       int Function(Pointer<Uint8>, int, Pointer<Uint8>)>('fuego_hash');
 
-  static late final _Sign = _lib.lookupFunction<
+  static final _Sign = _lib.lookupFunction<
       Int32 Function(Pointer<Uint8>, Pointer<Uint8>, Size, Pointer<Uint8>),
       int Function(Pointer<Uint8>, Pointer<Uint8>, int, Pointer<Uint8>)>('fuego_sign');
 
-  static late final _VerifySignature = _lib.lookupFunction<
+  static final _VerifySignature = _lib.lookupFunction<
       Int32 Function(Pointer<Uint8>, Pointer<Uint8>, Size, Pointer<Uint8>),
       int Function(Pointer<Uint8>, Pointer<Uint8>, int, Pointer<Uint8>)>('fuego_verify_signature');
 
-  static late final _GenerateKeyImage = _lib.lookupFunction<
+  static final _GenerateKeyImage = _lib.lookupFunction<
       Int32 Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>),
       int Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>)>('fuego_generate_key_image');
 

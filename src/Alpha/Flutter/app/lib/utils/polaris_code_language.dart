@@ -12,7 +12,7 @@ class PolarisCodeLanguage {
   
   static bool suppoertedLanguage(String code) {
     for (Locale locale in suppoertedLocales) {
-      if (locale.languageCode + "-" + (locale.countryCode ?? "") == code) {
+      if ("${locale.languageCode}-${locale.countryCode ?? ""}" == code) {
         return true;
       }
     }
@@ -26,7 +26,7 @@ class PolarisCodeLanguage {
       }
     }
     if(suppoertedLocales.isEmpty){
-      return Locale("en", "US");
+      return const Locale("en", "US");
     }else{
       return suppoertedLocales.first;
     }
@@ -36,8 +36,8 @@ class PolarisCodeLanguage {
   };
 
   String convert(String key) {
-    if (_localizedValues.containsKey(locale.languageCode+"-"+(locale.countryCode??"")) && _localizedValues[locale.languageCode+"-"+(locale.countryCode??"")]!.containsKey(key)) {
-      return _localizedValues[locale.languageCode+"-"+(locale.countryCode??"")]![key]!;
+    if (_localizedValues.containsKey("${locale.languageCode}-${locale.countryCode??""}") && _localizedValues["${locale.languageCode}-${locale.countryCode??""}"]!.containsKey(key)) {
+      return _localizedValues["${locale.languageCode}-${locale.countryCode??""}"]![key]!;
     } else {
       return key;
     }
@@ -49,7 +49,7 @@ class PolarisCodeLanguage {
     if (pcl != null) {
       return pcl;
     } else {
-      Locale locale = Locale("en", "US");
+      Locale locale = const Locale("en", "US");
       return PolarisCodeLanguage(locale);
     }
   }
@@ -61,7 +61,7 @@ class PolarisCodeLanguageDelegate
   const PolarisCodeLanguageDelegate();
   @override
   bool isSupported(Locale locale) {
-    return [].contains(locale.languageCode + "-" + (locale.countryCode ?? ""));
+    return [].contains("${locale.languageCode}-${locale.countryCode ?? ""}");
   }
 
   @override

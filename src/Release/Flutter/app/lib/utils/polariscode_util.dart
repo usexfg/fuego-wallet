@@ -32,12 +32,12 @@ bool isTablet(BuildContext context) {
 ThemeMode themeMode = ThemeMode.light;
 
 ThemeData lightThemeData = ThemeData(
-  colorSchemeSeed: Color.fromARGB(255,58,70,81),
+  colorSchemeSeed: const Color.fromARGB(255,58,70,81),
   useMaterial3: true,
   brightness: Brightness.light,
 
 
-  textTheme: TextTheme(
+  textTheme: const TextTheme(
     displayLarge: TextStyle(
       fontSize: 57.0,
       fontWeight: FontWeight.w400,
@@ -162,12 +162,12 @@ ThemeData lightThemeData = ThemeData(
 );
 
 ThemeData darkThemeData = ThemeData(
-  colorSchemeSeed: Color.fromARGB(255,58,70,81),
+  colorSchemeSeed: const Color.fromARGB(255,58,70,81),
   useMaterial3: true,
   brightness: Brightness.dark,
 
 
-  textTheme: TextTheme(
+  textTheme: const TextTheme(
     displayLarge: TextStyle(
       fontSize: 57.0,
       fontWeight: FontWeight.w400,
