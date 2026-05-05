@@ -31,6 +31,9 @@ on:
     permissions:
       contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build-macos:
     name: Build Fuego Wallet (macOS)

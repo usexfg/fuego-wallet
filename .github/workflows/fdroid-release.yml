@@ -23,6 +23,7 @@ on:
       contents: write
 
 env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   FLUTTER_VERSION: "3.24.0"
 
 jobs:
@@ -51,6 +52,19 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android, armv7-linux-androideabi, i686-linux-android, x86_64-linux-android
+
+      - name: Install NDK
+        uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r25b
+          add-to-path: false
+
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk
+
 
       - name: Set up Rust cache
         uses: swatinem/rust-cache@v2
@@ -60,10 +74,10 @@ jobs:
       - name: Build Rust crypto library
         run: |
           cd native/crypto
-          cargo build --release --target aarch64-linux-android
-          cargo build --release --target armv7-linux-androideabi
-          cargo build --release --target i686-linux-android
-          cargo build --release --target x86_64-linux-android
+          cargo ndk -t aarch64-linux-android -o ../../assets/bin build --release
+          cargo ndk -t armv7-linux-androideabi -o ../../assets/bin build --release
+          cargo ndk -t i686-linux-android -o ../../assets/bin build --release
+          cargo ndk -t x86_64-linux-android -o ../../assets/bin build --release
 
       - name: Copy Rust libraries to assets
         run: |
