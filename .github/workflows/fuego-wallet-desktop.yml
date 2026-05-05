@@ -31,6 +31,9 @@ on:
     permissions:
       contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build-macos:
     name: Build Fuego Wallet (macOS)
@@ -54,7 +57,6 @@ jobs:
       - name: Set up Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: "native/crypto"
           workspaces: "native/crypto"
 
       - name: Build Rust crypto library
@@ -88,9 +90,6 @@ jobs:
           fi
           curl -L -o assets/bin/fuego-prover-macos "https://github.com/usexfg/zk-fire/releases/latest/download/fuego-prover-macos"
           chmod +x assets/bin/fuego-prover-macos
-            echo "xfg-stark-cli not found after extraction" >&2
-            exit 1
-          fi
       - name: Build fuego from source
         run: |
           # Clone xfgCdswaps branch
@@ -190,7 +189,6 @@ jobs:
       - name: Set up Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: "native/crypto"
           workspaces: "native/crypto"
 
       - name: Build Rust crypto library
@@ -325,7 +323,6 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: "native/crypto"
-          workspaces: "native/crypto"
 
       - name: Build Rust crypto library
         run: |
@@ -355,9 +352,6 @@ jobs:
           fi
           curl -L -o assets/bin/fuego-prover-linux "https://github.com/usexfg/zk-fire/releases/latest/download/fuego-prover-linux"
           chmod +x assets/bin/fuego-prover-linux
-            echo "xfg-stark-cli not found after extraction" >&2
-            exit 1
-          fi
       - name: Build fuego from source
         run: |
           # Clone xfgCdswaps branch
@@ -511,16 +505,12 @@ jobs:
           fi
           curl -L -o assets/bin/fuego-prover-linux "https://github.com/usexfg/zk-fire/releases/latest/download/fuego-prover-linux"
           chmod +x assets/bin/fuego-prover-linux
-            echo "xfg-stark-cli not found after extraction" >&2
-            exit 1
-          fi
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
       - name: Set up Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: "native/crypto"
           workspaces: "native/crypto"
 
       - name: Build Rust crypto library
