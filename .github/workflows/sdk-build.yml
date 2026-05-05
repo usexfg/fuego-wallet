@@ -41,13 +41,7 @@ jobs:
         run: |
           cd fuego-sdk
           mkdir build && cd build
-          cmake .. -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/sdk-install
-            -DBoost_NO_BOOST_CMAKE=ON \
-            -DBOOST_ROOT="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')" \
-            -DBoost_DIR="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')/lib/cmake/Boost-*" \
-            -DBoost_NO_BOOST_CMAKE=ON \
-            -DBOOST_ROOT="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')" \
-            -DBoost_DIR="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')/lib/cmake/Boost-*" \
+          cmake .. -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/sdk-install \
             -DBoost_NO_BOOST_CMAKE=ON \
             -DBOOST_ROOT="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')" \
             -DBoost_DIR="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')/lib/cmake/Boost-*" \
@@ -90,12 +84,6 @@ jobs:
             -DBoost_NO_BOOST_CMAKE=ON \
             -DBOOST_ROOT="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')" \
             -DBoost_DIR="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')/lib/cmake/Boost-*" \
-            -DBoost_NO_BOOST_CMAKE=ON \
-            -DBOOST_ROOT="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')" \
-            -DBoost_DIR="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')/lib/cmake/Boost-*" \
-            -DBoost_NO_BOOST_CMAKE=ON \
-            -DBOOST_ROOT="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')" \
-            -DBoost_DIR="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')/lib/cmake/Boost-*" \
             -DCMAKE_PREFIX_PATH=$(brew --prefix qt@5)
 
       - name: Build
@@ -135,15 +123,7 @@ jobs:
             -A x64 `
             -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} `
             -DCMAKE_INSTALL_PREFIX=${{github.workspace}}\sdk-install `
-            -DBoost_NO_BOOST_CMAKE=ON \
-            -DBOOST_ROOT="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')" \
-            -DBoost_DIR="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')/lib/cmake/Boost-*" \
-            -DBoost_NO_BOOST_CMAKE=ON \
-            -DBOOST_ROOT="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')" \
-            -DBoost_DIR="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')/lib/cmake/Boost-*" \
-            -DBoost_NO_BOOST_CMAKE=ON \
-            -DBOOST_ROOT="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')" \
-            -DBoost_DIR="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')/lib/cmake/Boost-*" \
+            -DBoost_NO_BOOST_CMAKE=ON `
             -DBOOST_ROOT="C:/local/boost" `
             -DCMAKE_PREFIX_PATH="C:/Qt/5.15.2/msvc2019_64"
 
@@ -198,13 +178,7 @@ jobs:
             -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
             -DANDROID_ABI=arm64-v8a \
             -DANDROID_NATIVE_API_LEVEL=24 \
-            -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/sdk-install-android
-            -DBoost_NO_BOOST_CMAKE=ON \
-            -DBOOST_ROOT="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')" \
-            -DBoost_DIR="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')/lib/cmake/Boost-*" \
-            -DBoost_NO_BOOST_CMAKE=ON \
-            -DBOOST_ROOT="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')" \
-            -DBoost_DIR="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')/lib/cmake/Boost-*" \
+            -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/sdk-install-android \
             -DBoost_NO_BOOST_CMAKE=ON \
             -DBOOST_ROOT="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')" \
             -DBoost_DIR="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')/lib/cmake/Boost-*" \
@@ -246,13 +220,7 @@ jobs:
             -DCMAKE_SYSTEM_NAME=iOS \
             -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
             -DCMAKE_OSX_ARCHITECTURES=arm64 \
-            -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/sdk-install-ios
-            -DBoost_NO_BOOST_CMAKE=ON \
-            -DBOOST_ROOT="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')" \
-            -DBoost_DIR="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')/lib/cmake/Boost-*" \
-            -DBoost_NO_BOOST_CMAKE=ON \
-            -DBOOST_ROOT="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')" \
-            -DBoost_DIR="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')/lib/cmake/Boost-*" \
+            -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/sdk-install-ios \
             -DBoost_NO_BOOST_CMAKE=ON \
             -DBOOST_ROOT="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')" \
             -DBoost_DIR="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')/lib/cmake/Boost-*" \

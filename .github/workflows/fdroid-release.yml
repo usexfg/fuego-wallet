@@ -56,7 +56,6 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: "native/crypto"
-          workspaces: "native/crypto"
 
       - name: Build Rust crypto library
         run: |
@@ -92,9 +91,6 @@ jobs:
           fi
           curl -L -o assets/bin/fuego-prover-linux "https://github.com/usexfg/zk-fire/releases/latest/download/fuego-prover-linux"
           chmod +x assets/bin/fuego-prover-linux
-            echo "xfg-stark-cli not found after extraction" >&2
-            exit 1
-          fi
 
       - name: Build fuego from source
         run: |
