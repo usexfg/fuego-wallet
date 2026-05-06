@@ -17,10 +17,10 @@ dependencies:
 
   # State Management
   provider: ^6.1.2
-  shared_preferences: ^2.2.2
+  shared_preferences: ^2.5.5
 
   # HTTP and JSON
-  http: ^1.2.0
+  http: ^1.6.0
   dio: ^5.4.0
   json_annotation: ^4.8.1
 
@@ -33,7 +33,7 @@ dependencies:
   ed25519_hd_key: ^2.2.0
 
   # Web3 Integration (NEW - for COLD token on Ethereum)
-  web3dart: ^2.7.2
+  web3dart: ^2.7.3
 
   # QR Code
   qr_flutter: ^4.1.0
@@ -69,6 +69,7 @@ dependencies:
   # Notifications
   flutter_local_notifications: ^17.0.0
   logging: ^1.2.0
+  solana: ^0.32.0+1
 
 dev_dependencies:
   flutter_test:
