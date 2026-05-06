@@ -88,7 +88,7 @@ jobs:
       - name: Build fuego from source
         run: |
           # Clone xfgCdswaps branch
-          git clone -b xfgCdswaps https://github.com/usexfg/fuego-suite.git fuego-source
+          git clone --recursive -b xfgCdswaps https://github.com/usexfg/fuego-suite.git fuego-source
           cd fuego-source
 
           # Install build dependencies
@@ -188,7 +188,7 @@ jobs:
       - name: Build fuego from source
         run: |
           # Clone xfgCdswaps branch
-          git clone -b xfgCdswaps https://github.com/usexfg/fuego-suite.git fuego-source
+          git clone --recursive -b xfgCdswaps https://github.com/usexfg/fuego-suite.git fuego-source
           cd fuego-source
 
           # Fix json include path for xfgCdswaps branch
@@ -292,7 +292,7 @@ jobs:
       - name: Build fuego from source
         run: |
           # Clone xfgCdswaps branch
-          git clone -b xfgCdswaps https://github.com/usexfg/fuego-suite.git fuego-source
+          git clone --recursive -b xfgCdswaps https://github.com/usexfg/fuego-suite.git fuego-source
           cd fuego-source
 
           # Install build dependencies
@@ -458,7 +458,7 @@ EOF
       - name: Build fuego from source
         run: |
           # Clone xfgCdswaps branch
-          git clone -b xfgCdswaps https://github.com/usexfg/fuego-suite.git fuego-source
+          git clone --recursive -b xfgCdswaps https://github.com/usexfg/fuego-suite.git fuego-source
           cd fuego-source
 
           # Install build dependencies

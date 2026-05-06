@@ -65,22 +65,14 @@ jobs:
 
       - name: Download xfg-stark-cli
         run: |
-          curl -L -o xfg-stark-cli-linux.tar.gz "https://github.com/usexfg/zk-fire/releases/download/v0.8.8/xfg-stark-cli-linux.tar.gz"
-          tar -tzf xfg-stark-cli-linux.tar.gz
-          tar -xzf xfg-stark-cli-linux.tar.gz
-
-          ls -la
-          find . -name "xfg-stark-cli" -type f
-          BINARY_PATH=$(find . -name "xfg-stark-cli" -type f | head -1)
-          echo "Found binary at: $BINARY_PATH"
-          chmod +x "$BINARY_PATH"
           mkdir -p assets/bin
-          mv "$BINARY_PATH" assets/bin/xfg-stark-linux
+          curl -L -o assets/bin/xfg-stark-linux "https://github.com/usexfg/zk-fire/releases/download/v0.8.8/xfg-stark-cli-linux"
+          chmod +x assets/bin/xfg-stark-linux
 
       - name: Build fuego from source
         run: |
           # Clone xfgCdswaps branch
-          git clone -b xfgCdswaps https://github.com/usexfg/fuego-suite.git fuego-source
+          git clone --recursive -b xfgCdswaps https://github.com/usexfg/fuego-suite.git fuego-source
           cd fuego-source
 
           # Install build dependencies
@@ -89,7 +81,7 @@ jobs:
 
           # Patch ProofStructures.h to use jsoncpp/json.h (xfgCdswaps branch fix)
           if [ -f "src/CryptoNoteCore/ProofStructures.h" ]; then
-            sed -i 's/#include <json\/json.h>/#include <jsoncpp\/json.h>/g' src/CryptoNoteCore/ProofStructures.h
+            perl -i.bak -pe 's|#include <json/json.h>|#include <jsoncpp/json.h>|g' src/CryptoNoteCore/ProofStructures.h
             echo "Patched ProofStructures.h uses jsoncpp/json.h"
           fi
 
