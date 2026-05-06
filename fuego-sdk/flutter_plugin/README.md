@@ -5,7 +5,7 @@ This Flutter plugin provides bindings to the Fuego SDK native libraries for:
 - Mining
 - Certificates of Deposit (CD)
 - Atomic swaps
-- HEAT/zk-SNARK proofs
+- HEAT/zkSNARK/xfg-stark proofs
 - Alias registration
 
 ## Installation
@@ -35,7 +35,7 @@ await plugin.initialize(
 await plugin.node.start(mode: FuegoNodeMode.embedded);
 
 // Start mining
-await plugin.mining.start(walletAddress: 'xfg...');
+await plugin.mining.start(walletAddress: 'fire8f...');
 
 // Create CD
 final cd = await plugin.cd.create(
