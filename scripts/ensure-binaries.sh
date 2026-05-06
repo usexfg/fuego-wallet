@@ -41,7 +41,7 @@ print_status "Downloading xfg-stark-cli binaries..."
 # Linux binary
 if [ ! -f "assets/bin/xfg-stark-cli-linux" ]; then
     print_status "Downloading xfg-stark-cli-linux..."
-    curl -L -o xfg-stark-cli-linux "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-linux"
+    curl -L -o xfg-stark-cli-linux "https://github.com/usexfg/zk-fire/releases/download/v0.8.8/xfg-stark-cli-linux"
     chmod +x xfg-stark-cli-linux
     mv xfg-stark-cli-linux assets/bin/
     print_success "xfg-stark-cli-linux downloaded"
@@ -52,7 +52,7 @@ fi
 # macOS binary
 if [ ! -f "assets/bin/xfg-stark-cli-macos" ]; then
     print_status "Downloading xfg-stark-cli-macos..."
-    curl -L -o xfg-stark-cli-macos "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-macos"
+    curl -L -o xfg-stark-cli-macos "https://github.com/usexfg/zk-fire/releases/download/v0.8.8/xfg-stark-cli-macos"
     chmod +x xfg-stark-cli-macos
     mv xfg-stark-cli-macos assets/bin/
     print_success "xfg-stark-cli-macos downloaded"
@@ -63,7 +63,7 @@ fi
 # Windows binary
 if [ ! -f "assets/bin/xfg-stark-cli-windows.exe" ]; then
     print_status "Downloading xfg-stark-cli-windows.exe..."
-    curl -L -o xfg-stark-cli-windows.exe "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-windows.exe"
+    curl -L -o xfg-stark-cli-windows.exe "https://github.com/usexfg/zk-fire/releases/download/v0.8.8/xfg-stark-cli-windows.exe"
     mv xfg-stark-cli-windows.exe assets/bin/
     print_success "xfg-stark-cli-windows.exe downloaded"
 else

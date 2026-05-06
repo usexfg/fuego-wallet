@@ -1,15 +1,17 @@
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 name: XF₲ Wallet iOS Build & Release
 
 on:
   push:
-    branches: [HEATMINT, master, azorahai]
+    branches: [azorahai, master]
     paths:
       - "lib/**"
       - "ios/**"
       - "pubspec.yaml"
       - ".github/workflows/ios-release.yml"
   pull_request:
-    branches: [HEATMINT, master, azorahai]
+    branches: [azorahai, master]
     paths:
       - "lib/**"
       - "ios/**"
@@ -65,7 +67,7 @@ jobs:
 
       - name: Download xfg-stark-cli
         run: |
-          curl -L -o xfg-stark-cli-macos.tar.gz "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-macos.tar.gz"
+          curl -L -o xfg-stark-cli-macos.tar.gz "https://github.com/usexfg/zk-fire/releases/download/v0.8.8/xfg-stark-cli-macos.tar.gz"
           tar -xzf xfg-stark-cli-macos.tar.gz
           chmod +x xfg-stark-cli-macos
           mkdir -p assets/bin
@@ -74,14 +76,14 @@ jobs:
 
       - name: Build fuego from source
         run: |
-          # Clone HEAT branch
-          git clone -b HEAT https://github.com/usexfg/fuego-suite.git fuego-source
+          # Clone xfgCdswaps branch
+          git clone -b xfgCdswaps https://github.com/usexfg/fuego-suite.git fuego-source
           cd fuego-source
 
           # Install build dependencies
           brew install cmake pkg-config boost openssl zeromq jsoncpp
 
-          # Fix json include path for HEAT branch
+          # Fix json include path for xfgCdswaps branch
           sed -i .bak "s/#include <json/json.h>/#include <jsoncpp/json.h>/g" src/CryptoNoteCore/ProofStructures.h
           cat src/CryptoNoteCore/ProofStructures.h | grep json
 

@@ -2,14 +2,14 @@ name: XF₲ Wallet Android Build & Release
 
 on:
   push:
-    branches: [HEATMINT, master, azorahai]
+    branches: [azorahai, master]
     paths:
       - "lib/**"
       - "android/**"
       - "pubspec.yaml"
       - ".github/workflows/android-release.yml"
   pull_request:
-    branches: [HEATMINT, master, azorahai]
+    branches: [azorahai, master]
     paths:
       - "lib/**"
       - "android/**"
@@ -64,8 +64,7 @@ jobs:
 
       - name: Download xfg-stark-cli
         run: |
-          curl -L -o xfg-stark-cli-linux.tar.gz "https://github.com/ColinRitman/xfgwin/releases/download/v0.8.8/xfg-stark-cli-linux.tar.gz"
-          tar -tzf xfg-stark-cli-linux.tar.gz
+          curl -L -o xfg-stark-cli-linux.tar.gz "https://github.com/usexfg/zk-fire/releases/download/v0.8.8/xfg-stark-cli-linux.tar.gz"
           tar -xzf xfg-stark-cli-linux.tar.gz
           ls -la
           find . -name "xfg-stark-cli" -type f
@@ -78,15 +77,15 @@ jobs:
 
       - name: Build fuego from source
         run: |
-          # Clone HEAT branch
-          git clone -b HEAT https://github.com/usexfg/fuego-suite.git fuego-source
+          # Clone xfgCdswaps branch
+          git clone -b xfgCdswaps https://github.com/usexfg/fuego-suite.git fuego-source
           cd fuego-source
 
           # Install build dependencies
           sudo apt-get update
           sudo apt-get install -y build-essential git cmake libboost-all-dev libjsoncpp-dev libssl-dev libzmq3-dev
 
-          # Patch ProofStructures.h to use jsoncpp/json.h (HEAT branch fix)
+          # Patch ProofStructures.h to use jsoncpp/json.h (xfgCdswaps branch fix)
           if [ -f "src/CryptoNoteCore/ProofStructures.h" ]; then
             sed -i 's/#include <json\/json.h>/#include <jsoncpp\/json.h>/g' src/CryptoNoteCore/ProofStructures.h
             echo "Patched ProofStructures.h uses jsoncpp/json.h"
