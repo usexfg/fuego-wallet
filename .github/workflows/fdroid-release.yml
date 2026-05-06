@@ -23,6 +23,7 @@ on:
       contents: write
 
 env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   FLUTTER_VERSION: "3.24.0"
 
 jobs:
@@ -51,20 +52,32 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android, armv7-linux-androideabi, i686-linux-android, x86_64-linux-android
+
+      - name: Install NDK
+        uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r25b
+          add-to-path: false
+
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk
+
 
       - name: Set up Rust cache
         uses: swatinem/rust-cache@v2
         with:
           workspaces: "native/crypto"
-          workspaces: "native/crypto"
 
       - name: Build Rust crypto library
         run: |
           cd native/crypto
-          cargo build --release --target aarch64-linux-android
-          cargo build --release --target armv7-linux-androideabi
-          cargo build --release --target i686-linux-android
-          cargo build --release --target x86_64-linux-android
+          cargo ndk -t aarch64-linux-android -o ../../assets/bin build --release
+          cargo ndk -t armv7-linux-androideabi -o ../../assets/bin build --release
+          cargo ndk -t i686-linux-android -o ../../assets/bin build --release
+          cargo ndk -t x86_64-linux-android -o ../../assets/bin build --release
 
       - name: Copy Rust libraries to assets
         run: |
@@ -76,25 +89,11 @@ jobs:
 
       - name: Download xfg-stark-cli
         run: |
-          curl -L -o xfg-stark-cli-linux.tar.gz "https://github.com/usexfg/zk-fire/releases/download/v0.8.8/xfg-stark-cli-linux.tar.gz"
-          tar -xzf xfg-stark-cli-linux.tar.gz
           mkdir -p assets/bin
-          BINARY_PATH=$(find . -type f -name "xfg-stark-cli*" -perm -111 | head -n1 || true)
-          if [ -z "$BINARY_PATH" ]; then
-            BINARY_PATH=$(find . -type f -name "xfg-stark-cli*" | head -n1 || true)
-          fi
-          if [ -n "$BINARY_PATH" ]; then
-            chmod +x "$BINARY_PATH"
-            mv "$BINARY_PATH" assets/bin/xfg-stark-linux
-          else
-            echo "xfg-stark not found" >&2
-            exit 1
-          fi
+          curl -L -o assets/bin/xfg-stark-linux "https://github.com/usexfg/zk-fire/releases/download/v0.8.8/xfg-stark-cli-linux"
+          chmod +x assets/bin/xfg-stark-linux
           curl -L -o assets/bin/fuego-prover-linux "https://github.com/usexfg/zk-fire/releases/latest/download/fuego-prover-linux"
           chmod +x assets/bin/fuego-prover-linux
-            echo "xfg-stark-cli not found after extraction" >&2
-            exit 1
-          fi
 
       - name: Build fuego from source
         run: |
@@ -107,7 +106,7 @@ jobs:
           sudo apt-get install -y build-essential git cmake libboost-all-dev libjsoncpp-dev libssl-dev libzmq3-dev
 
           # Fix json include path for xfgCdswaps branch
-          sed -i .bak "s/#include <json/json.h>/#include <jsoncpp/json.h>/g" src/CryptoNoteCore/ProofStructures.h
+          sed -i.bak "s/#include <json\\/json.h>/#include <jsoncpp\\/json.h>/g" src/CryptoNoteCore/ProofStructures.h
           cat src/CryptoNoteCore/ProofStructures.h | grep json
 
           # Build PaymentGateService (walletd)

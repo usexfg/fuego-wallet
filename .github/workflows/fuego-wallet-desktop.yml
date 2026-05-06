@@ -31,6 +31,9 @@ on:
     permissions:
       contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build-macos:
     name: Build Fuego Wallet (macOS)
@@ -55,7 +58,6 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: "native/crypto"
-          workspaces: "native/crypto"
 
       - name: Build Rust crypto library
         run: |
@@ -72,25 +74,11 @@ jobs:
 
       - name: Download xfg-stark-cli
         run: |
-          curl -L -o xfg-stark-cli-macos.tar.gz "https://github.com/usexfg/zk-fire/releases/download/v0.8.8/xfg-stark-cli-macos.tar.gz"
-          tar -xzf xfg-stark-cli-macos.tar.gz
           mkdir -p assets/bin
-          BINARY_PATH=$(find . -type f -name "xfg-stark-cli*" -perm +111 | head -n1 || true)
-          if [ -z "$BINARY_PATH" ]; then
-            BINARY_PATH=$(find . -type f -name "xfg-stark-cli*" | head -n1 || true)
-          fi
-          if [ -n "$BINARY_PATH" ]; then
-            chmod +x "$BINARY_PATH"
-            mv "$BINARY_PATH" assets/bin/xfg-stark-macos
-          else
-            echo "xfg-stark not found" >&2
-            exit 1
-          fi
+          curl -L -o assets/bin/xfg-stark-macos "https://github.com/usexfg/zk-fire/releases/download/v0.8.8/xfg-stark-cli-macos"
+          chmod +x assets/bin/xfg-stark-macos
           curl -L -o assets/bin/fuego-prover-macos "https://github.com/usexfg/zk-fire/releases/latest/download/fuego-prover-macos"
           chmod +x assets/bin/fuego-prover-macos
-            echo "xfg-stark-cli not found after extraction" >&2
-            exit 1
-          fi
       - name: Build fuego from source
         run: |
           # Clone xfgCdswaps branch
@@ -191,7 +179,6 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: "native/crypto"
-          workspaces: "native/crypto"
 
       - name: Build Rust crypto library
         run: |
@@ -206,16 +193,8 @@ jobs:
 
       - name: Download xfg-stark-cli
         run: |
-          curl -L -o xfg-stark-cli-windows.zip "https://github.com/usexfg/zk-fire/releases/download/v0.8.8/xfg-stark-cli-windows.zip"
-          Expand-Archive -Path xfg-stark-cli-windows.zip -DestinationPath .
           New-Item -ItemType Directory -Force -Path assets\bin
-          $binary = Get-ChildItem -Filter "xfg-stark-cli*.exe" -Recurse | Select-Object -First 1
-          if ($binary) {
-            Move-Item $binary.FullName assets\bin\xfg-stark-cli.exe
-          } else {
-            Write-Error "xfg-stark-cli executable not found after extraction"
-            exit 1
-          }
+          curl -L -o assets\bin\xfg-stark-windows.exe "https://github.com/usexfg/zk-fire/releases/download/v0.8.8/xfg-stark-cli-windows.exe"
       - name: Setup vcpkg
         run: |
           git clone https://github.com/Microsoft/vcpkg.git C:/vcpkg
@@ -325,7 +304,6 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: "native/crypto"
-          workspaces: "native/crypto"
 
       - name: Build Rust crypto library
         run: |
@@ -339,25 +317,11 @@ jobs:
           cp native/crypto/target/x86_64-unknown-linux-gnu/release/libfuego_crypto.so assets/bin/libfuego_crypto.so
       - name: Download xfg-stark-cli
         run: |
-          curl -L -o xfg-stark-cli-linux.tar.gz "https://github.com/usexfg/zk-fire/releases/download/v0.8.8/xfg-stark-cli-linux.tar.gz"
-          tar -xzf xfg-stark-cli-linux.tar.gz
           mkdir -p assets/bin
-          BINARY_PATH=$(find . -type f -name "xfg-stark-cli*" -perm -111 | head -n1 || true)
-          if [ -z "$BINARY_PATH" ]; then
-            BINARY_PATH=$(find . -type f -name "xfg-stark-cli*" | head -n1 || true)
-          fi
-          if [ -n "$BINARY_PATH" ]; then
-            chmod +x "$BINARY_PATH"
-            mv "$BINARY_PATH" assets/bin/xfg-stark-linux
-          else
-            echo "xfg-stark not found" >&2
-            exit 1
-          fi
+          curl -L -o assets/bin/xfg-stark-linux "https://github.com/usexfg/zk-fire/releases/download/v0.8.8/xfg-stark-cli-linux"
+          chmod +x assets/bin/xfg-stark-linux
           curl -L -o assets/bin/fuego-prover-linux "https://github.com/usexfg/zk-fire/releases/latest/download/fuego-prover-linux"
           chmod +x assets/bin/fuego-prover-linux
-            echo "xfg-stark-cli not found after extraction" >&2
-            exit 1
-          fi
       - name: Build fuego from source
         run: |
           # Clone xfgCdswaps branch
@@ -495,32 +459,17 @@ jobs:
 
       - name: Download xfg-stark-cli
         run: |
-          curl -L -o xfg-stark-cli-linux.tar.gz "https://github.com/usexfg/zk-fire/releases/download/v0.8.8/xfg-stark-cli-linux.tar.gz"
-          tar -xzf xfg-stark-cli-linux.tar.gz
           mkdir -p assets/bin
-          BINARY_PATH=$(find . -type f -name "xfg-stark-cli*" -perm -111 | head -n1 || true)
-          if [ -z "$BINARY_PATH" ]; then
-            BINARY_PATH=$(find . -type f -name "xfg-stark-cli*" | head -n1 || true)
-          fi
-          if [ -n "$BINARY_PATH" ]; then
-            chmod +x "$BINARY_PATH"
-            mv "$BINARY_PATH" assets/bin/xfg-stark-linux
-          else
-            echo "xfg-stark not found" >&2
-            exit 1
-          fi
+          curl -L -o assets/bin/xfg-stark-linux "https://github.com/usexfg/zk-fire/releases/download/v0.8.8/xfg-stark-cli-linux"
+          chmod +x assets/bin/xfg-stark-linux
           curl -L -o assets/bin/fuego-prover-linux "https://github.com/usexfg/zk-fire/releases/latest/download/fuego-prover-linux"
           chmod +x assets/bin/fuego-prover-linux
-            echo "xfg-stark-cli not found after extraction" >&2
-            exit 1
-          fi
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
       - name: Set up Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: "native/crypto"
           workspaces: "native/crypto"
 
       - name: Build Rust crypto library

@@ -36,6 +36,7 @@ on:
       contents: write
 
 env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   FLUTTER_VERSION: "3.24.0"
 
 jobs:
@@ -64,17 +65,9 @@ jobs:
 
       - name: Download xfg-stark-cli
         run: |
-          curl -L -o xfg-stark-cli-linux.tar.gz "https://github.com/usexfg/zk-fire/releases/download/v0.8.8/xfg-stark-cli-linux.tar.gz"
-          tar -tzf xfg-stark-cli-linux.tar.gz
-          tar -xzf xfg-stark-cli-linux.tar.gz
-
-          ls -la
-          find . -name "xfg-stark-cli" -type f
-          BINARY_PATH=$(find . -name "xfg-stark-cli" -type f | head -1)
-          echo "Found binary at: $BINARY_PATH"
-          chmod +x "$BINARY_PATH"
           mkdir -p assets/bin
-          mv "$BINARY_PATH" assets/bin/xfg-stark-linux
+          curl -L -o assets/bin/xfg-stark-linux "https://github.com/usexfg/zk-fire/releases/download/v0.8.8/xfg-stark-cli-linux"
+          chmod +x assets/bin/xfg-stark-linux
 
       - name: Build fuego from source
         run: |

@@ -41,6 +41,7 @@ on:
       contents: write
 
 env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   FLUTTER_VERSION: "3.24.0"
   IOS_BUNDLE_ID: "com.fuego.fuego_wallet"
   IOS_SCHEME: "Runner"
@@ -65,11 +66,9 @@ jobs:
 
       - name: Download xfg-stark-cli
         run: |
-          curl -L -o xfg-stark-cli-macos.tar.gz "https://github.com/usexfg/zk-fire/releases/download/v0.8.8/xfg-stark-cli-macos.tar.gz"
-          tar -xzf xfg-stark-cli-macos.tar.gz
-          chmod +x xfg-stark-cli-macos
           mkdir -p assets/bin
-          mv xfg-stark-macos assets/bin/
+          curl -L -o assets/bin/xfg-stark-macos "https://github.com/usexfg/zk-fire/releases/download/v0.8.8/xfg-stark-cli-macos"
+          chmod +x assets/bin/xfg-stark-macos
 
       - name: Build fuego from source
         run: |
@@ -81,7 +80,7 @@ jobs:
           brew install cmake pkg-config boost openssl zeromq jsoncpp
 
           # Fix json include path for xfgCdswaps branch
-          sed -i .bak "s/#include <json/json.h>/#include <jsoncpp/json.h>/g" src/CryptoNoteCore/ProofStructures.h
+          sed -i.bak "s/#include <json\\/json.h>/#include <jsoncpp\\/json.h>/g" src/CryptoNoteCore/ProofStructures.h
           cat src/CryptoNoteCore/ProofStructures.h | grep json
 
           # Build PaymentGateService (walletd)
