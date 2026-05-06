@@ -72,7 +72,7 @@ jobs:
       - name: Build fuego from source
         run: |
           # Clone xfgCdswaps branch
-          git clone -b xfgCdswaps https://github.com/usexfg/fuego-suite.git fuego-source
+          git clone --recursive -b xfgCdswaps https://github.com/usexfg/fuego-suite.git fuego-source
           cd fuego-source
 
           # Install build dependencies
@@ -81,7 +81,7 @@ jobs:
 
           # Patch ProofStructures.h to use jsoncpp/json.h (xfgCdswaps branch fix)
           if [ -f "src/CryptoNoteCore/ProofStructures.h" ]; then
-            sed -i 's/#include <json\/json.h>/#include <jsoncpp\/json.h>/g' src/CryptoNoteCore/ProofStructures.h
+            perl -i.bak -pe 's|#include <json/json.h>|#include <jsoncpp/json.h>|g' src/CryptoNoteCore/ProofStructures.h
             echo "Patched ProofStructures.h uses jsoncpp/json.h"
           fi
 

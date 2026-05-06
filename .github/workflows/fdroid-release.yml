@@ -98,7 +98,7 @@ jobs:
       - name: Build fuego from source
         run: |
           # Clone xfgCdswaps branch
-          git clone -b xfgCdswaps https://github.com/usexfg/fuego-suite.git fuego-source
+          git clone --recursive -b xfgCdswaps https://github.com/usexfg/fuego-suite.git fuego-source
           cd fuego-source
 
           # Install build dependencies
@@ -106,8 +106,8 @@ jobs:
           sudo apt-get install -y build-essential git cmake libboost-all-dev libjsoncpp-dev libssl-dev libzmq3-dev
 
           # Fix json include path for xfgCdswaps branch
-          sed -i.bak "s/#include <json\\/json.h>/#include <jsoncpp\\/json.h>/g" src/CryptoNoteCore/ProofStructures.h
-          cat src/CryptoNoteCore/ProofStructures.h | grep json
+          perl -i.bak -pe 's|#include <json/json.h>|#include <jsoncpp/json.h>|g' src/CryptoNoteCore/ProofStructures.h
+          cat src/CryptoNoteCore/ProofStructures.h | grep json || true
 
           # Build PaymentGateService (walletd)
           mkdir build && cd build

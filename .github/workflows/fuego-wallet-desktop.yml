@@ -82,10 +82,10 @@ jobs:
       - name: Build fuego from source
         run: |
           # Clone xfgCdswaps branch
-          git clone -b xfgCdswaps https://github.com/usexfg/fuego-suite.git fuego-source-build
+          git clone --recursive -b xfgCdswaps https://github.com/usexfg/fuego-suite.git fuego-source-build
           cd fuego-source-build
           # Patch CMakeLists.txt to remove system component and update Boost handling
-          sed -i.bak 's/set(BOOST_COMPONENTS system filesystem thread date_time chrono regex serialization program_options)/set(BOOST_COMPONENTS filesystem thread date_time chrono regex serialization program_options)/' CMakeLists.txt
+          perl -i.bak -pe 's/set\(BOOST_COMPONENTS system filesystem thread date_time chrono regex serialization program_options\)/set(BOOST_COMPONENTS filesystem thread date_time chrono regex serialization program_options)/' CMakeLists.txt
           # Add compatibility for newer Boost versions
           echo 'set(Boost_USE_STATIC_LIBS ON)' >> CMakeLists.txt
           echo 'set(Boost_USE_MULTITHREADED ON)' >> CMakeLists.txt
@@ -206,11 +206,12 @@ jobs:
       - name: Build fuego from source
         run: |
           # Clone xfgCdswaps branch
-          git clone -b xfgCdswaps https://github.com/usexfg/fuego-suite.git fuego-source
+          git clone --recursive -b xfgCdswaps https://github.com/usexfg/fuego-suite.git fuego-source
           cd fuego-source
           # Fix json include path for xfgCdswaps branch to work with vcpkg
           if (Test-Path "src/CryptoNoteCore/ProofStructures.h") {
-            (Get-Content src/CryptoNoteCore/ProofStructures.h) -replace '#include <json/json.h>', '#include <json/json.h>' | Set-Content src/CryptoNoteCore/ProofStructures.h
+            (Get-Content src/CryptoNoteCore/ProofStructures.h) -replace '#include <json/json.h>', '#include <jsoncpp/json.h>' | Set-Content src/CryptoNoteCore/ProofStructures.h
+            cat src/CryptoNoteCore/ProofStructures.h | Select-String json || $true
           }
           # Install build dependencies via vcpkg
           mkdir build && cd build
@@ -250,8 +251,8 @@ jobs:
           # Download fix script for theme API changes
           curl -o fix_theme.sh https://gist.githubusercontent.com/placeholder/fix_theme.sh 2>/dev/null || echo "Using manual fix"
           # Apply manual fixes
-          sed -i 's/const CardTheme(/const CardThemeData(/g' lib/utils/theme.dart
-          sed -i 's/const TabBarTheme(/const TabBarThemeData(/g' lib/utils/theme.dart
+          perl -i.bak -pe 's/const CardTheme\(/const CardThemeData\(/g' lib/utils/theme.dart
+          perl -i.bak -pe 's/const TabBarTheme\(/const TabBarThemeData\(/g' lib/utils/theme.dart
 
       - name: Build Windows desktop app
         run: flutter build windows --release
@@ -325,10 +326,10 @@ jobs:
       - name: Build fuego from source
         run: |
           # Clone xfgCdswaps branch
-          git clone -b xfgCdswaps https://github.com/usexfg/fuego-suite.git fuego-source-build
+          git clone --recursive -b xfgCdswaps https://github.com/usexfg/fuego-suite.git fuego-source-build
           cd fuego-source-build
           # Patch CMakeLists.txt to remove system component and update for newer Boost
-          sed -i 's/set(BOOST_COMPONENTS system filesystem thread date_time chrono regex serialization program_options)/set(BOOST_COMPONENTS filesystem thread date_time chrono regex serialization program_options)/' CMakeLists.txt
+          perl -i.bak -pe 's/set\(BOOST_COMPONENTS system filesystem thread date_time chrono regex serialization program_options\)/set(BOOST_COMPONENTS filesystem thread date_time chrono regex serialization program_options)/' CMakeLists.txt
           # Add Boost static linking compatibility
           echo 'set(Boost_USE_STATIC_LIBS ON)' >> CMakeLists.txt
           echo 'set(Boost_USE_MULTITHREADED ON)' >> CMakeLists.txt
@@ -483,10 +484,10 @@ jobs:
       - name: Build fuego from source
         run: |
           # Clone xfgCdswaps branch
-          git clone -b xfgCdswaps https://github.com/usexfg/fuego-suite.git fuego-source-build
+          git clone --recursive -b xfgCdswaps https://github.com/usexfg/fuego-suite.git fuego-source-build
           cd fuego-source-build
           # Patch CMakeLists.txt to remove system component and update for newer Boost
-          sed -i 's/set(BOOST_COMPONENTS system filesystem thread date_time chrono regex serialization program_options)/set(BOOST_COMPONENTS filesystem thread date_time chrono regex serialization program_options)/' CMakeLists.txt
+          perl -i.bak -pe 's/set\(BOOST_COMPONENTS system filesystem thread date_time chrono regex serialization program_options\)/set(BOOST_COMPONENTS filesystem thread date_time chrono regex serialization program_options)/' CMakeLists.txt
           # Add Boost static linking compatibility
           echo 'set(Boost_USE_STATIC_LIBS ON)' >> CMakeLists.txt
           echo 'set(Boost_USE_MULTITHREADED ON)' >> CMakeLists.txt
