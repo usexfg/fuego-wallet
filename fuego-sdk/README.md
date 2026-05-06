@@ -8,7 +8,7 @@ Universal Flutter-compatible SDK for Fuego blockchain with embedded node support
 - **Mining**: Start/stop mining with hashrate monitoring
 - **Certificates of Deposit (CD)**: Create and redeem time-locked deposits with interest
 - **Atomic Swaps**: Trustless cross-chain swaps with HTLC
-- **HEAT Proofs**: zk-SNARK privacy proofs for transactions
+- **HEAT Proofs**: XFG-STARK + zkSNARK proof bundles prove transaction details while preserving privacy.
 - **Alias Service**: Register and resolve human-readable aliases
 
 ## Platform Support
@@ -59,7 +59,7 @@ void main() async {
   print('Node synchronized: $synced');
 
   // Start mining
-  await sdk.mining.start(walletAddress: 'xfg...');
+  await sdk.mining.start(walletAddress: 'fire8ab...');
   
   // Create a CD
   final cd = await sdk.cd.create(
@@ -134,7 +134,7 @@ bool synced = await sdk.node.isSynchronized();
 ### Mining Service
 
 ```dart
-await sdk.mining.start(walletAddress: 'xfg...');
+await sdk.mining.start(walletAddress: 'fire9p...');
 await sdk.mining.stop();
 bool mining = sdk.mining.isRunning();
 double hashrate = await sdk.mining.getHashrate();
@@ -163,7 +163,7 @@ CDInfo info = await sdk.cd.getInfo(cd.txHash);
 
 ```dart
 SwapInfo swap = await sdk.swap.initiate(
-  counterpartyAddress: 'xfg...',
+  counterpartyAddress: 'fire8ap...',
   amount: 500000000000,
   walletFile: '/path/to/wallet',
   walletPassword: 'password',
@@ -211,7 +211,7 @@ bool valid = await sdk.heat.verifyProof(proof);
 ```dart
 String txHash = await sdk.alias.register(
   alias: 'myname',
-  walletAddress: 'xfg...',
+  walletAddress: 'fire8aw...',
   walletFile: '/path/to/wallet',
   walletPassword: 'password',
 );
@@ -277,7 +277,7 @@ GPL-3.0 - See LICENSE file for details.
 
 ## Resources
 
-- Website: https://fuego.money
+- Website: https://usexfg.org
 - GitHub: https://github.com/usexfg/fuego-wallet
-- Discord: https://discord.gg/5UJcJJg
-- Twitter: https://twitter.com/usexfg
+- Discord: https://discord.usexfg.org
+- 𝕏: https://x.com/usexfg
