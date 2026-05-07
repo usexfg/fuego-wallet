@@ -1,0 +1,292 @@
+name: Fuego Wallet Desktop Build & Release (Embedded SDK)
+
+on:
+  push:
+    branches: [HEATMINT, master, azorahai]
+    paths:
+      - "lib/**"
+      - "macos/**"
+      - "windows/**"
+      - "linux/**"
+      - "fuego-sdk/**"
+      - "pubspec.yaml"
+      - ".github/workflows/desktop-build.yml"
+  pull_request:
+    branches: [HEATMINT, master, azorahai]
+    paths:
+      - "lib/**"
+      - "macos/**"
+      - "windows/**"
+      - "linux/**"
+      - "fuego-sdk/**"
+      - "pubspec.yaml"
+      - ".github/workflows/desktop-build.yml"
+  workflow_dispatch:
+  release:
+    types: [published]
+    permissions:
+      contents: write
+
+env:
+  FLUTTER_VERSION: "3.27.0"
+  FUEGO_SOURCE_BRANCH: "xfgCdswaps"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  build-macos:
+    name: Build macOS (Embedded SDK)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: "stable"
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-apple-darwin, aarch64-apple-darwin
+
+      - name: Set up Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "native/crypto"
+
+      - name: Build Rust crypto library
+        run: |
+          cd native/crypto
+          cargo build --release --target x86_64-apple-darwin
+          cargo build --release --target aarch64-apple-darwin
+
+      - name: Copy Rust library to assets
+        run: |
+          mkdir -p assets/bin
+          cp native/crypto/target/x86_64-apple-darwin/release/libfuego_crypto.dylib assets/bin/libfuego_crypto-x86_64.dylib || true
+          cp native/crypto/target/aarch64-apple-darwin/release/libfuego_crypto.dylib assets/bin/libfuego_crypto-arm64.dylib || true
+
+      - name: Ensure Binaries
+        run: chmod +x scripts/ensure-binaries.sh && ./scripts/ensure-binaries.sh
+
+      - name: Build Fuego Core & SDK (macOS)
+        run: |
+          # Clone Fuego Core
+          git clone -b ${{ env.FUEGO_SOURCE_BRANCH }} https://github.com/usexfg/fuego-suite.git fuego-core
+          cd fuego-core
+          # Patch Boost components
+          sed -i '' 's/set(BOOST_COMPONENTS system filesystem thread date_time chrono regex serialization program_options)/set(BOOST_COMPONENTS filesystem thread date_time chrono regex serialization program_options)/' CMakeLists.txt
+          brew install cmake pkg-config zeromq jsoncpp openssl boost
+          
+          # Build Core Libraries
+          mkdir build && cd build
+          cmake .. -DBUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release
+          make -j$(sysctl -n hw.ncpu)
+          
+          # Build SDK Library
+          cd ../../fuego-sdk
+          mkdir build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DFUEGO_DIR=$(pwd)/../.. /fuego-core
+          make -j$(sysctl -n hw.ncpu)
+          
+          # Copy SDK to assets
+          mkdir -p ../../assets/bin
+          cp libfuego_sdk.dylib ../../assets/bin/libfuego_sdk-macos.dylib
+
+      - name: Build Flutter macOS App
+        run: |
+          flutter config --enable-macos-desktop
+          flutter pub get
+          flutter build macos --release
+
+      - name: Archive App
+        run: |
+          cd build/macos/Build/Products/Release
+          zip -r Fuego-Wallet-macOS.zip "fuego_wallet.app"
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuego-wallet-macos
+          path: build/macos/Build/Products/Release/Fuego-Wallet-macOS.zip
+
+      - name: GitHub Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: build/macos/Build/Products/Release/Fuego-Wallet-macOS.zip
+
+  build-windows:
+    name: Build Windows (Embedded SDK)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: "stable"
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "native/crypto"
+
+      - name: Build Rust crypto library
+        run: |
+          cd native/crypto
+          cargo build --release --target x86_64-pc-windows-msvc
+
+      - name: Copy Rust library to assets
+        run: |
+          New-Item -ItemType Directory -Force -Path assets\bin
+          Copy-Item native\crypto\target\x86_64-pc-windows-msvc\release\fuego_crypto.dll assets\bin\fuego_crypto.dll
+
+      - name: Ensure Binaries
+        run: bash scripts/ensure-binaries.sh
+
+      - name: Set up vcpkg
+        uses: lukka/get-vcpkg@v11
+
+      - name: Install Fuego Dependencies (vcpkg)
+        run: |
+          vcpkg install jsoncpp boost-system boost-filesystem boost-thread boost-date-time boost-chrono boost-regex boost-program-options openssl zeromq --triplet x64-windows
+
+      - name: Build Fuego Core & SDK (Windows)
+        run: |
+          git clone -b ${{ env.FUEGO_SOURCE_BRANCH }} https://github.com/usexfg/fuego-suite.git fuego-core
+          cd fuego-core
+          mkdir build && cd build
+          cmake .. -DBUILD_TESTS=OFF -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+          cmake --build . --config Release
+          
+          # Build SDK Library
+          cd ../../fuego-sdk
+          mkdir build && cd build
+          cmake .. -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" -DCMAKE_BUILD_TYPE=Release
+          cmake --build . --config Release
+          
+          New-Item -ItemType Directory -Force -Path ..\\..\\assets\\bin
+          $sdkLib = Get-ChildItem -Recurse -Filter "fuego_sdk.dll" | Select-Object -First 1
+          Copy-Item $sdkLib.FullName ..\\..\\assets\\bin\\libfuego_sdk-windows.dll
+
+      - name: Build Flutter Windows App
+        run: |
+          flutter config --enable-windows-desktop
+          flutter pub get
+          flutter build windows --release
+
+      - name: Archive App
+        run: |
+          if (Test-Path "build\windows\runner\Release") {
+            cd build\windows\runner\Release
+            Compress-Archive -Path * -DestinationPath ..\..\..\..\Fuego-Wallet-Windows.zip
+          } else {
+            $bin = Get-ChildItem build -Recurse -Filter "fuego_wallet.exe" | Select-Object -First 1
+            Compress-Archive -Path $bin.DirectoryName -DestinationPath "Fuego-Wallet-Windows.zip"
+          }
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuego-wallet-windows
+          path: Fuego-Wallet-Windows.zip
+
+      - name: GitHub Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: Fuego-Wallet-Windows.zip
+
+  build-linux:
+    name: Build Linux (Embedded SDK)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: "stable"
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "native/crypto"
+
+      - name: Build Rust crypto library
+        run: |
+          cd native/crypto
+          cargo build --release --target x86_64-unknown-linux-gnu
+
+      - name: Copy Rust library to assets
+        run: |
+          mkdir -p assets/bin
+          cp native/crypto/target/x86_64-unknown-linux-gnu/release/libfuego_crypto.so assets/bin/libfuego_crypto.so
+
+      - name: Ensure Binaries
+        run: chmod +x scripts/ensure-binaries.sh && ./scripts/ensure-binaries.sh
+
+      - name: Build Fuego Core & SDK (Linux)
+        run: |
+          git clone -b ${{ env.FUEGO_SOURCE_BRANCH }} https://github.com/usexfg/fuego-suite.git fuego-core
+          cd fuego-core
+          sed -i 's/set(BOOST_COMPONENTS system filesystem thread date_time chrono regex serialization program_options)/set(BOOST_COMPONENTS filesystem thread date_time chrono regex serialization program_options)/' CMakeLists.txt
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake libboost-all-dev libssl-dev libzmq3-dev libjsoncpp-dev
+          
+          mkdir build && cd build
+          cmake .. -DBUILD_TESTS=OFF -DBoost_USE_STATIC_LIBS=ON -DCMAKE_BUILD_TYPE=Release
+          make -j$(nproc)
+          
+          # Build SDK Library
+          cd ../../fuego-sdk
+          mkdir build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release
+          make -j$(nproc)
+          
+          mkdir -p ../../assets/bin
+          cp libfuego_sdk.so ../../assets/bin/libfuego_sdk-linux.so
+
+      - name: Build Flutter Linux App
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libsecret-1-dev
+          flutter config --enable-linux-desktop
+          flutter pub get
+          flutter build linux --release
+
+      - name: Archive App
+        run: |
+          cd build/linux/x64/release/bundle
+          tar -czf fuego-wallet-Linux.tar.gz *
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuego-wallet-linux
+          path: build/linux/x64/release/bundle/fuego-wallet-Linux.tar.gz
+
+      - name: GitHub Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: build/linux/x64/release/bundle/fuego-wallet-Linux.tar.gz
