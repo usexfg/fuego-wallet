@@ -66,24 +66,22 @@ jobs:
 
       - name: Download xfg-stark-cli
         run: |
-          curl -L -o xfg-stark-cli-macos.tar.gz "https://github.com/usexfg/zk-fire/releases/download/v0.8.8/xfg-stark-cli-macos.tar.gz"
-          tar -xzf xfg-stark-cli-macos.tar.gz
-          chmod +x xfg-stark-cli-macos
           mkdir -p assets/bin
-          mv xfg-stark-macos assets/bin/
+          curl -L -o assets/bin/xfg-stark-macos "https://github.com/usexfg/zk-fire/releases/download/v0.8.8/xfg-stark-cli-macos"
+          chmod +x assets/bin/xfg-stark-macos
 
       - name: Build fuego from source
         run: |
           # Clone xfgCdswaps branch
-          git clone -b xfgCdswaps https://github.com/usexfg/fuego-suite.git fuego-source
+          git clone --recursive -b xfgCdswaps https://github.com/usexfg/fuego-suite.git fuego-source
           cd fuego-source
 
           # Install build dependencies
           brew install cmake pkg-config boost openssl zeromq jsoncpp
 
           # Fix json include path for xfgCdswaps branch
-          sed -i .bak "s/#include <json/json.h>/#include <jsoncpp/json.h>/g" src/CryptoNoteCore/ProofStructures.h
-          cat src/CryptoNoteCore/ProofStructures.h | grep json
+          perl -i.bak -pe 's|#include <json/json.h>|#include <jsoncpp/json.h>|g' src/CryptoNoteCore/ProofStructures.h
+          cat src/CryptoNoteCore/ProofStructures.h | grep json || true
 
           # Build PaymentGateService (walletd)
           mkdir build && cd build
