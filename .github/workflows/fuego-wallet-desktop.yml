@@ -86,6 +86,11 @@ jobs:
           cd fuego-source-build
           # Patch CMakeLists.txt to remove system component and update Boost handling
           perl -i.bak -pe 's/set\(BOOST_COMPONENTS system filesystem thread date_time chrono regex serialization program_options\)/set(BOOST_COMPONENTS filesystem thread date_time chrono regex serialization program_options)/' CMakeLists.txt
+          perl -i.bak -pe 's|#include <json/json.h>|#include <jsoncpp/json.h>|g' src/CryptoNoteCore/ProofStructures.h
+          # Patch boost::asio::io_service to boost::asio::io_context for newer Boost
+          find src -type f -name "*.h" -o -name "*.cpp" -exec perl -i.bak -pe 's/boost::asio::io_service/boost::asio::io_context/g' {} \;
+          # Patch ICoreObserver and ICryptoNoteProtocolObserver mismatch
+          find src -type f -name "*.h" -o -name "*.cpp" -exec perl -i.bak -pe 's/virtual bool get_random_commitment_outs_for_amount\(uint64_t amount, uint64_t count, uint32_t maxHeight, std::vector<COMMAND_RPC_GET_RANDOM_COMMITMENT_OUTPUTS_out_entry>& result\) = 0;/virtual bool get_random_commitment_outs_for_amount\(uint64_t amount, uint64_t count, uint32_t maxHeight, std::vector<COMMAND_RPC_GET_RANDOM_COMMITMENT_OUTPUTS_out_entry>\& result\);/g' {} \;
           # Add compatibility for newer Boost versions
           echo 'set(Boost_USE_STATIC_LIBS ON)' >> CMakeLists.txt
           echo 'set(Boost_USE_MULTITHREADED ON)' >> CMakeLists.txt
@@ -330,6 +335,11 @@ jobs:
           cd fuego-source-build
           # Patch CMakeLists.txt to remove system component and update for newer Boost
           perl -i.bak -pe 's/set\(BOOST_COMPONENTS system filesystem thread date_time chrono regex serialization program_options\)/set(BOOST_COMPONENTS filesystem thread date_time chrono regex serialization program_options)/' CMakeLists.txt
+          perl -i.bak -pe 's|#include <json/json.h>|#include <jsoncpp/json.h>|g' src/CryptoNoteCore/ProofStructures.h
+          # Patch boost::asio::io_service to boost::asio::io_context for newer Boost
+          find src -type f -name "*.h" -o -name "*.cpp" -exec perl -i.bak -pe 's/boost::asio::io_service/boost::asio::io_context/g' {} \;
+          # Patch ICoreObserver and ICryptoNoteProtocolObserver mismatch
+          find src -type f -name "*.h" -o -name "*.cpp" -exec perl -i.bak -pe 's/virtual bool get_random_commitment_outs_for_amount\(uint64_t amount, uint64_t count, uint32_t maxHeight, std::vector<COMMAND_RPC_GET_RANDOM_COMMITMENT_OUTPUTS_out_entry>& result\) = 0;/virtual bool get_random_commitment_outs_for_amount\(uint64_t amount, uint64_t count, uint32_t maxHeight, std::vector<COMMAND_RPC_GET_RANDOM_COMMITMENT_OUTPUTS_out_entry>\& result\);/g' {} \;
           # Add Boost static linking compatibility
           echo 'set(Boost_USE_STATIC_LIBS ON)' >> CMakeLists.txt
           echo 'set(Boost_USE_MULTITHREADED ON)' >> CMakeLists.txt
@@ -488,6 +498,11 @@ jobs:
           cd fuego-source-build
           # Patch CMakeLists.txt to remove system component and update for newer Boost
           perl -i.bak -pe 's/set\(BOOST_COMPONENTS system filesystem thread date_time chrono regex serialization program_options\)/set(BOOST_COMPONENTS filesystem thread date_time chrono regex serialization program_options)/' CMakeLists.txt
+          perl -i.bak -pe 's|#include <json/json.h>|#include <jsoncpp/json.h>|g' src/CryptoNoteCore/ProofStructures.h
+          # Patch boost::asio::io_service to boost::asio::io_context for newer Boost
+          find src -type f -name "*.h" -o -name "*.cpp" -exec perl -i.bak -pe 's/boost::asio::io_service/boost::asio::io_context/g' {} \;
+          # Patch ICoreObserver and ICryptoNoteProtocolObserver mismatch
+          find src -type f -name "*.h" -o -name "*.cpp" -exec perl -i.bak -pe 's/virtual bool get_random_commitment_outs_for_amount\(uint64_t amount, uint64_t count, uint32_t maxHeight, std::vector<COMMAND_RPC_GET_RANDOM_COMMITMENT_OUTPUTS_out_entry>& result\) = 0;/virtual bool get_random_commitment_outs_for_amount\(uint64_t amount, uint64_t count, uint32_t maxHeight, std::vector<COMMAND_RPC_GET_RANDOM_COMMITMENT_OUTPUTS_out_entry>\& result\);/g' {} \;
           # Add Boost static linking compatibility
           echo 'set(Boost_USE_STATIC_LIBS ON)' >> CMakeLists.txt
           echo 'set(Boost_USE_MULTITHREADED ON)' >> CMakeLists.txt
