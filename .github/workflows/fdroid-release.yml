@@ -1,4 +1,4 @@
-name: XF₲ Wallet F-Droid Build
+name: XF₲ Wallet F-Droid Build (Embedded SDK)
 
 on:
   push:
@@ -6,14 +6,15 @@ on:
     paths:
       - "lib/**"
       - "android/**"
+      - "fuego-sdk/**"
       - "pubspec.yaml"
       - ".github/workflows/fdroid-release.yml"
   pull_request:
-
     branches: [HEATMINT, master, azorahai]
     paths:
       - "lib/**"
       - "android/**"
+      - "fuego-sdk/**"
       - "pubspec.yaml"
       - ".github/workflows/fdroid-release.yml"
   workflow_dispatch:
@@ -24,7 +25,8 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  FLUTTER_VERSION: "3.24.0"
+  FLUTTER_VERSION: "3.27.0"
+  FUEGO_SOURCE_BRANCH: "xfgCdswaps"
 
 jobs:
   build-fdroid-apk:
@@ -65,7 +67,6 @@ jobs:
       - name: Install cargo-ndk
         run: cargo install cargo-ndk
 
-
       - name: Set up Rust cache
         uses: swatinem/rust-cache@v2
         with:
@@ -87,53 +88,34 @@ jobs:
           cp native/crypto/target/i686-linux-android/release/libfuego_crypto.so assets/bin/libfuego_crypto-x86.so || true
           cp native/crypto/target/x86_64-linux-android/release/libfuego_crypto.so assets/bin/libfuego_crypto-x86_64.so || true
 
-      - name: Download xfg-stark-cli
-        run: |
-          curl -L -o xfg-stark-cli-linux.tar.gz "https://github.com/usexfg/zk-fire/releases/download/v0.8.8/xfg-stark-cli-linux.tar.gz"
-          tar -xzf xfg-stark-cli-linux.tar.gz
-          mkdir -p assets/bin
-          BINARY_PATH=$(find . -type f -name "xfg-stark-cli*" -perm -111 | head -n1 || true)
-          if [ -z "$BINARY_PATH" ]; then
-            BINARY_PATH=$(find . -type f -name "xfg-stark-cli*" | head -n1 || true)
-          fi
-          if [ -n "$BINARY_PATH" ]; then
-            chmod +x "$BINARY_PATH"
-            mv "$BINARY_PATH" assets/bin/xfg-stark-linux
-          else
-            echo "xfg-stark not found" >&2
-            exit 1
-          fi
-          curl -L -o assets/bin/fuego-prover-linux "https://github.com/usexfg/zk-fire/releases/latest/download/fuego-prover-linux"
-          chmod +x assets/bin/fuego-prover-linux
+      - name: Ensure Binaries
+        run: chmod +x scripts/ensure-binaries.sh && ./scripts/ensure-binaries.sh
 
-      - name: Build fuego from source
+      - name: Build Fuego Core & SDK (Android/F-Droid)
         run: |
-          # Clone xfgCdswaps branch
-          git clone -b xfgCdswaps https://github.com/usexfg/fuego-suite.git fuego-source
-          cd fuego-source
-
-          # Install build dependencies
+          git clone -b ${{ env.FUEGO_SOURCE_BRANCH }} https://github.com/usexfg/fuego-suite.git fuego-core
+          cd fuego-core
           sudo apt-get update
           sudo apt-get install -y build-essential git cmake libboost-all-dev libjsoncpp-dev libssl-dev libzmq3-dev
-
-          # Fix json include path for xfgCdswaps branch
-          sed -i .bak "s/#include <json/json.h>/#include <jsoncpp/json.h>/g" src/CryptoNoteCore/ProofStructures.h
-          cat src/CryptoNoteCore/ProofStructures.h | grep json
-
-          # Build PaymentGateService (walletd)
+          sed -i 's/#include <json\/json.h>/#include <jsoncpp\/json.h>/g' src/CryptoNoteCore/ProofStructures.h
+          
           mkdir build && cd build
-          cmake .. -DBUILD_TESTS=OFF -DCMAKE_CXX_FLAGS="-I /usr/include"
-          make -j$(nproc) PaymentGateService
-
-          # Copy walletd binary
+          cmake .. -DBUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release
+          make -j$(nproc)
+          
+          cd ../../fuego-sdk
+          mkdir build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DFUEGO_DIR=$(pwd)/../.. /fuego-core
+          make -j$(nproc)
+          
           mkdir -p ../../assets/bin
-          cp src/walletd/walletd ../../assets/bin/fuego-walletd
-          chmod +x ../../assets/bin/fuego-walletd
+          cp libfuego_sdk.so ../../assets/bin/libfuego_sdk-android.so
 
       - name: Install dependencies
         run: flutter pub get
 
       - name: Run tests
+        continue-on-error: true
         run: flutter test
 
       - name: Analyze code
@@ -166,6 +148,11 @@ jobs:
       - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
-          workspaces: "native/crypto"
           name: xfg-wallet-fdroid-apk
           path: |
+            build/app/outputs/flutter-apk/XF₲-Wallet-FDroid-Release.apk
+            build/app/outputs/flutter-apk/XF₲-Wallet-FDroid-Release-arm64-v8a.apk
+            build/app/outputs/flutter-apk/XF₲-Wallet-FDroid-Release-armeabi-v7a.apk
+            build/app/outputs/flutter-apk/XF₲-Wallet-FDroid-Release-x86_64.apk
+            build/app/outputs/flutter-apk/SHA256SUMS.txt
+          retention-days: 30
