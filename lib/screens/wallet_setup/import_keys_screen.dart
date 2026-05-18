@@ -260,7 +260,7 @@ class _ImportKeysScreenState extends State<ImportKeysScreen>
                                     _useSeparateKeys = value;
                                   });
                                 },
-                                activeThumbColor: AppTheme.primaryColor,
+                                thumbColor: AppTheme.primaryColor,
                               ),
                             ],
                           ),

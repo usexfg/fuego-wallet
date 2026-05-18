@@ -78,7 +78,7 @@ class _HeatBurnsScreenState extends State<HeatBurnsScreen> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              initialValue: _burnType,
+              value: _burnType,
               items: const [
                 DropdownMenuItem(value: 'Standard Burn', child: Text('Standard Burn (0.8 XFG)')),
                 DropdownMenuItem(value: 'Large Burn', child: Text('Large Burn (800 XFG)')),

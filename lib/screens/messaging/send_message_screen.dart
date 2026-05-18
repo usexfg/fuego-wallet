@@ -376,7 +376,7 @@ class _SendMessageScreenState extends State<SendMessageScreen> {
                       ),
                       const SizedBox(height: 8),
                       DropdownButtonFormField<int>(
-                        initialValue: _destructTime,
+                        value: _destructTime,
                         decoration: const InputDecoration(
                           isDense: true,
                         ),

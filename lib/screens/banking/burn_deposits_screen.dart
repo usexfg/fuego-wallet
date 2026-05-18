@@ -183,7 +183,7 @@ class _BurnDepositsScreenState extends State<BurnDepositsScreen> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              initialValue: _selectedBurnType,
+              value: _selectedBurnType,
               decoration: const InputDecoration(
                 labelText: 'Burn Type',
               ),

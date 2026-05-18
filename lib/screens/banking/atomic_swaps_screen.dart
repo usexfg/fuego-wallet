@@ -43,7 +43,7 @@ class _AtomicSwapsScreenState extends State<AtomicSwapsScreen> {
                           const TextField(decoration: InputDecoration(labelText: 'Amount to Swap')),
                           const SizedBox(height: 16),
                           DropdownButtonFormField<String>(
-                            initialValue: 'XFG_TO_HEAT',
+                            value: 'XFG_TO_HEAT',
                             items: const [
                               DropdownMenuItem(value: 'XFG_TO_HEAT', child: Text('XFG -> HEAT')),
                               DropdownMenuItem(value: 'HEAT_TO_XFG', child: Text('HEAT -> XFG')),
@@ -81,7 +81,7 @@ class _AtomicSwapsScreenState extends State<AtomicSwapsScreen> {
                           const TextField(decoration: InputDecoration(labelText: 'Amount to Swap')),
                           const SizedBox(height: 16),
                           DropdownButtonFormField<String>(
-                            initialValue: 'ETH',
+                            value: 'ETH',
                             items: const [
                               DropdownMenuItem(value: 'ETH', child: Text('Ethereum (ETH)')),
                               DropdownMenuItem(value: 'SOL', child: Text('Solana (SOL)')),
