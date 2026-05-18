@@ -93,7 +93,7 @@ jobs:
           
           # Build Core Libraries
           mkdir build && cd build
-          cmake .. -DBUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release -DBOOST_ROOT=$BOOST_ROOT -DBoost_USE_STATIC_LIBS=ON
+          cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=Release -DBOOST_ROOT=$BOOST_ROOT -DBoost_USE_STATIC_LIBS=ON
           make -j$(sysctl -n hw.ncpu)
           
           # Build SDK Library
@@ -178,7 +178,7 @@ jobs:
           cd fuego-core
           git submodule update --init --recursive
           mkdir build && cd build
-          cmake .. -DBUILD_TESTS=OFF -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+          cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
           cmake --build . --config Release
           
           # Build SDK Library
@@ -265,7 +265,7 @@ jobs:
           sudo apt-get install -y build-essential cmake libboost-all-dev libssl-dev libzmq3-dev libjsoncpp-dev
           
           mkdir build && cd build
-          cmake .. -DBUILD_TESTS=OFF -DBoost_USE_STATIC_LIBS=ON -DCMAKE_BUILD_TYPE=Release
+          cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DBoost_USE_STATIC_LIBS=ON -DCMAKE_BUILD_TYPE=Release
           make -j$(nproc)
           
           # Build SDK Library

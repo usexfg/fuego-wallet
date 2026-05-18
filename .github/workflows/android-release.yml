@@ -83,7 +83,7 @@ jobs:
           
           # Build Core Libraries (Generic Linux for SDK linkage)
           mkdir build && cd build
-          cmake .. -DBUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release
+          cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=Release
           make -j$(nproc)
           
           # Build SDK Library

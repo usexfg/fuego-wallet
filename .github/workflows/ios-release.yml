@@ -90,7 +90,7 @@ jobs:
           
           # Build Core
           mkdir build && cd build
-          cmake .. -DBUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release -DBoost_USE_STATIC_LIBS=ON
+          cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=Release -DBoost_USE_STATIC_LIBS=ON
           make -j$(sysctl -n hw.ncpu)
           
           # Build SDK

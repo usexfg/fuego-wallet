@@ -76,7 +76,7 @@ jobs:
           sed -i 's/set(BOOST_COMPONENTS system filesystem thread date_time chrono regex serialization program_options)/set(BOOST_COMPONENTS filesystem thread date_time chrono regex serialization program_options)/' CMakeLists.txt
           
           mkdir build && cd build
-          cmake .. -DBUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release
+          cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=Release
           make -j$(nproc)
           
           cd ../../fuego-sdk
