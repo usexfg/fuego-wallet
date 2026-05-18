@@ -11,7 +11,7 @@ class _AtomicSwapsScreenState extends State<AtomicSwapsScreen> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Hearth AMM & Atomic Swaps'),
@@ -19,6 +19,7 @@ class _AtomicSwapsScreenState extends State<AtomicSwapsScreen> {
             tabs: [
               Tab(text: 'Hearth AMM (HEAT/XFG)'),
               Tab(text: 'Cross-chain Swaps'),
+              Tab(text: 'CD Markets'),
             ],
           ),
         ),
@@ -95,6 +96,24 @@ class _AtomicSwapsScreenState extends State<AtomicSwapsScreen> {
                           )
                         ],
                       ),
+                    ),
+                  )
+                ],
+              ),
+            ),
+            // CD Markets Tab
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('HEAT CDs / XFG Swap Market', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  SizedBox(height: 16),
+                  Text('Trade your active Certificates of Deposit (HEAT) directly with other users via smart contracts.'),
+                  SizedBox(height: 24),
+                  Expanded(
+                    child: Center(
+                      child: Text('No active CD markets found. Connect wallet to refresh.'),
                     ),
                   )
                 ],
