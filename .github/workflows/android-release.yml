@@ -74,6 +74,7 @@ jobs:
           # Clone Fuego Core
           git clone -b ${{ env.FUEGO_SOURCE_BRANCH }} https://github.com/usexfg/fuego-suite.git fuego-core
           cd fuego-core
+          git submodule update --init --recursive
           
           # Install build dependencies
           sudo apt-get update

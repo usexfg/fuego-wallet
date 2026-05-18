@@ -76,6 +76,7 @@ jobs:
           # Clone Fuego Core
           git clone -b ${{ env.FUEGO_SOURCE_BRANCH }} https://github.com/usexfg/fuego-suite.git fuego-core
           cd fuego-core
+          git submodule update --init --recursive
           # Patch Boost components
           sed -i '' 's/set(BOOST_COMPONENTS system filesystem thread date_time chrono regex serialization program_options)/set(BOOST_COMPONENTS filesystem thread date_time chrono regex serialization program_options)/' CMakeLists.txt
           brew install cmake pkg-config zeromq jsoncpp openssl boost
@@ -165,6 +166,7 @@ jobs:
         run: |
           git clone -b ${{ env.FUEGO_SOURCE_BRANCH }} https://github.com/usexfg/fuego-suite.git fuego-core
           cd fuego-core
+          git submodule update --init --recursive
           mkdir build && cd build
           cmake .. -DBUILD_TESTS=OFF -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
           cmake --build . --config Release
@@ -247,6 +249,7 @@ jobs:
         run: |
           git clone -b ${{ env.FUEGO_SOURCE_BRANCH }} https://github.com/usexfg/fuego-suite.git fuego-core
           cd fuego-core
+          git submodule update --init --recursive
           sed -i 's/set(BOOST_COMPONENTS system filesystem thread date_time chrono regex serialization program_options)/set(BOOST_COMPONENTS filesystem thread date_time chrono regex serialization program_options)/' CMakeLists.txt
           sudo apt-get update
           sudo apt-get install -y build-essential cmake libboost-all-dev libssl-dev libzmq3-dev libjsoncpp-dev
