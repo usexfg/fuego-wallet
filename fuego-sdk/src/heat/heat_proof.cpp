@@ -7,7 +7,9 @@
 
 namespace fuego {
 
-FuegoError HEATProver::generateProof(uint32_t block_start,
+FuegoError HEATProver::generateProof(const std::string& rpc_url,
+                                      const std::string& checkpoint_hash,
+                                      uint32_t block_start,
                                       uint32_t block_end,
                                       const std::string& wallet_file,
                                       const std::string& wallet_password,
