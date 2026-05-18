@@ -1,7 +1,13 @@
 #ifndef FUEGO_SDK_PLUGIN_H_
 #define FUEGO_SDK_PLUGIN_H_
 
-#include <flutter_plugin_registrar.h>
+#if defined(__linux__)
+#include <flutter_linux/flutter_linux.h>
+#elif defined(__APPLE__)
+#include <FlutterMacOS/FlutterMacOS.h>
+#elif defined(_WIN32)
+#include <flutter/plugin_registrar_windows.h>
+#endif
 
 #ifdef FLUTTER_PLUGIN_IMPL
 #define FUEGO_SDK_PLUGIN_EXPORT __attribute__((visibility("default")))
