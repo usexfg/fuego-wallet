@@ -63,39 +63,14 @@ set(FUEGO_SDK_SOURCES
     src/alias/alias_service.cpp
 )
 
-# Define fuego core libraries
-set(FUEGO_CORE_LIBS 
-    CryptoNoteCore 
-    CryptoNoteProtocol 
-    P2p 
-    Rpc 
-    Logging 
-    Common 
-    System
-)
-
 # Path to fuego core build artifacts
 set(FUEGO_LIB_DIR "${FUEGO_DIR}/build/src")
 
-# Add library search paths (flat and subdirectory layouts)
-link_directories(
-    ${FUEGO_LIB_DIR}
-    ${FUEGO_LIB_DIR}/CryptoNoteCore
-    ${FUEGO_LIB_DIR}/CryptoNoteProtocol
-    ${FUEGO_LIB_DIR}/P2p
-    ${FUEGO_LIB_DIR}/Rpc
-    ${FUEGO_LIB_DIR}/Logging
-    ${FUEGO_LIB_DIR}/Common
-    ${FUEGO_LIB_DIR}/System
-    ${FUEGO_LIB_DIR}/CryptoNoteCore
-    ${FUEGO_LIB_DIR}/CryptoNoteProtocol
-    ${FUEGO_LIB_DIR}/P2p
-    ${FUEGO_LIB_DIR}/Rpc
-    ${FUEGO_LIB_DIR}/Http
-    ${FUEGO_LIB_DIR}/Serialization
-    ${FUEGO_LIB_DIR}/Transfers
-    ${FUEGO_LIB_DIR}/Wallet
-)
+# Find all fuego core static libraries
+file(GLOB_RECURSE FUEGO_CORE_LIBS "${FUEGO_LIB_DIR}/*.a")
+
+# Add library search path
+link_directories(${FUEGO_LIB_DIR})
 
 # Build shared or static library
 if(FUEGO_SDK_BUILD_SHARED)
