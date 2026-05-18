@@ -14,11 +14,8 @@ if(APPLE)
     set(CMAKE_OSX_DEPLOYMENT_TARGET "10.14" CACHE STRING "Minimum macOS deployment version")
 endif()
 
-# Fuego submodule path (allow override via cmake -DFUEGO_CORE_DIR=...)
-if(NOT FUEGO_CORE_DIR)
-    set(FUEGO_CORE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../fuego")
-endif()
-set(FUEGO_DIR ${FUEGO_CORE_DIR})
+# Fuego submodule path (override via cmake -DFUEGO_DIR=...)
+set(FUEGO_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../fuego" CACHE PATH "Path to Fuego core source")
 
 # Include directories
 include_directories(
