@@ -77,14 +77,23 @@ jobs:
           git clone -b ${{ env.FUEGO_SOURCE_BRANCH }} https://github.com/usexfg/fuego-suite.git fuego-core
           cd fuego-core
           git submodule update --init --recursive
-          perl -pi -e 's/boost::asio::io_service/boost::asio::io_context/g' $(find . -type f -name "*.h" -o -name "*.cpp") 2>/dev/null || true
-          # Patch Boost components
+          # Patch Boost components  
           sed -i '' 's/set(BOOST_COMPONENTS system filesystem thread date_time chrono regex serialization program_options)/set(BOOST_COMPONENTS filesystem thread date_time chrono regex serialization program_options)/' CMakeLists.txt
-          brew install cmake pkg-config zeromq jsoncpp openssl boost
+          brew install cmake pkg-config zeromq jsoncpp openssl
+          
+          # Install Boost 1.83 (last version with io_service alias)
+          BOOST_VERSION=1.83.0
+          curl -L -o boost.tar.gz "https://archives.boost.io/release/${BOOST_VERSION}/source/boost_$(echo $BOOST_VERSION | tr '.' '_').tar.gz"
+          tar xzf boost.tar.gz
+          cd boost_*
+          ./bootstrap.sh --with-libraries=filesystem,thread,date_time,chrono,regex,serialization,program_options
+          sudo ./b2 -j$(sysctl -n hw.ncpu) variant=release link=static install
+          cd ..
+          BOOST_ROOT=/usr/local
           
           # Build Core Libraries
           mkdir build && cd build
-          cmake .. -DBUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release
+          cmake .. -DBUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release -DBOOST_ROOT=$BOOST_ROOT
           make -j$(sysctl -n hw.ncpu)
           
           # Build SDK Library
@@ -168,7 +177,6 @@ jobs:
           git clone -b ${{ env.FUEGO_SOURCE_BRANCH }} https://github.com/usexfg/fuego-suite.git fuego-core
           cd fuego-core
           git submodule update --init --recursive
-          perl -pi -e 's/boost::asio::io_service/boost::asio::io_context/g' $(find . -type f -name "*.h" -o -name "*.cpp") 2>/dev/null || true
           mkdir build && cd build
           cmake .. -DBUILD_TESTS=OFF -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
           cmake --build . --config Release
@@ -252,7 +260,6 @@ jobs:
           git clone -b ${{ env.FUEGO_SOURCE_BRANCH }} https://github.com/usexfg/fuego-suite.git fuego-core
           cd fuego-core
           git submodule update --init --recursive
-          perl -pi -e 's/boost::asio::io_service/boost::asio::io_context/g' $(find . -type f -name "*.h" -o -name "*.cpp") 2>/dev/null || true
           sed -i 's/set(BOOST_COMPONENTS system filesystem thread date_time chrono regex serialization program_options)/set(BOOST_COMPONENTS filesystem thread date_time chrono regex serialization program_options)/' CMakeLists.txt
           sudo apt-get update
           sudo apt-get install -y build-essential cmake libboost-all-dev libssl-dev libzmq3-dev libjsoncpp-dev
