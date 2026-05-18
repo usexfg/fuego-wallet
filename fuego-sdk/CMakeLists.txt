@@ -77,8 +77,25 @@ set(FUEGO_CORE_LIBS
 # Path to fuego core build artifacts
 set(FUEGO_LIB_DIR "${FUEGO_DIR}/build/src")
 
-# Add library search path
-link_directories(${FUEGO_LIB_DIR})
+# Add library search paths (flat and subdirectory layouts)
+link_directories(
+    ${FUEGO_LIB_DIR}
+    ${FUEGO_LIB_DIR}/CryptoNoteCore
+    ${FUEGO_LIB_DIR}/CryptoNoteProtocol
+    ${FUEGO_LIB_DIR}/P2p
+    ${FUEGO_LIB_DIR}/Rpc
+    ${FUEGO_LIB_DIR}/Logging
+    ${FUEGO_LIB_DIR}/Common
+    ${FUEGO_LIB_DIR}/System
+    ${FUEGO_LIB_DIR}/CryptoNoteCore
+    ${FUEGO_LIB_DIR}/CryptoNoteProtocol
+    ${FUEGO_LIB_DIR}/P2p
+    ${FUEGO_LIB_DIR}/Rpc
+    ${FUEGO_LIB_DIR}/Http
+    ${FUEGO_LIB_DIR}/Serialization
+    ${FUEGO_LIB_DIR}/Transfers
+    ${FUEGO_LIB_DIR}/Wallet
+)
 
 # Build shared or static library
 if(FUEGO_SDK_BUILD_SHARED)
