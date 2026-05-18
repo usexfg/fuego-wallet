@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:cryptography/cryptography.dart';
+import 'package:bip39/bip39.dart' as bip39;
 
 class SecurityService {
   static const _storage = FlutterSecureStorage(
@@ -211,7 +212,10 @@ class SecurityService {
 
   Future<String> _encryptData(String data, String pin) async {
     final algorithm = AesCbc.with256bits(macAlgorithm: Hmac(Sha256()));
-    final secretKey = await _deriveKeyFromPIN(pin);
+    
+    // Generate a random salt for this encryption
+    final salt = _generateSalt();
+    final secretKey = await _deriveKeyFromPIN(pin, salt);
     
     final encrypted = await algorithm.encrypt(
       utf8.encode(data),
@@ -222,6 +226,7 @@ class SecurityService {
       'iv': base64Encode(encrypted.nonce),
       'data': base64Encode(encrypted.cipherText),
       'mac': base64Encode(encrypted.mac.bytes),
+      'salt': salt, // Store the salt alongside the encrypted data
     };
     
     return base64Encode(utf8.encode(json.encode(result)));
@@ -229,10 +234,13 @@ class SecurityService {
 
   Future<String> _decryptData(String encryptedData, String pin) async {
     final algorithm = AesCbc.with256bits(macAlgorithm: Hmac(Sha256()));
-    final secretKey = await _deriveKeyFromPIN(pin);
     
     final decoded = json.decode(utf8.decode(base64Decode(encryptedData))) 
         as Map<String, dynamic>;
+        
+    // Extract salt, fallback to old static salt behavior if not present
+    final salt = decoded.containsKey('salt') ? decoded['salt'] as String : base64Encode(List<int>.filled(16, 42));
+    final secretKey = await _deriveKeyFromPIN(pin, salt);
     
     final secretBox = SecretBox(
       base64Decode(decoded['data'] as String),
@@ -244,14 +252,14 @@ class SecurityService {
     return utf8.decode(decrypted);
   }
 
-  Future<SecretKey> _deriveKeyFromPIN(String pin) async {
+  Future<SecretKey> _deriveKeyFromPIN(String pin, String saltBase64) async {
     final algorithm = Pbkdf2(
       macAlgorithm: Hmac(Sha256()),
       iterations: 100000,
       bits: 256,
     );
     
-    final salt = List<int>.filled(16, 42); // Static salt for key derivation
+    final salt = base64Decode(saltBase64);
     
     return await algorithm.deriveKey(
       secretKey: SecretKey(utf8.encode(pin)),
@@ -261,27 +269,12 @@ class SecurityService {
 
   // Utility methods for mnemonic generation
   static String generateMnemonic() {
-    // This would integrate with the bip39 package for proper mnemonic generation
-    // For now, returning a placeholder
-    final words = [
-      'abandon', 'ability', 'able', 'about', 'above', 'absent', 'absorb', 'abstract',
-      'absurd', 'abuse', 'access', 'accident', 'account', 'accuse', 'achieve', 'acid',
-      'acoustic', 'acquire', 'across', 'act', 'action', 'actor', 'actress', 'actual'
-    ];
-    
-    final random = DateTime.now().millisecondsSinceEpoch;
-    final selected = <String>[];
-    
-    for (int i = 0; i < 25; i++) {
-      selected.add(words[(random + i) % words.length]);
-    }
-    
-    return selected.join(' ');
+    // Generate a secure 24-word bip39 mnemonic (256 bits of entropy)
+    return bip39.generateMnemonic(strength: 256);
   }
 
   static bool validateMnemonic(String mnemonic) {
-    final words = mnemonic.trim().split(' ');
-    return words.length >= 12 && words.length <= 25;
+    return bip39.validateMnemonic(mnemonic);
   }
 }
 
