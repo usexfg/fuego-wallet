@@ -14,23 +14,63 @@ class _AtomicSwapsScreenState extends State<AtomicSwapsScreen> {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('AFK Atomic Swaps'),
+          title: const Text('Hearth AMM & Atomic Swaps'),
           bottom: const TabBar(
             tabs: [
-              Tab(text: 'XFG Swaps'),
-              Tab(text: 'CD Markets'),
+              Tab(text: 'Hearth AMM (HEAT/XFG)'),
+              Tab(text: 'Cross-chain Swaps'),
             ],
           ),
         ),
         body: TabBarView(
           children: [
-            // XFG Swaps Tab
+            // Hearth AMM Tab
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Hearth AMM Liquidity Pools', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 16),
+                  const Text('Instantly swap between XFG and HEAT using the decentralized Hearth AMM.'),
+                  const SizedBox(height: 16),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        children: [
+                          const TextField(decoration: InputDecoration(labelText: 'Amount to Swap')),
+                          const SizedBox(height: 16),
+                          DropdownButtonFormField<String>(
+                            initialValue: 'XFG_TO_HEAT',
+                            items: const [
+                              DropdownMenuItem(value: 'XFG_TO_HEAT', child: Text('XFG -> HEAT')),
+                              DropdownMenuItem(value: 'HEAT_TO_XFG', child: Text('HEAT -> XFG')),
+                            ],
+                            onChanged: (v) {},
+                            decoration: const InputDecoration(labelText: 'Swap Direction'),
+                          ),
+                          const SizedBox(height: 24),
+                          ElevatedButton(
+                            onPressed: () {},
+                            child: const Text('Execute AMM Swap'),
+                          )
+                        ],
+                      ),
+                    ),
+                  )
+                ],
+              ),
+            ),
+            // Cross-chain Swaps Tab
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text('Cross-chain Swaps (ETH / SOL)', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 16),
+                  const Text('Trustlessly swap XFG for assets on other blockchains using atomic swaps and adaptor signatures.'),
                   const SizedBox(height: 16),
                   Card(
                     child: Padding(
@@ -55,24 +95,6 @@ class _AtomicSwapsScreenState extends State<AtomicSwapsScreen> {
                           )
                         ],
                       ),
-                    ),
-                  )
-                ],
-              ),
-            ),
-            // CD Markets Tab
-            const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('CD / XFG Swap Market', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  SizedBox(height: 16),
-                  Text('Trade your active Certificates of Deposit directly with other users via smart contracts.'),
-                  SizedBox(height: 24),
-                  Expanded(
-                    child: Center(
-                      child: Text('No active CD markets found. Connect wallet to refresh.'),
                     ),
                   )
                 ],

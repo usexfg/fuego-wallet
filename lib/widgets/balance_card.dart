@@ -145,7 +145,7 @@ class _BalanceCardState extends State<BalanceCard>
                     if (isLoading)
                       _buildLoadingShimmer()
                     else if (wallet != null)
-                      _buildBalanceDisplay(wallet.balanceXFG)
+                      _buildBalanceDisplay(wallet)
                     else
                       _buildErrorState(),
 
@@ -153,21 +153,44 @@ class _BalanceCardState extends State<BalanceCard>
 
                     // Available balance
                     if (!isLoading && wallet != null)
-                      Row(
+                      Column(
                         children: [
-                          const Icon(
-                            Icons.check_circle_outline,
-                            color: Colors.white,
-                            size: 16,
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.check_circle_outline,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Available: ${_showBalance ? '${wallet.unlockedBalanceXFG.toStringAsFixed(8)} XFG' : '•••••••• XFG'}',
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.9),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Available: ${_showBalance ? '${wallet.unlockedBalanceXFG.toStringAsFixed(8)} XFG' : '••••••••'}',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.9),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w400,
-                            ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.check_circle_outline,
+                                color: Colors.orangeAccent,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Available: ${_showBalance ? '${wallet.availableBalanceHEAT.toStringAsFixed(4)} HEAT' : '•••••••• HEAT'}',
+                                style: TextStyle(
+                                  color: Colors.orangeAccent.withOpacity(0.9),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -203,7 +226,12 @@ class _BalanceCardState extends State<BalanceCard>
     );
   }
 
-  Widget _buildBalanceDisplay(double balance) {
+  Widget _buildBalanceDisplay(Wallet wallet) {
+    final xfgBalance = wallet.balanceXFG;
+    final heatBalance = wallet.totalBalanceHEAT;
+    final provider = Provider.of<WalletProvider>(context, listen: false);
+    final totalEur = (xfgBalance * provider.xfgEurPrice) + (heatBalance * provider.heatEurPrice);
+
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 300),
       child: _showBalance
@@ -216,13 +244,13 @@ class _BalanceCardState extends State<BalanceCard>
                   children: [
                     Expanded(
                       child: AnimatedTextKit(
-                        key: ValueKey(balance),
+                        key: ValueKey('xfg_$xfgBalance'),
                         animatedTexts: [
                           TyperAnimatedText(
-                            balance.toStringAsFixed(8),
+                            xfgBalance.toStringAsFixed(8),
                             textStyle: const TextStyle(
                               color: Colors.white,
-                              fontSize: 36,
+                              fontSize: 28,
                               fontWeight: FontWeight.bold,
                               fontFamily: 'monospace',
                             ),
@@ -234,12 +262,48 @@ class _BalanceCardState extends State<BalanceCard>
                       ),
                     ),
                     const Padding(
-                      padding: EdgeInsets.only(bottom: 8),
+                      padding: EdgeInsets.only(bottom: 6),
                       child: Text(
                         'XFG',
                         style: TextStyle(
                           color: AppTheme.accentColor,
-                          fontSize: 18,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: AnimatedTextKit(
+                        key: ValueKey('heat_$heatBalance'),
+                        animatedTexts: [
+                          TyperAnimatedText(
+                            heatBalance.toStringAsFixed(4),
+                            textStyle: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'monospace',
+                            ),
+                            speed: const Duration(milliseconds: 50),
+                          ),
+                        ],
+                        totalRepeatCount: 1,
+                        displayFullTextOnTap: true,
+                      ),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 4),
+                      child: Text(
+                        'HEAT',
+                        style: TextStyle(
+                          color: Colors.orangeAccent,
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -247,9 +311,9 @@ class _BalanceCardState extends State<BalanceCard>
                   ],
                 ),
                 const SizedBox(height: 8),
-                // USD equivalent (placeholder)
+                // Fiat equivalent
                 Text(
-                  '≈ \$${(balance * 0.001).toStringAsFixed(2)} USD',
+                  '≈ €${totalEur.toStringAsFixed(2)} EUR',
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.8),
                     fontSize: 16,
@@ -264,10 +328,19 @@ class _BalanceCardState extends State<BalanceCard>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    '••••••••',
+                    '•••••••• XFG',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 36,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                  const Text(
+                    '•••••••• HEAT',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
                       fontWeight: FontWeight.bold,
                       fontFamily: 'monospace',
                     ),

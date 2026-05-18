@@ -54,7 +54,7 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   FLUTTER_VERSION: "3.27.0"
-  FUEGO_SOURCE_BRANCH: "xfgCdswaps"
+  FUEGO_SOURCE_BRANCH: "hearth"
   SNAP_NAME: "xfg-wallet"
   FLATPAK_APP_ID: "com.fuego.fuego_wallet"
 

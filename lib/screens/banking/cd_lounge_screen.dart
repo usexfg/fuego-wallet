@@ -37,8 +37,8 @@ class _CDLoungeScreenState extends State<CDLoungeScreen> {
                     ),
                     SizedBox(height: 8),
                     Text(
-                      'Certificates of Deposit allow you to lock up your XFG or COLD tokens for a specific period of time. In exchange for providing liquidity and stability, you earn a fixed interest rate (C0DL3 interest) payable in HEAT tokens or compounded back into your principal.\n\n'
-                      '1. Choose the asset you want to lock up.\n'
+                      'Certificates of Deposit allow you to lock up your HEAT tokens for a specific period of time. In exchange for providing liquidity and stability, you earn a fixed interest rate (C0DL3 interest) payable in HEAT tokens or compounded back into your principal.\n\n'
+                      '1. Enter the amount of HEAT you want to lock up.\n'
                       '2. Select a duration (e.g., 3 months, 6 months, 1 year).\n'
                       '3. Confirm your CD creation and start earning yield immediately.',
                       style: TextStyle(fontSize: 14, height: 1.5),

@@ -9,6 +9,8 @@ class Wallet {
   final String spendKey;
   final int balance;
   final int unlockedBalance;
+  final int balanceHEAT;
+  final int unlockedBalanceHEAT;
   final int blockchainHeight;
   final int localHeight;
   final bool synced;
@@ -19,6 +21,8 @@ class Wallet {
     required this.spendKey,
     required this.balance,
     required this.unlockedBalance,
+    this.balanceHEAT = 0,
+    this.unlockedBalanceHEAT = 0,
     required this.blockchainHeight,
     required this.localHeight,
     required this.synced,
@@ -33,6 +37,8 @@ class Wallet {
     String? spendKey,
     int? balance,
     int? unlockedBalance,
+    int? balanceHEAT,
+    int? unlockedBalanceHEAT,
     int? blockchainHeight,
     int? localHeight,
     bool? synced,
@@ -43,6 +49,8 @@ class Wallet {
       spendKey: spendKey ?? this.spendKey,
       balance: balance ?? this.balance,
       unlockedBalance: unlockedBalance ?? this.unlockedBalance,
+      balanceHEAT: balanceHEAT ?? this.balanceHEAT,
+      unlockedBalanceHEAT: unlockedBalanceHEAT ?? this.unlockedBalanceHEAT,
       blockchainHeight: blockchainHeight ?? this.blockchainHeight,
       localHeight: localHeight ?? this.localHeight,
       synced: synced ?? this.synced,
@@ -52,6 +60,8 @@ class Wallet {
   // Convert atomic units to XFG (assuming 8 decimal places)
   double get balanceXFG => balance / 10000000.0;
   double get unlockedBalanceXFG => unlockedBalance / 10000000.0;
+  double get totalBalanceHEAT => balanceHEAT / 10000000.0;
+  double get availableBalanceHEAT => unlockedBalanceHEAT / 10000000.0;
   
   // Sync progress percentage
   double get syncProgress => 
@@ -69,6 +79,8 @@ class WalletTransaction {
   final bool isSpending;
   final String? address;
   final int confirmations;
+  final String? assetId;
+  final String? feeAssetId;
 
   const WalletTransaction({
     required this.txid,
@@ -80,15 +92,19 @@ class WalletTransaction {
     required this.isSpending,
     this.address,
     required this.confirmations,
+    this.assetId,
+    this.feeAssetId,
   });
 
   factory WalletTransaction.fromJson(Map<String, dynamic> json) => 
       _$WalletTransactionFromJson(json);
   Map<String, dynamic> toJson() => _$WalletTransactionToJson(this);
 
-  // Convert atomic units to XFG
-  double get amountXFG => amount / 10000000.0;
-  double get feeXFG => fee / 10000000.0;
+  // Convert atomic units to XFG/HEAT
+  double get amountFormatted => amount / 10000000.0;
+  double get feeFormatted => fee / 10000000.0;
+  
+  bool get isHeat => assetId == "HEAT";
   
   // Get transaction status
   TransactionStatus get status {
@@ -109,6 +125,7 @@ class SendTransactionRequest {
   final String paymentId;
   final int fee;
   final int mixins;
+  final String? assetId;
 
   const SendTransactionRequest({
     required this.address,
@@ -116,6 +133,7 @@ class SendTransactionRequest {
     required this.paymentId,
     required this.fee,
     this.mixins = 8, // Default ring size
+    this.assetId,
   });
 
   factory SendTransactionRequest.fromJson(Map<String, dynamic> json) => 

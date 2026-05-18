@@ -24,6 +24,11 @@ class WalletProvider extends ChangeNotifier {
   Timer? _syncTimer;
   NetworkConfig _networkConfig = NetworkConfig.mainnet;
 
+  // Price feeds
+  double _xfgEurPrice = 0.0;
+  double _heatXfgPrice = 0.0;
+  double _heatEurPrice = 0.0;
+
   // Mining status
   int _miningSpeed = 0;
   int _miningThreads = 1;
@@ -53,6 +58,11 @@ class WalletProvider extends ChangeNotifier {
   int get miningThreads => _miningThreads;
   ConnectivityResult get connectivityResult => _connectivityResult;
   NetworkConfig get networkConfig => _networkConfig;
+
+  // Prices
+  double get xfgEurPrice => _xfgEurPrice;
+  double get heatXfgPrice => _heatXfgPrice;
+  double get heatEurPrice => _heatEurPrice;
 
   bool get hasWallet => _wallet != null;
   bool get isWalletSynced => _wallet?.synced ?? false;
@@ -263,6 +273,9 @@ class WalletProvider extends ChangeNotifier {
 
       _wallet = balance.copyWith(address: address);
 
+      // Fetch prices concurrently
+      _refreshPrices();
+
       // Start sync timer if not already running
       if (!isWalletSynced) {
         _startSyncTimer();
@@ -273,6 +286,19 @@ class WalletProvider extends ChangeNotifier {
       _setError(e.toString());
     } finally {
       _setLoading(false);
+    }
+  }
+
+  Future<void> _refreshPrices() async {
+    try {
+      // In a real implementation, fetch from CoinGecko, Binance, or an oracle.
+      // Placeholder data reflecting Fuego network conditions.
+      _xfgEurPrice = 0.05; // 5 cents EUR per XFG
+      _heatXfgPrice = 100.0; // 100 XFG per HEAT (via Hearth AMM)
+      _heatEurPrice = _heatXfgPrice * _xfgEurPrice;
+      notifyListeners();
+    } catch (e) {
+      _logger.warning('Failed to fetch price feeds: $e');
     }
   }
 
