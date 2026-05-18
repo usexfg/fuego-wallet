@@ -982,7 +982,7 @@ class _BankingScreenState extends State<BankingScreen>
                     _stopWalletd();
                   }
                 },
-                thumbColor: AppTheme.successColor,
+                thumbColor: WidgetStateProperty.all(AppTheme.successColor),
               ),
             ],
           ),
