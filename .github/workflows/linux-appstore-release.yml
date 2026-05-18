@@ -81,7 +81,7 @@ jobs:
           
           cd ../../fuego-sdk
           mkdir build && cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DFUEGO_DIR=$(pwd)/../.. /fuego-core
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DFUEGO_DIR=../../fuego-core
           make -j$(nproc)
           
           mkdir -p ../../assets/bin

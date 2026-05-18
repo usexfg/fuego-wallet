@@ -93,13 +93,13 @@ jobs:
           
           # Build Core Libraries
           mkdir build && cd build
-          cmake .. -DBUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release -DBOOST_ROOT=$BOOST_ROOT
+          cmake .. -DBUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release -DBOOST_ROOT=$BOOST_ROOT -DBoost_USE_STATIC_LIBS=ON
           make -j$(sysctl -n hw.ncpu)
           
           # Build SDK Library
           cd ../../fuego-sdk
           mkdir build && cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DFUEGO_DIR=$(pwd)/../.. /fuego-core
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DFUEGO_DIR=../../fuego-core -DBoost_USE_STATIC_LIBS=ON
           make -j$(sysctl -n hw.ncpu)
           
           # Copy SDK to assets
@@ -271,7 +271,7 @@ jobs:
           # Build SDK Library
           cd ../../fuego-sdk
           mkdir build && cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Release
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DFUEGO_DIR=../../fuego-core
           make -j$(nproc)
           
           mkdir -p ../../assets/bin
