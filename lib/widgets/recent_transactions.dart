@@ -123,7 +123,7 @@ class RecentTransactions extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '$prefix${transaction.amountXFG.toStringAsFixed(8)} XFG',
+                      '$prefix${transaction.amountFormatted.toStringAsFixed(8)} XFG',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,

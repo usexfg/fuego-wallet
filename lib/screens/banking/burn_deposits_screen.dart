@@ -138,7 +138,7 @@ class _BurnDepositsScreenState extends State<BurnDepositsScreen> {
             ),
             if (_lastBurnTransaction != null) ...[
               Text('Transaction Hash: ${_lastBurnTransaction!.txid}'),
-              Text('Amount: ${_lastBurnTransaction!.amountXFG} XFG'),
+              Text('Amount: ${_lastBurnTransaction!.amountFormatted} XFG'),
               Text('Date: ${_lastBurnTransaction!.dateTime}'),
             ],
           ],
@@ -271,7 +271,7 @@ class _BurnDepositsScreenState extends State<BurnDepositsScreen> {
             ),
             const SizedBox(height: 8),
             Text('Hash: ${_lastBurnTransaction!.txid}'),
-            Text('Amount: ${_lastBurnTransaction!.amountXFG} XFG'),
+            Text('Amount: ${_lastBurnTransaction!.amountFormatted} XFG'),
             Text('Date: ${_lastBurnTransaction!.dateTime}'),
           ],
         ),
