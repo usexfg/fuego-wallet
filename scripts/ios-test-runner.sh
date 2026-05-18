@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# XF₲ Wallet iOS Test Runner Script
+# fuego-wallet iOS Test Runner Script
 # This script runs comprehensive tests for the iOS app
 
 set -e
 
-echo "🧪 Running XF₲ Wallet iOS Tests"
+echo "🧪 Running fuego-wallet iOS Tests"
 echo "==============================="
 
 # Colors for output

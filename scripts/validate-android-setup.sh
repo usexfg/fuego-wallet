@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# XF₲ Wallet Android Setup Validation Script
+# fuego-wallet Android Setup Validation Script
 # This script validates the Android release workflow configuration
 
 set -e
 
-echo "🔍 XF₲ Wallet Android Setup Validation"
+echo "🔍 fuego-wallet Android Setup Validation"
 echo "======================================"
 echo ""
 

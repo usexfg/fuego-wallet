@@ -22,7 +22,7 @@ class _SplashScreenState extends State<SplashScreen>
   late Animation<Offset> _slideAnimation;
 
   final bool _isInitializing = true;
-  String _initMessage = 'Initializing XF₲ Wallet...';
+  String _initMessage = 'Initializing fuego-wallet...';
 
   @override
   void initState() {

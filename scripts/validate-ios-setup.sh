@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# XF₲ Wallet iOS Setup Validation Script
+# fuego-wallet iOS Setup Validation Script
 # This script validates the iOS development environment setup
 
 set -e
 
-echo "🔍 Validating XF₲ Wallet iOS Development Environment"
+echo "🔍 Validating fuego-wallet iOS Development Environment"
 echo "=================================================="
 
 # Colors for output

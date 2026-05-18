@@ -1,4 +1,4 @@
-name: XF₲ Wallet iOS Build & Release (Embedded SDK)
+name: fuego-wallet iOS Build & Release (Embedded SDK)
 
 on:
   push:
@@ -51,7 +51,7 @@ env:
 
 jobs:
   build-ios:
-    name: Build XF₲ Wallet (iOS)
+    name: Build fuego-wallet (iOS)
     runs-on: macos-latest
 
     steps:
@@ -175,7 +175,7 @@ jobs:
         if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.build_type == 'release')
         run: |
           cd ios/build/ipa
-          zip -r XF₲-Wallet-iOS-Release.ipa Runner.ipa
+          zip -r fuego-wallet-iOS-Release.ipa Runner.ipa
           cd ../../..
 
       - name: Upload iOS artifacts
@@ -183,7 +183,7 @@ jobs:
         with:
           name: xfg-wallet-ios
           path: |
-            ios/build/ipa/XF₲-Wallet-iOS-Release.ipa
+            ios/build/ipa/fuego-wallet-iOS-Release.ipa
             build/ios/iphoneos/Runner.app
           retention-days: 30
 
@@ -193,9 +193,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          files: ios/build/ipa/XF₲-Wallet-iOS-Release.ipa
+          files: ios/build/ipa/fuego-wallet-iOS-Release.ipa
           tag_name: ${{ github.ref_name }}
-          name: XF₲ Wallet iOS Release ${{ github.ref_name }}
+          name: fuego-wallet iOS Release ${{ github.ref_name }}
 
   upload-to-testflight:
     name: Upload to TestFlight
@@ -216,7 +216,7 @@ jobs:
       - name: Extract IPA
         run: |
           cd artifacts
-          unzip XF₲-Wallet-iOS-Release.ipa
+          unzip fuego-wallet-iOS-Release.ipa
           cd ..
 
       - name: Upload to TestFlight
@@ -246,7 +246,7 @@ jobs:
       - name: Extract IPA
         run: |
           cd artifacts
-          unzip XF₲-Wallet-iOS-Release.ipa
+          unzip fuego-wallet-iOS-Release.ipa
           cd ..
 
       - name: Upload to App Store
@@ -276,7 +276,7 @@ jobs:
       - name: Extract IPA for analysis
         run: |
           cd artifacts
-          unzip XF₲-Wallet-iOS-Release.ipa
+          unzip fuego-wallet-iOS-Release.ipa
           cd ..
 
       - name: Run iOS security analysis
@@ -344,7 +344,7 @@ jobs:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         with:
           args: |
-            🚀 **XF₲ Wallet iOS Release ${{ github.ref_name }}**
+            🚀 **fuego-wallet iOS Release ${{ github.ref_name }}**
 
             ✅ iOS app build completed
             📱 Ready for distribution

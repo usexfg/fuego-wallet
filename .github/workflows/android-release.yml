@@ -1,4 +1,4 @@
-name: XF₲ Wallet Android Build & Release (Embedded SDK)
+name: fuego-wallet Android Build & Release (Embedded SDK)
 
 on:
   push:
@@ -44,7 +44,7 @@ env:
 
 jobs:
   build-android:
-    name: Build XF₲ Wallet (Android)
+    name: Build fuego-wallet (Android)
     runs-on: ubuntu-latest
 
     steps:
@@ -155,25 +155,25 @@ jobs:
         run: |
           cd build/app/outputs/flutter-apk
           if [ -f app-release-signed.apk ]; then
-            cp app-release-signed.apk XF₲-Wallet-Android-Release.apk
+            cp app-release-signed.apk fuego-wallet-Android-Release.apk
           else
-            cp app-release.apk XF₲-Wallet-Android-Release.apk
+            cp app-release.apk fuego-wallet-Android-Release.apk
           fi
-          zip -r XF₲-Wallet-Android-Release.zip XF₲-Wallet-Android-Release.apk
+          zip -r fuego-wallet-Android-Release.zip fuego-wallet-Android-Release.apk
 
       - name: Create AAB archive
         if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.build_type == 'release')
         run: |
           cd build/app/outputs/bundle/release
-          cp app-release.aab XF₲-Wallet-Android-Release.aab
-          zip -r XF₲-Wallet-Android-Release-AAB.zip XF₲-Wallet-Android-Release.aab
+          cp app-release.aab fuego-wallet-Android-Release.aab
+          zip -r fuego-wallet-Android-Release-AAB.zip fuego-wallet-Android-Release.aab
 
       - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
           name: xfg-wallet-android-apk
           path: |
-            build/app/outputs/flutter-apk/XF₲-Wallet-Android-Release.zip
+            build/app/outputs/flutter-apk/fuego-wallet-Android-Release.zip
             build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 30
 
@@ -182,7 +182,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: xfg-wallet-android-aab
-          path: build/app/outputs/bundle/release/XF₲-Wallet-Android-Release-AAB.zip
+          path: build/app/outputs/bundle/release/fuego-wallet-Android-Release-AAB.zip
           retention-days: 30
 
       - name: Upload to Release
@@ -192,10 +192,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: |
-            build/app/outputs/flutter-apk/XF₲-Wallet-Android-Release.zip
-            build/app/outputs/bundle/release/XF₲-Wallet-Android-Release-AAB.zip
+            build/app/outputs/flutter-apk/fuego-wallet-Android-Release.zip
+            build/app/outputs/bundle/release/fuego-wallet-Android-Release-AAB.zip
           tag_name: ${{ github.ref_name }}
-          name: XF₲ Wallet Android Release ${{ github.ref_name }}
+          name: fuego-wallet Android Release ${{ github.ref_name }}
 
   upload-to-play-store:
     name: Upload to Play Store
@@ -216,7 +216,7 @@ jobs:
       - name: Extract AAB
         run: |
           cd artifacts
-          unzip XF₲-Wallet-Android-Release-AAB.zip
+          unzip fuego-wallet-Android-Release-AAB.zip
           cd ..
 
       - name: Setup Google Play Console API
@@ -224,7 +224,7 @@ jobs:
         with:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.fuego.fuego_wallet
-          releaseFiles: artifacts/XF₲-Wallet-Android-Release.aab
+          releaseFiles: artifacts/fuego-wallet-Android-Release.aab
           track: production
           status: completed
           inAppUpdatePriority: 2
@@ -249,13 +249,13 @@ jobs:
       - name: Extract APK
         run: |
           cd artifacts
-          unzip XF₲-Wallet-Android-Release.zip
+          unzip fuego-wallet-Android-Release.zip
           cd ..
 
       - name: Run MobSF Security Scan
         uses: MobSF/MobSF-Action@v1.0.0
         with:
-          file: artifacts/XF₲-Wallet-Android-Release.apk
+          file: artifacts/fuego-wallet-Android-Release.apk
           mobsf_url: ${{ secrets.MOBSF_URL }}
           mobsf_api_key: ${{ secrets.MOBSF_API_KEY }}
 
@@ -273,7 +273,7 @@ jobs:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         with:
           args: |
-            🚀 **XF₲ Wallet Android Release ${{ github.ref_name }}**
+            🚀 **fuego-wallet Android Release ${{ github.ref_name }}**
 
             ✅ Android APK and AAB builds completed
             📱 Ready for distribution
@@ -286,7 +286,7 @@ jobs:
 
       - name: Create Release Summary
         run: |
-          echo "## XF₲ Wallet Android Release ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "## fuego-wallet Android Release ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Build Status" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ Android APK: Built and signed" >> $GITHUB_STEP_SUMMARY
@@ -299,5 +299,5 @@ jobs:
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Download Links" >> $GITHUB_STEP_SUMMARY
-          echo "- [Android APK](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/XF₲-Wallet-Android-Release.zip)" >> $GITHUB_STEP_SUMMARY
-          echo "- [Android AAB](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/XF₲-Wallet-Android-Release-AAB.zip)" >> $GITHUB_STEP_SUMMARY
+          echo "- [Android APK](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/fuego-wallet-Android-Release.zip)" >> $GITHUB_STEP_SUMMARY
+          echo "- [Android AAB](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/fuego-wallet-Android-Release-AAB.zip)" >> $GITHUB_STEP_SUMMARY

@@ -1,6 +1,6 @@
-# XF₲ Wallet Android Release Setup Guide
+# fuego-wallet Android Release Setup Guide
 
-This guide explains how to set up the complete Android release workflow for the XF₲ Wallet, including signed builds, Play Store uploads, and automated releases.
+This guide explains how to set up the complete Android release workflow for the fuego-wallet, including signed builds, Play Store uploads, and automated releases.
 
 ## Overview
 
@@ -115,7 +115,7 @@ ANDROID_RELEASE_SETUP.md        # This documentation
 ## Usage Examples
 
 ### Manual Release
-1. Go to Actions → XF₲ Wallet Android Build & Release
+1. Go to Actions → fuego-wallet Android Build & Release
 2. Click "Run workflow"
 3. Select build type (release/debug)
 4. Choose whether to upload to Play Store

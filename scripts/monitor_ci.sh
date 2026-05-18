@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# GitHub Actions CI Monitor Script for XFG Wallet
+# GitHub Actions CI Monitor Script for fuego-wallet
 # Monitors workflows, shows status, and downloads logs for troubleshooting
 
 set -e
@@ -191,7 +191,7 @@ show_build_times() {
 # Main menu
 show_help() {
   cat << EOF
-${BLUE}GitHub Actions CI Monitor for XFG Wallet${NC}
+${BLUE}GitHub Actions CI Monitor for fuego-wallet${NC}
 
 Usage: $0 <command> [options]
 

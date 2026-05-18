@@ -1,6 +1,6 @@
-# XF₲ Wallet iOS Development Setup Guide
+# fuego-wallet iOS Development Setup Guide
 
-This guide provides comprehensive instructions for setting up iOS development for the XF₲ Wallet Flutter application.
+This guide provides comprehensive instructions for setting up iOS development for the fuego-wallet Flutter application.
 
 ## Prerequisites
 
@@ -340,6 +340,6 @@ flutter analyze --verbose
 
 ## Conclusion
 
-This setup guide provides everything needed to develop, test, and distribute the XF₲ Wallet iOS application. Follow the steps carefully and refer to the troubleshooting section if you encounter any issues.
+This setup guide provides everything needed to develop, test, and distribute the fuego-wallet iOS application. Follow the steps carefully and refer to the troubleshooting section if you encounter any issues.
 
 For additional support, please refer to the project's GitHub repository or contact the development team.

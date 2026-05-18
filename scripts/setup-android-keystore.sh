@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# XF₲ Wallet Android Keystore Setup Script
+# fuego-wallet Android Keystore Setup Script
 # This script helps generate and configure the Android keystore for release builds
 
 set -e
 
-echo "🔐 XF₲ Wallet Android Keystore Setup"
+echo "🔐 fuego-wallet Android Keystore Setup"
 echo "====================================="
 echo ""
 

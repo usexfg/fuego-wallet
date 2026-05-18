@@ -1,4 +1,4 @@
-name: XF₲ Wallet Linux App Store Release (Embedded SDK)
+name: fuego-wallet Linux App Store Release (Embedded SDK)
 
 on:
   push:
@@ -93,7 +93,7 @@ jobs:
           path: assets/bin/libfuego_sdk-linux.so
 
   build-snap:
-    name: Build XF₲ Wallet (Snap Store)
+    name: Build fuego-wallet (Snap Store)
     runs-on: ubuntu-latest
     needs: build-sdk-linux
     if: github.event.inputs.distribution_method == 'snap' || github.event.inputs.distribution_method == 'all' || github.event_name != 'workflow_dispatch'
@@ -153,10 +153,10 @@ jobs:
           files: |
             *.snap
           tag_name: ${{ github.ref_name }}
-          name: XF₲ Wallet Linux Snap ${{ github.ref_name }}
+          name: fuego-wallet Linux Snap ${{ github.ref_name }}
 
   build-flatpak:
-    name: Build XF₲ Wallet (Flatpak)
+    name: Build fuego-wallet (Flatpak)
     runs-on: ubuntu-latest
     needs: build-sdk-linux
     if: github.event.inputs.distribution_method == 'flatpak' || github.event.inputs.distribution_method == 'all' || github.event_name != 'workflow_dispatch'
@@ -220,10 +220,10 @@ jobs:
         with:
           files: xfg-wallet.flatpak
           tag_name: ${{ github.ref_name }}
-          name: XF₲ Wallet Linux Flatpak ${{ github.ref_name }}
+          name: fuego-wallet Linux Flatpak ${{ github.ref_name }}
 
   build-appimage:
-    name: Build XF₲ Wallet (AppImage)
+    name: Build fuego-wallet (AppImage)
     runs-on: ubuntu-latest
     needs: build-sdk-linux
     if: github.event.inputs.distribution_method == 'appimage' || github.event.inputs.distribution_method == 'all' || github.event_name != 'workflow_dispatch'
@@ -265,10 +265,10 @@ jobs:
           curl -LO https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
           chmod +x appimagetool-x86_64.AppImage
           
-          cat > XF₲-Wallet.desktop << 'EOF'
+          cat > fuego-wallet.desktop << 'EOF'
           [Desktop Entry]
           Type=Application
-          Name=XF₲ Wallet
+          Name=fuego-wallet
           Comment=Privacy-focused cryptocurrency wallet
           Exec=fuego_wallet
           Icon=fuego_wallet
@@ -277,14 +277,14 @@ jobs:
           EOF
           
           cp ../../../../../app_icon_256.png fuego_wallet.png || echo "Using placeholder icon"
-          ./appimagetool-x86_64.AppImage . XF₲-Wallet-Linux.AppImage
+          ./appimagetool-x86_64.AppImage . fuego-wallet-Linux.AppImage
           rm -f appimagetool-x86_64.AppImage
 
       - name: Upload AppImage artifacts
         uses: actions/upload-artifact@v4
         with:
           name: xfg-wallet-appimage
-          path: build/linux/x64/release/bundle/XF₲-Wallet-Linux.AppImage
+          path: build/linux/x64/release/bundle/fuego-wallet-Linux.AppImage
           retention-days: 30
 
       - name: Upload to Release
@@ -293,9 +293,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          files: build/linux/x64/release/bundle/XF₲-Wallet-Linux.AppImage
+          files: build/linux/x64/release/bundle/fuego-wallet-Linux.AppImage
           tag_name: ${{ github.ref_name }}
-          name: XF₲ Wallet Linux AppImage ${{ github.ref_name }}
+          name: fuego-wallet Linux AppImage ${{ github.ref_name }}
 
   upload-to-snap-store:
     name: Upload to Snap Store
@@ -388,7 +388,7 @@ jobs:
           if [ -f "artifacts/flatpak/xfg-wallet.flatpak" ]; then
             echo "✅ Flatpak package found"
           fi
-          if [ -f "artifacts/appimage/XF₲-Wallet-Linux.AppImage" ]; then
+          if [ -f "artifacts/appimage/fuego-wallet-Linux.AppImage" ]; then
             echo "✅ AppImage package found"
           fi
 
@@ -413,7 +413,7 @@ jobs:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         with:
           args: |
-            🚀 **XF₲ Wallet Linux App Store Release ${{ github.ref_name }}**
+            🚀 **fuego-wallet Linux App Store Release ${{ github.ref_name }}**
 
             ✅ Linux app store packages built
             📦 Available for Snap Store, Flatpak, and AppImage

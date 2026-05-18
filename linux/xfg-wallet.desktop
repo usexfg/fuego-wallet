@@ -1,7 +1,7 @@
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=XF₲ Wallet
+Name=fuego-wallet
 GenericName=Cryptocurrency Wallet
 Comment=Privacy-focused cryptocurrency wallet for XF₲
 Exec=fuego_wallet

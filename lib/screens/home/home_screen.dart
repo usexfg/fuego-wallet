@@ -79,7 +79,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('XF₲ Wallet'),
+        title: const Text('fuego-wallet'),
         elevation: 0,
         actions: [
           IconButton(
@@ -360,7 +360,7 @@ class _HomeScreenState extends State<HomeScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('About XF₲ Wallet'),
+        title: const Text('About fuego-wallet'),
         content: const SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

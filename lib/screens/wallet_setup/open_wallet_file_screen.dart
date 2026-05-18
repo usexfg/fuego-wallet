@@ -89,7 +89,7 @@ class _OpenWalletFileScreenState extends State<OpenWalletFileScreen>
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['wallet', 'keys', 'dat'],
-        dialogTitle: 'Select XF₲ Wallet File',
+        dialogTitle: 'Select fuego-wallet File',
         initialDirectory: initialDirectory,
         allowMultiple: false,
       );
@@ -116,7 +116,7 @@ class _OpenWalletFileScreenState extends State<OpenWalletFileScreen>
         final homeDir = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
         if (homeDir != null) {
           final commonPaths = [
-            path.join(homeDir, 'Documents', 'XF₲ Wallet'),
+            path.join(homeDir, 'Documents', 'fuego-wallet'),
             path.join(homeDir, 'Documents', 'Fuego Wallet'),
             path.join(homeDir, 'Documents', 'Wallets'),
             path.join(homeDir, 'Desktop'),
@@ -283,7 +283,7 @@ class _OpenWalletFileScreenState extends State<OpenWalletFileScreen>
               children: [
                 // Header
                 const Text(
-                  'Open Your XF₲ Wallet',
+                  'Open Your fuego-wallet',
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
@@ -528,8 +528,8 @@ class _OpenWalletFileScreenState extends State<OpenWalletFileScreen>
           ),
           const SizedBox(height: 12),
           _buildFileTypeRow(
-            'XF₲ Wallet (.wallet)',
-            'Standard XF₲ wallet file',
+            'fuego-wallet (.wallet)',
+            'Standard fuego-wallet file',
           ),
           const SizedBox(height: 8),
           _buildFileTypeRow(

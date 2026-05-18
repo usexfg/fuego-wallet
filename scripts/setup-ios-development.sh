@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# XF₲ Wallet iOS Development Setup Script
-# This script sets up the iOS development environment for the XF₲ Wallet
+# fuego-wallet iOS Development Setup Script
+# This script sets up the iOS development environment for the fuego-wallet
 
 set -e
 
-echo "🚀 Setting up XF₲ Wallet iOS Development Environment"
+echo "🚀 Setting up fuego-wallet iOS Development Environment"
 echo "=================================================="
 
 # Colors for output

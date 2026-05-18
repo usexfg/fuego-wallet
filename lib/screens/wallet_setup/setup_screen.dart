@@ -153,7 +153,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                               AnimatedTextKit(
                                 animatedTexts: [
                                   FadeAnimatedText(
-                                    'Welcome to XF₲ wallet',
+                                    'Welcome to fuego-wallet',
                                     textStyle: const TextStyle(
                                       fontSize: 32,
                                       fontWeight: FontWeight.bold,
@@ -309,7 +309,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                               AnimatedTextKit(
                                 animatedTexts: [
                                   FadeAnimatedText(
-                                    'Welcome to XF₲ wallet',
+                                    'Welcome to fuego-wallet',
                                     textStyle: const TextStyle(
                                       fontSize: 28,
                                       fontWeight: FontWeight.bold,

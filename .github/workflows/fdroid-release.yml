@@ -1,4 +1,4 @@
-name: XF₲ Wallet F-Droid Build (Embedded SDK)
+name: fuego-wallet F-Droid Build (Embedded SDK)
 
 on:
   push:
@@ -131,12 +131,12 @@ jobs:
         run: |
           cd build/app/outputs/flutter-apk
           if [ -f app-release.apk ]; then
-            cp app-release.apk XF₲-Wallet-FDroid-Release.apk
+            cp app-release.apk fuego-wallet-FDroid-Release.apk
           fi
           if [ -f app-arm64-v8a-release.apk ]; then
-            cp app-arm64-v8a-release.apk XF₲-Wallet-FDroid-Release-arm64-v8a.apk
-            cp app-armeabi-v7a-release.apk XF₲-Wallet-FDroid-Release-armeabi-v7a.apk
-            cp app-x86_64-release.apk XF₲-Wallet-FDroid-Release-x86_64.apk
+            cp app-arm64-v8a-release.apk fuego-wallet-FDroid-Release-arm64-v8a.apk
+            cp app-armeabi-v7a-release.apk fuego-wallet-FDroid-Release-armeabi-v7a.apk
+            cp app-x86_64-release.apk fuego-wallet-FDroid-Release-x86_64.apk
           fi
 
       - name: Generate APK checksums
@@ -150,9 +150,9 @@ jobs:
         with:
           name: xfg-wallet-fdroid-apk
           path: |
-            build/app/outputs/flutter-apk/XF₲-Wallet-FDroid-Release.apk
-            build/app/outputs/flutter-apk/XF₲-Wallet-FDroid-Release-arm64-v8a.apk
-            build/app/outputs/flutter-apk/XF₲-Wallet-FDroid-Release-armeabi-v7a.apk
-            build/app/outputs/flutter-apk/XF₲-Wallet-FDroid-Release-x86_64.apk
+            build/app/outputs/flutter-apk/fuego-wallet-FDroid-Release.apk
+            build/app/outputs/flutter-apk/fuego-wallet-FDroid-Release-arm64-v8a.apk
+            build/app/outputs/flutter-apk/fuego-wallet-FDroid-Release-armeabi-v7a.apk
+            build/app/outputs/flutter-apk/fuego-wallet-FDroid-Release-x86_64.apk
             build/app/outputs/flutter-apk/SHA256SUMS.txt
           retention-days: 30
