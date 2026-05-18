@@ -96,7 +96,7 @@ jobs:
           # Build SDK
           cd ../../fuego-sdk
           mkdir build && cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DFUEGO_DIR=../../fuego-core -DBoost_USE_STATIC_LIBS=ON
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DFUEGO_CORE_DIR=../../fuego-core -DBoost_USE_STATIC_LIBS=ON
           make -j$(sysctl -n hw.ncpu)
           
           # Copy SDK

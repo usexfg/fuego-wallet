@@ -89,7 +89,7 @@ jobs:
           # Build SDK Library
           cd ../../fuego-sdk
           mkdir build && cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DFUEGO_DIR=../../fuego-core
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DFUEGO_CORE_DIR=../../fuego-core
           make -j$(nproc)
           
           # Copy SDK to assets
