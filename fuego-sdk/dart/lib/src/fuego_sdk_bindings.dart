@@ -93,6 +93,37 @@ class FuegoSDKBindings {
     int Function(Pointer<Utf8>, Pointer<FuegoCDInfo>)
   >('fuego_cd_get_info');
 
+  // Wallet
+  late final _fuego_wallet_open = _dylib.lookupFunction<
+    Int32 Function(Pointer<Utf8>, Pointer<Utf8>),
+    int Function(Pointer<Utf8>, Pointer<Utf8>)
+  >('fuego_wallet_open');
+
+  late final _fuego_wallet_close = _dylib.lookupFunction<
+    Void Function(),
+    void Function()
+  >('fuego_wallet_close');
+
+  late final _fuego_wallet_is_open = _dylib.lookupFunction<
+    Int32 Function(),
+    int Function()
+  >('fuego_wallet_is_open');
+
+  late final _fuego_wallet_get_balance = _dylib.lookupFunction<
+    Int32 Function(Pointer<Uint64>, Pointer<Uint64>),
+    int Function(Pointer<Uint64>, Pointer<Uint64>)
+  >('fuego_wallet_get_balance');
+
+  late final _fuego_wallet_get_heat_balance = _dylib.lookupFunction<
+    Int32 Function(Pointer<Uint64>, Pointer<Uint64>),
+    int Function(Pointer<Uint64>, Pointer<Uint64>)
+  >('fuego_wallet_get_heat_balance');
+
+  late final _fuego_wallet_send = _dylib.lookupFunction<
+    Int32 Function(Pointer<Utf8>, Uint64, Pointer<Utf8>, Uint64, Pointer<Utf8>, Pointer<Utf8>, Size),
+    int Function(Pointer<Utf8>, int, Pointer<Utf8>, int, Pointer<Utf8>, Pointer<Utf8>, int)
+  >('fuego_wallet_send');
+
   // Swap
   late final _fuego_swap_initiate = _dylib.lookupFunction<
     Int32 Function(Pointer<Utf8>, Uint64, Pointer<Utf8>, Pointer<Utf8>, Pointer<FuegoSwapInfo>),

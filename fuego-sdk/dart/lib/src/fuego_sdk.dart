@@ -1,3 +1,4 @@
+import 'dart:ffi';
 import 'dart:ffi' as ffi;
 import 'dart:io';
 
@@ -90,6 +91,117 @@ class FuegoSDK {
 
   /// Get the bindings
   FuegoSDKBindings get bindings => _bindings;
+
+  // ── Wallet Operations ────────────────────────────────────────
+
+  /// Open a wallet file with password
+  FuegoError walletOpen(String path, String password) {
+    final pathPtr = path.toNativeUtf8();
+    final passPtr = password.toNativeUtf8();
+    try {
+      return FuegoError.fromCode(_bindings.fuego_wallet_open(pathPtr, passPtr));
+    } finally {
+      calloc.free(pathPtr);
+      calloc.free(passPtr);
+    }
+  }
+
+  /// Close the open wallet
+  void walletClose() => _bindings.fuego_wallet_close();
+
+  /// Check if a wallet is currently open
+  bool walletIsOpen() => _bindings.fuego_wallet_is_open() != 0;
+
+  /// Get XFG balance (available, locked in atomic units)
+  ({int available, int locked}) walletGetBalance() {
+    final avail = calloc<ffi.Uint64>();
+    final locked = calloc<ffi.Uint64>();
+    try {
+      _bindings.fuego_wallet_get_balance(avail, locked);
+      return (available: avail.value, locked: locked.value);
+    } finally {
+      calloc.free(avail);
+      calloc.free(locked);
+    }
+  }
+
+  /// Get HEAT balance (available, locked in atomic units)
+  ({int available, int locked}) walletGetHEATBalance() {
+    final avail = calloc<ffi.Uint64>();
+    final locked = calloc<ffi.Uint64>();
+    try {
+      _bindings.fuego_wallet_get_heat_balance(avail, locked);
+      return (available: avail.value, locked: locked.value);
+    } finally {
+      calloc.free(avail);
+      calloc.free(locked);
+    }
+  }
+
+  /// Send a transaction (XFG or HEAT colored coin)
+  ({FuegoError error, String txHash}) walletSend({
+    required String address,
+    required int amount,
+    String? assetId,
+    int fee = 0,
+    String? paymentId,
+  }) {
+    final addrPtr = address.toNativeUtf8();
+    final assetPtr = (assetId ?? '').toNativeUtf8();
+    final payIdPtr = (paymentId ?? '').toNativeUtf8();
+    final txHash = calloc<ffi.Char>(65);
+    try {
+      final err = _bindings.fuego_wallet_send(addrPtr, amount, assetPtr, fee, payIdPtr, txHash, 65);
+      final hashStr = txHash.cast<Utf8>().toDartString();
+      return (error: FuegoError.fromCode(err), txHash: hashStr);
+    } finally {
+      calloc.free(addrPtr);
+      calloc.free(assetPtr);
+      calloc.free(payIdPtr);
+      calloc.free(txHash);
+    }
+  }
+
+  /// Create a CD (HEAT deposit)
+  ({FuegoError error, FuegoCDInfo info}) cdCreate({
+    required int amount,
+    required int lockTime,
+    required String walletFile,
+    required String walletPassword,
+  }) {
+    final wfPtr = walletFile.toNativeUtf8();
+    final wpPtr = walletPassword.toNativeUtf8();
+    final info = calloc<FuegoCDInfo>();
+    try {
+      final err = _bindings.fuego_cd_create(amount, lockTime, wfPtr, wpPtr, info);
+      return (error: FuegoError.fromCode(err), info: info.ref);
+    } finally {
+      calloc.free(wfPtr);
+      calloc.free(wpPtr);
+      calloc.free(info);
+    }
+  }
+
+  /// Redeem a CD
+  ({FuegoError error, int redeemedAmount}) cdRedeem({
+    required String txHash,
+    required String walletFile,
+    required String walletPassword,
+  }) {
+    final thPtr = txHash.toNativeUtf8();
+    final wfPtr = walletFile.toNativeUtf8();
+    final wpPtr = walletPassword.toNativeUtf8();
+    final amount = calloc<ffi.Uint64>();
+    try {
+      final err = _bindings.fuego_cd_redeem(thPtr, wfPtr, wpPtr, amount);
+      return (error: FuegoError.fromCode(err), redeemedAmount: amount.value);
+    } finally {
+      calloc.free(thPtr);
+      calloc.free(wfPtr);
+      calloc.free(wpPtr);
+      calloc.free(amount);
+    }
+  }
 }
 
 /// Error codes from Fuego SDK
