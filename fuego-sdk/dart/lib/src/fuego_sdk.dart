@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:ffi';
 import 'dart:ffi' as ffi;
 import 'dart:io';
@@ -40,7 +41,7 @@ class FuegoSDK {
       if (result == FuegoError.FUEGO_OK) {
         _initialized = true;
       }
-      return result;
+      return FuegoError.fromCode(result);
     } finally {
       calloc.free(dataDirPtr);
     }
@@ -57,7 +58,7 @@ class FuegoSDK {
   /// Get SDK version
   String get version {
     final versionPtr = _bindings.fuego_sdk_version();
-    return versionPtr.cast<Utf8>().toDartString();
+    return _arrayToString(versionPtr, 128);
   }
 
   /// Load the native library based on platform
@@ -149,10 +150,10 @@ class FuegoSDK {
     final addrPtr = address.toNativeUtf8();
     final assetPtr = (assetId ?? '').toNativeUtf8();
     final payIdPtr = (paymentId ?? '').toNativeUtf8();
-    final txHash = calloc<ffi.Char>(65);
+    final txHash = calloc<ffi.Int8>(65).cast<Utf8>();
     try {
       final err = _bindings.fuego_wallet_send(addrPtr, amount, assetPtr, fee, payIdPtr, txHash, 65);
-      final hashStr = txHash.cast<Utf8>().toDartString();
+      final hashStr = txHash.toDartString();
       return (error: FuegoError.fromCode(err), txHash: hashStr);
     } finally {
       calloc.free(addrPtr);
@@ -237,4 +238,14 @@ enum FuegoError {
 enum FuegoNodeMode {
   embedded,
   remote,
+}
+
+
+String _arrayToString(dynamic arr, int maxLength) {
+  final chars = <int>[];
+  for (var i = 0; i < maxLength; i++) {
+    if (arr[i] == 0) break;
+    chars.add(arr[i]);
+  }
+  return utf8.decode(chars);
 }

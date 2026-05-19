@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:ffi';
 import 'package:ffi/ffi.dart';
 
@@ -36,7 +37,7 @@ class AliasService {
         throw Exception('Failed to register alias: ${FuegoError.fromCode(result)}');
       }
 
-      return txHashPtr.cast<Utf8>().toDartString();
+      return _arrayToString(txHashPtr, 128);
     } finally {
       calloc.free(aliasPtr);
       calloc.free(addressPtr);
@@ -62,7 +63,7 @@ class AliasService {
         throw Exception('Failed to resolve alias: ${FuegoError.fromCode(result)}');
       }
 
-      return addressPtr.cast<Utf8>().toDartString();
+      return _arrayToString(addressPtr, 128);
     } finally {
       calloc.free(aliasPtr);
       calloc.free(addressPtr);
@@ -108,4 +109,14 @@ class AliasService {
       calloc.free(countPtr);
     }
   }
+}
+
+
+String _arrayToString(dynamic arr, int maxLength) {
+  final chars = <int>[];
+  for (var i = 0; i < maxLength; i++) {
+    if (arr[i] == 0) break;
+    chars.add(arr[i]);
+  }
+  return utf8.decode(chars);
 }
