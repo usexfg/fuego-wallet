@@ -1,4 +1,5 @@
 #include "atomic_swap.h"
+#include "../wallet/wallet_manager.h"
 
 #include "crypto/adaptor.h"
 #include "crypto/dleq.h"
@@ -12,6 +13,7 @@
 #include <random>
 #include <chrono>
 #include <vector>
+#include <algorithm>
 
 namespace fuego {
 
@@ -68,6 +70,7 @@ FuegoError AtomicSwap::initiate(const AdaptorSwapInitParams& params,
         swap_info->xfg_amount = params.xfg_amount;
         swap_info->counterparty_amount = params.counterparty_amount;
         strncpy(swap_info->counterparty_chain, params.counterparty_chain.c_str(), 31);
+        strncpy(swap_info->counterparty_address, params.counterparty_address.c_str(), 127);
         
         memcpy(swap_info->escrow_pubkey, &agg.agg_pubkey, 32);
         
@@ -113,8 +116,8 @@ FuegoError AtomicSwap::join(const std::string& swap_id,
 }
 
 FuegoError AtomicSwap::lockFunds(const std::string& swap_id,
-                                  const std::string& /*wallet_file*/,
-                                  const std::string& /*wallet_password*/) {
+                                  const std::string& wallet_file,
+                                  const std::string& wallet_password) {
     if (swap_id.empty()) return FUEGO_ERROR_INVALID_PARAM;
 
     try {
@@ -122,8 +125,35 @@ FuegoError AtomicSwap::lockFunds(const std::string& swap_id,
         auto it = g_swaps.find(swap_id);
         if (it == g_swaps.end()) return FUEGO_ERROR_SWAP;
 
-        it->second.state = FUEGO_SWAP_FUNDS_LOCKED;
-        strncpy(it->second.tx_hash, "mu_sig_escrow_tx_hash", 64);
+        auto& swap = it->second;
+
+        // Open wallet for this operation
+        auto& wm = WalletManager::instance();
+        if (!wm.isOpen()) {
+            FuegoError err = wm.openWallet(wallet_file.c_str(), wallet_password.c_str());
+            if (err != FUEGO_OK) return err;
+        }
+
+        // Construct escrow transaction: send swap amount to 2-of-2 MuSig2 address
+        char tx_hash[65] = {0};
+        std::string musigAddr = Common::podToHex(
+            *reinterpret_cast<const Crypto::Hash*>(swap.escrow_pubkey)
+        );
+
+        FuegoError err = wm.sendTransaction(
+            musigAddr.c_str(),
+            swap.xfg_amount,
+            nullptr,   // asset_id: XFG native
+            10000000,  // fee: 0.1 XFG
+            swap_id.c_str(), // payment_id for tracking
+            tx_hash, sizeof(tx_hash)
+        );
+
+        if (err != FUEGO_OK) return err;
+
+        strncpy(swap.tx_hash, tx_hash, 64);
+        swap.tx_hash[64] = '\0';
+        swap.state = FUEGO_SWAP_FUNDS_LOCKED;
 
         return FUEGO_OK;
     } catch (...) {
@@ -147,8 +177,8 @@ FuegoError AtomicSwap::lockCounterpartyFunds(const std::string& swap_id,
 }
 
 FuegoError AtomicSwap::complete(const std::string& swap_id,
-                                 const std::string& /*wallet_file*/,
-                                 const std::string& /*wallet_password*/) {
+                                 const std::string& wallet_file,
+                                 const std::string& wallet_password) {
     if (swap_id.empty()) return FUEGO_ERROR_INVALID_PARAM;
 
     try {
@@ -156,8 +186,29 @@ FuegoError AtomicSwap::complete(const std::string& swap_id,
         auto it = g_swaps.find(swap_id);
         if (it == g_swaps.end()) return FUEGO_ERROR_SWAP;
 
-        it->second.state = FUEGO_SWAP_COMPLETED;
+        auto& swap = it->second;
 
+        // Reclaim escrowed funds to our wallet address
+        auto& wm = WalletManager::instance();
+        if (!wm.isOpen()) {
+            FuegoError err = wm.openWallet(wallet_file.c_str(), wallet_password.c_str());
+            if (err != FUEGO_OK) return err;
+        }
+
+        // Send the counterparty share from escrow
+        char tx_hash[65] = {0};
+        FuegoError err = wm.sendTransaction(
+            swap.counterparty_address,
+            swap.counterparty_amount,
+            nullptr,
+            10000000,
+            nullptr,
+            tx_hash, sizeof(tx_hash)
+        );
+
+        if (err != FUEGO_OK) return err;
+
+        swap.state = FUEGO_SWAP_COMPLETED;
         return FUEGO_OK;
     } catch (...) {
         return FUEGO_ERROR_SWAP;
@@ -165,8 +216,8 @@ FuegoError AtomicSwap::complete(const std::string& swap_id,
 }
 
 FuegoError AtomicSwap::refund(const std::string& swap_id,
-                               const std::string& /*wallet_file*/,
-                               const std::string& /*wallet_password*/) {
+                               const std::string& wallet_file,
+                               const std::string& wallet_password) {
     if (swap_id.empty()) return FUEGO_ERROR_INVALID_PARAM;
 
     try {
@@ -174,8 +225,15 @@ FuegoError AtomicSwap::refund(const std::string& swap_id,
         auto it = g_swaps.find(swap_id);
         if (it == g_swaps.end()) return FUEGO_ERROR_SWAP;
 
-        it->second.state = FUEGO_SWAP_REFUNDED;
+        auto& swap = it->second;
 
+        // Verify swap hasn't expired
+        auto now = std::chrono::duration_cast<std::chrono::seconds>(
+            std::chrono::system_clock::now().time_since_epoch()
+        ).count();
+        if (now < swap.expires_at) return FUEGO_ERROR_SWAP;
+
+        swap.state = FUEGO_SWAP_REFUNDED;
         return FUEGO_OK;
     } catch (...) {
         return FUEGO_ERROR_SWAP;

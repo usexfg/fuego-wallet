@@ -1,5 +1,5 @@
 #include "wallet_manager.h"
-#include "node/node_manager.h"
+#include "../node/node_manager.h"
 
 #include "IWallet.h"
 #include "Wallet/WalletGreen.h"
