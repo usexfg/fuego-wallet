@@ -150,22 +150,22 @@ jobs:
 
       - name: Build Fuego Core & SDK (Windows)
         run: |
+          $TOOLCHAIN = "C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
           git clone -b ${{ env.FUEGO_SOURCE_BRANCH }} https://github.com/usexfg/fuego-suite.git fuego-core
           cd fuego-core
           git submodule update --init --recursive
-          mkdir build && cd build
-          cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+          mkdir build; cd build
+          cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON "-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN"
           cmake --build . --config Release
           
-          # Build SDK Library
           cd ../../fuego-sdk
-          mkdir build && cd build
-          cmake .. -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" -DCMAKE_BUILD_TYPE=Release
+          mkdir build; cd build
+          cmake .. "-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN" -DCMAKE_BUILD_TYPE=Release
           cmake --build . --config Release
-          
+
           New-Item -ItemType Directory -Force -Path ..\\..\\assets\\bin
           $sdkLib = Get-ChildItem -Recurse -Filter "fuego_sdk.dll" | Select-Object -First 1
-          Copy-Item $sdkLib.FullName ..\\..\\assets\\bin\\libfuego_sdk-windows.dll
+          if ($sdkLib) { Copy-Item $sdkLib.FullName ..\\..\\assets\\bin\\libfuego_sdk-windows.dll }
 
       - name: Build Flutter Windows App
         run: |
