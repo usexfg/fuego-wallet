@@ -95,3 +95,4 @@ fuego-sdk/sdk-install-*/
 *.dll
 *.framework
 
+Fuego-desktop/
