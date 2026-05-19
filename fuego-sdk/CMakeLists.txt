@@ -20,6 +20,7 @@ set(FUEGO_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../fuego" CACHE PATH "Path to Fuego c
 # Include directories
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${FUEGO_DIR}/include
     ${FUEGO_DIR}/src
     ${FUEGO_DIR}/src/Platform/Linux
@@ -83,6 +84,7 @@ endif()
 
 target_include_directories(fuego_sdk PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
     $<INSTALL_INTERFACE:include>
     ${FUEGO_DIR}/src
     ${FUEGO_DIR}/src/Platform/Linux

@@ -3,6 +3,8 @@
 // Run: flutter pub run ffigen to regenerate
 
 import 'dart:ffi' as ffi;
+import 'dart:ffi';
+import 'package:ffi/ffi.dart';
 
 class FuegoSDKBindings {
   final ffi.DynamicLibrary _dylib;
@@ -10,192 +12,192 @@ class FuegoSDKBindings {
   FuegoSDKBindings(this._dylib);
 
   // Initialization
-  late final _fuego_sdk_init = _dylib.lookupFunction<
+  late final fuego_sdk_init = _dylib.lookupFunction<
     Int32 Function(Pointer<Utf8>, Int32),
     int Function(Pointer<Utf8>, int)
   >('fuego_sdk_init');
 
-  late final _fuego_sdk_cleanup = _dylib.lookupFunction<
+  late final fuego_sdk_cleanup = _dylib.lookupFunction<
     Void Function(),
     void Function()
   >('fuego_sdk_cleanup');
 
-  late final _fuego_sdk_version = _dylib.lookupFunction<
+  late final fuego_sdk_version = _dylib.lookupFunction<
     Pointer<Utf8> Function(),
     Pointer<Utf8> Function()
   >('fuego_sdk_version');
 
   // Node
-  late final _fuego_node_start = _dylib.lookupFunction<
+  late final fuego_node_start = _dylib.lookupFunction<
     Int32 Function(Int32, Pointer<Utf8>, Uint16),
     int Function(int, Pointer<Utf8>, int)
   >('fuego_node_start');
 
-  late final _fuego_node_stop = _dylib.lookupFunction<
+  late final fuego_node_stop = _dylib.lookupFunction<
     Int32 Function(),
     int Function()
   >('fuego_node_stop');
 
-  late final _fuego_node_is_running = _dylib.lookupFunction<
+  late final fuego_node_is_running = _dylib.lookupFunction<
     Int32 Function(),
     int Function()
   >('fuego_node_is_running');
 
-  late final _fuego_node_get_peer_count = _dylib.lookupFunction<
+  late final fuego_node_get_peer_count = _dylib.lookupFunction<
     Int32 Function(Pointer<Uint32>),
     int Function(Pointer<Uint32>)
   >('fuego_node_get_peer_count');
 
-  late final _fuego_node_get_block_height = _dylib.lookupFunction<
+  late final fuego_node_get_block_height = _dylib.lookupFunction<
     Int32 Function(Pointer<Uint32>),
     int Function(Pointer<Uint32>)
   >('fuego_node_get_block_height');
 
-  late final _fuego_node_get_sync_status = _dylib.lookupFunction<
+  late final fuego_node_get_sync_status = _dylib.lookupFunction<
     Int32 Function(Pointer<Bool>),
     int Function(Pointer<Bool>)
   >('fuego_node_get_sync_status');
 
   // Mining
-  late final _fuego_mining_start = _dylib.lookupFunction<
+  late final fuego_mining_start = _dylib.lookupFunction<
     Int32 Function(Pointer<Utf8>),
     int Function(Pointer<Utf8>)
   >('fuego_mining_start');
 
-  late final _fuego_mining_stop = _dylib.lookupFunction<
+  late final fuego_mining_stop = _dylib.lookupFunction<
     Int32 Function(),
     int Function()
   >('fuego_mining_stop');
 
-  late final _fuego_mining_is_running = _dylib.lookupFunction<
+  late final fuego_mining_is_running = _dylib.lookupFunction<
     Int32 Function(),
     int Function()
   >('fuego_mining_is_running');
 
-  late final _fuego_mining_get_hashrate = _dylib.lookupFunction<
+  late final fuego_mining_get_hashrate = _dylib.lookupFunction<
     Int32 Function(Pointer<Double>),
     int Function(Pointer<Double>)
   >('fuego_mining_get_hashrate');
 
   // CD
-  late final _fuego_cd_create = _dylib.lookupFunction<
+  late final fuego_cd_create = _dylib.lookupFunction<
     Int32 Function(Uint64, Uint64, Pointer<Utf8>, Pointer<Utf8>, Pointer<FuegoCDInfo>),
     int Function(int, int, Pointer<Utf8>, Pointer<Utf8>, Pointer<FuegoCDInfo>)
   >('fuego_cd_create');
 
-  late final _fuego_cd_redeem = _dylib.lookupFunction<
+  late final fuego_cd_redeem = _dylib.lookupFunction<
     Int32 Function(Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>, Pointer<Uint64>),
     int Function(Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>, Pointer<Uint64>)
   >('fuego_cd_redeem');
 
-  late final _fuego_cd_get_info = _dylib.lookupFunction<
+  late final fuego_cd_get_info = _dylib.lookupFunction<
     Int32 Function(Pointer<Utf8>, Pointer<FuegoCDInfo>),
     int Function(Pointer<Utf8>, Pointer<FuegoCDInfo>)
   >('fuego_cd_get_info');
 
   // Wallet
-  late final _fuego_wallet_open = _dylib.lookupFunction<
+  late final fuego_wallet_open = _dylib.lookupFunction<
     Int32 Function(Pointer<Utf8>, Pointer<Utf8>),
     int Function(Pointer<Utf8>, Pointer<Utf8>)
   >('fuego_wallet_open');
 
-  late final _fuego_wallet_close = _dylib.lookupFunction<
+  late final fuego_wallet_close = _dylib.lookupFunction<
     Void Function(),
     void Function()
   >('fuego_wallet_close');
 
-  late final _fuego_wallet_is_open = _dylib.lookupFunction<
+  late final fuego_wallet_is_open = _dylib.lookupFunction<
     Int32 Function(),
     int Function()
   >('fuego_wallet_is_open');
 
-  late final _fuego_wallet_get_balance = _dylib.lookupFunction<
+  late final fuego_wallet_get_balance = _dylib.lookupFunction<
     Int32 Function(Pointer<Uint64>, Pointer<Uint64>),
     int Function(Pointer<Uint64>, Pointer<Uint64>)
   >('fuego_wallet_get_balance');
 
-  late final _fuego_wallet_get_heat_balance = _dylib.lookupFunction<
+  late final fuego_wallet_get_heat_balance = _dylib.lookupFunction<
     Int32 Function(Pointer<Uint64>, Pointer<Uint64>),
     int Function(Pointer<Uint64>, Pointer<Uint64>)
   >('fuego_wallet_get_heat_balance');
 
-  late final _fuego_wallet_send = _dylib.lookupFunction<
+  late final fuego_wallet_send = _dylib.lookupFunction<
     Int32 Function(Pointer<Utf8>, Uint64, Pointer<Utf8>, Uint64, Pointer<Utf8>, Pointer<Utf8>, Size),
     int Function(Pointer<Utf8>, int, Pointer<Utf8>, int, Pointer<Utf8>, Pointer<Utf8>, int)
   >('fuego_wallet_send');
 
   // Swap
-  late final _fuego_swap_initiate = _dylib.lookupFunction<
+  late final fuego_swap_initiate = _dylib.lookupFunction<
     Int32 Function(Pointer<Utf8>, Uint64, Pointer<Utf8>, Pointer<Utf8>, Pointer<FuegoSwapInfo>),
     int Function(Pointer<Utf8>, int, Pointer<Utf8>, Pointer<Utf8>, Pointer<FuegoSwapInfo>)
   >('fuego_swap_initiate');
 
-  late final _fuego_swap_join = _dylib.lookupFunction<
+  late final fuego_swap_join = _dylib.lookupFunction<
     Int32 Function(Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>, Pointer<FuegoSwapInfo>),
     int Function(Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>, Pointer<FuegoSwapInfo>)
   >('fuego_swap_join');
 
-  late final _fuego_swap_lock_funds = _dylib.lookupFunction<
+  late final fuego_swap_lock_funds = _dylib.lookupFunction<
     Int32 Function(Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>),
     int Function(Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>)
   >('fuego_swap_lock_funds');
 
-  late final _fuego_swap_complete = _dylib.lookupFunction<
+  late final fuego_swap_complete = _dylib.lookupFunction<
     Int32 Function(Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>),
     int Function(Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>)
   >('fuego_swap_complete');
 
-  late final _fuego_swap_refund = _dylib.lookupFunction<
+  late final fuego_swap_refund = _dylib.lookupFunction<
     Int32 Function(Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>),
     int Function(Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>)
   >('fuego_swap_refund');
 
-  late final _fuego_swap_get_info = _dylib.lookupFunction<
+  late final fuego_swap_get_info = _dylib.lookupFunction<
     Int32 Function(Pointer<Utf8>, Pointer<FuegoSwapInfo>),
     int Function(Pointer<Utf8>, Pointer<FuegoSwapInfo>)
   >('fuego_swap_get_info');
 
   // HEAT
-  late final _fuego_heat_generate_proof = _dylib.lookupFunction<
+  late final fuego_heat_generate_proof = _dylib.lookupFunction<
     Int32 Function(Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>, Pointer<FuegoHEATProof>),
     int Function(Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>, Pointer<FuegoHEATProof>)
   >('fuego_heat_generate_proof');
 
-  late final _fuego_heat_verify_proof = _dylib.lookupFunction<
+  late final fuego_heat_verify_proof = _dylib.lookupFunction<
     Int32 Function(Pointer<FuegoHEATProof>, Pointer<Bool>),
     int Function(Pointer<FuegoHEATProof>, Pointer<Bool>)
   >('fuego_heat_verify_proof');
 
   // Alias
-  late final _fuego_alias_register = _dylib.lookupFunction<
+  late final fuego_alias_register = _dylib.lookupFunction<
     Int32 Function(Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>, Size),
     int Function(Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>, int)
   >('fuego_alias_register');
 
-  late final _fuego_alias_resolve = _dylib.lookupFunction<
+  late final fuego_alias_resolve = _dylib.lookupFunction<
     Int32 Function(Pointer<Utf8>, Pointer<Utf8>, Size),
     int Function(Pointer<Utf8>, Pointer<Utf8>, int)
   >('fuego_alias_resolve');
 
-  late final _fuego_alias_get_owned = _dylib.lookupFunction<
+  late final fuego_alias_get_owned = _dylib.lookupFunction<
     Int32 Function(Pointer<Utf8>, Pointer<Pointer<Utf8>>, Pointer<Size>),
     int Function(Pointer<Utf8>, Pointer<Pointer<Utf8>>, Pointer<Size>)
   >('fuego_alias_get_owned');
 
   // Memory
-  late final _fuego_free_string = _dylib.lookupFunction<
+  late final fuego_free_string = _dylib.lookupFunction<
     Void Function(Pointer<Utf8>),
     void Function(Pointer<Utf8>)
   >('fuego_free_string');
 
-  late final _fuego_free_pointer_array = _dylib.lookupFunction<
+  late final fuego_free_pointer_array = _dylib.lookupFunction<
     Void Function(Pointer<Pointer<Utf8>>, Size),
     void Function(Pointer<Pointer<Utf8>>, int)
   >('fuego_free_pointer_array');
 }
 
 // Structs
-class FuegoCDInfo extends ffi.Struct {
+final class FuegoCDInfo extends ffi.Struct {
   @ffi.Uint64()
   external int amount;
 
@@ -209,7 +211,7 @@ class FuegoCDInfo extends ffi.Struct {
   external ffi.Array<ffi.Int8> tx_hash;
 }
 
-class FuegoSwapInfo extends ffi.Struct {
+final class FuegoSwapInfo extends ffi.Struct {
   @ffi.Array.multi([65])
   external ffi.Array<ffi.Int8> swap_id;
 
@@ -226,7 +228,7 @@ class FuegoSwapInfo extends ffi.Struct {
   external ffi.Array<ffi.Int8> tx_hash;
 }
 
-class FuegoHEATProof extends ffi.Struct {
+final class FuegoHEATProof extends ffi.Struct {
   @ffi.Array.multi([4096])
   external ffi.Array<ffi.Int8> proof_data;
 

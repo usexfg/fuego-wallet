@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:ffi';
 import 'package:ffi/ffi.dart';
 
@@ -33,7 +34,7 @@ class HEATService {
         throw Exception('Failed to generate HEAT proof: ${FuegoError.fromCode(result)}');
       }
 
-      return HEATProof._fromNative(proofPtr);
+      return HEATProof._fromNative(proofPtr.ref);
     } finally {
       calloc.free(txDataPtr);
       calloc.free(walletFilePtr);
@@ -50,8 +51,9 @@ class HEATService {
     try {
       // Copy proof data to native
       proofPtr.ref.proof_size = proof.proofData.length;
-      final proofDataPtr = proof.proofData.toNativeUtf8();
-      proofPtr.ref.proof_data.cast<Uint8>().asTypedList(proof.proofData.length).setAll(0, proof.proofData.codeUnits);
+      for (var i = 0; i < proof.proofData.length; i++) {
+        proofPtr.ref.proof_data[i] = proof.proofData[i];
+      }
       
       final result = _sdk.bindings.fuego_heat_verify_proof(proofPtr, validPtr);
 
@@ -78,6 +80,16 @@ class HEATProof {
   });
 
   HEATProof._fromNative(FuegoHEATProof native)
-      : proofData = native.proof_data.cast<Uint8>().asTypedList(native.proof_size).toList(),
-        verificationResult = native.verification_result.cast<Utf8>().toDartString();
+      : proofData = List.generate(native.proof_size, (i) => native.proof_data[i]),
+        verificationResult = _arrayToString(native.verification_result, 128);
+}
+
+
+String _arrayToString(dynamic arr, int maxLength) {
+  final chars = <int>[];
+  for (var i = 0; i < maxLength; i++) {
+    if (arr[i] == 0) break;
+    chars.add(arr[i]);
+  }
+  return utf8.decode(chars);
 }

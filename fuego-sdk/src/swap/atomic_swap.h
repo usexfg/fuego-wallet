@@ -38,6 +38,7 @@ struct AdaptorSwapInfo {
     char tx_hash[65];              // On-chain transaction hash
     uint64_t created_at;           // Timestamp
     uint64_t expires_at;           // Expiry timestamp
+    char counterparty_address[128];// Counterparty public address
 };
 
 class AtomicSwap {

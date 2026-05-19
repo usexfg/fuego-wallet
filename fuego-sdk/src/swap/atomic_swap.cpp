@@ -70,6 +70,7 @@ FuegoError AtomicSwap::initiate(const AdaptorSwapInitParams& params,
         swap_info->xfg_amount = params.xfg_amount;
         swap_info->counterparty_amount = params.counterparty_amount;
         strncpy(swap_info->counterparty_chain, params.counterparty_chain.c_str(), 31);
+        strncpy(swap_info->counterparty_address, params.counterparty_address.c_str(), 127);
         
         memcpy(swap_info->escrow_pubkey, &agg.agg_pubkey, 32);
         

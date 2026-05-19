@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:ffi';
 import 'package:ffi/ffi.dart';
 
@@ -35,7 +36,7 @@ class SwapService {
         throw Exception('Failed to initiate swap: ${FuegoError.fromCode(result)}');
       }
 
-      return SwapInfo._fromNative(swapInfoPtr);
+      return SwapInfo._fromNative(swapInfoPtr.ref);
     } finally {
       calloc.free(counterpartyPtr);
       calloc.free(walletFilePtr);
@@ -67,7 +68,7 @@ class SwapService {
         throw Exception('Failed to join swap: ${FuegoError.fromCode(result)}');
       }
 
-      return SwapInfo._fromNative(swapInfoPtr);
+      return SwapInfo._fromNative(swapInfoPtr.ref);
     } finally {
       calloc.free(swapIdPtr);
       calloc.free(walletFilePtr);
@@ -163,7 +164,7 @@ class SwapService {
         throw Exception('Failed to get swap info: ${FuegoError.fromCode(result)}');
       }
 
-      return SwapInfo._fromNative(swapInfoPtr);
+      return SwapInfo._fromNative(swapInfoPtr.ref);
     } finally {
       calloc.free(swapIdPtr);
       calloc.free(swapInfoPtr);
@@ -198,9 +199,19 @@ class SwapInfo {
   });
 
   SwapInfo._fromNative(FuegoSwapInfo native)
-      : swapId = native.swap_id.cast<Utf8>().toDartString(),
+      : swapId = _arrayToString(native.swap_id, 128),
         state = SwapState.values[native.state],
-        counterpartyAddress = native.counterparty_address.cast<Utf8>().toDartString(),
+        counterpartyAddress = _arrayToString(native.counterparty_address, 128),
         amount = native.amount,
-        txHash = native.tx_hash.cast<Utf8>().toDartString();
+        txHash = _arrayToString(native.tx_hash, 128);
+}
+
+
+String _arrayToString(dynamic arr, int maxLength) {
+  final chars = <int>[];
+  for (var i = 0; i < maxLength; i++) {
+    if (arr[i] == 0) break;
+    chars.add(arr[i]);
+  }
+  return utf8.decode(chars);
 }

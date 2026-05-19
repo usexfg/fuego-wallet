@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:ffi';
 import 'package:ffi/ffi.dart';
 
@@ -39,7 +40,7 @@ class CDService {
         throw Exception('Failed to create CD: ${FuegoError.fromCode(result)}');
       }
 
-      return CDInfo._fromNative(cdInfoPtr);
+      return CDInfo._fromNative(cdInfoPtr.ref);
     } finally {
       calloc.free(walletFilePtr);
       calloc.free(passwordPtr);
@@ -94,7 +95,7 @@ class CDService {
         throw Exception('Failed to get CD info: ${FuegoError.fromCode(result)}');
       }
 
-      return CDInfo._fromNative(cdInfoPtr);
+      return CDInfo._fromNative(cdInfoPtr.ref);
     } finally {
       calloc.free(txHashPtr);
       calloc.free(cdInfoPtr);
@@ -120,5 +121,15 @@ class CDInfo {
       : amount = native.amount,
         interest = native.interest,
         unlockTime = native.unlock_time,
-        txHash = native.tx_hash.cast<Utf8>().toDartString();
+        txHash = _arrayToString(native.tx_hash, 128);
+}
+
+
+String _arrayToString(dynamic arr, int maxLength) {
+  final chars = <int>[];
+  for (var i = 0; i < maxLength; i++) {
+    if (arr[i] == 0) break;
+    chars.add(arr[i]);
+  }
+  return utf8.decode(chars);
 }

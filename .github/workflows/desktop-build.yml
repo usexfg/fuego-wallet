@@ -146,7 +146,7 @@ jobs:
 
       - name: Install Fuego Dependencies (vcpkg)
         run: |
-          C:/vcpkg/vcpkg.exe install jsoncpp boost-system boost-filesystem boost-thread boost-date-time boost-chrono boost-regex boost-program-options openssl zeromq --triplet x64-windows
+          C:/vcpkg/vcpkg.exe install jsoncpp boost-system boost-filesystem boost-thread boost-date-time boost-chrono boost-regex boost-program-options boost-serialization boost-coroutine boost-context boost-atomic openssl zeromq --triplet x64-windows
 
       - name: Build Fuego Core & SDK (Windows)
         run: |
@@ -160,7 +160,7 @@ jobs:
           
           cd ../../fuego-sdk
           mkdir build; cd build
-          cmake .. "-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN" -DCMAKE_BUILD_TYPE=Release
+          cmake .. "-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN" -DCMAKE_BUILD_TYPE=Release -DFUEGO_DIR=../../fuego-core
           cmake --build . --config Release
 
           New-Item -ItemType Directory -Force -Path ..\\..\\assets\\bin
@@ -199,7 +199,7 @@ jobs:
 
   build-linux:
     name: Build Linux (Embedded SDK)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

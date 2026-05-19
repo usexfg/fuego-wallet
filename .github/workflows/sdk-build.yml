@@ -44,8 +44,9 @@ jobs:
           mkdir build && cd build
           cmake .. -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/sdk-install \
             -DBoost_NO_BOOST_CMAKE=ON \
-            -DBOOST_ROOT="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')" \
-            -DBoost_DIR="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')/lib/cmake/Boost-*" \
+            -DBoost_USE_STATIC_LIBS=ON \
+            -DBOOST_ROOT="$(brew --prefix boost 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')" \
+            -DBoost_DIR="$(brew --prefix boost 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')/lib/cmake/Boost-*" \
 
       - name: Build
         run: |
@@ -72,8 +73,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          brew install boost@1.86 openssl zmq qt@5 cmake || brew install boost@1.86 openssl zmq qt@5 cmake || brew install boost@1.86 openssl zmq qt@5 cmake || brew install boost@1.86 openssl zmq qt@5 cmake || brew install boost openssl zmq qt@5 cmake
-          brew install boost@1.86 openssl zmq qt@5 cmake || brew install boost@1.86 openssl zmq qt@5 cmake || brew install boost@1.86 openssl zmq qt@5 cmake || brew install boost openssl zmq qt@5 cmake
+          brew install boost openssl zmq qt@5 cmake || brew install boost openssl zmq qt@5 cmake || brew install boost openssl zmq qt@5 cmake || brew install boost openssl zmq qt@5 cmake || brew install boost openssl zmq qt@5 cmake
+          brew install boost openssl zmq qt@5 cmake || brew install boost openssl zmq qt@5 cmake || brew install boost openssl zmq qt@5 cmake || brew install boost openssl zmq qt@5 cmake
 
       - name: Configure CMake
         run: |
@@ -83,8 +84,9 @@ jobs:
             -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} \
             -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/sdk-install \
             -DBoost_NO_BOOST_CMAKE=ON \
-            -DBOOST_ROOT="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')" \
-            -DBoost_DIR="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')/lib/cmake/Boost-*" \
+            -DBoost_USE_STATIC_LIBS=ON \
+            -DBOOST_ROOT="$(brew --prefix boost 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')" \
+            -DBoost_DIR="$(brew --prefix boost 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')/lib/cmake/Boost-*" \
             -DCMAKE_PREFIX_PATH=$(brew --prefix qt@5)
 
       - name: Build
@@ -112,7 +114,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          choco install boost-msvc-14.3 cmake qt5 --no-progress
+          choco install boost-msvc-14.3 cmake --no-progress
 
       - name: Configure CMake
         run: |
@@ -126,7 +128,7 @@ jobs:
             -DCMAKE_INSTALL_PREFIX=${{github.workspace}}\sdk-install `
             -DBoost_NO_BOOST_CMAKE=ON `
             -DBOOST_ROOT="C:/local/boost" `
-            -DCMAKE_PREFIX_PATH="C:/Qt/5.15.2/msvc2019_64"
+
 
       - name: Build
         run: |
@@ -181,8 +183,9 @@ jobs:
             -DANDROID_NATIVE_API_LEVEL=24 \
             -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/sdk-install-android \
             -DBoost_NO_BOOST_CMAKE=ON \
-            -DBOOST_ROOT="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')" \
-            -DBoost_DIR="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')/lib/cmake/Boost-*" \
+            -DBoost_USE_STATIC_LIBS=ON \
+            -DBOOST_ROOT="$(brew --prefix boost 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')" \
+            -DBoost_DIR="$(brew --prefix boost 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')/lib/cmake/Boost-*" \
 
       - name: Build (ARM64)
         run: |
@@ -209,8 +212,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          brew install boost@1.86 openssl cmake || brew install boost@1.86 openssl cmake || brew install boost@1.86 openssl cmake || brew install boost@1.86 openssl cmake || brew install boost openssl cmake
-          brew install boost@1.86 openssl cmake || brew install boost@1.86 openssl cmake || brew install boost@1.86 openssl cmake || brew install boost openssl cmake
+          brew install boost openssl cmake || brew install boost openssl cmake || brew install boost openssl cmake || brew install boost openssl cmake || brew install boost openssl cmake
+          brew install boost openssl cmake || brew install boost openssl cmake || brew install boost openssl cmake || brew install boost openssl cmake
 
       - name: Configure CMake (iOS)
         run: |
@@ -223,8 +226,9 @@ jobs:
             -DCMAKE_OSX_ARCHITECTURES=arm64 \
             -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/sdk-install-ios \
             -DBoost_NO_BOOST_CMAKE=ON \
-            -DBOOST_ROOT="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')" \
-            -DBoost_DIR="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')/lib/cmake/Boost-*" \
+            -DBoost_USE_STATIC_LIBS=ON \
+            -DBOOST_ROOT="$(brew --prefix boost 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')" \
+            -DBoost_DIR="$(brew --prefix boost 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')/lib/cmake/Boost-*" \
 
       - name: Build
         run: |
