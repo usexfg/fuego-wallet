@@ -1,9 +1,7 @@
 import 'package:fuego_sdk/fuego_sdk.dart';
+import 'package:fuego_sdk/src/wallet_service.dart';
 
 /// Fuego SDK Service - Wrapper for FuegoSDK in the wallet app
-/// 
-/// This service provides a high-level interface to the Fuego SDK,
-/// integrating node management, mining, CDs, swaps, HEAT proofs, and aliases.
 class FuegoSDKService {
   static FuegoSDKService? _instance;
   late final FuegoSDK _sdk;
@@ -14,6 +12,7 @@ class FuegoSDKService {
   late final SwapService _swap;
   late final HEATService _heat;
   late final AliasService _alias;
+  late final WalletService _wallet;
 
   FuegoSDKService._internal();
 
@@ -40,6 +39,7 @@ class FuegoSDKService {
     _swap = SwapService(_sdk);
     _heat = HEATService(_sdk);
     _alias = AliasService(_sdk);
+    _wallet = WalletService(_sdk);
 
     return await _sdk.initialize(
       dataDir: dataDir ?? await _getDefaultDataDir(),
@@ -290,4 +290,46 @@ class FuegoSDKService {
 
   /// Get alias service
   AliasService get alias => _alias;
+
+  /// Get wallet service
+  WalletService get wallet => _wallet;
+
+  // ============================================================================
+  // Wallet Operations
+  // ============================================================================
+
+  /// Open a wallet file
+  FuegoError openWallet(String path, String password) =>
+      _wallet.open(path, password);
+
+  /// Close the wallet
+  void closeWallet() => _wallet.close();
+
+  /// Check if wallet is open
+  bool get isWalletOpen => _wallet.isOpen;
+
+  /// Get XFG balance as double
+  double get xfgBalance => _wallet.xfgAvailable;
+  double get xfgLockedBalance => _wallet.xfgLocked;
+
+  /// Get HEAT balance as double
+  double get heatBalance => _wallet.heatAvailable;
+  double get heatLockedBalance => _wallet.heatLocked;
+
+  /// Send XFG or HEAT
+  Future<({String txHash, FuegoError error})> send({
+    required String address,
+    required double amount,
+    String? assetId,
+    double fee = 0.01,
+    String? paymentId,
+  }) async {
+    return _wallet.send(
+      address: address,
+      amount: amount,
+      assetId: assetId,
+      fee: fee,
+      paymentId: paymentId,
+    );
+  }
 }
