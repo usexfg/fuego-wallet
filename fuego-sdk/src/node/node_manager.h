@@ -22,7 +22,7 @@ public:
     uint32_t getBlockHeight() const;
     std::string getTailId() const;
     bool isSynchronized() const;
-
+    CryptoNote::INode* getNode() const { return m_node.get(); }
 
 private:
     NodeManager() = default;

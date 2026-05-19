@@ -69,7 +69,24 @@ FUEGO_API bool fuego_mining_is_running(void);
 FUEGO_API FuegoError fuego_mining_get_hashrate(double* hashrate);
 
 /* ============================================================================
-   Certificates of Deposit (CD)
+   Wallet Operations
+   ============================================================================ */
+FUEGO_API FuegoError fuego_wallet_open(const char* wallet_path, const char* wallet_password);
+FUEGO_API void fuego_wallet_close(void);
+FUEGO_API bool fuego_wallet_is_open(void);
+FUEGO_API FuegoError fuego_wallet_get_balance(uint64_t* available, uint64_t* locked);
+FUEGO_API FuegoError fuego_wallet_get_heat_balance(uint64_t* available, uint64_t* locked);
+FUEGO_API FuegoError fuego_wallet_get_transaction_count(size_t* count);
+FUEGO_API FuegoError fuego_wallet_get_transaction(size_t index, char* hash, size_t hash_size,
+                                                    uint64_t* amount, uint64_t* fee,
+                                                    uint32_t* block_height, uint64_t* timestamp,
+                                                    bool* is_outgoing);
+FUEGO_API FuegoError fuego_wallet_send(const char* address, uint64_t amount,
+                                         const char* asset_id, uint64_t fee,
+                                         const char* payment_id, char* tx_hash, size_t tx_hash_size);
+
+/* ============================================================================
+   Certificates of Deposit (CD) — HEAT-only
    ============================================================================ */
 typedef struct {
   uint64_t amount;
