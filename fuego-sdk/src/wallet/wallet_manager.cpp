@@ -1,4 +1,5 @@
 #include "wallet_manager.h"
+#include "node/node_manager.h"
 
 #include "IWallet.h"
 #include "Wallet/WalletGreen.h"
@@ -17,9 +18,6 @@ namespace fuego {
 WalletManager::WalletManager() {
     m_dispatcher = std::make_unique<System::Dispatcher>();
     m_logger = std::make_unique<Logging::LoggerManager>();
-    m_currency = std::make_unique<CryptoNote::Currency>(
-        CryptoNote::CurrencyBuilder(m_logger->getLogger("currency")).currency()
-    );
 }
 
 WalletManager::~WalletManager() {
@@ -41,12 +39,16 @@ FuegoError WalletManager::openWallet(const char* path, const char* password) {
             return FUEGO_ERROR_NODE;
         }
 
+        // Build currency from config
+        CryptoNote::CurrencyBuilder currencyBuilder(*m_logger);
+        m_currency = std::make_unique<CryptoNote::Currency>(currencyBuilder.currency());
+
         // Create WalletGreen with the embedded/remote node
         auto* wallet = new CryptoNote::WalletGreen(
             *m_dispatcher,
             *m_currency,
             *node,
-            m_logger->getLogger("wallet")
+            *m_logger
         );
         m_wallet.reset(wallet);
 
@@ -178,9 +180,9 @@ FuegoError WalletManager::createDeposit(uint64_t amount, uint64_t term,
     if (!source_address || !dest_address) return FUEGO_ERROR_INVALID_PARAM;
 
     try {
-        // Use HEAT deposit type (0x08 per IWallet.h)
+        // Use HEAT deposit type
         CryptoNote::DepositCommitment commitment;
-        commitment.type = static_cast<uint8_t>(CryptoNote::Deposit::Type::HEAT);
+        commitment.type = CryptoNote::CommitmentType::HEAT;
 
         std::string txHash;
         m_wallet->createDeposit(amount, term,
