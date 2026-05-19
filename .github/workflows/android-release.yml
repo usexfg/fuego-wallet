@@ -45,7 +45,7 @@ env:
 jobs:
   build-android:
     name: Build fuego-wallet (Android)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout code
@@ -198,7 +198,7 @@ jobs:
 
   upload-to-play-store:
     name: Upload to Play Store
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: build-android
     if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.upload_to_play_store == 'true')
 
@@ -231,7 +231,7 @@ jobs:
 
   security-scan:
     name: Security Scan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: build-android
     if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.build_type == 'release')
 
@@ -260,7 +260,7 @@ jobs:
 
   notify-release:
     name: Notify Release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: [build-android, upload-to-play-store]
     if: always() && github.event_name == 'release'
 

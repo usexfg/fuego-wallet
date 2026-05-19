@@ -11,9 +11,16 @@ G_BEGIN_DECLS
 #define FUEGO_SDK_PLUGIN_EXPORT
 #endif
 
+typedef struct _FuegoSdkPlugin FuegoSdkPlugin;
+typedef struct {
+  GObjectClass parent_class;
+} FuegoSdkPluginClass;
+
+GType fuego_sdk_plugin_get_type();
+
 FUEGO_SDK_PLUGIN_EXPORT void fuego_sdk_plugin_register_with_registrar(
     FlPluginRegistrar* registrar);
 
 G_END_DECLS
 
-#endif
+#endif  // FUEGO_SDK_PLUGIN_H_
