@@ -187,17 +187,19 @@ FuegoError AtomicSwap::complete(const std::string& swap_id,
 
         auto& swap = it->second;
 
-        // Reclaim escrowed funds to our wallet address
+        // Ensure wallet is open
         auto& wm = WalletManager::instance();
         if (!wm.isOpen()) {
             FuegoError err = wm.openWallet(wallet_file.c_str(), wallet_password.c_str());
             if (err != FUEGO_OK) return err;
         }
 
-        // Send the counterparty share from escrow
+        // Sweep escrowed funds back by sending to our own address
+        // (In production would be a proper 2-of-2 MuSig2 sweep transaction)
+        std::string selfAddr = wallet_password; // placeholder — real impl uses wallet address
         char tx_hash[65] = {0};
         FuegoError err = wm.sendTransaction(
-            swap.counterparty_address,
+            selfAddr.c_str(),
             swap.counterparty_amount,
             nullptr,
             10000000,
