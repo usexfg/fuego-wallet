@@ -237,6 +237,8 @@ jobs:
           export CXXFLAGS
           sed -i 's/set(BOOST_COMPONENTS system filesystem thread date_time chrono regex serialization program_options)/set(BOOST_COMPONENTS filesystem thread date_time chrono regex serialization program_options)/' CMakeLists.txt
           sed -i '1i add_definitions(-DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS -DBOOST_MPL_LIMIT_LIST_SIZE=50)' CMakeLists.txt
+          # Fix jsoncpp include dir: CMakeLists.txt sets /usr/include/jsoncpp/json but code uses <json/json.h>
+          sed -i 's|"/usr/include/jsoncpp/json"|"/usr/include/jsoncpp"|g' CMakeLists.txt
           sudo apt-get update
           sudo apt-get install -y build-essential cmake libboost-all-dev libssl-dev libzmq3-dev libjsoncpp-dev
           

@@ -149,10 +149,10 @@ class FuegoSDK {
     final addrPtr = address.toNativeUtf8();
     final assetPtr = (assetId ?? '').toNativeUtf8();
     final payIdPtr = (paymentId ?? '').toNativeUtf8();
-    final txHash = calloc<Utf8>(65);
+    final txHash = calloc<Uint8>(65);
     try {
-      final err = _bindings.fuego_wallet_send(addrPtr, amount, assetPtr, fee, payIdPtr, txHash, 65);
-      final hashStr = txHash.toDartString();
+      final err = _bindings.fuego_wallet_send(addrPtr, amount, assetPtr, fee, payIdPtr, txHash.cast<Utf8>(), 65);
+      final hashStr = txHash.cast<Utf8>().toDartString();
       return (error: FuegoError.fromCode(err), txHash: hashStr);
     } finally {
       calloc.free(addrPtr);

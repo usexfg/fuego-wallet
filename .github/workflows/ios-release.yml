@@ -88,6 +88,8 @@ jobs:
           sudo ./b2 -j$(sysctl -n hw.ncpu) variant=release link=static install
           cd ..
           
+          # Fix jsoncpp include dir (macOS Homebrew puts headers in include/ not include/json/)
+          sed -i '' 's|/include/json")|/include")|g' ../CMakeLists.txt
           # Build Core
           mkdir build && cd build
           CXXFLAGS="-DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS -DBOOST_MPL_LIMIT_LIST_SIZE=50"

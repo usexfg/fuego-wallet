@@ -78,8 +78,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential git cmake libboost-all-dev libjsoncpp-dev libssl-dev libzmq3-dev
           
-          # Patch for jsoncpp compatibility
-          sed -i 's/#include <json\/json.h>/#include <jsoncpp\/json.h>/g' src/CryptoNoteCore/ProofStructures.h
+          # Fix jsoncpp include dir in CMakeLists.txt
+          sed -i 's|"/usr/include/jsoncpp/json"|"/usr/include/jsoncpp"|g' CMakeLists.txt
           
           # Add Boost variant limit
           CXXFLAGS="-DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS -DBOOST_MPL_LIMIT_LIST_SIZE=50"
