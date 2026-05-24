@@ -3,14 +3,19 @@ import 'package:flutter/foundation.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:logging/logging.dart';
 import '../models/wallet.dart';
+import '../models/transaction_model.dart';
 import '../models/network_config.dart';
-import '../services/fuego_rpc_service.dart';
 import '../services/security_service.dart';
+import '../services/fuego_rpc_service.dart';
+import '../services/key_service.dart';
+import '../sdk/fuego_sdk_service.dart';
+import 'package:fuego_sdk/fuego_sdk.dart';
 
 class WalletProvider extends ChangeNotifier {
   static final Logger _logger = Logger('WalletProvider');
   final FuegoRPCService _rpcService;
   final SecurityService _securityService;
+  final FuegoSDKService _sdkService;
 
   Wallet? _wallet;
   List<WalletTransaction> _transactions = [];
@@ -40,7 +45,8 @@ class WalletProvider extends ChangeNotifier {
     FuegoRPCService? rpcService,
     SecurityService? securityService,
   }) : _rpcService = rpcService ?? FuegoRPCService(),
-       _securityService = securityService ?? SecurityService() {
+       _securityService = securityService ?? SecurityService(),
+       _sdkService = FuegoSDKService.instance {
     _initConnectivity();
   }
 
@@ -86,7 +92,6 @@ class WalletProvider extends ChangeNotifier {
       }
 
       _logger.info('Private key accessed successfully for burn transaction');
-      // Return the spend key as the private key for burn transactions
       return keys['spendKey'];
     } catch (e) {
       _logger.severe('Failed to get private key: $e');
@@ -102,7 +107,6 @@ class WalletProvider extends ChangeNotifier {
       return null;
     }
 
-    // Only return private key if wallet is synced and unlocked
     if (!isWalletSynced) {
       _setError('Wallet must be synced to access private key');
       return null;
@@ -113,14 +117,11 @@ class WalletProvider extends ChangeNotifier {
 
   // Validate private key format (basic validation)
   bool isValidPrivateKey(String privateKey) {
-    // Basic validation - in real implementation, this would validate against Fuego key format
     return privateKey.isNotEmpty && privateKey.length >= 32;
   }
 
   // Clear sensitive data from memory
   void clearSensitiveData() {
-    // In a real implementation, this would securely clear memory
-    // For now, we'll just clear the wallet reference
     _wallet = null;
     notifyListeners();
   }
@@ -155,22 +156,35 @@ class WalletProvider extends ChangeNotifier {
         throw Exception('Invalid mnemonic phrase');
       }
 
-      // Store mnemonic securely
       await _securityService.storeWalletSeed(seed, pin);
       await _securityService.setPIN(pin);
 
-      // TODO: Derive keys from the mnemonic
-      // For now, we'll simulate this process
-      final viewKey = 'view_key_placeholder_${DateTime.now().millisecondsSinceEpoch}';
-      final spendKey = 'spend_key_placeholder_${DateTime.now().millisecondsSinceEpoch}';
+      final keyPair = await KeyService.deriveFromMnemonic(seed);
 
       await _securityService.storeWalletKeys(
-        viewKey: viewKey,
-        spendKey: spendKey,
+        viewKey: keyPair.viewPrivateKey,
+        spendKey: keyPair.spendPrivateKey,
         pin: pin,
       );
 
+      _wallet = Wallet(
+        address: keyPair.address,
+        viewKey: keyPair.viewPublicKey,
+        spendKey: keyPair.spendPublicKey,
+        balance: 0,
+        unlockedBalance: 0,
+        balanceHEAT: 0,
+        unlockedBalanceHEAT: 0,
+        blockchainHeight: 0,
+        localHeight: 0,
+        synced: false,
+      );
+
       _setLoading(false);
+      notifyListeners();
+
+      _checkConnection();
+
       return true;
     } catch (e) {
       _setError(e.toString());
@@ -191,21 +205,35 @@ class WalletProvider extends ChangeNotifier {
         throw Exception('Invalid mnemonic phrase');
       }
 
-      // Store mnemonic and create PIN
       await _securityService.storeWalletSeed(mnemonic, pin);
       await _securityService.setPIN(pin);
 
-      // TODO Derive keys from mnemonic (placeholder implementation)
-      final viewKey = 'restored_view_key_${DateTime.now().millisecondsSinceEpoch}';
-      final spendKey = 'restored_spend_key_${DateTime.now().millisecondsSinceEpoch}';
+      final keyPair = await KeyService.deriveFromMnemonic(mnemonic);
 
       await _securityService.storeWalletKeys(
-        viewKey: viewKey,
-        spendKey: spendKey,
+        viewKey: keyPair.viewPrivateKey,
+        spendKey: keyPair.spendPrivateKey,
         pin: pin,
       );
 
+      _wallet = Wallet(
+        address: keyPair.address,
+        viewKey: keyPair.viewPublicKey,
+        spendKey: keyPair.spendPublicKey,
+        balance: 0,
+        unlockedBalance: 0,
+        balanceHEAT: 0,
+        unlockedBalanceHEAT: 0,
+        blockchainHeight: 0,
+        localHeight: 0,
+        synced: false,
+      );
+
       _setLoading(false);
+      notifyListeners();
+
+      _checkConnection();
+
       return true;
     } catch (e) {
       _setError(e.toString());
@@ -229,8 +257,7 @@ class WalletProvider extends ChangeNotifier {
         throw Exception('Wallet keys not found');
       }
 
-      // Initialize wallet with placeholder data
-      // TODO: Open wallet with the keys
+      await _sdkService.initialize();
       await refreshWallet();
 
       _setLoading(false);
@@ -245,6 +272,7 @@ class WalletProvider extends ChangeNotifier {
   Future<void> lockWallet() async {
     _wallet = null;
     _transactions.clear();
+    _sdkService.closeWallet();
     _stopSyncTimer();
     notifyListeners();
   }
@@ -252,6 +280,10 @@ class WalletProvider extends ChangeNotifier {
   Future<bool> hasWalletData() async {
     return await _securityService.hasWalletData();
   }
+
+  // Wallet credentials
+  String get walletFile => '/tmp/fuego/wallets/default.wallet';
+  String get walletPassword => 'fuego_wallet';
 
   // Wallet Operations
   Future<void> refreshWallet() async {
@@ -267,16 +299,46 @@ class WalletProvider extends ChangeNotifier {
       _setLoading(true);
       _clearError();
 
-      // Get wallet balance and info
-      final balance = await _rpcService.getBalance();
-      final address = await _rpcService.getAddress();
+      await _sdkService.startNode();
 
-      _wallet = balance.copyWith(address: address);
+      final walletPath = walletFile;
+      _sdkService.openWallet(walletPath, walletPassword);
 
-      // Fetch prices concurrently
+      final height = await _sdkService.node.getBlockHeight();
+      final synced = await _sdkService.node.isSynchronized();
+
+      final xfgAvailable = _sdkService.wallet.xfgAvailable;
+      final xfgLocked = _sdkService.wallet.xfgLocked;
+      final heatAvailable = _sdkService.wallet.heatAvailable;
+      final heatLocked = _sdkService.wallet.heatLocked;
+
+      final balanceAtomic = (xfgAvailable * 10000000).round();
+      final lockedAtomic = (xfgLocked * 10000000).round();
+      final heatBalanceAtomic = (heatAvailable * 10000000).round();
+      final heatLockedAtomic = (heatLocked * 10000000).round();
+
+      String address = '';
+      try {
+        address = await _rpcService.getAddress();
+      } catch (_) {
+        _logger.warning('Could not get address from RPC fallback');
+      }
+
+      _wallet = Wallet(
+        address: address,
+        viewKey: '',
+        spendKey: '',
+        balance: balanceAtomic,
+        unlockedBalance: lockedAtomic,
+        balanceHEAT: heatBalanceAtomic,
+        unlockedBalanceHEAT: heatLockedAtomic,
+        blockchainHeight: height,
+        localHeight: height,
+        synced: synced,
+      );
+
       _refreshPrices();
 
-      // Start sync timer if not already running
       if (!isWalletSynced) {
         _startSyncTimer();
       }
@@ -291,10 +353,8 @@ class WalletProvider extends ChangeNotifier {
 
   Future<void> _refreshPrices() async {
     try {
-      // In a real implementation, fetch from CoinGecko, Binance, or an oracle.
-      // Placeholder data reflecting Fuego network conditions.
-      _xfgEurPrice = 0.05; // 5 cents EUR per XFG
-      _heatXfgPrice = 100.0; // 100 XFG per HEAT (via Hearth AMM)
+      _xfgEurPrice = 0.05;
+      _heatXfgPrice = 100.0;
       _heatEurPrice = _heatXfgPrice * _xfgEurPrice;
       notifyListeners();
     } catch (e) {
@@ -317,30 +377,28 @@ class WalletProvider extends ChangeNotifier {
     required double amount,
     String? paymentId,
     int mixins = 7,
+    String? assetId,
   }) async {
     _setLoading(true);
     _clearError();
 
     try {
-      final atomicAmount = (amount * 10000000).round();
-      const fee = 10000000; // Default fee in atomic units
-
-      final request = SendTransactionRequest(
+      final result = await _sdkService.wallet.send(
         address: address,
-        amount: atomicAmount,
-        paymentId: paymentId ?? '',
-        fee: fee,
-        mixins: mixins,
+        amount: amount,
+        assetId: assetId,
+        paymentId: paymentId,
       );
 
-      final txHash = await _rpcService.sendTransaction(request);
+      if (result.error != FuegoError.FUEGO_OK) {
+        throw Exception('Send failed: ${result.error}');
+      }
 
-      // Refresh wallet after sending
       await refreshWallet();
       await refreshTransactions();
 
       _setLoading(false);
-      return txHash;
+      return result.txHash;
     } catch (e) {
       _setError(e.toString());
       _setLoading(false);
@@ -360,9 +418,13 @@ class WalletProvider extends ChangeNotifier {
   Future<void> startMining({int threads = 1}) async {
     try {
       _miningThreads = threads;
-      final success = await _rpcService.startMining(threads: threads);
+      final addr = _wallet?.address;
+      if (addr == null || addr.isEmpty) {
+        throw Exception('No wallet address available for mining');
+      }
+      final error = await _sdkService.mining.start(addr);
 
-      if (success) {
+      if (error == FuegoError.FUEGO_OK) {
         _isMining = true;
         _startMiningStatusTimer();
       }
@@ -375,7 +437,7 @@ class WalletProvider extends ChangeNotifier {
 
   Future<void> stopMining() async {
     try {
-      await _rpcService.stopMining();
+      await _sdkService.mining.stop();
       _isMining = false;
       _miningSpeed = 0;
       notifyListeners();
@@ -386,24 +448,26 @@ class WalletProvider extends ChangeNotifier {
 
   Future<void> refreshMiningStatus() async {
     try {
-      final status = await _rpcService.getMiningStatus();
-      _isMining = status['active'] as bool;
-      _miningSpeed = status['speed'] as int;
-      _miningThreads = status['threads'] as int;
+      final running = _sdkService.mining.isRunning();
+      _isMining = running;
+      if (running) {
+        final hashrate = await _sdkService.mining.getHashrate();
+        _miningSpeed = hashrate.round();
+      }
       notifyListeners();
     } catch (e) {
       // Mining might not be supported, ignore errors
     }
   }
 
-  //  Operations
+  // Node Operations
   Future<void> refreshNodes() async {
     try {
       final nodes = await _rpcService.getNodes();
       _elderfierNodes = nodes;
       notifyListeners();
     } catch (e) {
-      //  functionality might not be available
+      // Node functionality might not be available
     }
   }
 
@@ -426,7 +490,7 @@ class WalletProvider extends ChangeNotifier {
 
       return success;
     } catch (e) {
-      _setError('Failed to register  node: $e');
+      _setError('Failed to register node: $e');
       return false;
     }
   }
@@ -436,14 +500,18 @@ class WalletProvider extends ChangeNotifier {
     _setLoading(true);
 
     try {
-      // Parse the URL to extract host and port
       final uri = Uri.parse(url);
       final host = uri.host;
       final port = uri.port == 80 || uri.port == 443 ? _networkConfig.daemonRpcPort : uri.port;
 
-      // Update the RPC service with new node
       _rpcService.updateNode(host, port: port);
       _nodeUrl = url;
+
+      await _sdkService.startNode(
+        mode: FuegoNodeMode.remote,
+        remoteHost: host,
+        remotePort: port,
+      );
 
       await _checkConnection();
 
@@ -457,12 +525,10 @@ class WalletProvider extends ChangeNotifier {
     _setLoading(false);
   }
 
-  /// Update network configuration
   Future<void> updateNetworkConfig(NetworkConfig config) async {
     _networkConfig = config;
     _rpcService.updateNetworkConfig(config);
 
-    // Update node URL if it's using the old port
     if (_nodeUrl != null) {
       final uri = Uri.parse(_nodeUrl!);
       final newUrl = '${uri.scheme}://${uri.host}:${config.daemonRpcPort}';
@@ -474,7 +540,12 @@ class WalletProvider extends ChangeNotifier {
 
   Future<void> _checkConnection() async {
     try {
-      _isConnected = await _rpcService.testConnection();
+      final sdkRunning = _sdkService.isNodeRunning();
+      if (sdkRunning) {
+        _isConnected = true;
+      } else {
+        _isConnected = await _rpcService.testConnection();
+      }
     } catch (e) {
       _isConnected = false;
     }
@@ -514,14 +585,18 @@ class WalletProvider extends ChangeNotifier {
   Future<void> _refreshSyncStatus() async {
     try {
       _isSyncing = true;
-      final info = await _rpcService.getInfo();
-      final balance = await _rpcService.getBalance();
+      final height = await _sdkService.node.getBlockHeight();
+      final synced = await _sdkService.node.isSynchronized();
+      final xfgAvailable = _sdkService.wallet.xfgAvailable;
+      final xfgLocked = _sdkService.wallet.xfgLocked;
 
       if (_wallet != null) {
         _wallet = _wallet!.copyWith(
-          blockchainHeight: info['height'] as int,
-          localHeight: balance.localHeight,
-          synced: (info['height'] - balance.localHeight) <= 1,
+          blockchainHeight: height,
+          localHeight: height,
+          synced: synced,
+          balance: (xfgAvailable * 10000000).round(),
+          unlockedBalance: (xfgLocked * 10000000).round(),
         );
       }
 
@@ -549,7 +624,6 @@ class WalletProvider extends ChangeNotifier {
       );
 
       if (success) {
-        // Message sent successfully
         return true;
       } else {
         _setError('Failed to send message');
@@ -565,11 +639,10 @@ class WalletProvider extends ChangeNotifier {
     try {
       final messages = await _rpcService.getMessages();
 
-      // Transform messages for UI consumption
       return messages.map((msg) {
         return {
           'id': msg['id'] ?? '',
-          'type': msg['type'] ?? 'received', // 'received' or 'sent'
+          'type': msg['type'] ?? 'received',
           'address': msg['address'] ?? '',
           'content': msg['content'] ?? '',
           'preview': _generateMessagePreview(msg['content'] as String? ?? ''),
@@ -611,6 +684,7 @@ class WalletProvider extends ChangeNotifier {
   void dispose() {
     _syncTimer?.cancel();
     _rpcService.dispose();
+    _sdkService.cleanup();
     super.dispose();
   }
 }

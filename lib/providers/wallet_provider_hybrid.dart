@@ -5,6 +5,7 @@ import '../models/network_config.dart';
 import '../adapters/fuego_node_adapter.dart';
 import '../adapters/fuego_wallet_adapter_native.dart';
 import '../services/wallet_daemon_service.dart';
+import '../services/key_service.dart';
 
 /// Hybrid wallet provider that uses native crypto when available
 /// and falls back to RPC for blockchain sync
@@ -104,23 +105,32 @@ class WalletProviderHybrid extends ChangeNotifier {
   }) async {
     try {
       _setLoading(true);
-      
-      // First, try to derive private keys from mnemonic using native crypto
+
       if (_useNativeCrypto) {
-        // TODO: Implement mnemonic-to-keys conversion
-        // This will call fuego_mnemonic_to_key FFI function
+        // Native crypto not available — use pure Dart derivation
       }
 
-      // Create wallet with keys
+      final keyPair = await KeyService.deriveFromMnemonic(mnemonic);
+
       bool success = await _walletAdapter.createWithKeysNative(
-        viewKey: 'TODO',
-        spendKey: 'TODO',
+        viewKey: keyPair.viewPrivateKey,
+        spendKey: keyPair.spendPrivateKey,
         password: password,
         onEvent: _handleWalletEvent,
       );
 
       if (success) {
-        await _loadWalletData();
+        _wallet = Wallet(
+          address: keyPair.address,
+          viewKey: keyPair.viewPublicKey,
+          spendKey: keyPair.spendPublicKey,
+          balance: 0,
+          unlockedBalance: 0,
+          blockchainHeight: 0,
+          localHeight: 0,
+          synced: false,
+        );
+        notifyListeners();
         _setError(null);
         return true;
       }
@@ -200,9 +210,8 @@ class WalletProviderHybrid extends ChangeNotifier {
 
   /// Start wallet daemon for blockchain sync
   Future<void> _startWalletDaemon() async {
-    await WalletDaemonService.startWalletd();
-    _isConnected = true;
-    notifyListeners();
+    final success = await WalletDaemonService.startWalletd();
+    _isConnected = success;
   }
 
   /// Load wallet data after operations

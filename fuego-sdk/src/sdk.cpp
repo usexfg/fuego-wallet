@@ -6,6 +6,7 @@
 #include "swap/atomic_swap.h"
 #include "heat/heat_proof.h"
 #include "alias/alias_service.h"
+#include "pool/pool_manager.h"
 
 #include <string>
 #include <cstring>
@@ -349,6 +350,85 @@ FUEGO_API FuegoError fuego_alias_get_owned(const char* wallet_address, char** al
         return fuego::AliasService::getOwnedAliases(wallet_address, aliases, count);
     } catch (...) {
         return FUEGO_ERROR_ALIAS;
+    }
+}
+
+/* ============================================================================
+   Hearth AMM Pool
+   ============================================================================ */
+FUEGO_API FuegoError fuego_pool_initialize(uint64_t xfg_amount, uint64_t heat_amount, uint64_t fee_bps) {
+    try {
+        return fuego::PoolManager::instance().initialize(xfg_amount, heat_amount, fee_bps);
+    } catch (...) {
+        return FUEGO_ERROR_INTERNAL;
+    }
+}
+
+FUEGO_API FuegoError fuego_pool_get_reserves(FuegoPoolReserves* reserves) {
+    if (!reserves) return FUEGO_ERROR_INVALID_PARAM;
+    try {
+        return fuego::PoolManager::instance().getReserves(
+            reinterpret_cast<fuego::PoolReserves*>(reserves));
+    } catch (...) {
+        return FUEGO_ERROR_INTERNAL;
+    }
+}
+
+FUEGO_API FuegoError fuego_pool_swap(const char* input_asset, uint64_t input_amount,
+                                      uint64_t min_output, FuegoPoolSwapResult* result) {
+    if (!input_asset || !result) return FUEGO_ERROR_INVALID_PARAM;
+    try {
+        return fuego::PoolManager::instance().swap(
+            input_asset, input_amount, min_output,
+            reinterpret_cast<fuego::PoolSwapResult*>(result));
+    } catch (...) {
+        return FUEGO_ERROR_INTERNAL;
+    }
+}
+
+FUEGO_API FuegoError fuego_pool_get_estimated_output(const char* input_asset,
+                                                      uint64_t input_amount,
+                                                      uint64_t* output_amount) {
+    if (!input_asset || !output_amount) return FUEGO_ERROR_INVALID_PARAM;
+    try {
+        return fuego::PoolManager::instance().getEstimatedOutput(
+            input_asset, input_amount, output_amount);
+    } catch (...) {
+        return FUEGO_ERROR_INTERNAL;
+    }
+}
+
+FUEGO_API FuegoError fuego_pool_add_liquidity(uint64_t xfg_amount, uint64_t heat_amount,
+                                               uint64_t min_lp, FuegoPoolLiquidityResult* result) {
+    if (!result) return FUEGO_ERROR_INVALID_PARAM;
+    try {
+        return fuego::PoolManager::instance().addLiquidity(
+            xfg_amount, heat_amount, min_lp,
+            reinterpret_cast<fuego::PoolLiquidityResult*>(result));
+    } catch (...) {
+        return FUEGO_ERROR_INTERNAL;
+    }
+}
+
+FUEGO_API FuegoError fuego_pool_remove_liquidity(uint64_t lp_amount, uint64_t min_xfg,
+                                                  uint64_t min_heat,
+                                                  FuegoPoolLiquidityResult* result) {
+    if (!result) return FUEGO_ERROR_INVALID_PARAM;
+    try {
+        return fuego::PoolManager::instance().removeLiquidity(
+            lp_amount, min_xfg, min_heat,
+            reinterpret_cast<fuego::PoolLiquidityResult*>(result));
+    } catch (...) {
+        return FUEGO_ERROR_INTERNAL;
+    }
+}
+
+FUEGO_API FuegoError fuego_pool_get_lp_balance(const char* address, uint64_t* balance) {
+    if (!address || !balance) return FUEGO_ERROR_INVALID_PARAM;
+    try {
+        return fuego::PoolManager::instance().getLPBalance(address, balance);
+    } catch (...) {
+        return FUEGO_ERROR_INTERNAL;
     }
 }
 

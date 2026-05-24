@@ -33,6 +33,7 @@ jobs:
             libboost-all-dev \
             libssl-dev \
             libzmq3-dev \
+            libjsoncpp-dev \
             libqt5gui5 \
             libqt5widgets5 \
             libqt5network5 \
@@ -43,9 +44,7 @@ jobs:
           cd fuego-sdk
           mkdir build && cd build
           cmake .. -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/sdk-install \
-            -DBoost_NO_BOOST_CMAKE=ON \
-            -DBOOST_ROOT="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')" \
-            -DBoost_DIR="$(brew --prefix boost@1.86 2>/dev/null || brew --prefix boost 2>/dev/null || echo '/usr')/lib/cmake/Boost-*" \
+            -DBOOST_MPL_LIMIT_LIST_SIZE=30
 
       - name: Build
         run: |

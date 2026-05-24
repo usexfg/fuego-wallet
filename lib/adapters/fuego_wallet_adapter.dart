@@ -372,10 +372,12 @@ class FuegoWalletAdapter {
 
   Future<void> _updateSyncStatus() async {
     try {
-      // Check sync status via wallet RPC
-      // This would poll for blockchain updates
-      // For now, emit a placeholder event
-      _emitEvent(WalletEvent.synchronizationProgress(50, 100));
+      final blockHeight = await _rpcService.getHeight();
+      if (blockHeight > 0) {
+        _isSynchronized = true;
+        _currentHeight = blockHeight;
+        _emitEvent(WalletEvent.synchronizationProgress(blockHeight, blockHeight));
+      }
     } catch (e) {
       debugPrint('_updateSyncStatus failed: $e');
     }

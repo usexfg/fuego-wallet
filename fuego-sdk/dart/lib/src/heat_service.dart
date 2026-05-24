@@ -4,6 +4,16 @@ import 'package:ffi/ffi.dart';
 import 'fuego_sdk.dart';
 import 'fuego_sdk_bindings.dart';
 
+String _array8ToStr(ffi.Array<ffi.Int8> arr) {
+  final bytes = <int>[];
+  for (int i = 0; i < arr.length; i++) {
+    final byte = arr[i];
+    if (byte == 0) break;
+    bytes.add(byte);
+  }
+  return String.fromCharCodes(bytes);
+}
+
 /// HEAT (Hybrid Efficient Anonymous Transfer) proof service
 class HEATService {
   final FuegoSDK _sdk;
@@ -33,12 +43,8 @@ class HEATService {
         throw Exception('Failed to generate HEAT proof: ${FuegoError.fromCode(result)}');
       }
 
-      return HEATProof._fromNative(proofPtr);
+      return HEATProof._fromNative(proofPtr.ref);
     } finally {
-      calloc.free(txDataPtr);
-      calloc.free(walletFilePtr);
-      calloc.free(passwordPtr);
-      calloc.free(proofPtr);
     }
   }
 
@@ -50,8 +56,9 @@ class HEATService {
     try {
       // Copy proof data to native
       proofPtr.ref.proof_size = proof.proofData.length;
-      final proofDataPtr = proof.proofData.toNativeUtf8();
-      proofPtr.ref.proof_data.cast<Uint8>().asTypedList(proof.proofData.length).setAll(0, proof.proofData.codeUnits);
+      for (int i = 0; i < proof.proofData.length && i < 1024; i++) {
+        proofPtr.ref.proof_data[i] = proof.proofData[i];
+      }
       
       final result = _sdk.bindings.fuego_heat_verify_proof(proofPtr, validPtr);
 
@@ -78,6 +85,9 @@ class HEATProof {
   });
 
   HEATProof._fromNative(FuegoHEATProof native)
-      : proofData = native.proof_data.cast<Uint8>().asTypedList(native.proof_size).toList(),
-        verificationResult = native.verification_result.cast<Utf8>().toDartString();
+      : proofData = List<int>.generate(
+          native.proof_size < 1024 ? native.proof_size : 0,
+          (i) => native.proof_data[i],
+        ),
+        verificationResult = _array8ToStr(native.verification_result);
 }

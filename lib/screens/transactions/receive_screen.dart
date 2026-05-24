@@ -94,8 +94,7 @@ class _ReceiveScreenState extends State<ReceiveScreen>
   }
 
   Future<String> _getAddressFromProvider() async {
-    // Placeholder - in real implementation, get address from wallet service
-    return 'fire7rp9y1XyaHBPNmBTSb2VyzuGhNPRrJT5HhTCzBzj39ztFSzTu2qQdeCQpPqr3VxWQK8kj5zk3BHPgCdEz5H8WZZD9ZyRZT2gvGcwHzrVhRJFQ8k';
+    throw Exception('Unable to load wallet address. Please create or restore a wallet first.');
   }
 
   Future<void> _generatePaymentId() async {

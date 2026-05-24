@@ -4,6 +4,16 @@ import 'package:ffi/ffi.dart';
 import 'fuego_sdk.dart';
 import 'fuego_sdk_bindings.dart';
 
+String _array8ToStr(ffi.Array<ffi.Int8> arr) {
+  final bytes = <int>[];
+  for (int i = 0; i < arr.length; i++) {
+    final byte = arr[i];
+    if (byte == 0) break;
+    bytes.add(byte);
+  }
+  return String.fromCharCodes(bytes);
+}
+
 /// Certificate of Deposit service
 class CDService {
   final FuegoSDK _sdk;
@@ -39,7 +49,7 @@ class CDService {
         throw Exception('Failed to create CD: ${FuegoError.fromCode(result)}');
       }
 
-      return CDInfo._fromNative(cdInfoPtr);
+      return CDInfo._fromNative(cdInfoPtr.ref);
     } finally {
       calloc.free(walletFilePtr);
       calloc.free(passwordPtr);
@@ -94,7 +104,7 @@ class CDService {
         throw Exception('Failed to get CD info: ${FuegoError.fromCode(result)}');
       }
 
-      return CDInfo._fromNative(cdInfoPtr);
+      return CDInfo._fromNative(cdInfoPtr.ref);
     } finally {
       calloc.free(txHashPtr);
       calloc.free(cdInfoPtr);
@@ -120,5 +130,5 @@ class CDInfo {
       : amount = native.amount,
         interest = native.interest,
         unlockTime = native.unlock_time,
-        txHash = native.tx_hash.cast<Utf8>().toDartString();
+        txHash = _array8ToStr(native.tx_hash);
 }

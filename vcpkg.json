@@ -1,0 +1,40 @@
+{
+  "name": "fuego-wallet",
+  "version": "1.0.0",
+  "builtin-baseline": "f5623878ddcb7f5bdc8b6a293ca5340aabed2331",
+  "dependencies": [
+    {
+      "name": "boost-system"
+    },
+    {
+      "name": "boost-filesystem"
+    },
+    {
+      "name": "boost-thread"
+    },
+    {
+      "name": "boost-date-time"
+    },
+    {
+      "name": "boost-chrono"
+    },
+    {
+      "name": "boost-regex"
+    },
+    {
+      "name": "boost-program-options"
+    },
+    {
+      "name": "boost-serialization"
+    },
+    {
+      "name": "jsoncpp"
+    },
+    {
+      "name": "openssl"
+    },
+    {
+      "name": "zeromq"
+    }
+  ]
+}

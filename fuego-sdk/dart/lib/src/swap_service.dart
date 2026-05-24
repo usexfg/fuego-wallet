@@ -4,6 +4,16 @@ import 'package:ffi/ffi.dart';
 import 'fuego_sdk.dart';
 import 'fuego_sdk_bindings.dart';
 
+String _array8ToStr(ffi.Array<ffi.Int8> arr) {
+  final bytes = <int>[];
+  for (int i = 0; i < arr.length; i++) {
+    final byte = arr[i];
+    if (byte == 0) break;
+    bytes.add(byte);
+  }
+  return String.fromCharCodes(bytes);
+}
+
 /// Atomic swap service
 class SwapService {
   final FuegoSDK _sdk;
@@ -13,11 +23,14 @@ class SwapService {
   /// Initiate a new atomic swap
   Future<SwapInfo> initiate({
     required String counterpartyAddress,
-    required int amount,
+    required int xfgAmount,
+    required int counterpartyAmount,
+    required String counterpartyChain,
     required String walletFile,
     required String walletPassword,
   }) async {
     final counterpartyPtr = counterpartyAddress.toNativeUtf8();
+    final chainPtr = counterpartyChain.toNativeUtf8();
     final walletFilePtr = walletFile.toNativeUtf8();
     final passwordPtr = walletPassword.toNativeUtf8();
     final swapInfoPtr = calloc<FuegoSwapInfo>();
@@ -25,7 +38,9 @@ class SwapService {
     try {
       final result = _sdk.bindings.fuego_swap_initiate(
         counterpartyPtr.cast(),
-        amount,
+        xfgAmount,
+        counterpartyAmount,
+        chainPtr.cast(),
         walletFilePtr.cast(),
         passwordPtr.cast(),
         swapInfoPtr,
@@ -35,9 +50,10 @@ class SwapService {
         throw Exception('Failed to initiate swap: ${FuegoError.fromCode(result)}');
       }
 
-      return SwapInfo._fromNative(swapInfoPtr);
+      return SwapInfo._fromNative(swapInfoPtr.ref);
     } finally {
       calloc.free(counterpartyPtr);
+      calloc.free(chainPtr);
       calloc.free(walletFilePtr);
       calloc.free(passwordPtr);
       calloc.free(swapInfoPtr);
@@ -67,14 +83,12 @@ class SwapService {
         throw Exception('Failed to join swap: ${FuegoError.fromCode(result)}');
       }
 
-      return SwapInfo._fromNative(swapInfoPtr);
+      return SwapInfo._fromNative(swapInfoPtr.ref);
     } finally {
       calloc.free(swapIdPtr);
       calloc.free(walletFilePtr);
       calloc.free(passwordPtr);
       calloc.free(swapInfoPtr);
-    }
-  }
 
   /// Lock funds for a swap
   Future<FuegoError> lockFunds({
@@ -97,6 +111,26 @@ class SwapService {
       calloc.free(swapIdPtr);
       calloc.free(walletFilePtr);
       calloc.free(passwordPtr);
+    }
+  }
+
+  /// Lock counterparty funds (mark counterparty tx as seen)
+  Future<FuegoError> lockCounterpartyFunds({
+    required String swapId,
+    required String counterpartyTxHash,
+  }) async {
+    final swapIdPtr = swapId.toNativeUtf8();
+    final txHashPtr = counterpartyTxHash.toNativeUtf8();
+
+    try {
+      final result = _sdk.bindings.fuego_swap_lock_counterparty_funds(
+        swapIdPtr.cast(),
+        txHashPtr.cast(),
+      );
+      return FuegoError.fromCode(result);
+    } finally {
+      calloc.free(swapIdPtr);
+      calloc.free(txHashPtr);
     }
   }
 
@@ -148,6 +182,49 @@ class SwapService {
     }
   }
 
+  /// Extract adaptor secret from pre-signature and final signature
+  Future<List<int>> extractSecret({
+    required String swapId,
+    required List<int> preSignature,
+    required List<int> finalSignature,
+  }) async {
+    final swapIdPtr = swapId.toNativeUtf8();
+    final preSigPtr = calloc<Uint8>(64);
+    final finalSigPtr = calloc<Uint8>(64);
+    final secretPtr = calloc<Uint8>(32);
+
+    try {
+      for (int i = 0; i < 64 && i < preSignature.length; i++) {
+        preSigPtr[i] = preSignature[i];
+      }
+      for (int i = 0; i < 64 && i < finalSignature.length; i++) {
+        finalSigPtr[i] = finalSignature[i];
+      }
+
+      final result = _sdk.bindings.fuego_swap_extract_secret(
+        swapIdPtr.cast(),
+        preSigPtr,
+        finalSigPtr,
+        secretPtr,
+      );
+
+      if (result != FuegoError.FUEGO_OK.code) {
+        throw Exception('Failed to extract secret: ${FuegoError.fromCode(result)}');
+      }
+
+      final secret = <int>[];
+      for (int i = 0; i < 32; i++) {
+        secret.add(secretPtr[i]);
+      }
+      return secret;
+    } finally {
+      calloc.free(swapIdPtr);
+      calloc.free(preSigPtr);
+      calloc.free(finalSigPtr);
+      calloc.free(secretPtr);
+    }
+  }
+
   /// Get swap info
   Future<SwapInfo> getInfo(String swapId) async {
     final swapIdPtr = swapId.toNativeUtf8();
@@ -163,7 +240,7 @@ class SwapService {
         throw Exception('Failed to get swap info: ${FuegoError.fromCode(result)}');
       }
 
-      return SwapInfo._fromNative(swapInfoPtr);
+      return SwapInfo._fromNative(swapInfoPtr.ref);
     } finally {
       calloc.free(swapIdPtr);
       calloc.free(swapInfoPtr);
@@ -186,21 +263,33 @@ class SwapInfo {
   final String swapId;
   final SwapState state;
   final String counterpartyAddress;
-  final int amount;
+  final int xfgAmount;
+  final int counterpartyAmount;
+  final String counterpartyChain;
+  final String escrowPubkey;
+  final String adaptorPoint;
   final String txHash;
 
   SwapInfo({
     required this.swapId,
     required this.state,
     required this.counterpartyAddress,
-    required this.amount,
+    required this.xfgAmount,
+    required this.counterpartyAmount,
+    required this.counterpartyChain,
+    required this.escrowPubkey,
+    required this.adaptorPoint,
     required this.txHash,
   });
 
   SwapInfo._fromNative(FuegoSwapInfo native)
-      : swapId = native.swap_id.cast<Utf8>().toDartString(),
+      : swapId = _array8ToStr(native.swap_id),
         state = SwapState.values[native.state],
-        counterpartyAddress = native.counterparty_address.cast<Utf8>().toDartString(),
-        amount = native.amount,
-        txHash = native.tx_hash.cast<Utf8>().toDartString();
+        counterpartyAddress = _array8ToStr(native.counterparty_address),
+        xfgAmount = native.xfg_amount,
+        counterpartyAmount = native.counterparty_amount,
+        counterpartyChain = _array8ToStr(native.counterparty_chain),
+        escrowPubkey = _array8ToStr(native.escrow_pubkey),
+        adaptorPoint = _array8ToStr(native.adaptor_point),
+        txHash = _array8ToStr(native.tx_hash);
 }

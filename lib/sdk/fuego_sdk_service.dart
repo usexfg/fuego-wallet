@@ -1,5 +1,6 @@
 import 'package:fuego_sdk/fuego_sdk.dart';
 import 'package:fuego_sdk/src/wallet_service.dart';
+import 'package:fuego_sdk/src/pool_service.dart';
 
 /// Fuego SDK Service - Wrapper for FuegoSDK in the wallet app
 class FuegoSDKService {
@@ -13,6 +14,7 @@ class FuegoSDKService {
   late final HEATService _heat;
   late final AliasService _alias;
   late final WalletService _wallet;
+  late final PoolService _pool;
 
   FuegoSDKService._internal();
 
@@ -40,6 +42,7 @@ class FuegoSDKService {
     _heat = HEATService(_sdk);
     _alias = AliasService(_sdk);
     _wallet = WalletService(_sdk);
+    _pool = PoolService(_sdk);
 
     return await _sdk.initialize(
       dataDir: dataDir ?? await _getDefaultDataDir(),
@@ -150,13 +153,17 @@ class FuegoSDKService {
   /// Initiate a swap
   Future<SwapInfo> initiateSwap({
     required String counterpartyAddress,
-    required int amount,
+    required int xfgAmount,
+    required int counterpartyAmount,
+    required String counterpartyChain,
     required String walletFile,
     required String walletPassword,
   }) {
     return _swap.initiate(
       counterpartyAddress: counterpartyAddress,
-      amount: amount,
+      xfgAmount: xfgAmount,
+      counterpartyAmount: counterpartyAmount,
+      counterpartyChain: counterpartyChain,
       walletFile: walletFile,
       walletPassword: walletPassword,
     );
@@ -185,6 +192,30 @@ class FuegoSDKService {
       swapId: swapId,
       walletFile: walletFile,
       walletPassword: walletPassword,
+    );
+  }
+
+  /// Lock counterparty funds
+  Future<FuegoError> lockCounterpartySwapFunds({
+    required String swapId,
+    required String counterpartyTxHash,
+  }) {
+    return _swap.lockCounterpartyFunds(
+      swapId: swapId,
+      counterpartyTxHash: counterpartyTxHash,
+    );
+  }
+
+  /// Extract adaptor secret
+  Future<List<int>> extractSwapSecret({
+    required String swapId,
+    required List<int> preSignature,
+    required List<int> finalSignature,
+  }) {
+    return _swap.extractSecret(
+      swapId: swapId,
+      preSignature: preSignature,
+      finalSignature: finalSignature,
     );
   }
 
@@ -264,6 +295,79 @@ class FuegoSDKService {
       _alias.getOwned(walletAddress);
 
   // ============================================================================
+  // Pool Service
+  // ============================================================================
+
+  /// Initialize the pool
+  Future<FuegoError> initializePool({
+    required int xfgAmount,
+    required int heatAmount,
+    int feeBps = 30,
+  }) {
+    return _pool.initialize(
+      xfgAmount: xfgAmount,
+      heatAmount: heatAmount,
+      feeBps: feeBps,
+    );
+  }
+
+  /// Get pool reserves
+  Future<PoolReserves> getPoolReserves() => _pool.getReserves();
+
+  /// Execute a pool swap
+  Future<PoolSwapResult> poolSwap({
+    required String inputAsset,
+    required int inputAmount,
+    int minOutput = 0,
+  }) {
+    return _pool.swap(
+      inputAsset: inputAsset,
+      inputAmount: inputAmount,
+      minOutput: minOutput,
+    );
+  }
+
+  /// Get estimated output from pool
+  Future<int> getEstimatedPoolOutput({
+    required String inputAsset,
+    required int inputAmount,
+  }) {
+    return _pool.getEstimatedOutput(
+      inputAsset: inputAsset,
+      inputAmount: inputAmount,
+    );
+  }
+
+  /// Add liquidity
+  Future<PoolLiquidityResult> addPoolLiquidity({
+    required int xfgAmount,
+    required int heatAmount,
+    int minLP = 0,
+  }) {
+    return _pool.addLiquidity(
+      xfgAmount: xfgAmount,
+      heatAmount: heatAmount,
+      minLP: minLP,
+    );
+  }
+
+  /// Remove liquidity
+  Future<PoolLiquidityResult> removePoolLiquidity({
+    required int lpAmount,
+    int minXFG = 0,
+    int minHEAT = 0,
+  }) {
+    return _pool.removeLiquidity(
+      lpAmount: lpAmount,
+      minXFG: minXFG,
+      minHEAT: minHEAT,
+    );
+  }
+
+  /// Get LP balance
+  Future<int> getLPBalance(String address) => _pool.getLPBalance(address);
+
+  // ============================================================================
   // Properties
   // ============================================================================
 
@@ -290,6 +394,9 @@ class FuegoSDKService {
 
   /// Get alias service
   AliasService get alias => _alias;
+
+  /// Get pool service
+  PoolService get pool => _pool;
 
   /// Get wallet service
   WalletService get wallet => _wallet;

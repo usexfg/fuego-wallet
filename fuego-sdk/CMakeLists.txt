@@ -62,6 +62,7 @@ set(FUEGO_SDK_SOURCES
     src/heat/heat_proof.cpp
     src/alias/alias_service.cpp
     src/wallet/wallet_manager.cpp
+    src/pool/pool_manager.cpp
 )
 
 # Path to fuego core build artifacts

@@ -37,7 +37,7 @@ class FuegoWalletAdapterNative {
   }
 
   Future<String> sendTransactionNative({required Map<String, int> destinations, int? fee, String? paymentId, int mixin = 4}) async {
-    return 'fallback_tx_${DateTime.now().millisecondsSinceEpoch}';
+    throw UnimplementedError('Native transaction signing not available. Use FuegoSDKService.send() instead.');
   }
 
   Future<void> close() async {

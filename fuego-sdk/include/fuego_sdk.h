@@ -152,6 +152,38 @@ FUEGO_API FuegoError fuego_alias_resolve(const char* alias, char* wallet_address
 FUEGO_API FuegoError fuego_alias_get_owned(const char* wallet_address, char** aliases, size_t* count);
 
 /* ============================================================================
+   Hearth AMM Pool (Constant Product)
+   ============================================================================ */
+typedef struct {
+  uint64_t xfg_reserve;
+  uint64_t heat_reserve;
+  uint64_t total_lp;
+  uint64_t fee_bps;
+  uint64_t k_last;
+} FuegoPoolReserves;
+
+typedef struct {
+  uint64_t input_amount;
+  uint64_t output_amount;
+  uint64_t fee_amount;
+  uint64_t price_impact_bps;
+} FuegoPoolSwapResult;
+
+typedef struct {
+  uint64_t lp_tokens;
+  uint64_t xfg_amount;
+  uint64_t heat_amount;
+} FuegoPoolLiquidityResult;
+
+FUEGO_API FuegoError fuego_pool_initialize(uint64_t xfg_amount, uint64_t heat_amount, uint64_t fee_bps);
+FUEGO_API FuegoError fuego_pool_get_reserves(FuegoPoolReserves* reserves);
+FUEGO_API FuegoError fuego_pool_swap(const char* input_asset, uint64_t input_amount, uint64_t min_output, FuegoPoolSwapResult* result);
+FUEGO_API FuegoError fuego_pool_get_estimated_output(const char* input_asset, uint64_t input_amount, uint64_t* output_amount);
+FUEGO_API FuegoError fuego_pool_add_liquidity(uint64_t xfg_amount, uint64_t heat_amount, uint64_t min_lp, FuegoPoolLiquidityResult* result);
+FUEGO_API FuegoError fuego_pool_remove_liquidity(uint64_t lp_amount, uint64_t min_xfg, uint64_t min_heat, FuegoPoolLiquidityResult* result);
+FUEGO_API FuegoError fuego_pool_get_lp_balance(const char* address, uint64_t* balance);
+
+/* ============================================================================
    Memory Management
    ============================================================================ */
 FUEGO_API void fuego_free_string(char* str);

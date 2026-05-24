@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../providers/wallet_provider.dart';
+import '../../sdk/fuego_sdk_service.dart';
 import '../../utils/theme.dart';
 
 class SendScreen extends StatefulWidget {
@@ -14,9 +15,11 @@ class SendScreen extends StatefulWidget {
 class _SendScreenState extends State<SendScreen> {
   final _formKey = GlobalKey<FormState>();
   final _addressController = TextEditingController();
+  final _aliasController = TextEditingController();
   final _amountController = TextEditingController();
   final _paymentIdController = TextEditingController();
   final _addressFocusNode = FocusNode();
+  final _aliasFocusNode = FocusNode();
   final _amountFocusNode = FocusNode();
   final _paymentIdFocusNode = FocusNode();
 
@@ -24,17 +27,23 @@ class _SendScreenState extends State<SendScreen> {
   int _mixins = 7; // Default privacy level
   String? _errorMessage;
   bool _showAdvanced = false;
+  bool _useAlias = false;
+  bool _sendHeat = false;
 
   @override
   void dispose() {
     _addressController.dispose();
+    _aliasController.dispose();
     _amountController.dispose();
     _paymentIdController.dispose();
     _addressFocusNode.dispose();
+    _aliasFocusNode.dispose();
     _amountFocusNode.dispose();
     _paymentIdFocusNode.dispose();
     super.dispose();
   }
+
+  String get _assetName => _sendHeat ? 'HEAT' : 'XFG';
 
   Future<void> _sendTransaction() async {
     if (!_formKey.currentState!.validate()) return;
@@ -46,14 +55,32 @@ class _SendScreenState extends State<SendScreen> {
 
     try {
       final walletProvider = Provider.of<WalletProvider>(context, listen: false);
-      
+
+      String address;
+      if (_useAlias) {
+        final resolved = await FuegoSDKService.instance
+            .resolveAlias(_aliasController.text.trim());
+        if (resolved == null) {
+          if (mounted) {
+            setState(() {
+              _errorMessage = 'Alias not found';
+            });
+          }
+          return;
+        }
+        address = resolved;
+      } else {
+        address = _addressController.text.trim();
+      }
+
       final txHash = await walletProvider.sendTransaction(
-        address: _addressController.text.trim(),
+        address: address,
         amount: double.parse(_amountController.text),
         paymentId: _paymentIdController.text.trim().isEmpty 
             ? null 
             : _paymentIdController.text.trim(),
         mixins: _mixins,
+        assetId: _sendHeat ? 'HEAT' : null,
       );
 
       if (txHash != null && mounted) {
@@ -184,9 +211,10 @@ class _SendScreenState extends State<SendScreen> {
 
   void _setMaxAmount() {
     final walletProvider = Provider.of<WalletProvider>(context, listen: false);
-    final availableBalance = walletProvider.wallet?.unlockedBalanceXFG ?? 0.0;
-    
-    // Reserve some amount for fees (approximately 0.01 XFG)
+    final availableBalance = _sendHeat
+        ? (walletProvider.wallet?.availableBalanceHEAT ?? 0.0)
+        : (walletProvider.wallet?.unlockedBalanceXFG ?? 0.0);
+
     final maxAmount = (availableBalance - 0.01).clamp(0.0, availableBalance);
     _amountController.text = maxAmount.toStringAsFixed(8);
   }
@@ -195,14 +223,16 @@ class _SendScreenState extends State<SendScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Send XFG'),
+        title: Text('Send $_assetName'),
         elevation: 0,
         backgroundColor: Colors.transparent,
       ),
       body: Consumer<WalletProvider>(
         builder: (context, walletProvider, child) {
-          final availableBalance = walletProvider.wallet?.unlockedBalanceXFG ?? 0.0;
-          
+          final availableBalance = _sendHeat
+              ? (walletProvider.wallet?.availableBalanceHEAT ?? 0.0)
+              : (walletProvider.wallet?.unlockedBalanceXFG ?? 0.0);
+
           return SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: Form(
@@ -236,7 +266,7 @@ class _SendScreenState extends State<SendScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              '${availableBalance.toStringAsFixed(8)} XFG',
+                              '${availableBalance.toStringAsFixed(8)} $_assetName',
                               style: const TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
@@ -252,59 +282,147 @@ class _SendScreenState extends State<SendScreen> {
                       ],
                     ),
                   ),
+                  const SizedBox(height: 16),
+
+                  // Asset selector
+                  Row(
+                    children: [
+                      const Text(
+                        'Asset:',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      ChoiceChip(
+                        label: const Text('XFG'),
+                        selected: !_sendHeat,
+                        onSelected: (_) => setState(() => _sendHeat = false),
+                        selectedColor: AppTheme.primaryColor,
+                        labelStyle: TextStyle(
+                          color: !_sendHeat
+                              ? Colors.white
+                              : AppTheme.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ChoiceChip(
+                        label: const Text('HEAT'),
+                        selected: _sendHeat,
+                        onSelected: (_) => setState(() => _sendHeat = true),
+                        selectedColor: AppTheme.accentColor ?? AppTheme.primaryColor,
+                        labelStyle: TextStyle(
+                          color: _sendHeat
+                              ? Colors.white
+                              : AppTheme.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 24),
 
-                  // Recipient address
-                  const Text(
-                    'Recipient Address',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.textPrimary,
-                    ),
+                  // Alias toggle
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Use Fire Alias',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                      Switch(
+                        value: _useAlias,
+                        onChanged: (value) {
+                          setState(() => _useAlias = value);
+                        },
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _addressController,
-                    focusNode: _addressFocusNode,
-                    decoration: InputDecoration(
-                      hintText: 'fire... or integrated address',
-                      suffixIcon: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            onPressed: _pasteFromClipboard,
-                            icon: const Icon(Icons.paste),
-                            tooltip: 'Paste',
-                          ),
-                          IconButton(
-                            onPressed: () {
-                              // TODO: Implement QR scanner
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('QR scanner coming soon'),
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.qr_code_scanner),
-                            tooltip: 'Scan QR',
-                          ),
-                        ],
+
+                  // Recipient address or alias
+                  if (_useAlias) ...[
+                    const Text(
+                      'Fire Alias',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textPrimary,
                       ),
                     ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Please enter recipient address';
-                      }
-                      // Basic validation for Fuego address format
-                      if (!value.startsWith('fire') && value.length < 50) {
-                        return 'Invalid address format';
-                      }
-                      return null;
-                    },
-                    maxLines: 3,
-                    minLines: 1,
-                  ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _aliasController,
+                      focusNode: _aliasFocusNode,
+                      decoration: const InputDecoration(
+                        hintText: '@alias',
+                        helperText: 'Max 8 characters',
+                      ),
+                      maxLength: 8,
+                      buildCounter: (_, {required int currentLength, required bool isFocused, required int? maxLength}) => null,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter an alias';
+                        }
+                        return null;
+                      },
+                    ),
+                  ] else ...[
+                    const Text(
+                      'Recipient Address',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _addressController,
+                      focusNode: _addressFocusNode,
+                      decoration: InputDecoration(
+                        hintText: 'fire... or integrated address',
+                        suffixIcon: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              onPressed: _pasteFromClipboard,
+                              icon: const Icon(Icons.paste),
+                              tooltip: 'Paste',
+                            ),
+                            IconButton(
+                              onPressed: () {
+                                // TODO: Implement QR scanner
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('QR scanner coming soon'),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.qr_code_scanner),
+                              tooltip: 'Scan QR',
+                            ),
+                          ],
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter recipient address';
+                        }
+                        // Basic validation for Fuego address format
+                        if (!value.startsWith('fire') && value.length < 50) {
+                          return 'Invalid address format';
+                        }
+                        return null;
+                      },
+                      maxLines: 3,
+                      minLines: 1,
+                    ),
+                  ],
                   const SizedBox(height: 24),
 
                   // Amount
@@ -321,9 +439,9 @@ class _SendScreenState extends State<SendScreen> {
                     controller: _amountController,
                     focusNode: _amountFocusNode,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: '0.00000000',
-                      suffixText: 'XFG',
+                      suffixText: _assetName,
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {

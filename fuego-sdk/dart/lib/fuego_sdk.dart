@@ -8,4 +8,5 @@ export 'src/swap_service.dart';
 export 'src/heat_service.dart';
 export 'src/alias_service.dart';
 export 'src/wallet_service.dart';
+export 'src/pool_service.dart';
 export 'src/fuego_sdk_bindings.dart';

@@ -90,13 +90,13 @@ jobs:
           
           # Build Core
           mkdir build && cd build
-          cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=Release -DBoost_USE_STATIC_LIBS=ON
+           cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=Release -DBoost_USE_STATIC_LIBS=ON -DBOOST_MPL_LIMIT_LIST_SIZE=30
           make -j$(sysctl -n hw.ncpu)
           
           # Build SDK
           cd ../../fuego-sdk
           mkdir build && cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DFUEGO_DIR=../../fuego-core -DBoost_USE_STATIC_LIBS=ON
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DFUEGO_DIR=../../fuego-core -DBoost_USE_STATIC_LIBS=ON -DBOOST_MPL_LIMIT_LIST_SIZE=30
           make -j$(sysctl -n hw.ncpu)
           
           # Copy SDK
