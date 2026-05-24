@@ -90,8 +90,10 @@ jobs:
           
           # Build Core
           mkdir build && cd build
-          echo 'add_compile_definitions(BOOST_MPL_LIMIT_LIST_SIZE=30)' >> ../CMakeLists.txt
-          cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=Release -DBoost_USE_STATIC_LIBS=ON
+          CXXFLAGS="-DBOOST_MPL_LIMIT_LIST_SIZE=30"
+          export CXXFLAGS
+          echo 'add_definitions(-DBOOST_MPL_LIMIT_LIST_SIZE=30)' > ../CMakeLists.txt.new && cat ../CMakeLists.txt >> ../CMakeLists.txt.new && mv ../CMakeLists.txt.new ../CMakeLists.txt
+          cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=Release -DBoost_USE_STATIC_LIBS=ON -DCMAKE_CXX_FLAGS_INIT="-DBOOST_MPL_LIMIT_LIST_SIZE=30"
           make -j$(sysctl -n hw.ncpu)
           
           # Build SDK

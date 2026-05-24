@@ -4,6 +4,7 @@
 
 import 'dart:ffi';
 import 'dart:ffi' as ffi;
+import 'package:ffi/ffi.dart';
 
 class FuegoSDKBindings {
   final ffi.DynamicLibrary _dylib;
@@ -231,8 +232,8 @@ class FuegoSDKBindings {
   >('fuego_pool_add_liquidity');
 
   late final fuego_pool_remove_liquidity = _dylib.lookupFunction<
-    Int32 Function(Uint64, Uint64, Uint64, Uint64, Pointer<FuegoPoolLiquidityResult>),
-    int Function(int, int, int, int, Pointer<FuegoPoolLiquidityResult>)
+    Int32 Function(Uint64, Uint64, Uint64, Pointer<FuegoPoolLiquidityResult>),
+    int Function(int, int, int, Pointer<FuegoPoolLiquidityResult>)
   >('fuego_pool_remove_liquidity');
 
   late final fuego_pool_get_lp_balance = _dylib.lookupFunction<

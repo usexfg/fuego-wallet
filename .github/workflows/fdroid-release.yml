@@ -100,10 +100,12 @@ jobs:
           sudo apt-get install -y build-essential git cmake libboost-all-dev libjsoncpp-dev libssl-dev libzmq3-dev
           sed -i 's/#include <json\/json.h>/#include <jsoncpp\/json.h>/g' src/CryptoNoteCore/ProofStructures.h
           
-          echo 'add_compile_definitions(BOOST_MPL_LIMIT_LIST_SIZE=30)' >> CMakeLists.txt
+          CXXFLAGS="-DBOOST_MPL_LIMIT_LIST_SIZE=30"
+          export CXXFLAGS
+          sed -i '1i add_definitions(-DBOOST_MPL_LIMIT_LIST_SIZE=30)' CMakeLists.txt
           
           mkdir build && cd build
-          cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=Release
+          cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS_INIT="-DBOOST_MPL_LIMIT_LIST_SIZE=30"
           make -j$(nproc)
           
           cd ../../fuego-sdk

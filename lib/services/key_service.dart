@@ -14,15 +14,20 @@ class KeyService {
   /// Derive all keys and address from a BIP39 mnemonic
   static Future<FuegoKeyPair> deriveFromMnemonic(String mnemonic) async {
     final seed = bip39.mnemonicToSeed(mnemonic);
-    return deriveFromSeed(seed);
+    return _derive(seed);
   }
 
-  /// Derive keys and address from a seed (64 bytes from BIP39)
-  static Future<FuegoKeyPair> deriveFromSeed(String seedHex) async {
+  /// Derive keys and address from a seed hex string
+  static Future<FuegoKeyPair> deriveFromSeedHex(String seedHex) async {
     final seed = Uint8List.fromList(
       List.generate(seedHex.length ~/ 2, (i) =>
         int.parse(seedHex.substring(i * 2, i * 2 + 2), radix: 16)),
     );
+    return _derive(seed);
+  }
+
+  /// Derive keys and address from a seed (64 bytes from BIP39)
+  static Future<FuegoKeyPair> deriveFromSeed(Uint8List seed) async {
     return _derive(seed);
   }
 
@@ -41,12 +46,12 @@ class KeyService {
         .sublist(0, 32);
 
     final spendKeyPair = await ed25519.newKeyPairFromSeed(
-      SecretKey(spendPrivateBytes),
+      spendPrivateBytes,
     );
     final spendPub = await spendKeyPair.extractPublicKey();
 
     final viewKeyPair = await ed25519.newKeyPairFromSeed(
-      SecretKey(viewPrivateBytes),
+      viewPrivateBytes,
     );
     final viewPub = await viewKeyPair.extractPublicKey();
 
@@ -144,7 +149,7 @@ class KeyService {
       number = number ~/ BigInt.from(256);
     }
 
-    final ones = encoded.takeWhile((c) => c == '1').length;
+    final ones = encoded.split('').takeWhile((c) => c == '1').length;
     bytes.insertAll(0, List.filled(ones, 0));
 
     return bytes;

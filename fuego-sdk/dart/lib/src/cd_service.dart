@@ -5,9 +5,9 @@ import 'package:ffi/ffi.dart';
 import 'fuego_sdk.dart';
 import 'fuego_sdk_bindings.dart';
 
-String _array8ToStr(ffi.Array<ffi.Int8> arr) {
+String _array8ToStr(ffi.Array<ffi.Int8> arr, int maxLen) {
   final bytes = <int>[];
-  for (int i = 0; i < arr.length; i++) {
+  for (int i = 0; i < maxLen; i++) {
     final byte = arr[i];
     if (byte == 0) break;
     bytes.add(byte);
@@ -131,5 +131,5 @@ class CDInfo {
       : amount = native.amount,
         interest = native.interest,
         unlockTime = native.unlock_time,
-        txHash = _array8ToStr(native.tx_hash);
+        txHash = _array8ToStr(native.tx_hash, 65);
 }

@@ -5,9 +5,9 @@ import 'package:ffi/ffi.dart';
 import 'fuego_sdk.dart';
 import 'fuego_sdk_bindings.dart';
 
-String _array8ToStr(ffi.Array<ffi.Int8> arr) {
+String _array8ToStr(ffi.Array<ffi.Int8> arr, int maxLen) {
   final bytes = <int>[];
-  for (int i = 0; i < arr.length; i++) {
+  for (int i = 0; i < maxLen; i++) {
     final byte = arr[i];
     if (byte == 0) break;
     bytes.add(byte);
@@ -286,13 +286,13 @@ class SwapInfo {
   });
 
   SwapInfo._fromNative(FuegoSwapInfo native)
-      : swapId = _array8ToStr(native.swap_id),
+      : swapId = _array8ToStr(native.swap_id, 65),
         state = SwapState.values[native.state],
-        counterpartyAddress = _array8ToStr(native.counterparty_address),
+        counterpartyAddress = _array8ToStr(native.counterparty_address, 128),
         xfgAmount = native.xfg_amount,
         counterpartyAmount = native.counterparty_amount,
-        counterpartyChain = _array8ToStr(native.counterparty_chain),
-        escrowPubkey = _array8ToStr(native.escrow_pubkey),
-        adaptorPoint = _array8ToStr(native.adaptor_point),
-        txHash = _array8ToStr(native.tx_hash);
+        counterpartyChain = _array8ToStr(native.counterparty_chain, 32),
+        escrowPubkey = _array8ToStr(native.escrow_pubkey, 65),
+        adaptorPoint = _array8ToStr(native.adaptor_point, 65),
+        txHash = _array8ToStr(native.tx_hash, 65);
 }

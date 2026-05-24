@@ -5,9 +5,9 @@ import 'package:ffi/ffi.dart';
 import 'fuego_sdk.dart';
 import 'fuego_sdk_bindings.dart';
 
-String _array8ToStr(ffi.Array<ffi.Int8> arr) {
+String _array8ToStr(ffi.Array<ffi.Int8> arr, int maxLen) {
   final bytes = <int>[];
-  for (int i = 0; i < arr.length; i++) {
+  for (int i = 0; i < maxLen; i++) {
     final byte = arr[i];
     if (byte == 0) break;
     bytes.add(byte);
@@ -90,5 +90,5 @@ class HEATProof {
           native.proof_size < 1024 ? native.proof_size : 0,
           (i) => native.proof_data[i],
         ),
-        verificationResult = _array8ToStr(native.verification_result);
+        verificationResult = _array8ToStr(native.verification_result, 32);
 }

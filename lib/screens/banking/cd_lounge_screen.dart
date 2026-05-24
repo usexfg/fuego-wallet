@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:fuego_sdk/fuego_sdk.dart';
 import '../../providers/wallet_provider.dart';
 import '../../sdk/fuego_sdk_service.dart';
 import '../../utils/theme.dart';

@@ -40,7 +40,7 @@ class FuegoSDK {
       if (result == FuegoError.FUEGO_OK) {
         _initialized = true;
       }
-      return result;
+      return FuegoError.fromCode(result);
     } finally {
       calloc.free(dataDirPtr);
     }
