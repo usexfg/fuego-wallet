@@ -89,7 +89,10 @@ jobs:
           cd ..
           
           # Fix jsoncpp include dir (macOS Homebrew puts headers in include/ not include/json/)
-          sed -i '' 's|/include/json")|/include")|g' ../CMakeLists.txt
+          sed -i '' 's|/include/json")|/include")|g' CMakeLists.txt
+          # Fix SimpleWallet.cpp: generate_signature missing PublicKey arg
+          sed -i '' 's|Crypto::generate_signature(challenge, keys\.spendSecretKey, proof);|Crypto::generate_signature(challenge, keys.spendPublicKey, keys.spendSecretKey, proof);|' src/SimpleWallet/SimpleWallet.cpp
+          sed -i '' 's|Crypto::generate_signature(challenge, keys2\.spendSecretKey, proof);|Crypto::generate_signature(challenge, keys2.spendPublicKey, keys2.spendSecretKey, proof);|' src/SimpleWallet/SimpleWallet.cpp
           # Build Core
           mkdir build && cd build
           CXXFLAGS="-DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS -DBOOST_MPL_LIMIT_LIST_SIZE=50"

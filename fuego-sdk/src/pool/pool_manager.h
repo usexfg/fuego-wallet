@@ -4,6 +4,7 @@
 #include "fuego_sdk.h"
 #include <string>
 #include <vector>
+#include <map>
 #include <cstdint>
 #include <mutex>
 

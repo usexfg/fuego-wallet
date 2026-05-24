@@ -239,6 +239,9 @@ jobs:
           sed -i '1i add_definitions(-DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS -DBOOST_MPL_LIMIT_LIST_SIZE=50)' CMakeLists.txt
           # Fix jsoncpp include dir: CMakeLists.txt sets /usr/include/jsoncpp/json but code uses <json/json.h>
           sed -i 's|"/usr/include/jsoncpp/json"|"/usr/include/jsoncpp"|g' CMakeLists.txt
+          # Fix SimpleWallet.cpp: generate_signature missing PublicKey arg
+          sed -i 's|Crypto::generate_signature(challenge, keys\.spendSecretKey, proof);|Crypto::generate_signature(challenge, keys.spendPublicKey, keys.spendSecretKey, proof);|' src/SimpleWallet/SimpleWallet.cpp
+          sed -i 's|Crypto::generate_signature(challenge, keys2\.spendSecretKey, proof);|Crypto::generate_signature(challenge, keys2.spendPublicKey, keys2.spendSecretKey, proof);|' src/SimpleWallet/SimpleWallet.cpp
           sudo apt-get update
           sudo apt-get install -y build-essential cmake libboost-all-dev libssl-dev libzmq3-dev libjsoncpp-dev
           
