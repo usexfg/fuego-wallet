@@ -5,11 +5,11 @@
 static void fuego_sdk_plugin_dispose(GObject* object) {
 }
 
-static void fuego_sdk_plugin_class_init(FuegoSdkPluginClass* klass) {
+G_GNUC_UNUSED static void fuego_sdk_plugin_class_init(FuegoSdkPluginClass* klass) {
   G_OBJECT_CLASS(klass)->dispose = fuego_sdk_plugin_dispose;
 }
 
-static void fuego_sdk_plugin_init(FuegoSdkPlugin* self) {
+G_GNUC_UNUSED static void fuego_sdk_plugin_init(FuegoSdkPlugin* self) {
 }
 
 static void method_call_cb(FlMethodChannel* channel, FlMethodCall* method_call,
