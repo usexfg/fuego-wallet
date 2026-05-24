@@ -43,7 +43,7 @@ jobs:
         run: |
           cd fuego-sdk
           mkdir build && cd build
-          CXXFLAGS="-DBOOST_MPL_LIMIT_LIST_SIZE=30" cmake .. -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/sdk-install
+          cmake .. -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/sdk-install
 
       - name: Build
         run: |

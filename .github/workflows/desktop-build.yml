@@ -150,13 +150,14 @@ jobs:
           git clone -b ${{ env.FUEGO_SOURCE_BRANCH }} https://github.com/usexfg/fuego-suite.git fuego-core
           cd fuego-core
           git submodule update --init --recursive
+          Add-Content CMakeLists.txt "add_compile_definitions(BOOST_MPL_LIMIT_LIST_SIZE=30)"
           mkdir build; cd build
-          CXXFLAGS="-DBOOST_MPL_LIMIT_LIST_SIZE=30" cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON "-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN"
+          cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON "-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN"
           cmake --build . --config Release
           
           cd ../../fuego-sdk
           mkdir build; cd build
-          CXXFLAGS="-DBOOST_MPL_LIMIT_LIST_SIZE=30" cmake .. "-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN" -DCMAKE_BUILD_TYPE=Release
+          cmake .. "-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN" -DCMAKE_BUILD_TYPE=Release
           cmake --build . --config Release
 
           New-Item -ItemType Directory -Force -Path ..\\..\\assets\\bin
@@ -233,17 +234,18 @@ jobs:
           cd fuego-core
           git submodule update --init --recursive
           sed -i 's/set(BOOST_COMPONENTS system filesystem thread date_time chrono regex serialization program_options)/set(BOOST_COMPONENTS filesystem thread date_time chrono regex serialization program_options)/' CMakeLists.txt
+          echo 'add_compile_definitions(BOOST_MPL_LIMIT_LIST_SIZE=30)' >> CMakeLists.txt
           sudo apt-get update
           sudo apt-get install -y build-essential cmake libboost-all-dev libssl-dev libzmq3-dev libjsoncpp-dev
           
           mkdir build && cd build
-          CXXFLAGS="-DBOOST_MPL_LIMIT_LIST_SIZE=30" cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DBoost_USE_STATIC_LIBS=ON -DCMAKE_BUILD_TYPE=Release
+          cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DBoost_USE_STATIC_LIBS=ON -DCMAKE_BUILD_TYPE=Release
           make -j$(nproc)
           
           # Build SDK Library
           cd ../../fuego-sdk
           mkdir build && cd build
-          CXXFLAGS="-DBOOST_MPL_LIMIT_LIST_SIZE=30" cmake .. -DCMAKE_BUILD_TYPE=Release -DFUEGO_DIR=../../fuego-core
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DFUEGO_DIR=../../fuego-core
           make -j$(nproc)
           
           mkdir -p ../../assets/bin
