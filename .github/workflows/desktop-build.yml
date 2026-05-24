@@ -233,15 +233,15 @@ jobs:
           git clone -b ${{ env.FUEGO_SOURCE_BRANCH }} https://github.com/usexfg/fuego-suite.git fuego-core
           cd fuego-core
           git submodule update --init --recursive
-          CXXFLAGS="-DBOOST_MPL_LIMIT_LIST_SIZE=30"
+          CXXFLAGS="-DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS -DBOOST_MPL_LIMIT_LIST_SIZE=50"
           export CXXFLAGS
           sed -i 's/set(BOOST_COMPONENTS system filesystem thread date_time chrono regex serialization program_options)/set(BOOST_COMPONENTS filesystem thread date_time chrono regex serialization program_options)/' CMakeLists.txt
-          sed -i '1i add_definitions(-DBOOST_MPL_LIMIT_LIST_SIZE=30)' CMakeLists.txt
+          sed -i '1i add_definitions(-DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS -DBOOST_MPL_LIMIT_LIST_SIZE=50)' CMakeLists.txt
           sudo apt-get update
           sudo apt-get install -y build-essential cmake libboost-all-dev libssl-dev libzmq3-dev libjsoncpp-dev
           
           mkdir build && cd build
-          cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DBoost_USE_STATIC_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS_INIT="-DBOOST_MPL_LIMIT_LIST_SIZE=30"
+          cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DBoost_USE_STATIC_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS_INIT="-DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS -DBOOST_MPL_LIMIT_LIST_SIZE=50"
           make -j$(nproc)
           
           # Build SDK Library

@@ -82,13 +82,13 @@ jobs:
           sed -i 's/#include <json\/json.h>/#include <jsoncpp\/json.h>/g' src/CryptoNoteCore/ProofStructures.h
           
           # Add Boost variant limit
-          CXXFLAGS="-DBOOST_MPL_LIMIT_LIST_SIZE=30"
+          CXXFLAGS="-DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS -DBOOST_MPL_LIMIT_LIST_SIZE=50"
           export CXXFLAGS
-          sed -i '1i add_definitions(-DBOOST_MPL_LIMIT_LIST_SIZE=30)' CMakeLists.txt
+          sed -i '1i add_definitions(-DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS -DBOOST_MPL_LIMIT_LIST_SIZE=50)' CMakeLists.txt
           
           # Build Core Libraries (Generic Linux for SDK linkage)
           mkdir build && cd build
-          cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS_INIT="-DBOOST_MPL_LIMIT_LIST_SIZE=30"
+          cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS_INIT="-DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS -DBOOST_MPL_LIMIT_LIST_SIZE=50"
           make -j$(nproc)
           
           # Build SDK Library
