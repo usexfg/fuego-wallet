@@ -77,16 +77,7 @@ jobs:
           git submodule update --init --recursive
           # Patch Boost
           sed -i '' 's/set(BOOST_COMPONENTS system filesystem thread date_time chrono regex serialization program_options)/set(BOOST_COMPONENTS filesystem thread date_time chrono regex serialization program_options)/' CMakeLists.txt
-          brew install cmake pkg-config openssl zeromq jsoncpp
-          
-          # Install Boost 1.83 (last version with io_service alias) 
-          BOOST_VERSION=1.83.0
-          curl -L -o boost.tar.gz "https://archives.boost.io/release/${BOOST_VERSION}/source/boost_$(echo $BOOST_VERSION | tr '.' '_').tar.gz"
-          tar xzf boost.tar.gz
-          cd boost_*
-          ./bootstrap.sh --with-libraries=system,filesystem,thread,date_time,chrono,regex,serialization,program_options
-          sudo ./b2 -j$(sysctl -n hw.ncpu) variant=release link=static install
-          cd ..
+          brew install cmake pkg-config openssl zeromq jsoncpp boost
           
           # Fix jsoncpp include dir (macOS Homebrew puts headers in include/ not include/json/)
           sed -i '' 's|/include/json")|/include")|g' CMakeLists.txt
@@ -110,13 +101,13 @@ jobs:
           CXXFLAGS="-DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS -DBOOST_MPL_LIMIT_LIST_SIZE=50"
           export CXXFLAGS
           echo 'add_definitions(-DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS -DBOOST_MPL_LIMIT_LIST_SIZE=50)' > ../CMakeLists.txt.new && cat ../CMakeLists.txt >> ../CMakeLists.txt.new && mv ../CMakeLists.txt.new ../CMakeLists.txt
-          cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=Release -DBoost_USE_STATIC_LIBS=ON -DCMAKE_CXX_FLAGS_INIT="-DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS -DBOOST_MPL_LIMIT_LIST_SIZE=50"
+          cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS_INIT="-DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS -DBOOST_MPL_LIMIT_LIST_SIZE=50"
           make -j$(sysctl -n hw.ncpu)
           
           # Build SDK
           cd ../../fuego-sdk
           mkdir build && cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DFUEGO_DIR=../../fuego-core -DBOOST_ROOT=/usr/local -DBoost_USE_STATIC_LIBS=ON -DBoost_NO_SYSTEM_PATHS=ON -DBoost_NO_BOOST_CMAKE=ON
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DFUEGO_DIR=../../fuego-core -DBoost_NO_BOOST_CMAKE=ON
           make -j$(sysctl -n hw.ncpu)
           
           # Copy SDK
