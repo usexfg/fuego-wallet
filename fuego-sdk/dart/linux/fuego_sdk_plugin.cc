@@ -20,7 +20,7 @@ static void method_call_cb(FlMethodChannel* channel, FlMethodCall* method_call,
 }
 
 void fuego_sdk_plugin_register_with_registrar(FlPluginRegistrar* registrar) {
-  g_autoptr(FlMethodCodec) codec = fl_standard_method_codec_new();
+  g_autoptr(FlStandardMethodCodec) codec = fl_standard_method_codec_new();
   FlMethodChannel* channel = fl_method_channel_new(
       fl_plugin_registrar_get_messenger(registrar),
       "fuego_sdk",
