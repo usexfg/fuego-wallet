@@ -84,9 +84,7 @@ jobs:
           curl -L -o boost.tar.gz "https://archives.boost.io/release/${BOOST_VERSION}/source/boost_$(echo $BOOST_VERSION | tr '.' '_').tar.gz"
           tar xzf boost.tar.gz
           cd boost_*
-          # Install ALL headers (header-only libs like variant/algorithm not covered by --with-libraries)
-          sudo cp -r boost /usr/local/include/
-          ./bootstrap.sh --with-libraries=system,filesystem,thread,date_time,chrono,regex,serialization,program_options,coroutine,context,atomic
+          ./bootstrap.sh
           sudo ./b2 -j$(sysctl -n hw.ncpu) variant=release link=static install
           cd ..
           
