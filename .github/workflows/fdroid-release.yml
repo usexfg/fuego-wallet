@@ -101,12 +101,12 @@ jobs:
           sed -i 's/#include <json\/json.h>/#include <jsoncpp\/json.h>/g' src/CryptoNoteCore/ProofStructures.h
           
           mkdir build && cd build
-           cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=Release -DBOOST_MPL_LIMIT_LIST_SIZE=30
+          CXXFLAGS="-DBOOST_MPL_LIMIT_LIST_SIZE=30" cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=Release
           make -j$(nproc)
           
           cd ../../fuego-sdk
           mkdir build && cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DFUEGO_DIR=../../fuego-core -DBOOST_MPL_LIMIT_LIST_SIZE=30
+          CXXFLAGS="-DBOOST_MPL_LIMIT_LIST_SIZE=30" cmake .. -DCMAKE_BUILD_TYPE=Release -DFUEGO_DIR=../../fuego-core
           make -j$(nproc)
           
           mkdir -p ../../assets/bin

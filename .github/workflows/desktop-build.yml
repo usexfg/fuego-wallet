@@ -151,12 +151,12 @@ jobs:
           cd fuego-core
           git submodule update --init --recursive
           mkdir build; cd build
-          cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON "-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN" -DBOOST_MPL_LIMIT_LIST_SIZE=30
+          CXXFLAGS="-DBOOST_MPL_LIMIT_LIST_SIZE=30" cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON "-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN"
           cmake --build . --config Release
           
           cd ../../fuego-sdk
           mkdir build; cd build
-          cmake .. "-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN" -DCMAKE_BUILD_TYPE=Release -DBOOST_MPL_LIMIT_LIST_SIZE=30
+          CXXFLAGS="-DBOOST_MPL_LIMIT_LIST_SIZE=30" cmake .. "-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN" -DCMAKE_BUILD_TYPE=Release
           cmake --build . --config Release
 
           New-Item -ItemType Directory -Force -Path ..\\..\\assets\\bin
@@ -237,13 +237,13 @@ jobs:
           sudo apt-get install -y build-essential cmake libboost-all-dev libssl-dev libzmq3-dev libjsoncpp-dev
           
           mkdir build && cd build
-          cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DBoost_USE_STATIC_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DBOOST_MPL_LIMIT_LIST_SIZE=30
+          CXXFLAGS="-DBOOST_MPL_LIMIT_LIST_SIZE=30" cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DBoost_USE_STATIC_LIBS=ON -DCMAKE_BUILD_TYPE=Release
           make -j$(nproc)
           
           # Build SDK Library
           cd ../../fuego-sdk
           mkdir build && cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DFUEGO_DIR=../../fuego-core -DBOOST_MPL_LIMIT_LIST_SIZE=30
+          CXXFLAGS="-DBOOST_MPL_LIMIT_LIST_SIZE=30" cmake .. -DCMAKE_BUILD_TYPE=Release -DFUEGO_DIR=../../fuego-core
           make -j$(nproc)
           
           mkdir -p ../../assets/bin

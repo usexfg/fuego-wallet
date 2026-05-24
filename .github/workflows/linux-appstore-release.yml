@@ -76,14 +76,14 @@ jobs:
           sed -i 's/set(BOOST_COMPONENTS system filesystem thread date_time chrono regex serialization program_options)/set(BOOST_COMPONENTS filesystem thread date_time chrono regex serialization program_options)/' CMakeLists.txt
           
           mkdir build && cd build
-          cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=Release -DBOOST_MPL_LIMIT_LIST_SIZE=30
+          CXXFLAGS="-DBOOST_MPL_LIMIT_LIST_SIZE=30" cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=Release
           make -j$(nproc)
           echo "FUEGO_CORE_DIR=$(pwd)" >> $GITHUB_ENV
           
           # Build SDK Library
           cd ../fuego-sdk
           mkdir build && cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DFUEGO_DIR=../../fuego-core -DBOOST_MPL_LIMIT_LIST_SIZE=30
+          CXXFLAGS="-DBOOST_MPL_LIMIT_LIST_SIZE=30" cmake .. -DCMAKE_BUILD_TYPE=Release -DFUEGO_DIR=../../fuego-core
           make -j$(nproc)
           
           mkdir -p ../../assets/bin
