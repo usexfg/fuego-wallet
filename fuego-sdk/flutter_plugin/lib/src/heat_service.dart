@@ -1,8 +1,7 @@
 import 'dart:ffi';
 import 'package:ffi/ffi.dart';
 
-import 'fuego_sdk.dart';
-import 'fuego_sdk_bindings.dart';
+import 'package:fuego_sdk/fuego_sdk.dart';
 
 /// HEAT (Hybrid Efficient Anonymous Transfer) proof service
 class HEATService {

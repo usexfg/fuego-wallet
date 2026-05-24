@@ -5,6 +5,8 @@
 
 G_BEGIN_DECLS
 
+G_DECLARE_FINAL_TYPE(FuegoSdkPlugin, fuego_sdk_plugin, FUEGO_SDK, PLUGIN, GObject)
+
 #ifdef FLUTTER_PLUGIN_IMPL
 #define FUEGO_SDK_PLUGIN_EXPORT __attribute__((visibility("default")))
 #else

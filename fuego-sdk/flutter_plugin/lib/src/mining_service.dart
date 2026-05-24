@@ -1,7 +1,7 @@
 import 'dart:ffi';
 import 'package:ffi/ffi.dart';
 
-import 'fuego_sdk.dart';
+import 'package:fuego_sdk/fuego_sdk.dart';
 
 /// Mining service for Fuego mining operations
 class MiningService {
