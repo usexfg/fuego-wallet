@@ -84,7 +84,7 @@ jobs:
           curl -L -o boost.tar.gz "https://archives.boost.io/release/${BOOST_VERSION}/source/boost_$(echo $BOOST_VERSION | tr '.' '_').tar.gz"
           tar xzf boost.tar.gz
           cd boost_*
-          ./bootstrap.sh --with-libraries=system,filesystem,thread,date_time,chrono,regex,serialization,program_options
+          ./bootstrap.sh --with-libraries=system,filesystem,thread,date_time,chrono,regex,serialization,program_options,coroutine,context,atomic
           sudo ./b2 -j$(sysctl -n hw.ncpu) variant=release link=static install
           cd ..
           
@@ -105,17 +105,15 @@ jobs:
           echo "}" >> src/CryptoNoteCore/Blockchain.cpp
           echo "" >> src/CryptoNoteCore/Blockchain.cpp
           echo "}  // namespace CryptoNote" >> src/CryptoNoteCore/Blockchain.cpp
-          # Patch Core CMakeLists.txt: find_package must use static libs 
-          sed -i '' 's/set(Boost_USE_STATIC_LIBS OFF)/set(Boost_USE_STATIC_LIBS ON)/' CMakeLists.txt
           # Build Core
           mkdir build && cd build
-          cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=Release -DBoost_NO_BOOST_CMAKE=ON -DCMAKE_CXX_FLAGS="-DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS -DBOOST_MPL_LIMIT_LIST_SIZE=50"
+          cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=Release -DBoost_USE_STATIC_LIBS=ON -DCMAKE_CXX_FLAGS="-DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS -DBOOST_MPL_LIMIT_LIST_SIZE=50"
           make -j$(sysctl -n hw.ncpu)
           
           # Build SDK
           cd ../../fuego-sdk
           mkdir build && cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DFUEGO_DIR=../../fuego-core -DBoost_NO_BOOST_CMAKE=ON
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DFUEGO_DIR=../../fuego-core
           make -j$(sysctl -n hw.ncpu)
           
           # Copy SDK
