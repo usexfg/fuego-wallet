@@ -1,4 +1,5 @@
 import 'dart:ffi';
+import 'dart:ffi' as ffi;
 import 'package:ffi/ffi.dart';
 
 import 'fuego_sdk.dart';
@@ -89,6 +90,8 @@ class SwapService {
       calloc.free(walletFilePtr);
       calloc.free(passwordPtr);
       calloc.free(swapInfoPtr);
+    }
+  }
 
   /// Lock funds for a swap
   Future<FuegoError> lockFunds({

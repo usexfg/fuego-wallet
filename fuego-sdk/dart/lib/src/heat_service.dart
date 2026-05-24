@@ -1,4 +1,5 @@
 import 'dart:ffi';
+import 'dart:ffi' as ffi;
 import 'package:ffi/ffi.dart';
 
 import 'fuego_sdk.dart';

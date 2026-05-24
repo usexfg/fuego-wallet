@@ -242,7 +242,7 @@ class FuegoSDKBindings {
 }
 
 // Structs
-class FuegoCDInfo extends ffi.Struct {
+final class FuegoCDInfo extends ffi.Struct {
   @ffi.Uint64()
   external int amount;
 
@@ -256,7 +256,7 @@ class FuegoCDInfo extends ffi.Struct {
   external ffi.Array<ffi.Int8> tx_hash;
 }
 
-class FuegoSwapInfo extends ffi.Struct {
+final class FuegoSwapInfo extends ffi.Struct {
   @ffi.Array.multi([65])
   external ffi.Array<ffi.Int8> swap_id;
 
@@ -285,7 +285,7 @@ class FuegoSwapInfo extends ffi.Struct {
   external ffi.Array<ffi.Int8> tx_hash;
 }
 
-class FuegoHEATProof extends ffi.Struct {
+final class FuegoHEATProof extends ffi.Struct {
   @ffi.Array.multi([4096])
   external ffi.Array<ffi.Int8> proof_data;
 
@@ -296,7 +296,7 @@ class FuegoHEATProof extends ffi.Struct {
   external ffi.Array<ffi.Int8> verification_result;
 }
 
-class FuegoPoolReserves extends ffi.Struct {
+final class FuegoPoolReserves extends ffi.Struct {
   @ffi.Uint64()
   external int xfg_reserve;
 
@@ -313,7 +313,7 @@ class FuegoPoolReserves extends ffi.Struct {
   external int k_last;
 }
 
-class FuegoPoolSwapResult extends ffi.Struct {
+final class FuegoPoolSwapResult extends ffi.Struct {
   @ffi.Uint64()
   external int input_amount;
 
@@ -327,7 +327,7 @@ class FuegoPoolSwapResult extends ffi.Struct {
   external int price_impact_bps;
 }
 
-class FuegoPoolLiquidityResult extends ffi.Struct {
+final class FuegoPoolLiquidityResult extends ffi.Struct {
   @ffi.Uint64()
   external int lp_tokens;
 
