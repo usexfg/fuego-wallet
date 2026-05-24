@@ -101,7 +101,7 @@ jobs:
           echo "FUEGO_CORE_DIR=$(pwd)" >> $GITHUB_ENV
           
           # Build SDK Library
-          cd ../fuego-sdk
+          cd ../../fuego-sdk
           mkdir build && cd build
           cmake .. -DCMAKE_BUILD_TYPE=Release -DFUEGO_DIR=../../fuego-core
           make -j$(nproc)

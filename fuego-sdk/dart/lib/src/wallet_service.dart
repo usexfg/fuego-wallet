@@ -1,6 +1,3 @@
-import 'dart:ffi';
-import 'package:ffi/ffi.dart';
-
 import 'fuego_sdk.dart';
 
 /// High-level wallet service wrapping FuegoSDK wallet operations
