@@ -76,9 +76,9 @@ jobs:
           sed -i 's/set(BOOST_COMPONENTS system filesystem thread date_time chrono regex serialization program_options)/set(BOOST_COMPONENTS filesystem thread date_time chrono regex serialization program_options)/' CMakeLists.txt
           # Fix jsoncpp include dir in CMakeLists.txt
           sed -i 's|"/usr/include/jsoncpp/json"|"/usr/include/jsoncpp"|g' CMakeLists.txt
-          # Fix SimpleWallet.cpp: generate_signature missing PublicKey arg
-          sed -i 's|Crypto::generate_signature(challenge, keys\.spendSecretKey, proof);|Crypto::generate_signature(challenge, keys.spendPublicKey, keys.spendSecretKey, proof);|' src/SimpleWallet/SimpleWallet.cpp
-          sed -i 's|Crypto::generate_signature(challenge, keys2\.spendSecretKey, proof);|Crypto::generate_signature(challenge, keys2.spendPublicKey, keys2.spendSecretKey, proof);|' src/SimpleWallet/SimpleWallet.cpp
+          # Fix SimpleWallet.cpp: generate_signature missing PublicKey arg (AccountKeys.address.spendPublicKey)
+          sed -i 's|Crypto::generate_signature(challenge, keys\.spendSecretKey, proof);|Crypto::generate_signature(challenge, keys.address.spendPublicKey, keys.spendSecretKey, proof);|' src/SimpleWallet/SimpleWallet.cpp
+          sed -i 's|Crypto::generate_signature(challenge, keys2\.spendSecretKey, proof);|Crypto::generate_signature(challenge, keys2.address.spendPublicKey, keys2.spendSecretKey, proof);|' src/SimpleWallet/SimpleWallet.cpp
           CXXFLAGS="-DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS -DBOOST_MPL_LIMIT_LIST_SIZE=50"
           export CXXFLAGS
           sed -i '1i add_definitions(-DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS -DBOOST_MPL_LIMIT_LIST_SIZE=50)' CMakeLists.txt
