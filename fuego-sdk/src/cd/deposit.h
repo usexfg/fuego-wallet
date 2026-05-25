@@ -13,12 +13,16 @@ public:
                                      const std::string& walletPassword,
                                      FuegoCDInfo* cdInfo);
 
-    static FuegoError redeemDeposit(const std::string& txHash,
-                                     const std::string& walletFile,
-                                     const std::string& walletPassword,
-                                     uint64_t* redeemedAmount);
+  static FuegoError redeemDeposit(const std::string& txHash,
+                                      const std::string& walletFile,
+                                      const std::string& walletPassword,
+                                      uint64_t* redeemedAmount);
 
-    static FuegoError getDepositInfo(const std::string& txHash, FuegoCDInfo* cdInfo);
+  static FuegoError getDepositInfo(const std::string& txHash, FuegoCDInfo* cdInfo);
+
+private:
+  static int64_t getDepositIdByTxHash(CryptoNote::IWallet* wallet, const std::string& txHash);
+
 };
 
 } // namespace fuego
