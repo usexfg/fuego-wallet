@@ -152,8 +152,8 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                               // Welcome text
                               AnimatedTextKit(
                                 animatedTexts: [
-                                  FadeAnimatedText(
-                                    'Welcome to fuego-wallet',
+                                    FadeAnimatedText(
+                                      'Welcome to Fuego Wallet',
                                     textStyle: const TextStyle(
                                       fontSize: 32,
                                       fontWeight: FontWeight.bold,
@@ -220,7 +220,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                                     const SizedBox(height: 16),
                                     _buildFeatureItem(
                                       Icons.account_tree,
-                                      ' Staking',
+                                      'Staking',
                                       'New consensus nodes for zkSTARK proofs & cross-chain communication',
                                     ),
                                   ],
@@ -308,8 +308,8 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                               // Welcome text
                               AnimatedTextKit(
                                 animatedTexts: [
-                                  FadeAnimatedText(
-                                    'Welcome to fuego-wallet',
+                                    FadeAnimatedText(
+                                      'Welcome to Fuego Wallet',
                                     textStyle: const TextStyle(
                                       fontSize: 28,
                                       fontWeight: FontWeight.bold,
@@ -368,7 +368,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                               const SizedBox(height: 16),
                               _buildFeatureItem(
                                 Icons.account_tree,
-                                ' Stayking',
+                                'Staking',
                                 'Participate as a verified consensus node completing the "Elderfyre Stayking" ceremony',
                               ),
                             ],

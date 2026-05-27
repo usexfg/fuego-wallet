@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../providers/wallet_provider.dart';
 import '../../services/heat_metrics_service.dart';
@@ -330,7 +331,7 @@ class _HeatPageState extends State<HeatPage> with TickerProviderStateMixin {
           ),
           Text(
             value,
-            style: TextStyle(
+            style: GoogleFonts.jetBrainsMono(
               fontSize: 14,
               fontWeight: FontWeight.w600,
               color: color ?? AppTheme.textPrimary,
@@ -446,7 +447,7 @@ class _HeatPageState extends State<HeatPage> with TickerProviderStateMixin {
                     const SizedBox(height: 4),
                     Text(
                       '1 XFG = ${_formatNumber(_metrics.redemptionPrice)} HEAT',
-                      style: const TextStyle(
+                      style: GoogleFonts.jetBrainsMono(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: AppTheme.accentColor,
@@ -455,7 +456,7 @@ class _HeatPageState extends State<HeatPage> with TickerProviderStateMixin {
                     const SizedBox(height: 2),
                     Text(
                       '${(1.0 / (_metrics.redemptionPrice > 0 ? _metrics.redemptionPrice : 1)).toStringAsFixed(6)} XFG/HEAT',
-                      style: TextStyle(
+                      style: GoogleFonts.jetBrainsMono(
                         fontSize: 12,
                         color: AppTheme.textMuted.withOpacity(0.8),
                       ),
@@ -501,7 +502,7 @@ class _HeatPageState extends State<HeatPage> with TickerProviderStateMixin {
           const SizedBox(height: 6),
           Text(
             value,
-            style: const TextStyle(
+            style: GoogleFonts.jetBrainsMono(
               fontSize: 16,
               fontWeight: FontWeight.bold,
               color: AppTheme.textPrimary,
@@ -572,7 +573,7 @@ class _HeatPageState extends State<HeatPage> with TickerProviderStateMixin {
                     const SizedBox(height: 2),
                     Text(
                       '${_pool.poolRatio.toStringAsFixed(2)} : 1',
-                      style: const TextStyle(
+                      style: GoogleFonts.jetBrainsMono(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
                         color: AppTheme.textPrimary,
@@ -625,7 +626,7 @@ class _HeatPageState extends State<HeatPage> with TickerProviderStateMixin {
           const SizedBox(height: 4),
           Text(
             value,
-            style: TextStyle(
+            style: GoogleFonts.jetBrainsMono(
               fontSize: 14,
               fontWeight: FontWeight.bold,
               color: color,
@@ -810,7 +811,7 @@ class _HeatPageState extends State<HeatPage> with TickerProviderStateMixin {
           ),
           Text(
             '$value XFG',
-            style: const TextStyle(
+            style: GoogleFonts.jetBrainsMono(
               fontSize: 11,
               fontWeight: FontWeight.bold,
               color: AppTheme.textPrimary,

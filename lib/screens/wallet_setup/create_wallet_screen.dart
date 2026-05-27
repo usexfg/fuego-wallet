@@ -19,7 +19,7 @@ class _CreateWalletScreenState extends State<CreateWalletScreen> {
   String _mnemonic = '';
   bool _mnemonicGenerated = false;
   bool _isLoading = false;
-  final List<bool> _wordConfirmations = List.filled(25, false);
+  List<bool> _wordConfirmations = [];
 
   @override
   void initState() {
@@ -43,6 +43,7 @@ class _CreateWalletScreenState extends State<CreateWalletScreen> {
           setState(() {
             _mnemonic = mnemonic;
             _mnemonicGenerated = true;
+            _wordConfirmations = List.filled(_mnemonic.trim().split(RegExp(r'\s+')).length, false);
             _isLoading = false;
           });
           return;
@@ -53,6 +54,7 @@ class _CreateWalletScreenState extends State<CreateWalletScreen> {
       setState(() {
         _mnemonic = SecurityService.generateMnemonic();
         _mnemonicGenerated = true;
+        _wordConfirmations = List.filled(_mnemonic.trim().split(RegExp(r'\s+')).length, false);
         _isLoading = false;
       });
     } catch (e) {
@@ -60,6 +62,7 @@ class _CreateWalletScreenState extends State<CreateWalletScreen> {
       setState(() {
         _mnemonic = SecurityService.generateMnemonic();
         _mnemonicGenerated = true;
+        _wordConfirmations = List.filled(_mnemonic.trim().split(RegExp(r'\s+')).length, false);
         _isLoading = false;
       });
     }
@@ -207,7 +210,7 @@ class _CreateWalletScreenState extends State<CreateWalletScreen> {
           ),
           const SizedBox(height: 16),
           const Text(
-            'We\'ll generate a unique 25-word backup phrase for your wallet. This phrase is the ONLY way to recover your wallet if you lose access to your device.',
+            'We\'ll generate a unique backup phrase for your wallet. This phrase is the ONLY way to recover your wallet if you lose access to your device.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 16,
@@ -275,7 +278,7 @@ class _CreateWalletScreenState extends State<CreateWalletScreen> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Write down these 25 words in the exact order shown',
+            'Write down these words in the exact order shown',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 16,

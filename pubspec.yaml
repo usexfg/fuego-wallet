@@ -59,6 +59,7 @@ dependencies:
   auto_size_text: ^3.0.0
   flutter_screenutil: ^5.9.0
   flutter_svg: ^2.0.10
+  google_fonts: ^6.2.1
 
   # System Integration
   path_provider: ^2.1.2

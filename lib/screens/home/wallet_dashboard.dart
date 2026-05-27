@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
 import '../../providers/wallet_provider.dart';
@@ -104,11 +105,10 @@ class _WalletDashboardState extends State<WalletDashboard>
                   animatedTexts: [
                     TyperAnimatedText(
                       wallet.balanceXFG.toStringAsFixed(8),
-                      textStyle: const TextStyle(
+                      textStyle: GoogleFonts.jetBrainsMono(
                         color: Colors.white,
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
-                        fontFamily: 'monospace',
                       ),
                       speed: const Duration(milliseconds: 50),
                     ),
@@ -259,11 +259,10 @@ class _WalletDashboardState extends State<WalletDashboard>
                   animatedTexts: [
                     TyperAnimatedText(
                       wallet.totalBalanceHEAT.toStringAsFixed(4),
-                      textStyle: const TextStyle(
+                      textStyle: GoogleFonts.jetBrainsMono(
                         color: Colors.white,
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
-                        fontFamily: 'monospace',
                       ),
                       speed: const Duration(milliseconds: 50),
                     ),

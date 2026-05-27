@@ -138,12 +138,17 @@ class _OpenExistingWalletScreenState extends State<OpenExistingWalletScreen>
         ),
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            children: [
-              Expanded(
-                child: FadeTransition(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight - 48),
+                child: IntrinsicHeight(
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: FadeTransition(
                   opacity: _fadeAnimation,
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -262,9 +267,9 @@ class _OpenExistingWalletScreenState extends State<OpenExistingWalletScreen>
                   ],
                 ),
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }

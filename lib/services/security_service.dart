@@ -274,7 +274,10 @@ class SecurityService {
   }
 
   static bool validateMnemonic(String mnemonic) {
-    return bip39.validateMnemonic(mnemonic);
+    if (bip39.validateMnemonic(mnemonic)) return true;
+    final words = mnemonic.trim().split(RegExp(r'\s+'));
+    if (words.length == 25) return true; // Accept 25-word Fuego/Monero seeds
+    return false;
   }
 }
 

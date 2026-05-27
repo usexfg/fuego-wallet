@@ -110,7 +110,7 @@ class _RestoreWalletScreenState extends State<RestoreWalletScreen> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Enter your 25-word backup phrase to restore your existing Fuego wallet',
+              'Enter your 24 or 25-word backup phrase to restore your existing Fuego wallet',
               style: TextStyle(
                 fontSize: 16,
                 color: AppTheme.textSecondary,
@@ -145,7 +145,7 @@ class _RestoreWalletScreenState extends State<RestoreWalletScreen> {
                 focusNode: _mnemonicFocusNode,
                 maxLines: 6,
                 decoration: InputDecoration(
-                  hintText: 'Enter your 25-word backup phrase...',
+                  hintText: 'Enter your 24 or 25-word backup phrase...',
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.all(16),
                   suffixIcon: IconButton(
@@ -167,10 +167,10 @@ class _RestoreWalletScreenState extends State<RestoreWalletScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Words: $_wordCount/25',
+                  'Words: $_wordCount',
                   style: TextStyle(
                     fontSize: 14,
-                    color: _wordCount == 25
+                    color: (_wordCount == 24 || _wordCount == 25)
                         ? AppTheme.successColor
                         : AppTheme.textSecondary,
                     fontWeight: FontWeight.w500,
@@ -266,7 +266,7 @@ class _RestoreWalletScreenState extends State<RestoreWalletScreen> {
                   Text(
                     '• Your backup phrase is case-insensitive\n'
                     '• Extra spaces will be automatically removed\n'
-                    '• Make sure all 25 words are spelled correctly\n'
+                    '• Make sure all words are spelled correctly\n'
                     '• This process is secure and happens locally',
                     style: TextStyle(
                       fontSize: 14,

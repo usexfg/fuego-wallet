@@ -179,8 +179,8 @@ class _SplashScreenState extends State<SplashScreen>
                           // App Name with animation
                           AnimatedTextKit(
                             animatedTexts: [
-                              TypewriterAnimatedText(
-                                'WinterFire Wallet',
+                                TypewriterAnimatedText(
+                                  'Fuego Wallet',
                                 textStyle: const TextStyle(
                                   fontSize: 28,
                                   fontWeight: FontWeight.bold,

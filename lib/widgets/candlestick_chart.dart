@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class CandleData {
   final double open;
@@ -33,11 +34,11 @@ class TradingChart extends StatefulWidget {
   const TradingChart({
     super.key,
     required this.candles,
-    this.height = 320,
-    this.bullColor = const Color(0xFFFF3B2F),
-    this.bearColor = const Color(0xFF2E8BC0),
-    this.volumeBullColor = const Color(0x33FF3B2F),
-    this.volumeBearColor = const Color(0x332E8BC0),
+    this.height = 360,
+    this.bullColor = const Color(0xFFEF5350), // Asian Market Bull (Red)
+    this.bearColor = const Color(0xFF26A69A), // Asian Market Bear (Green)
+    this.volumeBullColor = const Color(0x33EF5350),
+    this.volumeBearColor = const Color(0x3326A69A),
   });
 
   @override
@@ -135,7 +136,7 @@ class _TradingChartState extends State<TradingChart> {
   Widget _buildTimeframeSelector() {
     return Container(
       height: 40,
-      margin: const EdgeInsets.only(top: 4),
+      margin: const EdgeInsets.only(top: 8, bottom: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: _timeframeLimits.keys.map((tf) {
@@ -148,26 +149,25 @@ class _TradingChartState extends State<TradingChart> {
               });
             },
             child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 3),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? const Color(0xFFFF6B35).withOpacity(0.2)
+                    ? const Color(0xFFEF5350).withOpacity(0.15)
                     : Colors.transparent,
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(8),
                 border: isSelected
-                    ? Border.all(color: const Color(0xFFFF6B35).withOpacity(0.5))
-                    : Border.all(color: const Color(0xFF6B6B6B).withOpacity(0.2)),
+                    ? Border.all(color: const Color(0xFFEF5350).withOpacity(0.5))
+                    : Border.all(color: const Color(0xFF334155).withOpacity(0.4)),
               ),
               child: Text(
                 tf,
-                style: TextStyle(
+                style: GoogleFonts.jetBrainsMono(
                   color: isSelected
-                      ? const Color(0xFFFF6B35)
-                      : const Color(0xFF6B6B6B),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  fontFamily: 'monospace',
+                      ? const Color(0xFFEF5350)
+                      : const Color(0xFF94A3B8),
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                 ),
               ),
             ),
@@ -209,11 +209,11 @@ class _CandlestickPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final chartArea = size.height * 0.75;
+    final chartArea = size.height * 0.8;
     final volumeArea = size.height - chartArea;
     final priceRange = maxPrice - minPrice;
     final candleWidth = size.width / candles.length;
-    final gridColor = const Color(0xFF2A2A35);
+    final gridColor = const Color(0xFF1E293B); // Sleeker grid
 
     _drawGrid(canvas, size, chartArea, gridColor);
 
@@ -341,19 +341,19 @@ class _CandlestickPainter extends CustomPainter {
       final color = isBullish ? bullColor : bearColor;
 
       final tooltipPaint = Paint()
-        ..color = const Color(0xDD1A1B23);
+        ..color = const Color(0xFA111418); // Darker tooltip
       final tooltipRect = RRect.fromRectAndRadius(
         Rect.fromCenter(
-          center: Offset(crosshairX!, crosshairY! - 30),
-          width: 120,
-          height: 60,
+          center: Offset(crosshairX!, crosshairY! - 40),
+          width: 140,
+          height: 70,
         ),
         const Radius.circular(8),
       );
       canvas.drawRRect(tooltipRect, tooltipPaint);
       canvas.drawRRect(
         tooltipRect,
-        Paint()..color = color..style = PaintingStyle.stroke..strokeWidth = 1,
+        Paint()..color = const Color(0xFF334155)..style = PaintingStyle.stroke..strokeWidth = 1,
       );
 
       final textPainter = TextPainter(
@@ -361,19 +361,19 @@ class _CandlestickPainter extends CustomPainter {
           children: [
             TextSpan(
               text: 'O: ${candle.open.toStringAsFixed(4)}\n',
-              style: const TextStyle(color: Color(0xFFB0B0B0), fontSize: 10, fontFamily: 'monospace'),
+              style: GoogleFonts.jetBrainsMono(color: const Color(0xFF94A3B8), fontSize: 11),
             ),
             TextSpan(
               text: 'H: ${candle.high.toStringAsFixed(4)}\n',
-              style: const TextStyle(color: Color(0xFFB0B0B0), fontSize: 10, fontFamily: 'monospace'),
+              style: GoogleFonts.jetBrainsMono(color: const Color(0xFF94A3B8), fontSize: 11),
             ),
             TextSpan(
               text: 'L: ${candle.low.toStringAsFixed(4)}\n',
-              style: const TextStyle(color: Color(0xFFB0B0B0), fontSize: 10, fontFamily: 'monospace'),
+              style: GoogleFonts.jetBrainsMono(color: const Color(0xFF94A3B8), fontSize: 11),
             ),
             TextSpan(
               text: 'C: ${candle.close.toStringAsFixed(4)}',
-              style: TextStyle(color: isBullish ? const Color(0xFFFF3B2F) : const Color(0xFF2E8BC0), fontSize: 10, fontFamily: 'monospace', fontWeight: FontWeight.w600),
+              style: GoogleFonts.jetBrainsMono(color: color, fontSize: 11, fontWeight: FontWeight.w600),
             ),
           ],
         ),
@@ -383,7 +383,7 @@ class _CandlestickPainter extends CustomPainter {
       textPainter.layout();
       textPainter.paint(
         canvas,
-        Offset(crosshairX! - 50, crosshairY! - 50),
+        Offset(crosshairX! - 60, crosshairY! - 70),
       );
     }
   }

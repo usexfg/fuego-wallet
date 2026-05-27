@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:fuego_sdk/fuego_sdk.dart';
 import '../../sdk/fuego_sdk_service.dart';
@@ -578,22 +579,23 @@ class _AtomicSwapsScreenState extends State<AtomicSwapsScreen>
             child: TextField(
               controller: controller,
               readOnly: readOnly,
-              style: const TextStyle(
-                color: AppTheme.textPrimary,
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-              ),
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                filled: false,
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
-                hintText: '0.00',
-                hintStyle: const TextStyle(
-                  color: AppTheme.textMuted,
+                style: GoogleFonts.inter(
+                  color: AppTheme.textPrimary,
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
+                  letterSpacing: -0.5,
                 ),
+                decoration: InputDecoration(
+                  border: InputBorder.none,
+                  filled: false,
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
+                  hintText: '0.00',
+                  hintStyle: GoogleFonts.inter(
+                    color: AppTheme.textMuted,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                  ),
                 label: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -757,7 +759,7 @@ class _AtomicSwapsScreenState extends State<AtomicSwapsScreen>
         const SizedBox(width: 4),
         Text(
           value >= 1000 ? '${(value / 1000).toStringAsFixed(1)}K' : value.toStringAsFixed(1),
-          style: TextStyle(
+          style: GoogleFonts.jetBrainsMono(
             color: color,
             fontSize: 11,
             fontWeight: FontWeight.w600,
@@ -889,18 +891,18 @@ class _AtomicSwapsScreenState extends State<AtomicSwapsScreen>
                   const SizedBox(height: 6),
                   TextField(
                     controller: _ccAmountController,
-                    style: const TextStyle(
+                    style: GoogleFonts.jetBrainsMono(
                       color: AppTheme.textPrimary,
                       fontSize: 24,
                       fontWeight: FontWeight.w700,
                     ),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       border: InputBorder.none,
                       filled: false,
                       isDense: true,
                       contentPadding: EdgeInsets.zero,
                       hintText: '0.00',
-                      hintStyle: TextStyle(
+                      hintStyle: GoogleFonts.jetBrainsMono(
                         color: AppTheme.textMuted,
                         fontSize: 24,
                         fontWeight: FontWeight.w600,
@@ -951,26 +953,24 @@ class _AtomicSwapsScreenState extends State<AtomicSwapsScreen>
                     ],
                   ),
                   const SizedBox(height: 8),
-                  TextField(
-                    controller: _ccAddressController,
-                    style: const TextStyle(
-                      color: AppTheme.textPrimary,
-                      fontSize: 14,
-                      fontFamily: 'monospace',
-                    ),
-                    decoration: InputDecoration(
-                      border: InputBorder.none,
-                      filled: false,
-                      isDense: true,
-                      contentPadding: EdgeInsets.zero,
-                      hintText: 'Enter $_targetChain address',
-                      hintStyle: const TextStyle(
-                        color: AppTheme.textMuted,
+                    TextField(
+                      controller: _ccAddressController,
+                      style: GoogleFonts.jetBrainsMono(
+                        color: AppTheme.textPrimary,
                         fontSize: 14,
-                        fontFamily: 'sans-serif',
+                      ),
+                      decoration: InputDecoration(
+                        border: InputBorder.none,
+                        filled: false,
+                        isDense: true,
+                        contentPadding: EdgeInsets.zero,
+                        hintText: 'Enter $_targetChain address',
+                        hintStyle: GoogleFonts.inter(
+                          color: AppTheme.textMuted,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),

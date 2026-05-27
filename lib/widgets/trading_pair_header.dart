@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../utils/theme.dart';
 
 class TradingPairHeader extends StatelessWidget {
   final String baseAsset;
@@ -24,15 +26,15 @@ class TradingPairHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final isPositive = change24h >= 0;
     final changeColor = isPositive
-        ? const Color(0xFFFF3B2F)
-        : const Color(0xFF2E8BC0);
+        ? const Color(0xFFEF5350) // Asian Market Bull (Red)
+        : const Color(0xFF26A69A); // Asian Market Bear (Green)
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: const BoxDecoration(
-        color: Color(0xFF1A1B23),
+        color: Colors.transparent,
         border: Border(
-          bottom: BorderSide(color: Color(0xFF2A2A35), width: 0.5),
+          bottom: BorderSide(color: Color(0xFF1E293B), width: 0.5),
         ),
       ),
       child: Row(
@@ -46,10 +48,11 @@ class TradingPairHeader extends StatelessWidget {
                 children: [
                   Text(
                     '$baseAsset/$quoteAsset',
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: GoogleFonts.inter(
+                      color: AppTheme.textPrimary,
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
+                      letterSpacing: -0.5,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -61,7 +64,7 @@ class TradingPairHeader extends StatelessWidget {
                     ),
                     child: Text(
                       '${isPositive ? '+' : ''}${change24h.toStringAsFixed(2)}%',
-                      style: TextStyle(
+                      style: GoogleFonts.jetBrainsMono(
                         color: changeColor,
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
@@ -72,12 +75,11 @@ class TradingPairHeader extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                '${isPositive ? '🞁' : '🞃'} ${price.toStringAsFixed(4)} $quoteAsset',
-                style: TextStyle(
+                '${isPositive ? '▲' : '▼'} ${price.toStringAsFixed(4)} $quoteAsset',
+                style: GoogleFonts.jetBrainsMono(
                   color: changeColor,
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  fontFamily: 'monospace',
                 ),
               ),
             ],
@@ -100,8 +102,8 @@ class TradingPairHeader extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
-            color: Color(0xFF6B6B6B),
+          style: GoogleFonts.inter(
+            color: const Color(0xFF64748B),
             fontSize: 10,
             fontWeight: FontWeight.w500,
           ),
@@ -109,10 +111,9 @@ class TradingPairHeader extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           value,
-          style: const TextStyle(
-            color: Color(0xFFB0B0B0),
+          style: GoogleFonts.jetBrainsMono(
+            color: const Color(0xFFE2E8F0),
             fontSize: 11,
-            fontFamily: 'monospace',
             fontWeight: FontWeight.w500,
           ),
         ),
