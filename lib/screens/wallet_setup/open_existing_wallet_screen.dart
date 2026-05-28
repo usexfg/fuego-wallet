@@ -267,9 +267,13 @@ class _OpenExistingWalletScreenState extends State<OpenExistingWalletScreen>
                   ],
                 ),
               ),
-            ),
-          );
-        },
+            ],
+          ),
+        ),
+      ),
+    );
+  },
+),
       ),
     );
   }
