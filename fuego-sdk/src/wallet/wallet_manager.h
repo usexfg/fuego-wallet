@@ -54,6 +54,7 @@ public:
                               uint64_t* redeemed_amount);
     FuegoError getDeposit(size_t index, FuegoCDInfo* info);
     FuegoError getDepositCount(size_t* count);
+    FuegoError findDepositIdByHash(const std::string& hash, size_t* depositId);
 
     // Access to underlying wallet for Advanced operations
     CryptoNote::IWallet* getWallet() { return m_wallet.get(); }

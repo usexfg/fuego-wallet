@@ -8,7 +8,6 @@ import 'models/network_config.dart';
 import 'screens/splash_screen.dart';
 import 'utils/theme.dart';
 import 'screens/banking/atomic_swaps_screen.dart';
-import 'screens/banking/cd_lounge_screen.dart';
 import 'screens/heat/heat_page.dart';
 
 void main() async {
@@ -65,7 +64,6 @@ class XFGWalletApp extends StatelessWidget {
         home: const SplashScreen(),
       routes: {
         '/swaps': (context) => const AtomicSwapsScreen(),
-        '/cd': (context) => const CDLoungeScreen(),
         '/heat': (context) => const HeatPage(),
       },
         debugShowCheckedModeBanner: false,

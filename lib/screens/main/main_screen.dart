@@ -3,8 +3,8 @@ import '../../utils/theme.dart';
 import '../home/home_screen.dart';
 import '../elderfier/elderfier_screen.dart';
 import '../messaging/messaging_screen.dart';
-import '../banking/banking_screen.dart';
 import '../settings/settings_screen.dart';
+import '../banking/atomic_swaps_screen.dart'; // We can use Swaps as the secondary tab instead of "Banking"
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -19,9 +19,8 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = [
     const HomeScreen(),
     const MessagingScreen(),
-    const BankingScreen(), // Now includes Ξternal Flame + COLD
+    const AtomicSwapsScreen(),
     const SettingsScreen(),
-    const Screen(),
   ];
 
   @override
@@ -58,21 +57,14 @@ class _MainScreenState extends State<MainScreen> {
                   index: 1,
                 ),
                 _buildNavItem(
-                  icon: Icons.account_balance,
-                  label: 'Banking',
+                  icon: Icons.swap_horiz,
+                  label: 'Swaps',
                   index: 2,
-                  icon2: Icons.local_fire_department,
-                  label2: 'HEAT',
                 ),
                 _buildNavItem(
                   icon: Icons.settings,
                   label: 'Settings',
                   index: 3,
-                ),
-                _buildNavItem(
-                  icon: Icons.account_tree,
-                  label: 's',
-                  index: 4,
                 ),
               ],
             ),
@@ -86,8 +78,6 @@ class _MainScreenState extends State<MainScreen> {
     required IconData icon,
     required String label,
     required int index,
-    IconData? icon2,
-    String? label2,
   }) {
     final isSelected = _currentIndex == index;
 
@@ -108,32 +98,10 @@ class _MainScreenState extends State<MainScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                Icon(
-                  icon,
-                  color: isSelected ? AppTheme.primaryColor : AppTheme.textMuted,
-                  size: 24,
-                ),
-                if (icon2 != null)
-                  Positioned(
-                    right: -4,
-                    top: -4,
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryColor,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        icon2,
-                        color: Colors.white,
-                        size: 10,
-                      ),
-                    ),
-                  ),
-              ],
+            Icon(
+              icon,
+              color: isSelected ? AppTheme.primaryColor : AppTheme.textMuted,
+              size: 24,
             ),
             const SizedBox(height: 4),
             Text(
@@ -144,17 +112,6 @@ class _MainScreenState extends State<MainScreen> {
                 color: isSelected ? AppTheme.primaryColor : AppTheme.textMuted,
               ),
             ),
-            if (label2 != null) ...[
-              const SizedBox(height: 2),
-              Text(
-                label2,
-                style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                  color: isSelected ? AppTheme.primaryColor : AppTheme.textMuted,
-                ),
-              ),
-            ],
           ],
         ),
       ),

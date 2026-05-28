@@ -202,14 +202,14 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                                     const SizedBox(height: 16),
                                     _buildFeatureItem(
                                       Icons.local_fire_department,
-                                      'Mint Fuego Ξmbers',
-                                      'Burn XFG to mint atomical equivalent amount in erc-20 HEAT tokens on Ethereum L1 via Arbitrum L2',
+                                      'Mint HEAT Flatcoin',
+                                      'Burn XFG to mint HEAT flatcoin pegged to USD value',
                                     ),
                                     const SizedBox(height: 16),
                                     _buildFeatureItem(
-                                      Icons.account_balance,
-                                      'Private CD Banking',
-                                      'High-yield interest on XFG deposits',
+                                      Icons.auto_graph,
+                                      'Hearth AMM',
+                                      'Provide liquidity and earn fees from the decentralized exchange',
                                     ),
                                     const SizedBox(height: 16),
                                     _buildFeatureItem(
@@ -221,7 +221,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                                     _buildFeatureItem(
                                       Icons.account_tree,
                                       'Staking',
-                                      'New consensus nodes for zkSTARK proofs & cross-chain communication',
+                                      'Participate as a verified consensus node',
                                     ),
                                   ],
                                 ),
@@ -350,14 +350,14 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                               const SizedBox(height: 16),
                               _buildFeatureItem(
                                 Icons.local_fire_department,
-                                'Mint Fuego Ξmbers',
-                                'Burn XFG to mint \$HEAT erc20 tokens on Ethereum',
+                                'Mint HEAT Flatcoin',
+                                'Burn XFG to mint HEAT flatcoin pegged to USD value',
                               ),
                               const SizedBox(height: 16),
                               _buildFeatureItem(
-                                Icons.account_balance,
-                                'Private CD Banking',
-                                'High-yield interest on XFG deposits',
+                                Icons.auto_graph,
+                                'Hearth AMM',
+                                'Provide liquidity and earn fees from the decentralized exchange',
                               ),
                               const SizedBox(height: 16),
                               _buildFeatureItem(
@@ -369,7 +369,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                               _buildFeatureItem(
                                 Icons.account_tree,
                                 'Staking',
-                                'Participate as a verified consensus node completing the "Elderfyre Stayking" ceremony',
+                                'Participate as a verified consensus node',
                               ),
                             ],
                           ),

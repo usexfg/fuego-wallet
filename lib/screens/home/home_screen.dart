@@ -4,7 +4,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 
 import '../../services/walletd_service.dart';
-import '../../services/web3_cold_service.dart';
 import '../../utils/theme.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -16,7 +15,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   bool _isWalletdReady = false;
-  bool _isWeb3Ready = false;
   bool _isCliReady = false;
 
   @override
@@ -35,17 +33,6 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       setState(() {
         _isWalletdReady = false;
-      });
-    }
-
-    try {
-      await Web3COLDService.instance.initialize();
-      setState(() {
-        _isWeb3Ready = true;
-      });
-    } catch (e) {
-      setState(() {
-        _isWeb3Ready = false;
       });
     }
 
@@ -90,7 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -149,55 +136,44 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 12),
 
-            Expanded(
-              child: GridView.count(
-                shrinkWrap: true,
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                children: [
-                  _buildFeatureCard(
-                    context,
-                    icon: Icons.local_fire_department,
-                    title: 'Ξternal Flame',
-                    subtitle: 'Mint HEAT',
-                    color: AppTheme.errorColor,
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/heat');
-                    },
-                  ),
-                  _buildFeatureCard(
-                    context,
-                    icon: Icons.savings,
-                    title: 'COLD Interest',
-                    subtitle: 'Lounge',
-                    color: const Color(0xFF4A90E2),
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/cd');
-                    },
-                  ),
-                  _buildFeatureCard(
-                    context,
-                    icon: Icons.swap_horiz,
-                    title: 'Atomic Swaps',
-                    subtitle: 'Trade across chains',
-                    color: Colors.orangeAccent,
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/swaps');
-                    },
-                  ),
-                  _buildFeatureCard(
-                    context,
-                    icon: Icons.rocket_launch,
-                    title: 'Optimizer',
-                    subtitle: _isCliReady ? 'Ready' : 'CLI Only',
-                    color: _isCliReady ? Colors.orange : AppTheme.textMuted,
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/banking');
-                    },
-                  ),
-                ],
-              ),
+            GridView.count(
+              physics: const NeverScrollableScrollPhysics(),
+              shrinkWrap: true,
+              crossAxisCount: 2,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              children: [
+                _buildFeatureCard(
+                  context,
+                  icon: Icons.local_fire_department,
+                  title: 'Mint HEAT',
+                  subtitle: 'Burn XFG',
+                  color: AppTheme.errorColor,
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/heat');
+                  },
+                ),
+                _buildFeatureCard(
+                  context,
+                  icon: Icons.swap_horiz,
+                  title: 'Atomic Swaps',
+                  subtitle: 'Trade across chains',
+                  color: Colors.orangeAccent,
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/swaps');
+                  },
+                ),
+                _buildFeatureCard(
+                  context,
+                  icon: Icons.auto_graph,
+                  title: 'Hearth AMM',
+                  subtitle: 'Liquidity Pools',
+                  color: const Color(0xFF26A69A),
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/swaps');
+                  },
+                ),
+              ],
             ),
 
             const SizedBox(height: 24),
@@ -226,36 +202,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 4),
                   _buildStatusRow('Optimizer (CLI/RPC)', _isCliReady || _isWalletdReady),
                   const SizedBox(height: 4),
-                  _buildStatusRow('Web3 COLD Connection', _isWeb3Ready),
-                  const SizedBox(height: 4),
-                  _buildStatusRow('Burn2Mint (Ξternal Flame)', true),
+                  _buildStatusRow('Burn2Mint (HEAT)', true),
                 ],
               ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Quick Actions
-            Row(
-              children: [
-                Expanded(
-                  child: _buildQuickAction(
-                    'Ξternal Flame',
-                    Icons.local_fire_department,
-                    AppTheme.errorColor,
-                    () => Navigator.pushNamed(context, '/banking'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _buildQuickAction(
-                    'COLD',
-                    Icons.savings,
-                    const Color(0xFF4A90E2),
-                    () => Navigator.pushNamed(context, '/banking'),
-                  ),
-                ),
-              ],
             ),
           ],
         ),
@@ -370,9 +319,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 'Version: 1.0.1\n\n'
                 'Features:\n'
                 '• Integrated walletd & optimizer\n'
-                '• Ξternal Flame (Burn XFG → HEAT)\n'
-                '• COLD Interest Lounge (Web3)\n'
-                '• C0DL3 rollup integration\n'
+                '• HEAT Flatcoin (Burn XFG → HEAT)\n'
+                '• Hearth AMM\n'
+                '• Cross-chain Atomic Swaps\n'
                 '• Multi-platform support\n\n'
                 'Built for the Fuego ecosystem',
               ),

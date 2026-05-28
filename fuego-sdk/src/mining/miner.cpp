@@ -1,14 +1,14 @@
 #include "miner.h"
 
-#include "CryptoNoteCore/Miner.h"
+#include "node/node_manager.h"
 #include "Logging/LoggerManager.h"
 
 #include <chrono>
 #include <thread>
+#include <future>
 
 namespace fuego {
 
-// Singleton logger for mining operations
 static Logging::LoggerManager g_minerLogger;
 
 Miner& Miner::instance() {
@@ -28,11 +28,22 @@ FuegoError Miner::start(const std::string& walletAddress) {
     try {
         m_walletAddress = walletAddress;
         
-        // Use Fuego's core Miner implementation
-        // In a full impl, we would instantiate CryptoNote::Miner with the node and logger.
+        auto node = NodeManager::instance().getNode();
+        if (!node) {
+            return FUEGO_ERROR_NOT_INITIALIZED;
+        }
+
+        std::promise<std::error_code> promise;
+        node->startMining(walletAddress, 1, [&promise](std::error_code ec) {
+            promise.set_value(ec);
+        });
+        
+        auto ec = promise.get_future().get();
+        if (ec) {
+            return FUEGO_ERROR_MINING;
+        }
         
         m_running = true;
-        m_miningThread = std::thread(&Miner::miningLoop, this);
         return FUEGO_OK;
     } catch (...) {
         m_running = false;
@@ -47,8 +58,13 @@ void Miner::stop() {
 
     m_running = false;
     
-    if (m_miningThread.joinable()) {
-        m_miningThread.join();
+    auto node = NodeManager::instance().getNode();
+    if (node) {
+        std::promise<std::error_code> promise;
+        node->stopMining([&promise](std::error_code ec) {
+            promise.set_value(ec);
+        });
+        promise.get_future().get();
     }
 }
 
@@ -57,25 +73,8 @@ bool Miner::isRunning() const {
 }
 
 double Miner::getHashrate() const {
+    // TODO: implement actual hashrate retrieval if supported by node
     return m_hashrate;
-}
-
-void Miner::miningLoop() {
-    auto startTime = std::chrono::steady_clock::now();
-    uint64_t hashes = 0;
-
-    while (m_running) {
-        // Simplified mining loop - would integrate with actual CryptoNote::Miner
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        hashes += 1000; 
-
-        auto currentTime = std::chrono::steady_clock::now();
-        auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(currentTime - startTime).count();
-        
-        if (elapsed > 0) {
-            m_hashrate = static_cast<double>(hashes) / elapsed;
-        }
-    }
 }
 
 } // namespace fuego

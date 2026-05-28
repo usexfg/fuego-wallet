@@ -195,7 +195,7 @@ class _SplashScreenState extends State<SplashScreen>
                           const SizedBox(height: 16),
                           // Subtitle
                           const Text(
-                            'Privacy Blockchain Banking',
+                            'Decentralized Privacy Banking',
                             style: TextStyle(
                               fontSize: 16,
                               color: AppTheme.textSecondary,

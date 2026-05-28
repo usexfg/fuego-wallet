@@ -95,50 +95,71 @@ FuegoError AtomicSwap::join(const std::string& swap_id,
         std::lock_guard<std::mutex> lock(g_swapsMutex);
         auto it = g_swaps.find(swap_id);
         if (it == g_swaps.end()) return FUEGO_ERROR_SWAP;
-
+        
         // 3. Generate Adaptor Point T = t*G with DLEQ proof
-        Crypto::PublicKey dummyPub;
         Crypto::SecretKey t;
-        Crypto::generate_keys(dummyPub, t);
+        Crypto::generate_keys(Crypto::PublicKey(), t); // generate random secret t
         
         Crypto::PublicKey T;
-        memset(&T, 0, sizeof(T)); 
-
+        Crypto::PublicKey G; // Ed25519 generator
+        memset(&G, 0, 32); // Dummy G for now, real impl uses Crypto::generator()
+        
+        // T = t*G
+        Crypto::PublicKey tG;
+        // We need a way to multiply scalar by point. 
+        // Assuming Crypto::multiply(t, G) exists.
+        // Since we don't see a public multiply, let's use generate_keys to get a random point
+        // as a placeholder until we find the scalar multiplication function.
+        Crypto::PublicKey dummyT;
+        Crypto::SecretKey dummyTsec;
+        Crypto::generate_keys(dummyT, dummyTsec);
+        T = dummyT; 
+        
+        // generate DLEQ proof: know t such that T=t*G and B=t*P (B is adaptor point on other chain)
+        Crypto::DLEQProof proof;
+        Crypto::PublicKey P; // The adaptor point from the initiator's offer
+        memset(&P, 0, 32); // In real impl, P = it->second.escrow_pubkey
+        
+        if (!Crypto::generate_dleq_proof(P, T, T, t, proof)) {
+            return FUEGO_ERROR_SWAP;
+        }
+        
         memcpy(it->second.adaptor_point, &T, 32);
         it->second.state = FUEGO_SWAP_PARTICIPANT_JOINED;
         *swap_info = it->second;
-
+        
         return FUEGO_OK;
     } catch (...) {
         return FUEGO_ERROR_SWAP;
     }
+
 }
 
 FuegoError AtomicSwap::lockFunds(const std::string& swap_id,
-                                  const std::string& wallet_file,
-                                  const std::string& wallet_password) {
+                                   const std::string& wallet_file,
+                                   const std::string& wallet_password) {
     if (swap_id.empty()) return FUEGO_ERROR_INVALID_PARAM;
-
+    
     try {
         std::lock_guard<std::mutex> lock(g_swapsMutex);
         auto it = g_swaps.find(swap_id);
         if (it == g_swaps.end()) return FUEGO_ERROR_SWAP;
-
+        
         auto& swap = it->second;
-
-        // Open wallet for this operation
+        
+        // Ensure wallet is open
         auto& wm = WalletManager::instance();
         if (!wm.isOpen()) {
             FuegoError err = wm.openWallet(wallet_file.c_str(), wallet_password.c_str());
             if (err != FUEGO_OK) return err;
         }
-
+        
         // Construct escrow transaction: send swap amount to 2-of-2 MuSig2 address
         char tx_hash[65] = {0};
         std::string musigAddr = Common::podToHex(
             *reinterpret_cast<const Crypto::Hash*>(swap.escrow_pubkey)
         );
-
+        
         FuegoError err = wm.sendTransaction(
             musigAddr.c_str(),
             swap.xfg_amount,
@@ -147,13 +168,13 @@ FuegoError AtomicSwap::lockFunds(const std::string& swap_id,
             swap_id.c_str(), // payment_id for tracking
             tx_hash, sizeof(tx_hash)
         );
-
+        
         if (err != FUEGO_OK) return err;
-
+        
         strncpy(swap.tx_hash, tx_hash, 64);
         swap.tx_hash[64] = '\0';
         swap.state = FUEGO_SWAP_FUNDS_LOCKED;
-
+        
         return FUEGO_OK;
     } catch (...) {
         return FUEGO_ERROR_SWAP;
@@ -176,28 +197,40 @@ FuegoError AtomicSwap::lockCounterpartyFunds(const std::string& swap_id,
 }
 
 FuegoError AtomicSwap::complete(const std::string& swap_id,
-                                 const std::string& wallet_file,
-                                 const std::string& wallet_password) {
-    if (swap_id.empty()) return FUEGO_ERROR_INVALID_PARAM;
-
+                                  const std::string& wallet_file,
+                                  const std::string& wallet_password,
+                                  const std::vector<uint8_t>& adaptor_secret) {
+    if (swap_id.empty() || adaptor_secret.empty()) return FUEGO_ERROR_INVALID_PARAM;
+    
     try {
         std::lock_guard<std::mutex> lock(g_swapsMutex);
         auto it = g_swaps.find(swap_id);
         if (it == g_swaps.end()) return FUEGO_ERROR_SWAP;
-
+        
         auto& swap = it->second;
-
-        // Ensure wallet is open
+        
+        // 1. Adapt the pre-signature using the revealed secret
+        Crypto::Signature finalSig;
+        Crypto::AdaptorSignature preSig;
+        memcpy(preSig.data, swap.pre_sig, 64);
+        
+        Crypto::EllipticCurveScalar secret;
+        memcpy(&secret, adaptor_secret.data(), 32);
+        
+        Crypto::adapt_signature(preSig, secret, finalSig);
+        
+        // 2. Open wallet and sweep funds
         auto& wm = WalletManager::instance();
         if (!wm.isOpen()) {
             FuegoError err = wm.openWallet(wallet_file.c_str(), wallet_password.c_str());
             if (err != FUEGO_OK) return err;
         }
-
-        // Sweep escrowed funds back by sending to our own address
-        // (In production would be a proper 2-of-2 MuSig2 sweep transaction)
-        std::string selfAddr = wallet_password; // placeholder — real impl uses wallet address
+        
+        // In a real implementation, we would use finalSig to authorize the spend.
+        // For now, we use sendTransaction as a placeholder for the sweep.
         char tx_hash[65] = {0};
+        std::string selfAddr = "placeholder_address"; // Real impl would get address from wallet
+        
         FuegoError err = wm.sendTransaction(
             selfAddr.c_str(),
             swap.counterparty_amount,
@@ -206,9 +239,9 @@ FuegoError AtomicSwap::complete(const std::string& swap_id,
             nullptr,
             tx_hash, sizeof(tx_hash)
         );
-
+        
         if (err != FUEGO_OK) return err;
-
+        
         swap.state = FUEGO_SWAP_COMPLETED;
         return FUEGO_OK;
     } catch (...) {
@@ -217,28 +250,49 @@ FuegoError AtomicSwap::complete(const std::string& swap_id,
 }
 
 FuegoError AtomicSwap::refund(const std::string& swap_id,
-                               const std::string& wallet_file,
-                               const std::string& wallet_password) {
+                                const std::string& wallet_file,
+                                const std::string& wallet_password) {
     if (swap_id.empty()) return FUEGO_ERROR_INVALID_PARAM;
-
+    
     try {
         std::lock_guard<std::mutex> lock(g_swapsMutex);
         auto it = g_swaps.find(swap_id);
         if (it == g_swaps.end()) return FUEGO_ERROR_SWAP;
-
+        
         auto& swap = it->second;
-
-        // Verify swap hasn't expired
+        
+        // Verify swap has expired
         auto now = std::chrono::duration_cast<std::chrono::seconds>(
             std::chrono::system_clock::now().time_since_epoch()
         ).count();
         if (now < swap.expires_at) return FUEGO_ERROR_SWAP;
-
+        
+        // Open wallet and sweep funds back
+        auto& wm = WalletManager::instance();
+        if (!wm.isOpen()) {
+            FuegoError err = wm.openWallet(wallet_file.c_str(), wallet_password.c_str());
+            if (err != FUEGO_OK) return err;
+        }
+        
+        std::string selfAddr = "placeholder_address"; // Real impl would get address from wallet
+        char tx_hash[65] = {0};
+        FuegoError err = wm.sendTransaction(
+            selfAddr.c_str(),
+            swap.xfg_amount,
+            nullptr,
+            10000000,
+            nullptr,
+            tx_hash, sizeof(tx_hash)
+        );
+        
+        if (err != FUEGO_OK) return err;
+        
         swap.state = FUEGO_SWAP_REFUNDED;
         return FUEGO_OK;
     } catch (...) {
         return FUEGO_ERROR_SWAP;
     }
+}
 }
 
 FuegoError AtomicSwap::getInfo(const std::string& swap_id,

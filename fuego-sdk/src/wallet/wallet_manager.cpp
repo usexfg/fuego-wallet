@@ -262,4 +262,20 @@ FuegoError WalletManager::getDepositCount(size_t* count) {
     return FUEGO_OK;
 }
 
+FuegoError WalletManager::findDepositIdByHash(const std::string& hash, size_t* depositId) {
+    if (!isOpen()) return FUEGO_ERROR_NOT_INITIALIZED;
+    if (!depositId) return FUEGO_ERROR_INVALID_PARAM;
+
+    size_t count = m_wallet->getWalletDepositCount();
+    for (size_t i = 0; i < count; ++i) {
+        auto dep = m_wallet->getDeposit(i);
+        if (Common::podToHex(dep.transactionHash) == hash) {
+            *depositId = i;
+            return FUEGO_OK;
+        }
+    }
+
+    return FUEGO_ERROR_NOT_FOUND;
+}
+
 } // namespace fuego

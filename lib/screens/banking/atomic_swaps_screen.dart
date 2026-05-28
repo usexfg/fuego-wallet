@@ -54,7 +54,7 @@ class _AtomicSwapsScreenState extends State<AtomicSwapsScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _payController.addListener(_onPayChanged);
     _loadActiveSwaps();
     _startPolling();
@@ -369,7 +369,6 @@ class _AtomicSwapsScreenState extends State<AtomicSwapsScreen>
                 Tab(text: 'Hearth AMM'),
                 Tab(text: 'Cross-chain'),
                 Tab(text: 'Join Swap'),
-                Tab(text: 'CD Markets'),
               ],
             ),
           ),
@@ -381,7 +380,6 @@ class _AtomicSwapsScreenState extends State<AtomicSwapsScreen>
           _buildHearthAMMTab(),
           _buildCrossChainTab(),
           _buildJoinSwapTab(),
-          _buildCDMarketsTab(),
         ],
       ),
     );
@@ -1490,58 +1488,3 @@ class _AtomicSwapsScreenState extends State<AtomicSwapsScreen>
   // TAB 4: CD Markets
   // ──────────────────────────────────────────────
 
-  Widget _buildCDMarketsTab() {
-    return const Padding(
-      padding: EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'HEAT CDs / XFG Swap Market',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.textPrimary,
-            ),
-          ),
-          SizedBox(height: 16),
-          Text(
-            'Trade your active Certificates of Deposit (HEAT) directly with other users via smart contracts.',
-            style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
-          ),
-          SizedBox(height: 24),
-          Expanded(
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.account_balance,
-                    color: AppTheme.textMuted,
-                    size: 48,
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    'No active CD markets found.',
-                    style: TextStyle(
-                      color: AppTheme.textMuted,
-                      fontSize: 16,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Connect wallet to refresh.',
-                    style: TextStyle(
-                      color: AppTheme.textMuted,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

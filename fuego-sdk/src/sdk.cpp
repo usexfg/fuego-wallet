@@ -201,16 +201,28 @@ FUEGO_API FuegoError fuego_cd_create(uint64_t amount, uint64_t lock_time, const 
 
 FUEGO_API FuegoError fuego_cd_redeem(const char* tx_hash, const char* wallet_file, const char* wallet_password, uint64_t* redeemed_amount) {
     if (!g_initialized || !tx_hash || !wallet_file || !wallet_password || !redeemed_amount) return FUEGO_ERROR_INVALID_PARAM;
-    // Find deposit ID from tx_hash (simplified: use hash as string index)
+    
     std::string hashStr(tx_hash);
     if (hashStr.empty()) return FUEGO_ERROR_INVALID_PARAM;
-    // For now, pass 0 as a placeholder — real impl would look up by tx_hash
-    return fuego::WalletManager::instance().redeemDeposit(0, nullptr, 0, redeemed_amount);
+    
+    size_t depositId;
+    FuegoError err = fuego::WalletManager::instance().findDepositIdByHash(hashStr, &depositId);
+    if (err != FUEGO_OK) return err;
+    
+    return fuego::WalletManager::instance().redeemDeposit(depositId, nullptr, 0, redeemed_amount);
 }
 
 FUEGO_API FuegoError fuego_cd_get_info(const char* tx_hash, FuegoCDInfo* cd_info) {
     if (!tx_hash || !cd_info) return FUEGO_ERROR_INVALID_PARAM;
-    return fuego::WalletManager::instance().getDeposit(0, cd_info);
+    
+    std::string hashStr(tx_hash);
+    if (hashStr.empty()) return FUEGO_ERROR_INVALID_PARAM;
+    
+    size_t depositId;
+    FuegoError err = fuego::WalletManager::instance().findDepositIdByHash(hashStr, &depositId);
+    if (err != FUEGO_OK) return err;
+    
+    return fuego::WalletManager::instance().getDeposit(depositId, cd_info);
 }
 
 /* ============================================================================

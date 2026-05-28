@@ -32,8 +32,8 @@ dependencies:
   bip39: ^1.0.6
   ed25519_hd_key: ^2.2.0
 
-  # Web3 Integration (NEW - for COLD token on Ethereum)
-  web3dart: ^2.7.2
+  # Web3 Integration
+  # web3dart: ^2.7.2 (Removed as COLD features are deprecated)
 
   # QR Code
   qr_flutter: ^4.1.0
