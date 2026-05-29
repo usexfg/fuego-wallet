@@ -118,30 +118,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: Colors.white70,
                     ),
                   ),
-                  _buildFeatureCard(
-                    context,
-                    icon: Icons.account_balance,
-                    title: 'CD Banking',
-                    subtitle: 'Earn Interest',
-                    color: const Color(0xFF4A90E2),
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/cd');
-                    },
-                  ),
-                  _buildFeatureCard(
-                    context,
-                    icon: Icons.alternate_email,
-                    title: 'Fire Aliases',
-                    subtitle: 'Wallet Naming',
-                    color: AppTheme.infoColor,
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/aliases');
-                    },
-                  ),
                 ],
               ),
             ),
-
+            
             const SizedBox(height: 24),
 
             // Quick Access
