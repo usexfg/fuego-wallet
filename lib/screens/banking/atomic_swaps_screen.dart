@@ -1484,7 +1484,4 @@ class _AtomicSwapsScreenState extends State<AtomicSwapsScreen>
     );
   }
 
-  // ──────────────────────────────────────────────
-  // TAB 4: CD Markets
-  // ──────────────────────────────────────────────
-
+}

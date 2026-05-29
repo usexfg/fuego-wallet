@@ -1,0 +1,176 @@
+name: Self-Healing CI — Monitor, Fix, Repeat
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # every 15 minutes
+  workflow_dispatch:
+    inputs:
+      max_iterations:
+        description: "Maximum fix-retry iterations"
+        required: false
+        default: "10"
+      target_workflow:
+        description: "Workflow file to monitor (e.g., desktop-build.yml)"
+        required: false
+        default: "desktop-build.yml"
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  FUEGO_SOURCE_BRANCH: "hearth"
+  FLUTTER_VERSION: "3.27.0"
+
+permissions:
+  contents: write
+  actions: read
+  pull-requests: write
+
+jobs:
+  monitor-and-heal:
+    name: Monitor & Auto-Fix Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN || secrets.PAT_TOKEN }}
+          fetch-depth: 0
+          ref: azorahai
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install GitHub CLI
+        run: |
+          type -p curl >/dev/null || sudo apt-get install -y curl
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | \
+            sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | \
+            sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install -y gh
+
+      - name: Set up Git
+        run: |
+          git config user.name "ci-healer[bot]"
+          git config user.email "ci-healer[bot]@users.noreply.github.com"
+
+      - name: Fetch latest desktop-build run status
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          MAX_ITERS="${{ inputs.max_iterations || '10' }}"
+          TARGET_WF="${{ inputs.target_workflow || 'desktop-build.yml' }}"
+
+          echo "Checking for failed runs of workflow: $TARGET_WF on branch azorahai"
+
+          # Get latest run
+          LATEST=$(gh run list --repo usexfg/fuego-wallet --branch azorahai \
+            --workflow "$TARGET_WF" --limit 1 --json conclusion,databaseId,status \
+            --jq '.[0]')
+
+          if [ -z "$LATEST" ] || [ "$LATEST" = "null" ]; then
+            echo "ℹ️ No recent runs found for $TARGET_WF — nothing to heal."
+            echo "green=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          CONCLUSION=$(echo "$LATEST" | jq -r '.conclusion')
+          RUN_ID=$(echo "$LATEST" | jq -r '.databaseId')
+
+          echo "Latest run $RUN_ID → $CONCLUSION"
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+          echo "conclusion=$CONCLUSION" >> "$GITHUB_OUTPUT"
+
+          if [ "$CONCLUSION" = "success" ]; then
+            echo "green=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "green=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download & Analyze Failure Logs
+        if: steps.check.outputs.green == 'false'
+        id: analyze
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RUN_ID="${{ steps.check.outputs.run_id }}"
+
+          # Get failed job IDs
+          FAILED_JOBS=$(gh run view "$RUN_ID" --repo usexfg/fuego-wallet --json jobs \
+            --jq '.jobs[] | select(.conclusion == "failure") | .databaseId')
+
+          if [ -z "$FAILED_JOBS" ]; then
+            echo "No failed jobs found in run $RUN_ID"
+            echo "logs_downloaded=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          mkdir -p /tmp/ci-logs
+          for JID in $FAILED_JOBS; do
+            echo "Downloading log for job $JID..."
+            gh run view --job "$JID" --repo usexfg/fuego-wallet --log > "/tmp/ci-logs/job-${JID}.log" 2>&1 || true
+            echo "  → $(wc -l < "/tmp/ci-logs/job-${JID}.log") lines"
+          done
+
+          echo "logs_downloaded=true" >> "$GITHUB_OUTPUT"
+          echo "log_dir=/tmp/ci-logs" >> "$GITHUB_OUTPUT"
+
+      - name: Run Dart Healer
+        if: steps.analyze.outputs.logs_downloaded == 'true'
+        id: heal
+        run: |
+          chmod +x scripts/ci-monitor.sh || true
+          chmod +x scripts/dart-healer.py || true
+
+          LOG_DIR="${{ steps.analyze.outputs.log_dir }}"
+          FIXED=false
+
+          for logfile in "$LOG_DIR"/job-*.log; do
+            echo "━━━━━━ Analyzing: $logfile ━━━━━━"
+            python3 scripts/dart-healer.py "$logfile" && FIXED=true || true
+          done
+
+          if [ "$FIXED" = true ]; then
+            echo "fixed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "fixed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit & Push Auto-Fix
+        if: steps.heal.outputs.fixed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet && git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git add lib/ pubspec.yaml scripts/
+          git commit -m "fix(ci-heal): auto-fix build errors
+
+          Automated fix by self-healing CI pipeline.
+          Source: run ${{ steps.check.outputs.run_id }}" || true
+          git push origin azorahai
+
+          echo "🔄 Auto-fix pushed.  New build will trigger."
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Self-Healing CI Report" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ steps.check.outputs.green }}" = "true" ]; then
+            echo "✅ **Build is already green!**  No healing needed." >> "$GITHUB_STEP_SUMMARY"
+          elif [ "${{ steps.heal.outputs.fixed }}" = "true" ]; then
+            echo "🔧 **Auto-fix applied and pushed.**  Monitoring new build..." >> "$GITHUB_STEP_SUMMARY"
+            echo "  Run: https://github.com/usexfg/fuego-wallet/actions/runs/${{ steps.check.outputs.run_id }}" >> "$GITHUB_STEP_SUMMARY"
+          elif [ "${{ steps.analyze.outputs.logs_downloaded }}" = "true" ]; then
+            echo "⚠️ **Build failed but no pattern-based fix was found.**  Manual review needed." >> "$GITHUB_STEP_SUMMARY"
+            echo "  Logs saved in job artifacts." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "ℹ️ No failure to analyze." >> "$GITHUB_STEP_SUMMARY"
+          fi
