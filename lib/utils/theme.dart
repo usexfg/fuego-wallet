@@ -2,19 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // Fuego brand colors - Rich reddish-orange inspired by Bitcoin/Monero/Reddit
-  static const Color primaryColor = Color(0xFFE53935); // Sleeker vibrant red
+  // Fuego brand colors — Color-dropped from fuegologo.png
+  static const Color primaryColor = Color(0xFFE25900); // Logo orange-red average
   static const Color secondaryColor = Color(0xFF1E1E24); // Dark gray
-  static const Color accentColor = Color(0xFFFFD700); // Gold accent
+  static const Color accentColor = Color(0xFFFF8B00); // Logo highlight orange
   static const Color backgroundColor = Color(0xFF000000); // OLED Black
   static const Color surfaceColor = Color(0xFF0A0B0E); // Very dark gray/blue
   static const Color cardColor = Color(0xFF111418); // TradingView dark panel style
 
-  // Comprehensive reddish-orange color palette
-  static const Color primaryLight = Color(0xFFFF5252); // Lighter red
-  static const Color primaryDark = Color(0xFFC62828); // Darker red
-  static const Color primaryAccent = Color(0xFFFF8A80); // Accent red
-  static const Color primaryVariant = Color(0xFFD32F2F); // Primary variant
+  // Comprehensive orange color palette from logo
+  static const Color primaryLight = Color(0xFFFF6E00); // Brighter logo orange
+  static const Color primaryDark = Color(0xFFBF4000); // Darker logo orange
+  static const Color primaryAccent = Color(0xFFFF8A65); // Accent variant
+  static const Color primaryVariant = Color(0xFFCC4D00); // Primary variant
 
   // Complementary colors for better UX
   static const Color successColor = Color(0xFF26A69A); // TradingView Bull green
@@ -291,9 +291,9 @@ class AppTheme {
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [
-      Color(0xFFFF5252),
+      Color(0xFFFF6E00),
       primaryColor,
-      Color(0xFFC62828),
+      Color(0xFFBF4000),
     ],
   );
 
@@ -319,7 +319,7 @@ class AppTheme {
     begin: Alignment.centerLeft,
     end: Alignment.centerRight,
     colors: [
-      primaryAccent,
+      Color(0xFFFF8A65),
       primaryLight,
     ],
   );
@@ -371,7 +371,7 @@ class AppTheme {
 
   static const List<BoxShadow> primaryShadow = [
     BoxShadow(
-      color: Color(0x33E53935), // primaryColor
+      color: Color(0x33E25900), // logo orange
       blurRadius: 16,
       offset: Offset(0, 8),
       spreadRadius: -2,
