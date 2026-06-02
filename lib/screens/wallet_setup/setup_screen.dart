@@ -200,16 +200,34 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                                       'Dynamaxin for highest-possible privacy',
                                     ),
                                     const SizedBox(height: 16),
+_buildFeatureItem(
+                                Icons.local_fire_department,
+                                'HEAT Flatcoin',
+                                'Burn XFG to mint HEAT — pegged to USD value',
+                              ),
+                              const SizedBox(height: 16),
+                              _buildFeatureItem(
+                                Icons.account_balance,
+                                'High-Yield HEAT CDs',
+                                'Lock XFG in Certificates of Deposit to earn block interest',
+                              ),
+                              const SizedBox(height: 16),
+                              _buildFeatureItem(
+                                Icons.auto_graph,
+                                'Hearth AMM',
+                                'Swap XFG/HEAT through the embedded liquidity pool',
+                              ),
+                                    const SizedBox(height: 16),
                                     _buildFeatureItem(
-                                      Icons.local_fire_department,
-                                      'Mint HEAT Flatcoin',
-                                      'Burn XFG to mint HEAT flatcoin pegged to USD value',
+                                      Icons.account_balance,
+                                      'High-Yield HEAT CDs',
+                                      'Lock XFG in Certificates of Deposit to earn block interest',
                                     ),
                                     const SizedBox(height: 16),
                                     _buildFeatureItem(
                                       Icons.auto_graph,
                                       'Hearth AMM',
-                                      'Provide liquidity and earn fees from the decentralized exchange',
+                                      'Swap XFG/HEAT through the embedded liquidity pool',
                                     ),
                                     const SizedBox(height: 16),
                                     _buildFeatureItem(

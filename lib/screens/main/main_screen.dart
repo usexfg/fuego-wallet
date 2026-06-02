@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../utils/theme.dart';
 import '../home/home_screen.dart';
-import '../elderfier/elderfier_screen.dart';
 import '../messaging/messaging_screen.dart';
+import '../banking/atomic_swaps_screen.dart';
 import '../settings/settings_screen.dart';
-import '../banking/atomic_swaps_screen.dart'; // We can use Swaps as the secondary tab instead of "Banking"
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});

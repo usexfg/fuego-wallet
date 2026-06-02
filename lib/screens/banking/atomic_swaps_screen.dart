@@ -33,7 +33,7 @@ class _AtomicSwapsScreenState extends State<AtomicSwapsScreen>
   List<CandleData> _candles = [];
   double _priceChange24h = 0;
 
-  // Cross-chain swap state
+  // SwapXFG atomic swap state
   final _ccAmountController = TextEditingController();
   final _ccAddressController = TextEditingController();
   String _targetChain = 'ETH';
@@ -367,7 +367,7 @@ class _AtomicSwapsScreenState extends State<AtomicSwapsScreen>
               isScrollable: true,
               tabs: const [
                 Tab(text: 'Hearth AMM'),
-                Tab(text: 'Cross-chain'),
+                Tab(text: 'SwapXFG'),
                 Tab(text: 'Join Swap'),
               ],
             ),
@@ -768,7 +768,7 @@ class _AtomicSwapsScreenState extends State<AtomicSwapsScreen>
   }
 
   // ──────────────────────────────────────────────
-  // TAB 2: Cross-chain Swaps
+  // TAB 2: SwapXFG Atomic Swaps
   // ──────────────────────────────────────────────
 
   Widget _buildCrossChainTab() {
@@ -837,7 +837,7 @@ class _AtomicSwapsScreenState extends State<AtomicSwapsScreen>
                 ),
                 const SizedBox(width: 10),
                 const Text(
-                  'Cross-chain Bridge',
+                  'SwapXFG Atomic Swap',
                   style: TextStyle(
                     color: AppTheme.textPrimary,
                     fontSize: 16,
@@ -997,7 +997,7 @@ class _AtomicSwapsScreenState extends State<AtomicSwapsScreen>
                   ),
                   child: const Center(
                     child: Text(
-                      'INITIATE BRIDGE',
+                      'INITIATE SWAP',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 15,

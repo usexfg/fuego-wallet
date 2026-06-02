@@ -244,7 +244,7 @@ class _SplashScreenState extends State<SplashScreen>
                 child: Column(
                   children: [
                     Text(
-                      'Based on CryptoNote Protocol',
+                      'Fuego L1 Protocol',
                       style: TextStyle(
                         fontSize: 12,
                         color: AppTheme.textMuted,
@@ -256,13 +256,13 @@ class _SplashScreenState extends State<SplashScreen>
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          Icons.security,
+                          Icons.lock,
                           size: 16,
                           color: AppTheme.successColor,
                         ),
                         SizedBox(width: 8),
                         Text(
-                          'Secure • Untraceable • Decentralized',
+                          'Private • Secure • Decentralized',
                           style: TextStyle(
                             fontSize: 10,
                             color: AppTheme.textMuted,
