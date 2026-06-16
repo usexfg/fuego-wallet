@@ -121,15 +121,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     _buildFeatureCard(
                       icon: Icons.swap_horiz,
-                      title: 'Atomic Swaps',
-                      subtitle: 'SwapXFG Protocol',
+                      title: 'SwapXFG',
+                      subtitle: 'Atomic Swaps Protocol',
                       color: Colors.orangeAccent,
                       onTap: () => Navigator.pushNamed(context, '/swaps'),
                     ),
                     _buildFeatureCard(
                       icon: Icons.account_balance,
                       title: 'CD Banking',
-                      subtitle: 'Earn Interest',
+                      subtitle: 'Earn Block Interest',
                       color: const Color(0xFF4A90E2),
                       onTap: () => Navigator.pushNamed(context, '/cd'),
                     ),

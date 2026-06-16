@@ -236,11 +236,7 @@ _buildFeatureItem(
                                       'Secure blockchain-based communication',
                                     ),
                                     const SizedBox(height: 16),
-                                    _buildFeatureItem(
-                                      Icons.account_tree,
-                                      'Staking',
-                                      'Participate as a verified consensus node',
-                                    ),
+
                                   ],
                                 ),
                               ),
@@ -384,11 +380,7 @@ _buildFeatureItem(
                                 'Secure blockchain-based communication',
                               ),
                               const SizedBox(height: 16),
-                              _buildFeatureItem(
-                                Icons.account_tree,
-                                'Staking',
-                                'Participate as a verified consensus node',
-                              ),
+
                             ],
                           ),
                         ),
