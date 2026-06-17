@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
 import '../../utils/theme.dart';
+import '../../providers/wallet_provider.dart';
 import 'create_wallet_screen.dart';
 import 'open_existing_wallet_screen.dart';
 
@@ -109,321 +112,12 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
         child: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              // Use different layouts for desktop vs mobile
               bool isDesktop = constraints.maxWidth > 600;
 
               if (isDesktop) {
-                return Row(
-                  children: [
-                    // Left side - Logo and welcome
-                    Expanded(
-                      flex: 1,
-                      child: FadeTransition(
-                        opacity: _fadeAnimation,
-                        child: Padding(
-                          padding: const EdgeInsets.all(48.0),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              // Logo
-                              Container(
-                                width: 120,
-                                height: 120,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: AppTheme.primaryGradient,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: AppTheme.primaryColor.withOpacity(0.3),
-                                      blurRadius: 15,
-                                      spreadRadius: 1,
-                                    ),
-                                  ],
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Image.asset(
-                                    'assets/logo/fuegologo.png',
-                                    fit: BoxFit.contain,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 32),
-                              // Welcome text
-                              AnimatedTextKit(
-                                animatedTexts: [
-                                    FadeAnimatedText(
-                                      'Welcome to Fuego Wallet',
-                                    textStyle: const TextStyle(
-                                      fontSize: 32,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppTheme.textPrimary,
-                                    ),
-                                    duration: const Duration(milliseconds: 1200),
-                                  ),
-                                ],
-                                totalRepeatCount: 1,
-                              ),
-                              const SizedBox(height: 20),
-                              const Text(
-                                'Your gateway to secure, private banking and untraceable transactions.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  color: AppTheme.textSecondary,
-                                  height: 1.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    // Right side - Features and buttons (Scrollable)
-                    Expanded(
-                      flex: 1,
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(48.0, 12.0, 48.0, 48.0),
-                        child: SingleChildScrollView(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Features list
-                              SlideTransition(
-                                position: _slideAnimation,
-                                child: Column(
-                                  children: [
-                                    _buildFeatureItem(
-                                      Icons.security,
-                                      'Untraceable Transactions',
-                                      'Dynamaxin for highest-possible privacy',
-                                    ),
-                                    const SizedBox(height: 16),
-_buildFeatureItem(
-                                Icons.local_fire_department,
-                                'HEAT Flatcoin',
-                                'Burn XFG to mint HEAT — pegged to USD value',
-                              ),
-                              const SizedBox(height: 16),
-                              _buildFeatureItem(
-                                Icons.account_balance,
-                                'High-Yield HEAT CDs',
-                                'Lock XFG in Certificates of Deposit to earn block interest',
-                              ),
-                              const SizedBox(height: 16),
-                              _buildFeatureItem(
-                                Icons.auto_graph,
-                                'Hearth AMM',
-                                'Swap XFG/HEAT through the embedded liquidity pool',
-                              ),
-                                    const SizedBox(height: 16),
-                                    _buildFeatureItem(
-                                      Icons.account_balance,
-                                      'High-Yield HEAT CDs',
-                                      'Lock XFG in Certificates of Deposit to earn block interest',
-                                    ),
-                                    const SizedBox(height: 16),
-                                    _buildFeatureItem(
-                                      Icons.auto_graph,
-                                      'Hearth AMM',
-                                      'Swap XFG/HEAT through the embedded liquidity pool',
-                                    ),
-                                    const SizedBox(height: 16),
-                                    _buildFeatureItem(
-                                      Icons.message_outlined,
-                                      'Encrypted Messaging',
-                                      'Secure blockchain-based communication',
-                                    ),
-                                    const SizedBox(height: 16),
-
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 48),
-                              // Buttons
-                              SizedBox(
-                                width: 400,
-                                child: Column(
-                                  children: [
-                                    ElevatedButton(
-                                      onPressed: _navigateToCreateWallet,
-                                      style: ElevatedButton.styleFrom(
-                                        minimumSize: const Size(double.infinity, 50),
-                                      ),
-                                      child: const Text('Create New Wallet'),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    OutlinedButton(
-                                      onPressed: _navigateToOpenExistingWallet,
-                                      style: OutlinedButton.styleFrom(
-                                        minimumSize: const Size(double.infinity, 50),
-                                      ),
-                                      child: const Text('Open Existing Wallet'),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 32),
-                              // Terms and privacy
-                              const Text(
-                                'Fuego developers are unable to access or recover your private keys or mnemonic phrase. Please keep them safe & secure. Protecting access to your keys, protects access to your money.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: AppTheme.textMuted,
-                                  height: 1.4,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                );
+                return _buildDesktopLayout();
               } else {
-                // Mobile layout (original)
-                return Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    children: [
-                      Expanded(
-                        flex: 1,
-                        child: FadeTransition(
-                          opacity: _fadeAnimation,
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              // Logo
-                              Container(
-                                width: 100,
-                                height: 100,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: AppTheme.primaryGradient,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: AppTheme.primaryColor.withOpacity(0.3),
-                                      blurRadius: 15,
-                                      spreadRadius: 1,
-                                    ),
-                                  ],
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(6.0),
-                                  child: Image.asset(
-                                    'assets/logo/fuegologo.png',
-                                    fit: BoxFit.contain,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 24),
-                              // Welcome text
-                              AnimatedTextKit(
-                                animatedTexts: [
-                                    FadeAnimatedText(
-                                      'Welcome to Fuego Wallet',
-                                    textStyle: const TextStyle(
-                                      fontSize: 28,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppTheme.textPrimary,
-                                    ),
-                                    duration: const Duration(milliseconds: 1200),
-                                  ),
-                                ],
-                                totalRepeatCount: 1,
-                              ),
-                              const SizedBox(height: 16),
-                              const Text(
-                                'Your Fuego L1 gateway to secure, private banking and untraceable transactions.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: AppTheme.textSecondary,
-                                  height: 1.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 1,
-                        child: SlideTransition(
-                          position: _slideAnimation,
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              // Features list
-                              _buildFeatureItem(
-                                Icons.security,
-                                'Untraceable Transactions',
-                                'Dynamaxin for highest-possible privacy',
-                              ),
-                              const SizedBox(height: 16),
-                              _buildFeatureItem(
-                                Icons.local_fire_department,
-                                'Mint HEAT Flatcoin',
-                                'Burn XFG to mint HEAT flatcoin pegged to USD value',
-                              ),
-                              const SizedBox(height: 16),
-                              _buildFeatureItem(
-                                Icons.auto_graph,
-                                'Hearth AMM',
-                                'Provide liquidity and earn fees from the decentralized exchange',
-                              ),
-                              const SizedBox(height: 16),
-                              _buildFeatureItem(
-                                Icons.message_outlined,
-                                'Encrypted Messaging',
-                                'Secure blockchain-based communication',
-                              ),
-                              const SizedBox(height: 16),
-
-                            ],
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            // Create wallet button
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: _navigateToCreateWallet,
-                                child: const Text('Create New Wallet'),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            // Open existing wallet button
-                            SizedBox(
-                              width: double.infinity,
-                              child: OutlinedButton(
-                                onPressed: _navigateToOpenExistingWallet,
-                                child: const Text('Open Existing Wallet'),
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            // Terms and privacy
-                            const Text(
-                              'Fuego developers are unable to access or recover your private keys or mnemonic phrase. Please keep them safe and secure. Protecting access to your keys, protects access to your money.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: AppTheme.textMuted,
-                                height: 1.4,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
+                return _buildMobileLayout();
               }
             },
           ),
@@ -432,22 +126,339 @@ _buildFeatureItem(
     );
   }
 
+  Widget _buildDesktopLayout() {
+    return Row(
+      children: [
+        Expanded(
+          flex: 1,
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: Padding(
+              padding: const EdgeInsets.all(48.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildLogo(120),
+                  const SizedBox(height: 32),
+                  AnimatedTextKit(
+                    animatedTexts: [
+                      FadeAnimatedText(
+                        'Welcome to Fuego Wallet',
+                        textStyle: GoogleFonts.inter(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.textPrimary,
+                        ),
+                        duration: const Duration(milliseconds: 1200),
+                      ),
+                    ],
+                    totalRepeatCount: 1,
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Your gateway to secure, private banking and untraceable transactions.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      fontSize: 18,
+                      color: AppTheme.textSecondary,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  _buildNetworkStatusBanner(),
+                ],
+              ),
+            ),
+          ),
+        ),
+        Expanded(
+          flex: 1,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(48.0, 12.0, 48.0, 48.0),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SlideTransition(
+                    position: _slideAnimation,
+                    child: Column(
+                      children: [
+                        _buildFeatureItem(
+                          Icons.security,
+                          'Untraceable Transactions',
+                          'RingCT privacy for highest-possible confidentiality',
+                        ),
+                        const SizedBox(height: 12),
+                        _buildFeatureItem(
+                          Icons.local_fire_department,
+                          'HEAT Flatcoin',
+                          'Burn XFG to mint HEAT — pegged to USD value',
+                        ),
+                        const SizedBox(height: 12),
+                        _buildFeatureItem(
+                          Icons.account_balance,
+                          'HEAT Certificates of Deposit',
+                          'Lock XFG to earn block interest on your deposits',
+                        ),
+                        const SizedBox(height: 12),
+                        _buildFeatureItem(
+                          Icons.auto_graph,
+                          'Hearth AMM',
+                          'Swap XFG/HEAT through the embedded liquidity pool',
+                        ),
+                        const SizedBox(height: 12),
+                        _buildFeatureItem(
+                          Icons.swap_horiz,
+                          'SwapXFG Protocol',
+                          'Trustless atomic swaps across blockchains',
+                        ),
+                        const SizedBox(height: 12),
+                        _buildFeatureItem(
+                          Icons.alternate_email,
+                          'Fire Aliases',
+                          'Human-readable wallet addresses',
+                        ),
+                        const SizedBox(height: 12),
+                        _buildFeatureItem(
+                          Icons.message_outlined,
+                          'Encrypted Messaging',
+                          'Secure blockchain-based communication',
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                  _buildActionButtons(),
+                  const SizedBox(height: 32),
+                  _buildDisclaimer(),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMobileLayout() {
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        children: [
+          Expanded(
+            flex: 1,
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildLogo(100),
+                  const SizedBox(height: 24),
+                  AnimatedTextKit(
+                    animatedTexts: [
+                      FadeAnimatedText(
+                        'Welcome to Fuego Wallet',
+                        textStyle: GoogleFonts.inter(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.textPrimary,
+                        ),
+                        duration: const Duration(milliseconds: 1200),
+                      ),
+                    ],
+                    totalRepeatCount: 1,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Your Fuego L1 gateway to secure, private banking and untraceable transactions.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      color: AppTheme.textSecondary,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 1,
+            child: SlideTransition(
+              position: _slideAnimation,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _buildFeatureItem(
+                      Icons.security,
+                      'Untraceable Transactions',
+                      'RingCT privacy for highest-possible confidentiality',
+                    ),
+                    const SizedBox(height: 12),
+                    _buildFeatureItem(
+                      Icons.local_fire_department,
+                      'HEAT Flatcoin',
+                      'Burn XFG to mint HEAT — pegged to USD value',
+                    ),
+                    const SizedBox(height: 12),
+                    _buildFeatureItem(
+                      Icons.account_balance,
+                      'HEAT Certificates of Deposit',
+                      'Lock XFG to earn block interest on your deposits',
+                    ),
+                    const SizedBox(height: 12),
+                    _buildFeatureItem(
+                      Icons.auto_graph,
+                      'Hearth AMM',
+                      'Swap XFG/HEAT through the embedded liquidity pool',
+                    ),
+                    const SizedBox(height: 12),
+                    _buildFeatureItem(
+                      Icons.swap_horiz,
+                      'SwapXFG Protocol',
+                      'Trustless atomic swaps across blockchains',
+                    ),
+                    const SizedBox(height: 12),
+                    _buildFeatureItem(
+                      Icons.alternate_email,
+                      'Fire Aliases',
+                      'Human-readable wallet addresses',
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          _buildNetworkStatusBanner(),
+          const SizedBox(height: 16),
+          _buildActionButtons(),
+          const SizedBox(height: 16),
+          _buildDisclaimer(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLogo(double size) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: AppTheme.primaryGradient,
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryColor.withOpacity(0.3),
+            blurRadius: 15,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Image.asset(
+          'assets/logo/fuegologo.png',
+          fit: BoxFit.contain,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNetworkStatusBanner() {
+    return Consumer<WalletProvider>(
+      builder: (context, provider, _) {
+        final connected = provider.isConnected;
+        final syncing = provider.isSyncing;
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: connected
+                ? AppTheme.successColor.withOpacity(0.1)
+                : AppTheme.warningColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: connected
+                  ? AppTheme.successColor.withOpacity(0.3)
+                  : AppTheme.warningColor.withOpacity(0.3),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: connected ? AppTheme.successColor : AppTheme.warningColor,
+                  boxShadow: [
+                    BoxShadow(
+                      color: (connected ? AppTheme.successColor : AppTheme.warningColor)
+                          .withOpacity(0.6),
+                      blurRadius: 4,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      connected ? 'Connected to Fuego Network' : 'Connecting to Fuego Network...',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: connected ? AppTheme.successColor : AppTheme.warningColor,
+                      ),
+                    ),
+                    if (syncing)
+                      Text(
+                        'Syncing blockchain data...',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          color: AppTheme.textMuted,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              if (!connected)
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(AppTheme.warningColor),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildFeatureItem(IconData icon, String title, String description) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppTheme.cardColor.withOpacity(0.3),
+        color: AppTheme.cardColor.withOpacity(0.5),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: AppTheme.primaryColor.withOpacity(0.2),
+          color: AppTheme.primaryColor.withOpacity(0.15),
           width: 1,
         ),
       ),
       child: Row(
         children: [
           Container(
-            width: 48,
-            height: 48,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               color: AppTheme.primaryColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
@@ -455,28 +466,29 @@ _buildFeatureItem(
             child: Icon(
               icon,
               color: AppTheme.primaryColor,
-              size: 24,
+              size: 22,
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    fontSize: 16,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: AppTheme.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
                 Text(
                   description,
-                  style: const TextStyle(
-                    fontSize: 14,
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
                     color: AppTheme.textSecondary,
+                    height: 1.3,
                   ),
                 ),
               ],
@@ -486,35 +498,44 @@ _buildFeatureItem(
       ),
     );
   }
-}
 
-// Custom page indicator widget for multi-step processes
-class StepIndicator extends StatelessWidget {
-  final int currentStep;
-  final int totalSteps;
-
-  const StepIndicator({
-    super.key,
-    required this.currentStep,
-    required this.totalSteps,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(totalSteps, (index) {
-        final isActive = index <= currentStep;
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: isActive ? AppTheme.primaryColor : AppTheme.textMuted,
+  Widget _buildActionButtons() {
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: _navigateToCreateWallet,
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 50),
+            ),
+            child: const Text('Create New Wallet'),
           ),
-        );
-      }),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed: _navigateToOpenExistingWallet,
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 50),
+            ),
+            child: const Text('Open Existing Wallet'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDisclaimer() {
+    return Text(
+      'Fuego developers are unable to access or recover your private keys or mnemonic phrase. Please keep them safe and secure. Protecting access to your keys, protects access to your money.',
+      textAlign: TextAlign.center,
+      style: GoogleFonts.inter(
+        fontSize: 10,
+        color: AppTheme.textMuted,
+        height: 1.4,
+      ),
     );
   }
 }

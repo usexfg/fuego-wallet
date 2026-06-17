@@ -128,17 +128,23 @@ class WalletProvider extends ChangeNotifier {
 
   // Initialize connectivity monitoring
   void _initConnectivity() {
-    Connectivity().onConnectivityChanged.listen((ConnectivityResult result) {
+    Connectivity().onConnectivityChanged.listen((ConnectivityResult result) async {
       _connectivityResult = result;
       notifyListeners();
 
       if (result != ConnectivityResult.none) {
-        _checkConnection();
+        await _checkConnection();
+        if (_isConnected && hasWallet && !isWalletSynced) {
+          _startSyncTimer();
+        }
       } else {
         _isConnected = false;
         notifyListeners();
       }
     });
+
+    // Initial connection check
+    _checkConnection();
   }
 
   // Wallet Management
@@ -498,11 +504,12 @@ class WalletProvider extends ChangeNotifier {
   // Connection Management
   Future<void> connectToNode(String url) async {
     _setLoading(true);
+    _clearError();
 
     try {
       final uri = Uri.parse(url);
       final host = uri.host;
-      final port = uri.port == 80 || uri.port == 443 ? _networkConfig.daemonRpcPort : uri.port;
+      final port = uri.port == 0 ? _networkConfig.daemonRpcPort : uri.port;
 
       _rpcService.updateNode(host, port: port);
       _nodeUrl = url;
@@ -519,7 +526,7 @@ class WalletProvider extends ChangeNotifier {
         await refreshWallet();
       }
     } catch (e) {
-      _setError('Invalid node URL: $e');
+      _setError('Failed to connect to node: $e');
     }
 
     _setLoading(false);
@@ -545,6 +552,10 @@ class WalletProvider extends ChangeNotifier {
         _isConnected = true;
       } else {
         _isConnected = await _rpcService.testConnection();
+      }
+
+      if (_isConnected) {
+        _error = null;
       }
     } catch (e) {
       _isConnected = false;

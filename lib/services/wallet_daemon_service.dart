@@ -120,9 +120,24 @@ class WalletDaemonService {
       // Wait a moment for startup
       await Future.delayed(const Duration(seconds: 2));
 
-      // Check if process is still running
-      debugPrint('Walletd failed to start');
-      return false;
+      // Check if process is still alive
+      try {
+        final result = await _walletdProcess!.exitCode.timeout(
+          const Duration(milliseconds: 500),
+          onTimeout: () => null,
+        );
+        if (result != null) {
+          debugPrint('Walletd exited prematurely with code: $result');
+          _walletdProcess = null;
+          return false;
+        }
+      } catch (_) {
+        // Timeout means process is still running — that's good
+      }
+
+      _isRunning = true;
+      debugPrint('Walletd started successfully on port ${_networkConfig.walletRpcPort}');
+      return true;
         } catch (e) {
       debugPrint('Error starting walletd: $e');
       return false;
@@ -131,18 +146,27 @@ class WalletDaemonService {
 
   /// Stop the wallet daemon
   static Future<void> stopWalletd() async {
-    if (!_isRunning || _walletdProcess == null) {
+    if (_walletdProcess == null) {
+      _isRunning = false;
       return;
     }
 
     try {
       _walletdProcess!.kill();
-      await _walletdProcess!.exitCode;
+      await _walletdProcess!.exitCode.timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          _walletdProcess?.kill(ProcessSignal.sigkill);
+          return -1;
+        },
+      );
       _walletdProcess = null;
       _isRunning = false;
       debugPrint('Walletd stopped');
     } catch (e) {
       debugPrint('Error stopping walletd: $e');
+      _walletdProcess = null;
+      _isRunning = false;
     }
   }
 
