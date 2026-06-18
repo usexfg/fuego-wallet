@@ -143,7 +143,7 @@ jobs:
           git clone https://github.com/Microsoft/vcpkg.git C:/vcpkg
           cd C:/vcpkg
           .\bootstrap-vcpkg.bat
-          .\vcpkg install boost:x64-windows
+          .\vcpkg install boost:x64-windows icu:x64-windows
           echo "VCPKG_ROOT=C:/vcpkg" >> $GITHUB_ENV
 
       - name: Build Fuego Core & SDK (Windows)
@@ -242,6 +242,9 @@ jobs:
           sed -i '1i add_definitions(-DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS -DBOOST_MPL_LIMIT_LIST_SIZE=50)' CMakeLists.txt
           # Fix jsoncpp include dir: CMakeLists.txt sets /usr/include/jsoncpp/json but code uses <json/json.h>
           sed -i 's|"/usr/include/jsoncpp/json"|"/usr/include/jsoncpp"|g' CMakeLists.txt
+          # Fix SimpleWallet.cpp: formatAmount(long long) ambiguity
+          sed -i 's/formatAmount(amount)/formatAmount(static_cast<uint64_t>(amount))/g' src/SimpleWallet/SimpleWallet.cpp
+          sed -i 's/formatAmount(it->second)/formatAmount(static_cast<uint64_t>(it->second))/g' src/SimpleWallet/SimpleWallet.cpp
           # Fix SimpleWallet.cpp: generate_signature missing PublicKey arg (AccountKeys.address.spendPublicKey)
           sed -i 's|Crypto::generate_signature(challenge, keys\.spendSecretKey, proof);|Crypto::generate_signature(challenge, keys.address.spendPublicKey, keys.spendSecretKey, proof);|' src/SimpleWallet/SimpleWallet.cpp
           sed -i 's|Crypto::generate_signature(challenge, keys2\.spendSecretKey, proof);|Crypto::generate_signature(challenge, keys2.address.spendPublicKey, keys2.spendSecretKey, proof);|' src/SimpleWallet/SimpleWallet.cpp
@@ -268,7 +271,7 @@ jobs:
           # randomize.h: numeric_limits needs <limits>
           sed -i '1i #include <limits>' src/crypto/randomize.h
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake libboost-all-dev libssl-dev libzmq3-dev libjsoncpp-dev
+          sudo apt-get install -y build-essential cmake libboost-all-dev libssl-dev libzmq3-dev libjsoncpp-dev libicu-dev
           
           mkdir build && cd build
           cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DBoost_USE_STATIC_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS_INIT="-DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS -DBOOST_MPL_LIMIT_LIST_SIZE=50"
