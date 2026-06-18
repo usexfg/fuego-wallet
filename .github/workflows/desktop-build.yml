@@ -143,7 +143,7 @@ jobs:
           git clone https://github.com/Microsoft/vcpkg.git C:/vcpkg
           cd C:/vcpkg
           .\bootstrap-vcpkg.bat
-          .\vcpkg install boost-date-time:x64-windows boost-filesystem:x64-windows boost-thread:x64-windows boost-chrono:x64-windows boost-regex:x64-windows boost-program-options:x64-windows boost-system:x64-windows boost-serialization:x64-windows
+          .\vcpkg install boost:x64-windows
           echo "VCPKG_ROOT=C:/vcpkg" >> $GITHUB_ENV
 
       - name: Build Fuego Core & SDK (Windows)
@@ -159,7 +159,7 @@ jobs:
           
           cd ../../fuego-sdk
           mkdir build; cd build
-          cmake .. "-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN" -DCMAKE_BUILD_TYPE=Release
+          cmake .. "-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN" -DCMAKE_BUILD_TYPE=Release -DFUEGO_DIR=../../fuego-core
           cmake --build . --config Release
 
           New-Item -ItemType Directory -Force -Path ..\\..\\assets\\bin
@@ -245,18 +245,23 @@ jobs:
           # Fix SimpleWallet.cpp: generate_signature missing PublicKey arg (AccountKeys.address.spendPublicKey)
           sed -i 's|Crypto::generate_signature(challenge, keys\.spendSecretKey, proof);|Crypto::generate_signature(challenge, keys.address.spendPublicKey, keys.spendSecretKey, proof);|' src/SimpleWallet/SimpleWallet.cpp
           sed -i 's|Crypto::generate_signature(challenge, keys2\.spendSecretKey, proof);|Crypto::generate_signature(challenge, keys2.address.spendPublicKey, keys2.spendSecretKey, proof);|' src/SimpleWallet/SimpleWallet.cpp
-          # Add missing Blockchain::removeAlias and replaceAliasOwnership stubs
-          sed -i '$ d' src/CryptoNoteCore/Blockchain.cpp
-          echo "" >> src/CryptoNoteCore/Blockchain.cpp
-          echo "bool Blockchain::removeAlias(const std::string& alias) {" >> src/CryptoNoteCore/Blockchain.cpp
-          echo "  return true;" >> src/CryptoNoteCore/Blockchain.cpp
-          echo "}" >> src/CryptoNoteCore/Blockchain.cpp
-          echo "" >> src/CryptoNoteCore/Blockchain.cpp
-          echo "bool Blockchain::replaceAliasOwnership(const std::string& alias, const Crypto::Hash& newAddressHash) {" >> src/CryptoNoteCore/Blockchain.cpp
-          echo "  return true;" >> src/CryptoNoteCore/Blockchain.cpp
-          echo "}" >> src/CryptoNoteCore/Blockchain.cpp
-          echo "" >> src/CryptoNoteCore/Blockchain.cpp
-          echo "}  // namespace CryptoNote" >> src/CryptoNoteCore/Blockchain.cpp
+          # Add missing Blockchain stubs only if not already defined
+          if ! grep -q 'Blockchain::removeAlias' src/CryptoNoteCore/Blockchain.cpp; then
+            echo "" >> src/CryptoNoteCore/Blockchain.cpp
+            echo "bool Blockchain::removeAlias(const std::string& alias) {" >> src/CryptoNoteCore/Blockchain.cpp
+            echo "  return true;" >> src/CryptoNoteCore/Blockchain.cpp
+            echo "}" >> src/CryptoNoteCore/Blockchain.cpp
+          fi
+          if ! grep -q 'Blockchain::replaceAliasOwnership' src/CryptoNoteCore/Blockchain.cpp; then
+            echo "" >> src/CryptoNoteCore/Blockchain.cpp
+            echo "bool Blockchain::replaceAliasOwnership(const std::string& alias, const Crypto::Hash& newAddressHash) {" >> src/CryptoNoteCore/Blockchain.cpp
+            echo "  return true;" >> src/CryptoNoteCore/Blockchain.cpp
+            echo "}" >> src/CryptoNoteCore/Blockchain.cpp
+          fi
+          if ! grep -q 'namespace CryptoNote' src/CryptoNoteCore/Blockchain.cpp; then
+            echo "" >> src/CryptoNoteCore/Blockchain.cpp
+            echo "}  // namespace CryptoNote" >> src/CryptoNoteCore/Blockchain.cpp
+          fi
           # Fix missing includes in fuego-core C++ files
           # TorControl.cpp: setw/setfill need <iomanip>
           sed -i '1i #include <iomanip>' src/net/TorControl.cpp
