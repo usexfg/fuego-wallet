@@ -218,10 +218,50 @@ jobs:
 
       - name: Build Fuego Core & SDK (Linux)
         run: |
-          # SKIP: Core build requires significant C++ patching for upstream compat.
-          # The native SDK binary is optional at Flutter build time.
-          echo "Skipping Core+SDK build on Linux (use pre-compiled artifact)"
-          mkdir -p assets/bin
+          git clone -b ${{ env.FUEGO_SOURCE_BRANCH }} https://github.com/usexfg/fuego-suite.git fuego-core
+          cd fuego-core
+          git submodule update --init --recursive
+          CXXFLAGS="-DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS -DBOOST_MPL_LIMIT_LIST_SIZE=50"
+          export CXXFLAGS
+          sed -i 's/set(BOOST_COMPONENTS system filesystem thread date_time chrono regex serialization program_options)/set(BOOST_COMPONENTS filesystem thread date_time chrono regex serialization program_options)/' CMakeLists.txt
+          sed -i '1i add_definitions(-DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS -DBOOST_MPL_LIMIT_LIST_SIZE=50)' CMakeLists.txt
+          sed -i 's|"/usr/include/jsoncpp/json"|"/usr/include/jsoncpp"|g' CMakeLists.txt
+          sed -i 's|Crypto::generate_signature(challenge, keys\.spendSecretKey, proof);|Crypto::generate_signature(challenge, keys.address.spendPublicKey, keys.spendSecretKey, proof);|' src/SimpleWallet/SimpleWallet.cpp
+          sed -i 's|Crypto::generate_signature(challenge, keys2\.spendSecretKey, proof);|Crypto::generate_signature(challenge, keys2.address.spendPublicKey, keys2.spendSecretKey, proof);|' src/SimpleWallet/SimpleWallet.cpp
+          if ! grep -q 'Blockchain::removeAlias' src/CryptoNoteCore/Blockchain.cpp; then
+            echo "" >> src/CryptoNoteCore/Blockchain.cpp
+            echo "bool Blockchain::removeAlias(const std::string& alias) {" >> src/CryptoNoteCore/Blockchain.cpp
+            echo "  return true;" >> src/CryptoNoteCore/Blockchain.cpp
+            echo "}" >> src/CryptoNoteCore/Blockchain.cpp
+          fi
+          if ! grep -q 'Blockchain::replaceAliasOwnership' src/CryptoNoteCore/Blockchain.cpp; then
+            echo "" >> src/CryptoNoteCore/Blockchain.cpp
+            echo "bool Blockchain::replaceAliasOwnership(const std::string& alias, const Crypto::Hash& newAddressHash) {" >> src/CryptoNoteCore/Blockchain.cpp
+            echo "  return true;" >> src/CryptoNoteCore/Blockchain.cpp
+            echo "}" >> src/CryptoNoteCore/Blockchain.cpp
+          fi
+          if ! grep -q 'namespace CryptoNote' src/CryptoNoteCore/Blockchain.cpp; then
+            echo "" >> src/CryptoNoteCore/Blockchain.cpp
+            echo "}  // namespace CryptoNote" >> src/CryptoNoteCore/Blockchain.cpp
+          fi
+          sed -i '1i #include <iomanip>' src/net/TorControl.cpp
+          sed -i '1i #include <limits>' src/crypto/randomize.h
+          # Fix SimpleWallet.cpp: formatAmount(long long) ambiguity - add fpermissive
+          sed -i 's/set(CMAKE_CXX_STANDARD 14)/set(CMAKE_CXX_STANDARD 14)\nset(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive")/' CMakeLists.txt || true
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake libboost-all-dev libssl-dev libzmq3-dev libjsoncpp-dev libicu-dev
+          
+          mkdir build && cd build
+          cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DBoost_USE_STATIC_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS_INIT="-DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS -DBOOST_MPL_LIMIT_LIST_SIZE=50"
+          make -j$(nproc)
+          
+          cd ../../fuego-sdk
+          mkdir build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DFUEGO_DIR=../../fuego-core
+          make -j$(nproc)
+          
+          mkdir -p ../../assets/bin
+          cp libfuego_sdk.so ../../assets/bin/libfuego_sdk-linux.so
 
       - name: Build Flutter Linux App
         run: |
