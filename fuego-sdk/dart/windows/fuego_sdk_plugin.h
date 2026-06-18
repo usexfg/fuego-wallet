@@ -3,10 +3,18 @@
 
 #include <stddef.h>
 
-#ifdef FLUTTER_PLUGIN_IMPL
-#define FUEGO_SDK_PLUGIN_EXPORT __attribute__((visibility("default")))
+#ifdef _WIN32
+  #ifdef FLUTTER_PLUGIN_IMPL
+    #define FUEGO_SDK_PLUGIN_EXPORT __declspec(dllexport)
+  #else
+    #define FUEGO_SDK_PLUGIN_EXPORT __declspec(dllimport)
+  #endif
 #else
-#define FUEGO_SDK_PLUGIN_EXPORT
+  #ifdef FLUTTER_PLUGIN_IMPL
+    #define FUEGO_SDK_PLUGIN_EXPORT __attribute__((visibility("default")))
+  #else
+    #define FUEGO_SDK_PLUGIN_EXPORT
+  #endif
 #endif
 
 typedef void* FlutterDesktopPluginRegistrarRef;
