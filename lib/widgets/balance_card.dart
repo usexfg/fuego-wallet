@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
+import '../models/wallet.dart';
 import '../providers/wallet_provider.dart';
 import '../utils/theme.dart';
 

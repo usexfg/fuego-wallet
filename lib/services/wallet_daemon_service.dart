@@ -124,7 +124,7 @@ class WalletDaemonService {
       try {
         final result = await _walletdProcess!.exitCode.timeout(
           const Duration(milliseconds: 500),
-          onTimeout: () => null,
+          onTimeout: () => -1,
         );
         if (result != null) {
           debugPrint('Walletd exited prematurely with code: $result');

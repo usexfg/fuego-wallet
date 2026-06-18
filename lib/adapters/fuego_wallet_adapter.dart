@@ -5,6 +5,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import '../models/wallet.dart';
 import '../models/network_config.dart';
+import '../services/fuego_rpc_service.dart';
 import 'package:flutter/foundation.dart';
 
 /// Adapter for wallet operations, similar to WalletAdapter in the QT wallet
@@ -29,6 +30,8 @@ class FuegoWalletAdapter {
   bool _isSynchronized = false;
   Timer? _syncTimer;
   StreamController<WalletEvent>? _eventController;
+  FuegoRPCService? _rpcService;
+  int _currentHeight = 0;
 
   FuegoWalletAdapter._internal()
       : _dio = Dio(BaseOptions(
@@ -36,8 +39,7 @@ class FuegoWalletAdapter {
           receiveTimeout: const Duration(seconds: 30),
           headers: {'Content-Type': 'application/json'},
         )),
-        _walletRpcUrl = 'http://localhost:8070',
-        _networkConfig = NetworkConfig.mainnet;
+        _walletRpcUrl = 'http://localhost:8070';
 
   /// Open an existing wallet file
   Future<bool> open({
