@@ -14,6 +14,5 @@ find_package(PkgConfig QUIET)
 target_link_libraries(${FUEGO_SDK_PLUGIN_NAME} PRIVATE flutter flutter_wrapper_plugin)
 
 set(fuego_sdk_bundled_libraries
-  "${CMAKE_CURRENT_SOURCE_DIR}/../../../assets/bin/fuego_crypto.dll"
   PARENT_SCOPE
 )
