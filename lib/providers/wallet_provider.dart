@@ -389,11 +389,10 @@ class WalletProvider extends ChangeNotifier {
     _clearError();
 
     try {
-      final result = await _sdkService.wallet.send(
+      final result = _sdkService.wallet.send(
         address: address,
         amount: amount,
         assetId: assetId,
-        paymentId: paymentId,
       );
 
       if (result.error != FuegoError.FUEGO_OK) {
