@@ -252,7 +252,7 @@ jobs:
           sudo apt-get install -y build-essential cmake libboost-all-dev libssl-dev libzmq3-dev libjsoncpp-dev libicu-dev
           
           mkdir build && cd build
-          cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DBoost_USE_STATIC_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS_INIT="-DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS -DBOOST_MPL_LIMIT_LIST_SIZE=50"
+          cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DBoost_USE_STATIC_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS_INIT="-DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS -DBOOST_MPL_LIMIT_LIST_SIZE=50 -fpermissive"
           make -j$(nproc)
           
           cd ../../fuego-sdk
