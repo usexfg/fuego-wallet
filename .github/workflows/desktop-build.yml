@@ -143,6 +143,7 @@ jobs:
           git clone https://github.com/Microsoft/vcpkg.git C:/vcpkg
           cd C:/vcpkg
           .\bootstrap-vcpkg.bat
+          .\vcpkg install boost-date-time:x64-windows boost-filesystem:x64-windows boost-thread:x64-windows boost-chrono:x64-windows boost-regex:x64-windows boost-program-options:x64-windows boost-system:x64-windows boost-serialization:x64-windows
           echo "VCPKG_ROOT=C:/vcpkg" >> $GITHUB_ENV
 
       - name: Build Fuego Core & SDK (Windows)
@@ -256,6 +257,11 @@ jobs:
           echo "}" >> src/CryptoNoteCore/Blockchain.cpp
           echo "" >> src/CryptoNoteCore/Blockchain.cpp
           echo "}  // namespace CryptoNote" >> src/CryptoNoteCore/Blockchain.cpp
+          # Fix missing includes in fuego-core C++ files
+          # TorControl.cpp: setw/setfill need <iomanip>
+          sed -i '1i #include <iomanip>' src/net/TorControl.cpp
+          # randomize.h: numeric_limits needs <limits>
+          sed -i '1i #include <limits>' src/crypto/randomize.h
           sudo apt-get update
           sudo apt-get install -y build-essential cmake libboost-all-dev libssl-dev libzmq3-dev libjsoncpp-dev
           
