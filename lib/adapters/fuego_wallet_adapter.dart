@@ -374,7 +374,8 @@ class FuegoWalletAdapter {
 
   Future<void> _updateSyncStatus() async {
     try {
-      final blockHeight = await _rpcService.getHeight();
+      if (_rpcService == null) return;
+      final blockHeight = await _rpcService!.getHeight();
       if (blockHeight > 0) {
         _isSynchronized = true;
         _currentHeight = blockHeight;

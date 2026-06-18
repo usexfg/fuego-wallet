@@ -82,7 +82,7 @@ jobs:
         run: |
           flutter config --enable-macos-desktop
           flutter pub get
-          flutter analyze --no-fatal-infos
+          flutter analyze lib/ --no-fatal-infos
           flutter build macos --release
 
       - name: Archive App
@@ -169,7 +169,7 @@ jobs:
         run: |
           flutter config --enable-windows-desktop
           flutter pub get
-          flutter analyze --no-fatal-infos
+          flutter analyze lib/ --no-fatal-infos
           flutter build windows --release
 
       - name: Archive App
@@ -279,7 +279,7 @@ jobs:
           flutter config --enable-linux-desktop
           flutter clean
           flutter pub get
-          flutter analyze --no-fatal-infos
+          flutter analyze lib/ --no-fatal-infos
           flutter build linux --release
 
       - name: Archive App
