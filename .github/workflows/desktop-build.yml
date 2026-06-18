@@ -106,7 +106,7 @@ jobs:
 
   build-windows:
     name: Build Windows (Embedded SDK)
-    runs-on: windows-latest
+    runs-on: windows-2019
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
