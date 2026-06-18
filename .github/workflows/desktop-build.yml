@@ -137,7 +137,7 @@ jobs:
 
       - name: Install Visual Studio Build Tools 2019
         run: |
-          choco install visualstudio2019buildtools --package-parameters "--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended --quiet" -y
+          choco install visualstudio2019buildtools --package-parameters "--add Microsoft.VisualStudio.Workload.VCTools --add Microsoft.VisualStudio.Component.VC.ATL --includeRecommended --quiet" -y
 
       - name: Ensure Binaries
         run: bash scripts/ensure-binaries.sh
