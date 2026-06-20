@@ -9,8 +9,10 @@
 
 ```bash
 # 1. Get the repository
-git clone https://github.com/usexfg/fuego-wallet.git
-cd fuego-wallet
+# Use fuego-suite master branch for latest fixes
+git clone https://github.com/usexfg/fuego-suite.git fuego-core
+# OR with submodule init
+git clone --recurse-submodules https://github.com/usexfg/fuego-wallet.git
 
 # 2. Install Flutter dependencies
 flutter pub get
@@ -18,12 +20,120 @@ flutter pub get
 # 3. Download required binaries
 ./scripts/ensure-binaries.sh
 
-# 4. Build walletd 
+# 4. Build walletd (from fuego-wallet repository)
 ./scripts/get_walletd_binary.sh build
 
 # 5. Run the wallet
 flutter run -d linux  # or macos, windows, android, ios
 ```
+
+---
+
+## 📝 Build Notes
+
+### SDK & Native Components
+
+The project includes **multiple build targets** across platforms:
+
+#### 1. Flutter App (Primary)
+- **Platforms**: Linux, macOS, Windows, Android, iOS
+- **Build command**: `flutter build <platform> --release`
+- **Dependencies**: Native SDK binaries (libfuego_sdk, fuego_crypto)
+- **Features**: UI, HTTP RPC fallback, user wallet management
+
+#### 2. Native SDK (`fuego-sdk/dart`)
+- **Platforms**: Linux, macOS, Windows (x64)
+- **Build command**: `cargo build --release --target x86_64-unknown-linux-gnu` (Linux)
+- **Dependencies**: Rust crypto library, C++ node libraries (from fuego-core)
+- **Purpose**: Provides native functions accessible via Flutter FFI
+
+#### 3. Fuego Core Node (fuego-core)
+- **Platform**: Linux (primary), can be built on macOS/Windows
+- **Status**: Currently building from `hearth` branch; consider updating to `master` to avoid C++ compilation issues (e.g., formatAmount ambiguity)
+- **Dependencies**: Boost libraries, C++ dependencies
+- **Key Components**: Node, mining, atomic swaps, CD service, alias registration
+
+#### 4. Rust Crypto Library (`native/crypto`)
+- **Purpose**: Security and cryptographic primitives for the SDK
+- **Platforms**: Linux, macOS, Windows
+- **Build command**: `cargo build --release --target <platform>`
+
+### 🔑 Repository Structure
+
+The wallet repository includes separate components with different roles:
+
+```
+fuego-wallet/
+├── lib/                    ← Flutter application
+├── fuego-sdk/              ← Native SDK (requires `fuego-core`)
+├── fuego-core/             ← Native blockchain node (upstream repo)
+├── native/crypto/          ← Rust crypto library
+└── scripts/                ← Build and binary management
+```
+
+### ⚠️ Known Issues
+
+#### Current Focus: Flutter App Build ✅
+- All 3 desktop platforms (macOS, Linux, Windows) build successfully
+- The Flutter app validates all Dart code compiles
+- Native SDK builds are optional for CI validation
+
+#### Deferred: Native SDK Build ❌
+
+The **fuego-core** native node build is currently deferred due to upstream compilation issues:
+
+1. **formatAmount ambiguity** in SimpleWallet.cpp (multiple overloads for same type)
+2. **Boost compilation** from source takes 30+ minutes
+3. **Complex C++ dependencies** requiring platform-specific setup
+
+**Decision**: Build the Flutter app independently of native SDK
+- Rely on HTTP RPC fallback when native SDK unavailable
+- Pre-built native SDK binaries can be added later from fuego-suite releases
+- Focus development and CI on the Flutter layer (user interface)
+
+### 🔄 Build Order
+
+#### Option 1: Current Path (Recommended)
+
+```bash
+# Step 1: Clone fuego-core first (dependency)
+.gitmodules/init
+git submodule update --init --recursive
+
+# Step 2: Build Flutter app (works standalone)
+flutter pub get
+flutter build macos --release  # Test on macOS first
+```
+
+#### Option 2: Full Native Integration (Future)
+
+```bash
+# Step 1: Build native components
+./scripts/get_walletd_binary.sh build  # Build walletd
+cargo build --release               # Build Rust crypto
+# (fuego-core build requires manual setup)
+
+# Step 2: Build Flutter with native SDK
+flutter pub get
+flutter build linux --release
+```
+
+### 📋 Next Steps
+
+#### Short Term (Next Sprint)
+1. ✅ Validate Flutter build across 3 platforms
+2. ✅ Document HTTP RPC fallback for when native SDK unavailable
+3. ✅ Create scripts to extract native SDK binaries from pre-built releases
+
+#### Medium Term (Phase 2)
+1. Investigate fixing upstream `formatAmount` ambiguity in fuego-core
+2. Update build process to use `fuego-suite master` branch instead of `hearth`
+3. Develop documentation for local native SDK setup
+
+#### Long Term (Future Features)
+1. Native SDK integration for full feature parity
+2. CI validation of complete end-to-end flow
+3. Cross-platform deployment scripts
 
 ---
 
