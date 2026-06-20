@@ -144,6 +144,7 @@ jobs:
           git clone https://github.com/Microsoft/vcpkg.git C:/vcpkg
           cd C:/vcpkg
           .\bootstrap-vcpkg.bat
+          .\vcpkg install boost:x64-windows icu:x64-windows
           echo "VCPKG_ROOT=C:/vcpkg" >> $GITHUB_ENV
 
       - name: Build Fuego Core & SDK (Windows)
@@ -152,6 +153,7 @@ jobs:
           git clone -b ${{ env.FUEGO_SOURCE_BRANCH }} https://github.com/usexfg/fuego-suite.git fuego-core
           cd fuego-core
           git log --oneline -3
+          git submodule update --init --recursive
           mkdir build; cd build
           cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON "-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN"
           cmake --build . --config Release
@@ -235,6 +237,7 @@ jobs:
           git clone -b ${{ env.FUEGO_SOURCE_BRANCH }} https://github.com/usexfg/fuego-suite.git fuego-core
           cd fuego-core
           git log --oneline -3
+          git submodule update --init --recursive
           sudo apt-get update
           sudo apt-get install -y build-essential cmake libboost-all-dev libssl-dev libzmq3-dev libjsoncpp-dev libicu-dev
 
