@@ -73,9 +73,6 @@ jobs:
 
       - name: Build Fuego Core & SDK (macOS)
         run: |
-          # SKIP: Core build requires Boost 1.83 which needs manual compilation.
-          # The Linux build compiles and publishes the SDK as a release artifact.
-          # For macOS Flutter builds, the SDK binary is optional at build time.
           echo "Skipping Core+SDK build on macOS (use Linux-built artifact)"
 
       - name: Build Flutter macOS App
@@ -151,9 +148,22 @@ jobs:
 
       - name: Build Fuego Core & SDK (Windows)
         run: |
-          echo "Skipping native SDK build on Windows (Boost from source takes 60+ min)"
-          echo "SDK binaries will be built separately or pre-compiled"
-          New-Item -ItemType Directory -Force -Path assets\bin
+          $TOOLCHAIN = "C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
+          git clone -b ${{ env.FUEGO_SOURCE_BRANCH }} https://github.com/usexfg/fuego-suite.git fuego-core
+          cd fuego-core
+          git log --oneline -3
+          mkdir build; cd build
+          cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON "-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN"
+          cmake --build . --config Release
+
+          cd ../../fuego-sdk
+          mkdir build; cd build
+          cmake .. "-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN" -DCMAKE_BUILD_TYPE=Release -DFUEGO_DIR=../../fuego-core
+          cmake --build . --config Release
+
+          New-Item -ItemType Directory -Force -Path ..\\..\\assets\\bin
+          $sdkLib = Get-ChildItem -Recurse -Filter "fuego_sdk.dll" | Select-Object -First 1
+          if ($sdkLib) { Copy-Item $sdkLib.FullName ..\\..\\assets\\bin\\libfuego_sdk-windows.dll }
 
       - name: Build Flutter Windows App
         run: |
@@ -222,11 +232,26 @@ jobs:
 
       - name: Build Fuego Core & SDK (Linux)
         run: |
-          # Native SDK build requires fuego-core C++ patches for upstream compat.
-          # Currently blocked by formatAmount overload ambiguity in SimpleWallet.cpp.
-          # The Flutter app uses FuegoRPCService (HTTP) as fallback when native SDK unavailable.
-          echo "Skipping Core+SDK build on Linux (use pre-compiled artifact)"
-          mkdir -p assets/bin
+          git clone -b ${{ env.FUEGO_SOURCE_BRANCH }} https://github.com/usexfg/fuego-suite.git fuego-core
+          cd fuego-core
+          git log --oneline -3
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake libboost-all-dev libssl-dev libzmq3-dev libjsoncpp-dev libicu-dev
+
+          CXXFLAGS="-DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS -DBOOST_MPL_LIMIT_LIST_SIZE=50"
+          export CXXFLAGS
+
+          mkdir build && cd build
+          cmake .. -DBUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=Release
+          make -j$(nproc)
+
+          cd ../../fuego-sdk
+          mkdir build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DFUEGO_DIR=../../fuego-core
+          make -j$(nproc)
+
+          mkdir -p ../../assets/bin
+          cp libfuego_sdk.so ../../assets/bin/libfuego_sdk-linux.so
 
       - name: Build Flutter Linux App
         run: |
