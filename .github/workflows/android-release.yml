@@ -95,6 +95,8 @@ jobs:
           echo "}" >> src/CryptoNoteCore/Blockchain.cpp
           echo "" >> src/CryptoNoteCore/Blockchain.cpp
           echo "}  // namespace CryptoNote" >> src/CryptoNoteCore/Blockchain.cpp
+          # Fix randomize.h: missing #include <limits>
+          sed -i '1i #include <limits>' src/crypto/randomize.h
           
           # Add Boost variant limit
           CXXFLAGS="-DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS -DBOOST_MPL_LIMIT_LIST_SIZE=50"
