@@ -59,7 +59,8 @@ public:
 
     static FuegoError complete(const std::string& swap_id,
                                 const std::string& wallet_file,
-                                const std::string& wallet_password);
+                                const std::string& wallet_password,
+                                const std::vector<uint8_t>& adaptor_secret = {});
 
     static FuegoError refund(const std::string& swap_id,
                               const std::string& wallet_file,

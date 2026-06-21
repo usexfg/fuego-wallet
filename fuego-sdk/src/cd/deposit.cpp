@@ -4,6 +4,7 @@
 #include "CryptoNoteCore/Currency.h"
 #include "Common/StringTools.h"
 #include "Logging/LoggerManager.h"
+#include "IWallet.h"
 
 #include <System/Dispatcher.h>
 #include <System/Context.h>

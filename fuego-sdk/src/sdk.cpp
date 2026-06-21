@@ -274,8 +274,7 @@ FUEGO_API FuegoError fuego_swap_lock_counterparty_funds(const char* swap_id, con
 FUEGO_API FuegoError fuego_swap_complete(const char* swap_id, const char* wallet_file, const char* wallet_password) {
     if (!g_initialized || !swap_id || !wallet_file || !wallet_password) return FUEGO_ERROR_INVALID_PARAM;
     try {
-        std::vector<uint8_t> empty_secret;
-        return fuego::AtomicSwap::complete(swap_id, wallet_file, wallet_password, empty_secret);
+        return fuego::AtomicSwap::complete(swap_id, wallet_file, wallet_password);
     } catch (...) {
         return FUEGO_ERROR_SWAP;
     }
