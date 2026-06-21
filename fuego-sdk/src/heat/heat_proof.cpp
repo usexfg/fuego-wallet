@@ -93,12 +93,15 @@ FuegoError HEATProver::generateProof(const std::string& rpc_url,
         while (commitmentHashes.size() > 1) {
             std::vector<Crypto::Hash> nextLevel;
             for (size_t i = 0; i < commitmentHashes.size(); i += 2) {
-                Crypto::Hash concat;
-                memcpy(&concat, &commitmentHashes[i], 32);
+                // Use a 64-byte buffer to concatenate two 32-byte hashes
+                uint8_t concatBuf[64];
+                memcpy(concatBuf, &commitmentHashes[i], 32);
                 if (i + 1 < commitmentHashes.size()) {
-                    memcpy(reinterpret_cast<uint8_t*>(&concat) + 32, &commitmentHashes[i + 1], 32);
+                    memcpy(concatBuf + 32, &commitmentHashes[i + 1], 32);
+                } else {
+                    memcpy(concatBuf + 32, &commitmentHashes[i], 32);
                 }
-                Crypto::Hash parent = Crypto::cn_fast_hash(&concat, sizeof(concat));
+                Crypto::Hash parent = Crypto::cn_fast_hash(concatBuf, 64);
                 nextLevel.push_back(parent);
             }
             commitmentHashes = nextLevel;

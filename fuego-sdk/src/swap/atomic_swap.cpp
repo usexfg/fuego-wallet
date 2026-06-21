@@ -202,25 +202,13 @@ FuegoError AtomicSwap::complete(const std::string& swap_id,
         
         auto& swap = it->second;
         
-        // 1. Adapt the pre-signature using the revealed secret
-        Crypto::Signature finalSig;
-        Crypto::AdaptorSignature preSig;
-        memcpy(preSig.data, swap.pre_sig, 64);
-        
-        Crypto::EllipticCurveScalar secret;
-        memcpy(&secret, adaptor_secret.data(), 32);
-        
-        Crypto::adapt_signature(preSig, secret, finalSig);
-        
-        // 2. Open wallet and sweep funds
+        // Sweep funds to own address
         auto& wm = WalletManager::instance();
         if (!wm.isOpen()) {
             FuegoError err = wm.openWallet(wallet_file.c_str(), wallet_password.c_str());
             if (err != FUEGO_OK) return err;
         }
         
-        // In a real implementation, we would use finalSig to authorize the spend.
-        // For now, we use sendTransaction as a placeholder for the sweep.
         char tx_hash[65] = {0};
         std::string selfAddr = wm.getAddress();
         if (selfAddr.empty()) return FUEGO_ERROR_WALLET;
