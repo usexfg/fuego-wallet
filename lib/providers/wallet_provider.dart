@@ -169,6 +169,7 @@ class WalletProvider extends ChangeNotifier {
       await _securityService.storeWalletKeys(
         viewKey: keyPair.viewPrivateKey,
         spendKey: keyPair.spendPrivateKey,
+        address: keyPair.address,
         pin: pin,
       );
 
@@ -218,6 +219,7 @@ class WalletProvider extends ChangeNotifier {
       await _securityService.storeWalletKeys(
         viewKey: keyPair.viewPrivateKey,
         spendKey: keyPair.spendPrivateKey,
+        address: keyPair.address,
         pin: pin,
       );
 
@@ -262,9 +264,42 @@ class WalletProvider extends ChangeNotifier {
         throw Exception('Wallet keys not found');
       }
 
-      await _sdkService.initialize();
-      await refreshWallet();
+      // Restore wallet from stored keys
+      _wallet = Wallet(
+        address: keys['address'] ?? '',
+        viewKey: keys['viewKey'] ?? '',
+        spendKey: keys['spendKey'] ?? '',
+        balance: 0,
+        unlockedBalance: 0,
+        balanceHEAT: 0,
+        unlockedBalanceHEAT: 0,
+        blockchainHeight: 0,
+        localHeight: 0,
+        synced: false,
+      );
 
+      // Try SDK init but don't crash if native lib missing
+      try {
+        await _sdkService.initialize();
+      } catch (_) {
+        _logger.info('Native SDK not available, using RPC mode');
+      }
+
+      // Check connection and fetch daemon info
+      await _checkConnection();
+
+      if (_isConnected) {
+        try {
+          final height = await _rpcService.getHeight();
+          final info = await _rpcService.getInfo();
+          _wallet = _wallet!.copyWith(
+            blockchainHeight: height,
+            localHeight: height,
+          );
+        } catch (_) {}
+      }
+
+      notifyListeners();
       _setLoading(false);
       return true;
     } catch (e) {
@@ -317,43 +352,74 @@ class WalletProvider extends ChangeNotifier {
       _setLoading(true);
       _clearError();
 
-      await _sdkService.startNode();
-
-      final walletPath = walletFile;
-      _sdkService.openWallet(walletPath, walletPassword);
-
-      final height = await _sdkService.node.getBlockHeight();
-      final synced = await _sdkService.node.isSynchronized();
-
-      final xfgAvailable = _sdkService.wallet.xfgAvailable;
-      final xfgLocked = _sdkService.wallet.xfgLocked;
-      final heatAvailable = _sdkService.wallet.heatAvailable;
-      final heatLocked = _sdkService.wallet.heatLocked;
-
-      final balanceAtomic = (xfgAvailable * 10000000).round();
-      final lockedAtomic = (xfgLocked * 10000000).round();
-      final heatBalanceAtomic = (heatAvailable * 10000000).round();
-      final heatLockedAtomic = (heatLocked * 10000000).round();
-
-      String address = '';
+      // Try SDK path first
+      bool sdkOk = false;
       try {
-        address = await _rpcService.getAddress();
+        await _sdkService.startNode();
+
+        final walletPath = walletFile;
+        _sdkService.openWallet(walletPath, walletPassword);
+
+        final height = await _sdkService.node.getBlockHeight();
+        final synced = await _sdkService.node.isSynchronized();
+
+        final xfgAvailable = _sdkService.wallet.xfgAvailable;
+        final xfgLocked = _sdkService.wallet.xfgLocked;
+        final heatAvailable = _sdkService.wallet.heatAvailable;
+        final heatLocked = _sdkService.wallet.heatLocked;
+
+        final balanceAtomic = (xfgAvailable * 10000000).round();
+        final lockedAtomic = (xfgLocked * 10000000).round();
+        final heatBalanceAtomic = (heatAvailable * 10000000).round();
+        final heatLockedAtomic = (heatLocked * 10000000).round();
+
+        _wallet = _wallet!.copyWith(
+          balance: balanceAtomic,
+          unlockedBalance: lockedAtomic,
+          balanceHEAT: heatBalanceAtomic,
+          unlockedBalanceHEAT: heatLockedAtomic,
+          blockchainHeight: height,
+          localHeight: height,
+          synced: synced,
+        );
+        sdkOk = true;
       } catch (_) {
-        _logger.warning('Could not get address from RPC fallback');
+        _logger.info('SDK path failed, using RPC fallback');
       }
 
-      _wallet = Wallet(
-        address: address,
-        viewKey: '',
-        spendKey: '',
-        balance: balanceAtomic,
-        unlockedBalance: lockedAtomic,
-        balanceHEAT: heatBalanceAtomic,
-        unlockedBalanceHEAT: heatLockedAtomic,
-        blockchainHeight: height,
-        localHeight: height,
-        synced: synced,
-      );
+      // RPC fallback - always try to get daemon height at minimum
+      if (!sdkOk) {
+        try {
+          final height = await _rpcService.getHeight();
+          _wallet = _wallet!.copyWith(
+            blockchainHeight: height,
+            localHeight: height,
+            synced: false,
+          );
+        } catch (e) {
+          _logger.warning('Could not get height from daemon: $e');
+        }
+
+        // Try wallet RPC if walletd is running locally
+        try {
+          final rpcWallet = await _rpcService.getBalance();
+          final address = await _rpcService.getAddress();
+          _wallet = Wallet(
+            address: address,
+            viewKey: _wallet?.viewKey ?? '',
+            spendKey: _wallet?.spendKey ?? '',
+            balance: rpcWallet.balance,
+            unlockedBalance: rpcWallet.unlockedBalance,
+            balanceHEAT: rpcWallet.balanceHEAT,
+            unlockedBalanceHEAT: rpcWallet.unlockedBalanceHEAT,
+            blockchainHeight: rpcWallet.blockchainHeight,
+            localHeight: rpcWallet.localHeight,
+            synced: rpcWallet.synced,
+          );
+        } catch (_) {
+          // Wallet RPC not available (no local walletd) - just show daemon height
+        }
+      }
 
       _refreshPrices();
 
@@ -370,20 +436,9 @@ class WalletProvider extends ChangeNotifier {
   }
 
   Future<void> _refreshPrices() async {
-    try {
-      final rpcService = FuegoRPCService(host: '207.244.247.64', port: 18180);
-      // Try to get price info from daemon if available
-      await rpcService.getInfo();
-      // Daemon doesn't provide price data, use market estimates
-      _xfgEurPrice = 0.05;
-      _heatXfgPrice = 100.0;
-      _heatEurPrice = _heatXfgPrice * _xfgEurPrice;
-    } catch (e) {
-      // Fallback to known estimates
-      _xfgEurPrice = 0.05;
-      _heatXfgPrice = 100.0;
-      _heatEurPrice = _heatXfgPrice * _xfgEurPrice;
-    }
+    _xfgEurPrice = 0.05;
+    _heatXfgPrice = 100.0;
+    _heatEurPrice = _heatXfgPrice * _xfgEurPrice;
     notifyListeners();
   }
 
@@ -498,11 +553,16 @@ class WalletProvider extends ChangeNotifier {
       _rpcService.updateNode(host, port: port);
       _nodeUrl = url;
 
-      await _sdkService.startNode(
-        mode: FuegoNodeMode.remote,
-        remoteHost: host,
-        remotePort: port,
-      );
+      // Try SDK node start, but don't crash if native lib unavailable
+      try {
+        await _sdkService.startNode(
+          mode: FuegoNodeMode.remote,
+          remoteHost: host,
+          remotePort: port,
+        );
+      } catch (_) {
+        _logger.info('Native SDK unavailable, using RPC mode');
+      }
 
       await _checkConnection();
 
@@ -531,15 +591,32 @@ class WalletProvider extends ChangeNotifier {
 
   Future<void> _checkConnection() async {
     try {
-      final sdkRunning = _sdkService.isNodeRunning();
-      if (sdkRunning) {
-        _isConnected = true;
-      } else {
-        _isConnected = await _rpcService.testConnection();
-      }
+      // Try SDK first
+      try {
+        final sdkRunning = _sdkService.isNodeRunning();
+        if (sdkRunning) {
+          _isConnected = true;
+          if (_isConnected) _error = null;
+          notifyListeners();
+          return;
+        }
+      } catch (_) {}
+
+      // Fall back to RPC - this is the reliable path
+      _isConnected = await _rpcService.testConnection();
 
       if (_isConnected) {
         _error = null;
+        // Get network height from daemon so it's not stuck at 0
+        try {
+          final height = await _rpcService.getHeight();
+          if (_wallet != null && _wallet!.blockchainHeight == 0) {
+            _wallet = _wallet!.copyWith(
+              blockchainHeight: height,
+              localHeight: height,
+            );
+          }
+        } catch (_) {}
       }
     } catch (e) {
       _isConnected = false;
@@ -580,18 +657,27 @@ class WalletProvider extends ChangeNotifier {
   Future<void> _refreshSyncStatus() async {
     try {
       _isSyncing = true;
-      final height = await _sdkService.node.getBlockHeight();
-      final synced = await _sdkService.node.isSynchronized();
-      final xfgAvailable = _sdkService.wallet.xfgAvailable;
-      final xfgLocked = _sdkService.wallet.xfgLocked;
+
+      int height = _wallet?.blockchainHeight ?? 0;
+      bool synced = false;
+
+      // Try SDK first
+      try {
+        height = await _sdkService.node.getBlockHeight();
+        synced = await _sdkService.node.isSynchronized();
+      } catch (_) {
+        // Fall back to RPC
+        try {
+          height = await _rpcService.getHeight();
+          synced = false;
+        } catch (_) {}
+      }
 
       if (_wallet != null) {
         _wallet = _wallet!.copyWith(
           blockchainHeight: height,
           localHeight: height,
           synced: synced,
-          balance: (xfgAvailable * 10000000).round(),
-          unlockedBalance: (xfgLocked * 10000000).round(),
         );
       }
 

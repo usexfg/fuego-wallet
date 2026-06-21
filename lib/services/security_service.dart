@@ -154,12 +154,14 @@ class SecurityService {
   Future<bool> storeWalletKeys({
     required String viewKey,
     required String spendKey,
+    String? address,
     required String pin,
   }) async {
     try {
       final keysJson = json.encode({
         'viewKey': viewKey,
         'spendKey': spendKey,
+        if (address != null) 'address': address,
         'timestamp': DateTime.now().millisecondsSinceEpoch,
       });
       
@@ -182,6 +184,8 @@ class SecurityService {
       return {
         'viewKey': keysData['viewKey'] as String,
         'spendKey': keysData['spendKey'] as String,
+        if (keysData['address'] != null)
+          'address': keysData['address'] as String,
       };
     } catch (e) {
       return null;

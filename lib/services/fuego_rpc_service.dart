@@ -253,20 +253,15 @@ Future<String> createIntegratedAddress(String paymentId) async {
     return _makeRPCCall(method, params);
   }
 
-  // Private helper methods
+  // Private helper methods - Fuego daemon uses direct POST endpoints, not JSON-RPC
   Future<Map<String, dynamic>> _makeRPCCall(
     String method, 
     dynamic params,
   ) async {
     try {
       final response = await _dio.post(
-        '$_baseUrl/json_rpc',
-        data: json.encode({
-          'jsonrpc': '2.0',
-          'id': DateTime.now().millisecondsSinceEpoch,
-          'method': method,
-          'params': params,
-        }),
+        '$_baseUrl/$method',
+        data: params is Map ? params : {},
       );
 
       final data = response.data as Map<String, dynamic>;
@@ -275,7 +270,11 @@ Future<String> createIntegratedAddress(String paymentId) async {
         throw FuegoRPCException(data['error']['message'] as String);
       }
       
-      return data['result'] as Map<String, dynamic>;
+      if (data['status'] == 'FAILED') {
+        throw FuegoRPCException(data['message'] as String? ?? 'Daemon error');
+      }
+      
+      return data;
     } on DioException catch (e) {
       throw FuegoRPCException('Network error: ${e.message}');
     }
@@ -286,17 +285,11 @@ Future<String> createIntegratedAddress(String paymentId) async {
     Map<String, dynamic> params,
   ) async {
     try {
-      // Use local walletd with network-specific port
       final walletUrl = 'http://localhost:${_networkConfig.walletRpcPort}';
       
       final response = await _dio.post(
-        '$walletUrl/json_rpc',
-        data: json.encode({
-          'jsonrpc': '2.0',
-          'id': DateTime.now().millisecondsSinceEpoch,
-          'method': method,
-          'params': params,
-        }),
+        '$walletUrl/$method',
+        data: params,
       );
 
       final data = response.data as Map<String, dynamic>;
@@ -305,7 +298,11 @@ Future<String> createIntegratedAddress(String paymentId) async {
         throw FuegoRPCException(data['error']['message'] as String);
       }
       
-      return data['result'] as Map<String, dynamic>;
+      if (data['status'] == 'FAILED') {
+        throw FuegoRPCException(data['message'] as String? ?? 'Wallet service error');
+      }
+      
+      return data;
     } on DioException catch (e) {
       throw FuegoRPCException('Wallet service error: ${e.message}');
     }

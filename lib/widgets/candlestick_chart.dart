@@ -46,27 +46,14 @@ class TradingChart extends StatefulWidget {
 }
 
 class _TradingChartState extends State<TradingChart> {
-  String _selectedTimeframe = '1H';
-  int _visibleCount = 30;
   double? _crosshairX;
   double? _crosshairY;
   int? _crosshairIndex;
-  Offset? _touchPosition;
   bool _showCrosshair = false;
-
-  final Map<String, int> _timeframeLimits = {
-    '15m': 40,
-    '1H': 30,
-    '4H': 24,
-    '1D': 20,
-    '1W': 12,
-  };
 
   @override
   Widget build(BuildContext context) {
-    final candles = widget.candles.length > _visibleCount
-        ? widget.candles.sublist(widget.candles.length - _visibleCount)
-        : widget.candles;
+    final candles = widget.candles;
 
     if (candles.isEmpty) {
       return SizedBox(
@@ -81,40 +68,42 @@ class _TradingChartState extends State<TradingChart> {
     final minPrice = candles.map((c) => c.low).reduce(min);
     final maxVolume = candles.map((c) => c.volume).reduce(max);
 
-    return Column(
-      children: [
-        Expanded(
-          child: GestureDetector(
-            onPanStart: (d) => _updateCrosshair(d.localPosition, candles),
-            onPanUpdate: (d) => _updateCrosshair(d.localPosition, candles),
-            onPanEnd: (_) => setState(() => _showCrosshair = false),
-            onLongPressStart: (d) {
-              setState(() => _showCrosshair = true);
-              _updateCrosshair(d.localPosition, candles);
-            },
-            onLongPressMoveUpdate: (d) => _updateCrosshair(d.localPosition, candles),
-            onLongPressEnd: (_) => setState(() => _showCrosshair = false),
-            child: CustomPaint(
-              painter: _CandlestickPainter(
-                candles: candles,
-                maxPrice: maxPrice,
-                minPrice: minPrice,
-                maxVolume: maxVolume,
-                bullColor: widget.bullColor,
-                bearColor: widget.bearColor,
-                volumeBullColor: widget.volumeBullColor,
-                volumeBearColor: widget.volumeBearColor,
-                crosshairX: _crosshairX,
-                crosshairY: _crosshairY,
-                crosshairIndex: _crosshairIndex,
-                showCrosshair: _showCrosshair,
+    return SizedBox(
+      height: widget.height,
+      child: Column(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onPanStart: (d) => _updateCrosshair(d.localPosition, candles),
+              onPanUpdate: (d) => _updateCrosshair(d.localPosition, candles),
+              onPanEnd: (_) => setState(() => _showCrosshair = false),
+              onLongPressStart: (d) {
+                setState(() => _showCrosshair = true);
+                _updateCrosshair(d.localPosition, candles);
+              },
+              onLongPressMoveUpdate: (d) => _updateCrosshair(d.localPosition, candles),
+              onLongPressEnd: (_) => setState(() => _showCrosshair = false),
+              child: CustomPaint(
+                painter: _CandlestickPainter(
+                  candles: candles,
+                  maxPrice: maxPrice,
+                  minPrice: minPrice,
+                  maxVolume: maxVolume,
+                  bullColor: widget.bullColor,
+                  bearColor: widget.bearColor,
+                  volumeBullColor: widget.volumeBullColor,
+                  volumeBearColor: widget.volumeBearColor,
+                  crosshairX: _crosshairX,
+                  crosshairY: _crosshairY,
+                  crosshairIndex: _crosshairIndex,
+                  showCrosshair: _showCrosshair,
+                ),
+                size: Size.infinite,
               ),
-              size: Size.infinite,
             ),
           ),
-        ),
-        _buildTimeframeSelector(),
-      ],
+        ],
+      ),
     );
   }
 
@@ -122,59 +111,13 @@ class _TradingChartState extends State<TradingChart> {
     final chartWidth = context.size?.width ?? 300;
     final candleWidth = chartWidth / candles.length;
     final index = (position.dx / candleWidth).floor().clamp(0, candles.length - 1);
-    final candle = candles[index];
 
     setState(() {
       _showCrosshair = true;
       _crosshairX = position.dx;
       _crosshairY = position.dy;
       _crosshairIndex = index;
-      _touchPosition = position;
     });
-  }
-
-  Widget _buildTimeframeSelector() {
-    return Container(
-      height: 40,
-      margin: const EdgeInsets.only(top: 8, bottom: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: _timeframeLimits.keys.map((tf) {
-          final isSelected = _selectedTimeframe == tf;
-          return GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedTimeframe = tf;
-                _visibleCount = _timeframeLimits[tf]!;
-              });
-            },
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? const Color(0xFFEF5350).withOpacity(0.15)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(8),
-                border: isSelected
-                    ? Border.all(color: const Color(0xFFEF5350).withOpacity(0.5))
-                    : Border.all(color: const Color(0xFF334155).withOpacity(0.4)),
-              ),
-              child: Text(
-                tf,
-                style: GoogleFonts.jetBrainsMono(
-                  color: isSelected
-                      ? const Color(0xFFEF5350)
-                      : const Color(0xFF94A3B8),
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                ),
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
   }
 }
 
@@ -238,16 +181,55 @@ class _CandlestickPainter extends CustomPainter {
       ..color = gridColor
       ..strokeWidth = 0.5;
 
-    final priceSteps = 6;
+    final priceSteps = 5;
+    final priceRange = maxPrice - minPrice;
     for (int i = 0; i <= priceSteps; i++) {
       final y = chartArea * i / priceSteps;
       canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
+
+      // Y-axis price labels
+      final price = maxPrice - (priceRange * i / priceSteps);
+      final label = price >= 1.0
+          ? '\$${price.toStringAsFixed(2)}'
+          : price >= 0.01
+              ? '\$${price.toStringAsFixed(4)}'
+              : '\$${price.toStringAsFixed(6)}';
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: label,
+          style: const TextStyle(
+            color: Color(0xFF64748B),
+            fontSize: 9,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      textPainter.paint(canvas, Offset(2, y + 2));
     }
 
     final timeSteps = 5;
     for (int i = 0; i <= timeSteps; i++) {
       final x = size.width * i / timeSteps;
       canvas.drawLine(Offset(x, 0), Offset(x, chartArea), gridPaint);
+
+      // X-axis time labels
+      final candleIndex = (i * candles.length / timeSteps).floor();
+      if (candleIndex < candles.length) {
+        final date = candles[candleIndex].time;
+        final months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        final label = '${months[date.month - 1]} ${date.day}';
+        final textPainter = TextPainter(
+          text: TextSpan(
+            text: label,
+            style: const TextStyle(
+              color: Color(0xFF64748B),
+              fontSize: 9,
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        textPainter.paint(canvas, Offset(x + 2, chartArea - 12));
+      }
     }
   }
 
