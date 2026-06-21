@@ -79,18 +79,20 @@ jobs:
           # Fix SimpleWallet.cpp: generate_signature missing PublicKey arg (AccountKeys.address.spendPublicKey)
           sed -i 's|Crypto::generate_signature(challenge, keys\.spendSecretKey, proof);|Crypto::generate_signature(challenge, keys.address.spendPublicKey, keys.spendSecretKey, proof);|' src/SimpleWallet/SimpleWallet.cpp
           sed -i 's|Crypto::generate_signature(challenge, keys2\.spendSecretKey, proof);|Crypto::generate_signature(challenge, keys2.address.spendPublicKey, keys2.spendSecretKey, proof);|' src/SimpleWallet/SimpleWallet.cpp
-          # Add missing Blockchain::removeAlias and replaceAliasOwnership stubs
-          sed -i '$ d' src/CryptoNoteCore/Blockchain.cpp
-          echo "" >> src/CryptoNoteCore/Blockchain.cpp
-          echo "bool Blockchain::removeAlias(const std::string& alias) {" >> src/CryptoNoteCore/Blockchain.cpp
-          echo "  return true;" >> src/CryptoNoteCore/Blockchain.cpp
-          echo "}" >> src/CryptoNoteCore/Blockchain.cpp
-          echo "" >> src/CryptoNoteCore/Blockchain.cpp
-          echo "bool Blockchain::replaceAliasOwnership(const std::string& alias, const Crypto::Hash& newAddressHash) {" >> src/CryptoNoteCore/Blockchain.cpp
-          echo "  return true;" >> src/CryptoNoteCore/Blockchain.cpp
-          echo "}" >> src/CryptoNoteCore/Blockchain.cpp
-          echo "" >> src/CryptoNoteCore/Blockchain.cpp
-          echo "}  // namespace CryptoNote" >> src/CryptoNoteCore/Blockchain.cpp
+          # Add missing Blockchain::removeAlias and replaceAliasOwnership stubs (only if not already defined)
+          if ! grep -q 'Blockchain::removeAlias' src/CryptoNoteCore/Blockchain.cpp; then
+            sed -i '$ d' src/CryptoNoteCore/Blockchain.cpp
+            echo "" >> src/CryptoNoteCore/Blockchain.cpp
+            echo "bool Blockchain::removeAlias(const std::string& alias) {" >> src/CryptoNoteCore/Blockchain.cpp
+            echo "  return true;" >> src/CryptoNoteCore/Blockchain.cpp
+            echo "}" >> src/CryptoNoteCore/Blockchain.cpp
+            echo "" >> src/CryptoNoteCore/Blockchain.cpp
+            echo "bool Blockchain::replaceAliasOwnership(const std::string& alias, const Crypto::Hash& newAddressHash) {" >> src/CryptoNoteCore/Blockchain.cpp
+            echo "  return true;" >> src/CryptoNoteCore/Blockchain.cpp
+            echo "}" >> src/CryptoNoteCore/Blockchain.cpp
+            echo "" >> src/CryptoNoteCore/Blockchain.cpp
+            echo "}  // namespace CryptoNote" >> src/CryptoNoteCore/Blockchain.cpp
+          fi
           # Fix randomize.h: missing #include <limits>
           sed -i '1i #include <limits>' src/crypto/randomize.h
           # Fix TorControl.cpp: missing #include <iomanip>
