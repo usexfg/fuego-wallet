@@ -156,18 +156,63 @@ class FuegoNodeAdapter {
     }
   }
 
-  /// Convert payment ID string to byte format
+  /// Convert payment ID string to byte format.
+  /// Accepts a hex string (up to 64 hex chars / 32 bytes for encrypted, 16 hex / 8 bytes for unencrypted).
+  /// Returns the hex string as-is for passthrough; encrypted payment IDs require the
+  /// view key to decrypt (see CryptoNote protocol), which is not available here.
   String convertPaymentId(String paymentId) {
-    // Implement payment ID conversion logic
-    // This is similar to the QT wallet's convertPaymentId
-    return paymentId;
+    final cleaned = paymentId.replaceAll(RegExp(r'[^0-9a-fA-F]'), '');
+    if (cleaned.isEmpty) {
+      throw ArgumentError('Payment ID cannot be empty');
+    }
+    if (cleaned.length > 64) {
+      throw ArgumentError('Payment ID exceeds maximum length of 64 hex characters');
+    }
+    // Pad odd-length hex to even length for byte conversion
+    final padded = cleaned.length.isOdd ? '0$cleaned' : cleaned;
+    // Basic format validation: must be valid hex
+    if (!RegExp(r'^[0-9a-fA-F]+$').hasMatch(padded)) {
+      throw ArgumentError('Payment ID contains invalid hex characters');
+    }
+    // Note: encrypted payment IDs (nonces) require the recipient's view key to decrypt.
+    // This method only validates and passes through the raw payment ID.
+    return padded.toLowerCase();
   }
 
-  /// Extract payment ID from extra data
+  /// Extract payment ID from transaction extra data.
+  /// Searches for the payment ID tag (0x00) in the tx_extra field.
+  /// The payment ID tag is followed by 32 bytes of payment ID data.
+  /// If not found, returns an empty string.
   String extractPaymentId(String extra) {
-    // Implement payment ID extraction
-    // This is similar to the QT wallet's extractPaymentId
-    return extra;
+    try {
+      final extraBytes = _hexToBytes(extra);
+      // Search for payment ID tag: 0x00 followed by 32 bytes
+      for (int i = 0; i < extraBytes.length - 33; i++) {
+        if (extraBytes[i] == 0x00) {
+          // Check if this could be a payment ID tag.
+          // The tag 0x00 appears after the nonce tag (0x01) in encrypted payment IDs,
+          // or standalone for unencrypted payment IDs.
+          final paymentIdBytes = extraBytes.sublist(i + 1, i + 33);
+          return _bytesToHex(paymentIdBytes);
+        }
+      }
+    } catch (e) {
+      debugPrint('extractPaymentId failed to parse extra: $e');
+    }
+    return '';
+  }
+
+  static List<int> _hexToBytes(String hex) {
+    final cleaned = hex.replaceAll(RegExp(r'[^0-9a-fA-F]'), '');
+    final result = <int>[];
+    for (int i = 0; i < cleaned.length; i += 2) {
+      result.add(int.parse(cleaned.substring(i, i + 2), radix: 16));
+    }
+    return result;
+  }
+
+  static String _bytesToHex(List<int> bytes) {
+    return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
   }
 
   /// Update connection to a new node

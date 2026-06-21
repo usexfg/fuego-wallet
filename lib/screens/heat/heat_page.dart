@@ -17,7 +17,9 @@ class _HeatPageState extends State<HeatPage> {
   final TextEditingController _passwordController = TextEditingController();
   bool _isBurning = false;
   String? _burnError;
-  String? _successMessage;
+  String? _burnSuccess;
+
+  double get _burnAmount => double.tryParse(_amountController.text.trim()) ?? 0.0;
 
   @override
   void dispose() {
@@ -44,26 +46,27 @@ class _HeatPageState extends State<HeatPage> {
     setState(() {
       _isBurning = true;
       _burnError = null;
-      _successMessage = null;
+      _burnSuccess = null;
     });
 
     try {
-      // In a real scenario, this would call the wallet provider to execute the burn transaction.
-      // Since there is no network connection yet, we'll just simulate a delay and show an error 
-      // or a message indicating that the network is unavailable.
-      await Future.delayed(const Duration(seconds: 2));
+      final walletProvider = Provider.of<WalletProvider>(context, listen: false);
+      final sdkService = walletProvider.sdkService;
+
+      final amountAtomic = (_burnAmount * 10000000).round();
+      final txHash = await sdkService.wallet.burnXfg(amountAtomic);
 
       if (!mounted) return;
       setState(() {
-        _burnError = 'Network disconnected. Unable to process burn transaction.';
         _isBurning = false;
+        _burnSuccess = 'Burn transaction submitted: $txHash';
       });
       HapticFeedback.heavyImpact();
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _burnError = e.toString();
         _isBurning = false;
+        _burnError = 'Burn transaction failed: $e';
       });
     }
   }
@@ -277,7 +280,7 @@ class _HeatPageState extends State<HeatPage> {
                       ),
                     ),
                   ],
-                  if (_successMessage != null) ...[
+                   if (_burnSuccess != null) ...[
                     const SizedBox(height: 16),
                     Container(
                       padding: const EdgeInsets.all(12),
@@ -294,7 +297,7 @@ class _HeatPageState extends State<HeatPage> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              _successMessage!,
+                              _burnSuccess!,
                               style: GoogleFonts.inter(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,

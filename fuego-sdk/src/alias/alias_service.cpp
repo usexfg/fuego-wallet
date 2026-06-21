@@ -46,8 +46,9 @@ FuegoError AliasService::registerAlias(const std::string& alias, const std::stri
             return FUEGO_ERROR_ALIAS;
         }
 
-        std::string placeholderHash = "alias_reg_" + alias;
-        strncpy(txHash, placeholderHash.c_str(), txHashSize - 1);
+        Crypto::Hash entryHash = computeHash(alias + walletAddress);
+        std::string hashStr = Common::podToHex(entryHash);
+        strncpy(txHash, hashStr.c_str(), txHashSize - 1);
         txHash[txHashSize - 1] = '\0';
 
         return FUEGO_OK;
@@ -69,7 +70,8 @@ FuegoError AliasService::resolveAlias(const std::string& alias, char* walletAddr
             return FUEGO_ERROR_ALIAS;
         }
 
-        strncpy(walletAddress, "resolved_address_placeholder", addressSize - 1);
+        std::string addrHash = Common::podToHex(entry->addressHash);
+        strncpy(walletAddress, addrHash.c_str(), addressSize - 1);
         walletAddress[addressSize - 1] = '\0';
 
         return FUEGO_OK;

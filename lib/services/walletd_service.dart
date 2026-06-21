@@ -550,15 +550,28 @@ class WalletdService {
 
   /// Get walletd logs (recent)
   Future<List<String>> getWalletdLogs({int lines = 100}) async {
-    // In a real implementation, this would read from a log file
-    // For now, return recent log messages cached in memory
-    return []; // TODO: Implement log file reading
+    try {
+      final dir = await getApplicationSupportDirectory();
+      final logFile = File('${dir.path}/walletd.log');
+      if (await logFile.exists()) {
+        final fileLines = await logFile.readAsLines();
+        return fileLines.take(lines).toList();
+      }
+    } catch (_) {}
+    return [];
   }
 
   /// Get optimizer logs (recent)
   Future<List<String>> getOptimizerLogs({int lines = 100}) async {
-    // In a real implementation, this would read from a log file
-    return []; // TODO: Implement log file reading
+    try {
+      final dir = await getApplicationSupportDirectory();
+      final logFile = File('${dir.path}/optimizer.log');
+      if (await logFile.exists()) {
+        final fileLines = await logFile.readAsLines();
+        return fileLines.take(lines).toList();
+      }
+    } catch (_) {}
+    return [];
   }
 
   /// Get walletd version info

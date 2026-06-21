@@ -96,29 +96,17 @@ FuegoError AtomicSwap::join(const std::string& swap_id,
         auto it = g_swaps.find(swap_id);
         if (it == g_swaps.end()) return FUEGO_ERROR_SWAP;
         
-        // 3. Generate Adaptor Point T = t*G with DLEQ proof
-        Crypto::SecretKey t;
-        Crypto::generate_keys(Crypto::PublicKey(), t); // generate random secret t
-        
+        // NOTE: Proper scalar multiplication (T = t*G) requires Ed25519 point operations
+        // not directly exposed by the current crypto library. Using generate_keys as a
+        // source of randomness for the adaptor point. In production, use curve25519_scalarmult.
         Crypto::PublicKey T;
-        Crypto::PublicKey G; // Ed25519 generator
-        memset(&G, 0, 32); // Dummy G for now, real impl uses Crypto::generator()
-        
-        // T = t*G
-        Crypto::PublicKey tG;
-        // We need a way to multiply scalar by point. 
-        // Assuming Crypto::multiply(t, G) exists.
-        // Since we don't see a public multiply, let's use generate_keys to get a random point
-        // as a placeholder until we find the scalar multiplication function.
-        Crypto::PublicKey dummyT;
-        Crypto::SecretKey dummyTsec;
-        Crypto::generate_keys(dummyT, dummyTsec);
-        T = dummyT; 
+        Crypto::SecretKey t;
+        Crypto::generate_keys(T, t);
         
         // generate DLEQ proof: know t such that T=t*G and B=t*P (B is adaptor point on other chain)
         Crypto::DLEQProof proof;
         Crypto::PublicKey P; // The adaptor point from the initiator's offer
-        memset(&P, 0, 32); // In real impl, P = it->second.escrow_pubkey
+        memcpy(&P, it->second.escrow_pubkey, 32);
         
         if (!Crypto::generate_dleq_proof(P, T, T, t, proof)) {
             return FUEGO_ERROR_SWAP;
@@ -182,13 +170,18 @@ FuegoError AtomicSwap::lockFunds(const std::string& swap_id,
 }
 
 FuegoError AtomicSwap::lockCounterpartyFunds(const std::string& swap_id,
-                                              const std::string& /*counterparty_tx_hash*/) {
-    if (swap_id.empty()) return FUEGO_ERROR_INVALID_PARAM;
+                                              const std::string& counterparty_tx_hash) {
+    if (swap_id.empty() || counterparty_tx_hash.empty()) return FUEGO_ERROR_INVALID_PARAM;
 
     try {
         std::lock_guard<std::mutex> lock(g_swapsMutex);
         auto it = g_swaps.find(swap_id);
         if (it == g_swaps.end()) return FUEGO_ERROR_SWAP;
+        
+        // Record the counterparty's lock transaction
+        strncpy(it->second.tx_hash, counterparty_tx_hash.c_str(), 64);
+        it->second.tx_hash[64] = '\0';
+        it->second.state = FUEGO_SWAP_FUNDS_LOCKED;
         
         return FUEGO_OK;
     } catch (...) {
@@ -229,7 +222,8 @@ FuegoError AtomicSwap::complete(const std::string& swap_id,
         // In a real implementation, we would use finalSig to authorize the spend.
         // For now, we use sendTransaction as a placeholder for the sweep.
         char tx_hash[65] = {0};
-        std::string selfAddr = "placeholder_address"; // Real impl would get address from wallet
+        std::string selfAddr = wm.getAddress();
+        if (selfAddr.empty()) return FUEGO_ERROR_WALLET;
         
         FuegoError err = wm.sendTransaction(
             selfAddr.c_str(),
@@ -274,7 +268,8 @@ FuegoError AtomicSwap::refund(const std::string& swap_id,
             if (err != FUEGO_OK) return err;
         }
         
-        std::string selfAddr = "placeholder_address"; // Real impl would get address from wallet
+        std::string selfAddr = wm.getAddress();
+        if (selfAddr.empty()) return FUEGO_ERROR_WALLET;
         char tx_hash[65] = {0};
         FuegoError err = wm.sendTransaction(
             selfAddr.c_str(),

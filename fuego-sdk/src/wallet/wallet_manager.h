@@ -59,6 +59,9 @@ public:
     // Access to underlying wallet for Advanced operations
     CryptoNote::IWallet* getWallet() { return m_wallet.get(); }
 
+    // Get the wallet's primary address
+    std::string getAddress() const;
+
 private:
     WalletManager();
     ~WalletManager();

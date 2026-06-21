@@ -85,6 +85,15 @@ bool WalletManager::isOpen() const {
     return m_open && m_wallet != nullptr;
 }
 
+std::string WalletManager::getAddress() const {
+    if (!isOpen()) return "";
+    try {
+        size_t count = m_wallet->getAddressCount();
+        if (count > 0) return m_wallet->getAddress(0);
+    } catch (...) {}
+    return "";
+}
+
 FuegoError WalletManager::getBalance(uint64_t* available, uint64_t* locked) {
     if (!isOpen()) return FUEGO_ERROR_NOT_INITIALIZED;
     if (!available || !locked) return FUEGO_ERROR_INVALID_PARAM;

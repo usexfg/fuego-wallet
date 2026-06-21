@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import '../../services/security_service.dart';
 import '../../utils/theme.dart';
 import '../auth/pin_entry_screen.dart';
 
@@ -110,14 +112,49 @@ class _ImportKeysScreenState extends State<ImportKeysScreen>
     });
 
     try {
-      // TODO: Implement actual key import logic
-      // This would involve:
-      // 1. Validating the keys
-      // 2. Deriving wallet from keys
-      // 3. Setting up wallet in wallet provider
-      // 4. Navigating to PIN setup
+      final spendKey = _spendKeyController.text.trim();
+      final viewKey = _viewKeyController.text.trim();
 
-      await Future.delayed(const Duration(seconds: 2)); // Simulate processing
+      // Validate hex format
+      if (spendKey.length != 64 || viewKey.length != 64) {
+        setState(() {
+          _isLoading = false;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Keys must be 64 hex characters each'),
+              backgroundColor: AppTheme.errorColor,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Validate hex characters
+      final hexRegex = RegExp(r'^[0-9a-fA-F]+$');
+      if (!hexRegex.hasMatch(spendKey) || !hexRegex.hasMatch(viewKey)) {
+        setState(() {
+          _isLoading = false;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Keys must be valid hexadecimal'),
+              backgroundColor: AppTheme.errorColor,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Store keys for wallet creation
+      final securityService = Provider.of<SecurityService>(context, listen: false);
+      await securityService.storeWalletKeys(
+        spendKey: spendKey,
+        viewKey: viewKey,
+        pin: 'pending', // Temporary; will be set properly during PIN setup
+      );
 
       if (mounted) {
         // Navigate to PIN entry screen for wallet setup

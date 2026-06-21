@@ -1,6 +1,7 @@
 import 'package:fuego_sdk/fuego_sdk.dart';
 import 'package:fuego_sdk/src/wallet_service.dart';
 import 'package:fuego_sdk/src/pool_service.dart';
+import 'package:path_provider/path_provider.dart';
 
 /// Fuego SDK Service - Wrapper for FuegoSDK in the wallet app
 class FuegoSDKService {
@@ -57,9 +58,12 @@ class FuegoSDKService {
 
   /// Get the data directory path
   Future<String> _getDefaultDataDir() async {
-    // This would use path_provider in actual implementation
-    // For now, return a placeholder
-    return '/tmp/fuego';
+    try {
+      final dir = await getApplicationSupportDirectory();
+      return dir.path;
+    } catch (_) {
+      return '/tmp/fuego';
+    }
   }
 
   // ============================================================================

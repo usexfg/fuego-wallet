@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../services/security_service.dart';
 import '../../utils/theme.dart';
 import '../auth/pin_setup_screen.dart';
@@ -71,11 +72,17 @@ class _RestoreWalletScreenState extends State<RestoreWalletScreen> {
   }
 
   void _pasteFromClipboard() async {
-    // This would get text from clipboard - simplified for demo
-    // In real implementation, use Clipboard.getData()
-    const sampleMnemonic = 'abandon ability able about above absent absorb abstract absurd abuse access accident account accuse achieve acid acoustic acquire across act action actor actress actual adapt';
-    _mnemonicController.text = sampleMnemonic;
-    _validateMnemonic();
+    try {
+      final data = await Clipboard.getData('text/plain');
+      if (data?.text != null) {
+        _mnemonicController.text = data!.text!;
+        _validateMnemonic();
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Failed to paste from clipboard: $e';
+      });
+    }
   }
 
   @override

@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import '../models/wallet.dart';
+import '../../native/crypto/bindings/crypto_bindings.dart';
 
 class FuegoWalletAdapterNative {
   static FuegoWalletAdapterNative? _instance;
@@ -10,34 +12,126 @@ class FuegoWalletAdapterNative {
 
   bool _isSynchronized = false;
   bool _isOpen = false;
+  Wallet? _wallet;
 
   FuegoWalletAdapterNative._internal();
 
-  Future<bool> initNativeCrypto() async => false;
+  /// Attempt to load the native crypto library. Returns true if available.
+  Future<bool> initNativeCrypto() async {
+    try {
+      final result = await NativeCrypto.init();
+      return result;
+    } catch (e) {
+      debugPrint('initNativeCrypto failed: $e');
+      return false;
+    }
+  }
 
-  static bool get isAvailable => false;
+  static bool get isAvailable => NativeCrypto.isAvailable;
 
   bool get isOpen => _isOpen;
   bool get isSynchronized => _isSynchronized;
 
-  Wallet? get wallet => null;
+  Wallet? get wallet => _wallet;
 
+  /// Create a new wallet using native key generation.
   Future<bool> createWalletNative({String? password, Function(WalletEvent)? onEvent}) async {
-    _isOpen = true;
-    _isSynchronized = true;
-    onEvent?.call(WalletEvent(WalletEventType.created));
-    return true;
+    if (!isAvailable) {
+      onEvent?.call(WalletEvent(WalletEventType.creationFailed, message: 'Native crypto library not available'));
+      return false;
+    }
+
+    try {
+      final keys = NativeCrypto.generateKeys();
+      if (keys == null) {
+        onEvent?.call(WalletEvent(WalletEventType.creationFailed, message: 'Key generation failed'));
+        return false;
+      }
+
+      final address = NativeCrypto.generateAddress(
+        keys['public_spend_key']!,
+        keys['public_view_key']!,
+        'fg',
+      );
+      if (address == null) {
+        onEvent?.call(WalletEvent(WalletEventType.creationFailed, message: 'Address generation failed'));
+        return false;
+      }
+
+      _wallet = Wallet(
+        address: address,
+        viewKey: String.fromCharCodes(keys['private_view_key']!),
+        spendKey: String.fromCharCodes(keys['private_spend_key']!),
+        balance: 0,
+        unlockedBalance: 0,
+        blockchainHeight: 0,
+        localHeight: 0,
+        synced: false,
+      );
+      _isOpen = true;
+      _isSynchronized = false;
+      onEvent?.call(WalletEvent(WalletEventType.created));
+      return true;
+    } catch (e) {
+      debugPrint('createWalletNative failed: $e');
+      onEvent?.call(WalletEvent(WalletEventType.creationFailed, message: 'Creation failed: $e'));
+      return false;
+    }
   }
 
+  /// Import a wallet from existing view and spend keys.
   Future<bool> createWithKeysNative({required String viewKey, required String spendKey, String? password, Function(WalletEvent)? onEvent}) async {
-    _isOpen = true;
-    _isSynchronized = true;
-    onEvent?.call(WalletEvent(WalletEventType.opened));
-    return true;
+    if (!isAvailable) {
+      onEvent?.call(WalletEvent(WalletEventType.openFailed, message: 'Native crypto library not available'));
+      return false;
+    }
+
+    try {
+      // Derive public keys from private keys
+      final viewPrivBytes = Uint8List.fromList(viewKey.codeUnits);
+      final spendPrivBytes = Uint8List.fromList(spendKey.codeUnits);
+
+      final viewPubBytes = NativeCrypto.generatePublicKey(viewPrivBytes);
+      final spendPubBytes = NativeCrypto.generatePublicKey(spendPrivBytes);
+
+      if (viewPubBytes == null || spendPubBytes == null) {
+        onEvent?.call(WalletEvent(WalletEventType.openFailed, message: 'Failed to derive public keys'));
+        return false;
+      }
+
+      final address = NativeCrypto.generateAddress(spendPubBytes, viewPubBytes, 'fg');
+      if (address == null) {
+        onEvent?.call(WalletEvent(WalletEventType.openFailed, message: 'Address generation failed'));
+        return false;
+      }
+
+      _wallet = Wallet(
+        address: address,
+        viewKey: viewKey,
+        spendKey: spendKey,
+        balance: 0,
+        unlockedBalance: 0,
+        blockchainHeight: 0,
+        localHeight: 0,
+        synced: false,
+      );
+      _isOpen = true;
+      _isSynchronized = false;
+      onEvent?.call(WalletEvent(WalletEventType.opened));
+      return true;
+    } catch (e) {
+      debugPrint('createWithKeysNative failed: $e');
+      onEvent?.call(WalletEvent(WalletEventType.openFailed, message: 'Import failed: $e'));
+      return false;
+    }
   }
 
+  /// Send a transaction. Native signing is not yet implemented — delegates to SDK.
   Future<String> sendTransactionNative({required Map<String, int> destinations, int? fee, String? paymentId, int mixin = 4}) async {
-    throw UnimplementedError('Native transaction signing not available. Use FuegoSDKService.send() instead.');
+    throw UnsupportedError(
+      'Native transaction signing is not yet implemented. '
+      'Use FuegoSDKService.send() or the wallet RPC adapter instead.',
+    );
   }
 
   Future<void> close() async {

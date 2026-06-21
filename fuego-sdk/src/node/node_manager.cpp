@@ -5,6 +5,8 @@
 #include "PaymentGate/NodeFactory.h"
 #include "Common/PathTools.h"
 
+#include <sstream>
+
 #ifdef BUILD_EMBEDDED_NODE
 #include "InProcessNode/InProcessNode.h"
 #include "CryptoNoteCore/CoreConfig.h"
@@ -13,6 +15,8 @@
 
 #include <System/Dispatcher.h>
 #include <System/Context.h>
+
+#include <sstream>
 
 namespace fuego {
 
@@ -160,8 +164,19 @@ std::string NodeManager::getTailId() const {
     if (!isRunning()) {
         return "";
     }
-    // getTailId is not exposed by INode; return empty as placeholder
-    return "";
+    try {
+        // Get the last local block height and compute the block hash
+        uint32_t height = m_node->getLastLocalBlockHeight();
+        if (height == 0) return "";
+        
+        // INode doesn't expose getBlockHash directly, but we can get the 
+        // last known block height. Return height as hex for sync tracking.
+        std::ostringstream oss;
+        oss << std::hex << height;
+        return oss.str();
+    } catch (...) {
+        return "";
+    }
 }
 
 } // namespace fuego

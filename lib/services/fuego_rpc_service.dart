@@ -285,6 +285,14 @@ Future<String> createIntegratedAddress(String paymentId) async {
     }
   }
 
+  // Public RPC call method for external use
+  Future<Map<String, dynamic>> makeRPCCall(
+    String method,
+    dynamic params,
+  ) async {
+    return _makeRPCCall(method, params);
+  }
+
   // Private helper methods
   Future<Map<String, dynamic>> _makeRPCCall(
     String method, 

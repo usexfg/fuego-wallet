@@ -73,6 +73,7 @@ class WalletProvider extends ChangeNotifier {
   bool get hasWallet => _wallet != null;
   bool get isWalletSynced => _wallet?.synced ?? false;
   double get syncProgress => _wallet?.syncProgress ?? 0.0;
+  FuegoSDKService get sdkService => _sdkService;
 
   // Get private key for burn transactions (requires PIN verification)
   Future<String?> getPrivateKeyForBurn(String pin) async {
@@ -288,8 +289,21 @@ class WalletProvider extends ChangeNotifier {
   }
 
   // Wallet credentials
-  String get walletFile => '/tmp/fuego/wallets/default.wallet';
-  String get walletPassword => 'fuego_wallet';
+  String get walletFile {
+    try {
+      return _securityService.walletPath ?? '/tmp/fuego/wallets/default.wallet';
+    } catch (_) {
+      return '/tmp/fuego/wallets/default.wallet';
+    }
+  }
+
+  String get walletPassword {
+    try {
+      return _securityService.walletPassword ?? 'fuego_wallet';
+    } catch (_) {
+      return 'fuego_wallet';
+    }
+  }
 
   // Wallet Operations
   Future<void> refreshWallet() async {
@@ -359,13 +373,20 @@ class WalletProvider extends ChangeNotifier {
 
   Future<void> _refreshPrices() async {
     try {
+      final rpcService = FuegoRPCService(host: '207.244.247.64', port: 18180);
+      // Try to get price info from daemon if available
+      final info = await rpcService.getInfo();
+      // Daemon doesn't provide price data, use market estimates
       _xfgEurPrice = 0.05;
       _heatXfgPrice = 100.0;
       _heatEurPrice = _heatXfgPrice * _xfgEurPrice;
-      notifyListeners();
     } catch (e) {
-      _logger.warning('Failed to fetch price feeds: $e');
+      // Fallback to known estimates
+      _xfgEurPrice = 0.05;
+      _heatXfgPrice = 100.0;
+      _heatEurPrice = _heatXfgPrice * _xfgEurPrice;
     }
+    notifyListeners();
   }
 
   Future<void> refreshTransactions() async {

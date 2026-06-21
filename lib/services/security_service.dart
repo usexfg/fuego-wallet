@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:cryptography/cryptography.dart';
@@ -111,6 +112,24 @@ class SecurityService {
   }
 
   // Wallet Data Security
+  String? get walletPath => _walletPath;
+  String? get walletPassword => _walletPassword;
+  static const String _walletPathKey = 'wallet_file_path';
+  static const String _walletPasswordKey = 'wallet_password';
+
+  Future<void> setWalletPath(String path) async {
+    _walletPath = path;
+    await _storage.write(key: _walletPathKey, value: path);
+  }
+
+  Future<void> setWalletPassword(String password) async {
+    _walletPassword = password;
+    await _storage.write(key: _walletPasswordKey, value: password);
+  }
+
+  String? _walletPath;
+  String? _walletPassword;
+
   Future<bool> storeWalletSeed(String mnemonic, String pin) async {
     try {
       final encrypted = await _encryptData(mnemonic, pin);
@@ -184,8 +203,7 @@ class SecurityService {
 
   // Private helper methods
   String _generateSalt() {
-    final bytes = List<int>.generate(32, (i) => 
-        DateTime.now().microsecondsSinceEpoch + i);
+    final bytes = List<int>.generate(32, (_) => Random.secure().nextInt(256));
     return base64Encode(bytes);
   }
 
