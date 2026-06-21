@@ -275,7 +275,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const Padding(
               padding: EdgeInsets.only(bottom: 3),
               child: Text(
-                'HEAT',
+                'HⲶ∆T',
                 style: TextStyle(
                   color: Colors.orangeAccent,
                   fontSize: 13,
@@ -409,8 +409,8 @@ class _HomeScreenState extends State<HomeScreen> {
               Text(
                 'Version: 5.0.0\n\n'
                 'Fuego Network Features:\n'
-                '• XFG & HEAT dual-asset wallet\n'
-                '• HEAT Flatcoin — Burn XFG to mint\n'
+                '• XFG & HⲶ∆T dual-asset wallet\n'
+                '• HⲶ∆T Flatcoin — Burn XFG to mint\n'
                 '• Hearth AMM — Decentralized exchange\n'
                 '• Certificate of Deposit (CD) Banking\n'
                 '• Atomic Swaps via SwapXFG protocol\n'

@@ -216,7 +216,7 @@ class _WalletDashboardState extends State<WalletDashboard>
                         ],
                       ),
                       Text(
-                        '1 HEAT = ${provider.heatXfgPrice.toStringAsFixed(2)} XFG',
+                        '1 HⲶ∆T = ${provider.heatXfgPrice.toStringAsFixed(2)} XFG',
                         style: const TextStyle(
                           color: AppTheme.textMuted,
                           fontSize: 12,
@@ -275,7 +275,7 @@ class _WalletDashboardState extends State<WalletDashboard>
               const Padding(
                 padding: EdgeInsets.only(bottom: 6),
                 child: Text(
-                  'HEAT',
+                  'HⲶ∆T',
                   style: TextStyle(
                     color: Colors.orangeAccent,
                     fontSize: 14,

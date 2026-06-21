@@ -650,7 +650,7 @@ class _AtomicSwapsScreenState extends State<AtomicSwapsScreen>
             color: AppTheme.textMuted.withOpacity(0.2),
             margin: const EdgeInsets.symmetric(horizontal: 12),
           ),
-          _poolStat('HEAT', reserves?.heatDisplay ?? 0, AppTheme.accentColor),
+          _poolStat('HⲶ∆T', reserves?.heatDisplay ?? 0, AppTheme.accentColor),
           Container(
             width: 1,
             height: 14,
@@ -689,7 +689,7 @@ class _AtomicSwapsScreenState extends State<AtomicSwapsScreen>
           icon: const Icon(Icons.expand_more, color: AppTheme.textSecondary, size: 18),
           items: const [
             DropdownMenuItem(value: 'XFG', child: Text('XFG')),
-            DropdownMenuItem(value: 'HEAT', child: Text('HEAT')),
+            DropdownMenuItem(value: 'HEAT', child: Text('HⲶ∆T')),
           ],
           onChanged: readOnly ? null : onChanged,
         ),

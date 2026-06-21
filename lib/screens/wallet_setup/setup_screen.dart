@@ -192,20 +192,20 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                         const SizedBox(height: 12),
                         _buildFeatureItem(
                           Icons.local_fire_department,
-                          'HEAT Flatcoin',
-                          'Burn XFG to mint HEAT — pegged to USD value',
+                          'HⲶ∆T Flatcoin',
+                          'Burn XFG to mint HⲶ∆T — pegged to USD value',
                         ),
                         const SizedBox(height: 12),
                         _buildFeatureItem(
                           Icons.account_balance,
-                          'HEAT Certificates of Deposit',
-                          'Lock XFG to earn block interest on your deposits',
+                          'HⲶ∆T Certificates of Deposit',
+                          'Lock HⲶ∆T to earn block interest on your deposits',
                         ),
                         const SizedBox(height: 12),
                         _buildFeatureItem(
                           Icons.auto_graph,
                           'Hearth AMM',
-                          'Swap XFG/HEAT through the embedded liquidity pool',
+                          'Swap XFG/HⲶ∆T through the embedded liquidity pool',
                         ),
                         const SizedBox(height: 12),
                         _buildFeatureItem(
@@ -299,20 +299,20 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                     const SizedBox(height: 12),
                     _buildFeatureItem(
                       Icons.local_fire_department,
-                      'HEAT Flatcoin',
-                      'Burn XFG to mint HEAT — pegged to USD value',
+                      'HⲶ∆T Flatcoin',
+                      'Burn XFG to mint HⲶ∆T — pegged to USD value',
                     ),
                     const SizedBox(height: 12),
                     _buildFeatureItem(
                       Icons.account_balance,
-                      'HEAT Certificates of Deposit',
-                      'Lock XFG to earn block interest on your deposits',
+                      'HⲶ∆T Certificates of Deposit',
+                      'Lock HⲶ∆T to earn block interest on your deposits',
                     ),
                     const SizedBox(height: 12),
                     _buildFeatureItem(
                       Icons.auto_graph,
                       'Hearth AMM',
-                      'Swap XFG/HEAT through the embedded liquidity pool',
+                      'Swap XFG/HⲶ∆T through the embedded liquidity pool',
                     ),
                     const SizedBox(height: 12),
                     _buildFeatureItem(

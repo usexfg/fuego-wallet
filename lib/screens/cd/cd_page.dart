@@ -206,7 +206,7 @@ class _CDPageState extends State<CDPage> with SingleTickerProviderStateMixin {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Lock XFG into a Certificate of Deposit to earn high-yield block interest.',
+                        'Lock HⲶ∆T into a Certificate of Deposit to earn high-yield block interest.',
                         style: GoogleFonts.inter(
                           fontSize: 13,
                           color: AppTheme.textSecondary,

@@ -301,7 +301,7 @@ class _BalanceCardState extends State<BalanceCard>
                     const Padding(
                       padding: EdgeInsets.only(bottom: 4),
                       child: Text(
-                        'HEAT',
+                        'HⲶ∆T',
                         style: TextStyle(
                           color: Colors.orangeAccent,
                           fontSize: 14,

@@ -142,7 +142,7 @@ class _HeatPageState extends State<HeatPage> {
                       const SizedBox(width: 12),
                       const Expanded(
                         child: Text(
-                          'Burn XFG to mint HEAT flatcoin. HEAT is pegged to the USD value.',
+                          'Burn XFG to mint HⲶ∆T flatcoin. HⲶ∆T is pegged to the USD value.',
                           style: TextStyle(
                             fontSize: 14,
                             color: AppTheme.textSecondary,

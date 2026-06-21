@@ -216,46 +216,6 @@ Future<String> createIntegratedAddress(String paymentId) async {
     }
   }
 
-  //  Methods (custom implementation for Fuego)
-  Future<List<Node>> getNodes() async {
-    try {
-      // This would be a custom RPC call specific to Fuego's  system
-      final response = await _makeRPCCall('get_elderfier_nodes', {});
-      final nodes = response['nodes'] as List;
-      
-      return nodes.map((node) => Node(
-        nodeId: node['node_id'] as String,
-        customName: node['custom_name'] as String,
-        address: node['address'] as String,
-        stakeAmount: node['stake_amount'] as int,
-        isActive: node['is_active'] as bool,
-        uptime: node['uptime'] as int,
-        lastSeenBlock: node['last_seen_block'] as int,
-        consensusType: node['consensus_type'] as String,
-      )).toList();
-    } catch (e) {
-      // Return empty list if  functionality is not available
-      return [];
-    }
-  }
-
-  Future<bool> registerNode({
-    required String customName,
-    required String address,
-    required int stakeAmount,
-  }) async {
-    try {
-      await _makeRPCCall('register_elderfier', {
-        'custom_name': customName,
-        'address': address,
-        'stake_amount': stakeAmount,
-      });
-      return true;
-    } catch (e) {
-      throw FuegoRPCException('Failed to register  node: $e');
-    }
-  }
-
   // Message Methods (encrypted messaging)
   Future<bool> sendMessage({
     required String recipientAddress,

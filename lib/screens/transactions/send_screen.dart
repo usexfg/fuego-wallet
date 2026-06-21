@@ -43,7 +43,7 @@ class _SendScreenState extends State<SendScreen> {
     super.dispose();
   }
 
-  String get _assetName => _sendHeat ? 'HEAT' : 'XFG';
+  String get _assetName => _sendHeat ? 'HⲶ∆T' : 'XFG';
 
   Future<void> _sendTransaction() async {
     if (!_formKey.currentState!.validate()) return;
@@ -308,7 +308,7 @@ class _SendScreenState extends State<SendScreen> {
                       ),
                       const SizedBox(width: 8),
                       ChoiceChip(
-                        label: const Text('HEAT'),
+                        label: const Text('HⲶ∆T'),
                         selected: _sendHeat,
                         onSelected: (_) => setState(() => _sendHeat = true),
                         selectedColor: AppTheme.accentColor ?? AppTheme.primaryColor,

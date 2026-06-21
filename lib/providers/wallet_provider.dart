@@ -19,7 +19,6 @@ class WalletProvider extends ChangeNotifier {
 
   Wallet? _wallet;
   List<WalletTransaction> _transactions = [];
-  List<Node> _elderfierNodes = [];
   bool _isLoading = false;
   bool _isConnected = false;
   bool _isSyncing = false;
@@ -53,7 +52,6 @@ class WalletProvider extends ChangeNotifier {
   // Getters
   Wallet? get wallet => _wallet;
   List<WalletTransaction> get transactions => _transactions;
-  List<Node> get elderfierNodes => _elderfierNodes;
   bool get isLoading => _isLoading;
   bool get isConnected => _isConnected;
   bool get isSyncing => _isSyncing;
@@ -486,40 +484,6 @@ class WalletProvider extends ChangeNotifier {
     }
   }
 
-  // Node Operations
-  Future<void> refreshNodes() async {
-    try {
-      final nodes = await _rpcService.getNodes();
-      _elderfierNodes = nodes;
-      notifyListeners();
-    } catch (e) {
-      // Node functionality might not be available
-    }
-  }
-
-  Future<bool> registerNode({
-    required String customName,
-    required String address,
-    required double stakeAmount,
-  }) async {
-    try {
-      final atomicStake = (stakeAmount * 10000000).round();
-      final success = await _rpcService.registerNode(
-        customName: customName,
-        address: address,
-        stakeAmount: atomicStake,
-      );
-
-      if (success) {
-        await refreshNodes();
-      }
-
-      return success;
-    } catch (e) {
-      _setError('Failed to register node: $e');
-      return false;
-    }
-  }
 
   // Connection Management
   Future<void> connectToNode(String url) async {
