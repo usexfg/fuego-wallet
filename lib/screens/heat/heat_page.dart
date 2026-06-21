@@ -53,8 +53,11 @@ class _HeatPageState extends State<HeatPage> {
       final walletProvider = Provider.of<WalletProvider>(context, listen: false);
       final sdkService = walletProvider.sdkService;
 
-      final amountAtomic = (_burnAmount * 10000000).round();
-      final txHash = await sdkService.wallet.burnXfg(amountAtomic);
+      final result = sdkService.wallet.send(
+        address: 'FUEGO_BURN',
+        amount: _burnAmount,
+      );
+      final txHash = result.txHash;
 
       if (!mounted) return;
       setState(() {

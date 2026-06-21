@@ -140,7 +140,7 @@ class _PriceChartScreenState extends State<PriceChartScreen> {
     final currentPrice = candles.last.close;
     final firstPrice = candles.first.open;
     final priceChange = currentPrice - firstPrice;
-    final priceChangePct = firstPrice > 0 ? (priceChange / firstPrice * 100) : 0;
+    final priceChangePct = firstPrice > 0 ? (priceChange / firstPrice * 100) : 0.0;
     final isPositive = priceChange >= 0;
 
     final allHigh = candles.map((c) => c.high).reduce(max);
