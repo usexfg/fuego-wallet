@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:logging/logging.dart';
 import '../models/wallet.dart';
-import '../models/transaction_model.dart';
+
 import '../models/network_config.dart';
 import '../services/security_service.dart';
 import '../services/fuego_rpc_service.dart';
@@ -375,7 +375,7 @@ class WalletProvider extends ChangeNotifier {
     try {
       final rpcService = FuegoRPCService(host: '207.244.247.64', port: 18180);
       // Try to get price info from daemon if available
-      final info = await rpcService.getInfo();
+      await rpcService.getInfo();
       // Daemon doesn't provide price data, use market estimates
       _xfgEurPrice = 0.05;
       _heatXfgPrice = 100.0;

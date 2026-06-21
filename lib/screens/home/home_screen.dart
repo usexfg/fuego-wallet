@@ -111,6 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisCount: 2,
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 12,
+                  childAspectRatio: 1.8,
                   children: [
                     _buildFeatureCard(
                       icon: Icons.local_fire_department,
@@ -139,6 +140,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       subtitle: 'Wallet Naming',
                       color: AppTheme.infoColor,
                       onTap: () => Navigator.pushNamed(context, '/aliases'),
+                    ),
+                    _buildFeatureCard(
+                      icon: Icons.candlestick_chart,
+                      title: 'Price Chart',
+                      subtitle: 'XFG/USD History',
+                      color: const Color(0xFFE8B84B),
+                      onTap: () => Navigator.pushNamed(context, '/price-chart'),
                     ),
                   ],
                 ),

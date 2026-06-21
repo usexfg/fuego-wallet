@@ -11,6 +11,7 @@ import 'screens/banking/atomic_swaps_screen.dart';
 import 'screens/heat/heat_page.dart';
 import 'screens/banking/aliases_screen.dart';
 import 'screens/cd/cd_page.dart';
+import 'screens/price_chart/price_chart_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -69,6 +70,7 @@ class XFGWalletApp extends StatelessWidget {
         '/heat': (context) => const HeatPage(),
         '/aliases': (context) => const AliasesScreen(),
         '/cd': (context) => const CDPage(),
+        '/price-chart': (context) => const PriceChartScreen(),
       },
         debugShowCheckedModeBanner: false,
       ),

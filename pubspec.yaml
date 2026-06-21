@@ -91,6 +91,7 @@ flutter:
     - assets/icons/
     - assets/logo/
     - assets/bin/
+    - assets/data/
 
   # Note: fuego-walletd binaries are built from source during CI/CD workflow
   # See scripts/get_walletd_binary.sh for build instructions

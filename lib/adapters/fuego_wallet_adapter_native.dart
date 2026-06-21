@@ -1,6 +1,24 @@
+import 'dart:ffi';
+import 'package:ffi/ffi.dart';
 import 'package:flutter/foundation.dart';
 import '../models/wallet.dart';
-import '../../native/crypto/bindings/crypto_bindings.dart';
+
+/// Stub for native crypto FFI bindings.
+/// When the fuego native library is available, these functions call through FFI.
+/// For now they throw UnsupportedError — the wallet uses the SDK/RPC path instead.
+class NativeCrypto {
+  NativeCrypto._();
+
+  static bool get isAvailable => false;
+
+  static Future<bool> init() async => false;
+
+  static Map<String, Uint8List>? generateKeys() => null;
+
+  static String? generateAddress(Uint8List publicSpendKey, Uint8List publicViewKey, String prefix) => null;
+
+  static Uint8List? generatePublicKey(Uint8List privateKey) => null;
+}
 
 class FuegoWalletAdapterNative {
   static FuegoWalletAdapterNative? _instance;

@@ -207,8 +207,7 @@ class WalletProviderHybrid extends ChangeNotifier {
 
     // TODO: Call fuego_key_to_mnemonic FFI function
     try {
-      final nativeAdapter = _walletAdapter as FuegoWalletAdapterNative;
-      if (nativeAdapter.isAvailable) {
+      if (FuegoWalletAdapterNative.isAvailable) {
         // FFI mnemonic retrieval
         return null; // FFI not yet available
       }
