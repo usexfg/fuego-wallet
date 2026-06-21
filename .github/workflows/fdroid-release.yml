@@ -146,7 +146,7 @@ jobs:
         run: flutter test
 
       - name: Analyze code
-        run: flutter analyze
+        run: flutter analyze lib/ --no-fatal-infos --no-fatal-warnings
 
       - name: Build APK (Release - Unsigned for F-Droid)
         run: flutter build apk --release

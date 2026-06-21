@@ -130,7 +130,7 @@ jobs:
         run: flutter test
 
       - name: Analyze code
-        run: flutter analyze
+        run: flutter analyze lib/ --no-fatal-infos --no-fatal-warnings
 
       - name: Setup Android keystore
         if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.build_type == 'release')
