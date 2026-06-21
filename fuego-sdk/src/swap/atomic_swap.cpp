@@ -293,7 +293,6 @@ FuegoError AtomicSwap::refund(const std::string& swap_id,
         return FUEGO_ERROR_SWAP;
     }
 }
-}
 
 FuegoError AtomicSwap::getInfo(const std::string& swap_id,
                                 AdaptorSwapInfo* swap_info) {

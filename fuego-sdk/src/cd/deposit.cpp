@@ -1,7 +1,7 @@
 #include "deposit.h"
+#include "../wallet/wallet_manager.h"
 
 #include "CryptoNoteCore/Currency.h"
-#include "Wallet/WalletManager.h"
 #include "Common/StringTools.h"
 #include "Logging/LoggerManager.h"
 
@@ -54,7 +54,7 @@ FuegoError DepositManager::createDeposit(uint64_t amount, uint64_t lockTime,
 
 FuegoError DepositManager::redeemDeposit(const std::string& txHash,
                                            const std::string& walletFile,
-                                           const std, la l’s walletPassword,
+                                           const std::string& walletPassword,
                                            uint64_t* redeemedAmount) {
     if (!redeemedAmount || txHash.empty() || walletFile.empty() || walletPassword.empty()) {
         return FUEGO_ERROR_INVALID_PARAM;

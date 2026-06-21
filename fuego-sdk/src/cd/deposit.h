@@ -4,6 +4,8 @@
 #include "fuego_sdk.h"
 #include <string>
 
+namespace CryptoNote { class IWallet; }
+
 namespace fuego {
 
 class DepositManager {

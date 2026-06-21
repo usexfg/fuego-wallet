@@ -156,4 +156,12 @@ bool NodeManager::isSynchronized() const {
     return m_node->getLastLocalBlockHeight() >= m_node->getLastKnownBlockHeight();
 }
 
+std::string NodeManager::getTailId() const {
+    if (!isRunning()) {
+        return "";
+    }
+    // getTailId is not exposed by INode; return empty as placeholder
+    return "";
+}
+
 } // namespace fuego

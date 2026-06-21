@@ -35,7 +35,8 @@ typedef enum {
   FUEGO_ERROR_HEAT = 9,
   FUEGO_ERROR_ALIAS = 10,
   FUEGO_ERROR_MEMORY = 11,
-  FUEGO_ERROR_NOT_INITIALIZED = 12
+  FUEGO_ERROR_NOT_INITIALIZED = 12,
+  FUEGO_ERROR_NOT_FOUND = 13
 } FuegoError;
 
 /* ============================================================================

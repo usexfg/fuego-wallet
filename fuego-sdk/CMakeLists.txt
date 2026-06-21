@@ -19,6 +19,7 @@ set(FUEGO_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../fuego" CACHE PATH "Path to Fuego c
 
 # Include directories
 include_directories(
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${FUEGO_DIR}/include
     ${FUEGO_DIR}/src
@@ -26,25 +27,6 @@ include_directories(
     ${FUEGO_DIR}/src/Platform/OSX
     ${FUEGO_DIR}/src/Platform/Windows
     ${FUEGO_DIR}/src/Platform/macOS
-    ${FUEGO_DIR}/src/Platform/Android
-    ${FUEGO_DIR}/src
-    ${FUEGO_DIR}/src/Platform/Linux
-    ${FUEGO_DIR}/src/Platform/OSX
-    ${FUEGO_DIR}/src/Platform/Windows
-    ${FUEGO_DIR}/src/Platform/macOS
-    ${FUEGO_DIR}/src/Platform/Android/Platform/Linux
-    ${FUEGO_DIR}/src
-    ${FUEGO_DIR}/src/Platform/Linux
-    ${FUEGO_DIR}/src/Platform/OSX
-    ${FUEGO_DIR}/src/Platform/Windows
-    ${FUEGO_DIR}/src/Platform/macOS
-    ${FUEGO_DIR}/src/Platform/Android/Platform/OSX
-    ${FUEGO_DIR}/src
-    ${FUEGO_DIR}/src/Platform/Linux
-    ${FUEGO_DIR}/src/Platform/OSX
-    ${FUEGO_DIR}/src/Platform/Windows
-    ${FUEGO_DIR}/src/Platform/macOS
-    ${FUEGO_DIR}/src/Platform/Android/Platform/Windows
     ${FUEGO_DIR}/external
 )
 
@@ -83,33 +65,16 @@ else()
 endif()
 
 target_include_directories(fuego_sdk PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
-    ${FUEGO_DIR}/src
-    ${FUEGO_DIR}/src/Platform/Linux
-    ${FUEGO_DIR}/src/Platform/OSX
-    ${FUEGO_DIR}/src/Platform/Windows
-    ${FUEGO_DIR}/src/Platform/macOS
-    ${FUEGO_DIR}/src/Platform/Android
-    ${FUEGO_DIR}/src
-    ${FUEGO_DIR}/src/Platform/Linux
-    ${FUEGO_DIR}/src/Platform/OSX
-    ${FUEGO_DIR}/src/Platform/Windows
-    ${FUEGO_DIR}/src/Platform/macOS
-    ${FUEGO_DIR}/src/Platform/Android/Platform/Linux
-    ${FUEGO_DIR}/src
-    ${FUEGO_DIR}/src/Platform/Linux
-    ${FUEGO_DIR}/src/Platform/OSX
-    ${FUEGO_DIR}/src/Platform/Windows
-    ${FUEGO_DIR}/src/Platform/macOS
-    ${FUEGO_DIR}/src/Platform/Android/Platform/OSX
-    ${FUEGO_DIR}/src
-    ${FUEGO_DIR}/src/Platform/Linux
-    ${FUEGO_DIR}/src/Platform/OSX
-    ${FUEGO_DIR}/src/Platform/Windows
-    ${FUEGO_DIR}/src/Platform/macOS
-    ${FUEGO_DIR}/src/Platform/Android/Platform/Windows
     ${FUEGO_DIR}/include
+    ${FUEGO_DIR}/src
+    ${FUEGO_DIR}/src/Platform/Linux
+    ${FUEGO_DIR}/src/Platform/OSX
+    ${FUEGO_DIR}/src/Platform/Windows
+    ${FUEGO_DIR}/src/Platform/macOS
+    ${FUEGO_DIR}/external
 )
 
 target_link_libraries(fuego_sdk PUBLIC
