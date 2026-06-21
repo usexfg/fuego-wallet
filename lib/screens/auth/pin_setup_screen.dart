@@ -40,7 +40,7 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
     final available = await securityService.isBiometricAvailable();
     if (mounted) {
       setState(() {
-        _biometricEnabled = available;
+        _biometricEnabled = false;
       });
     }
   }
