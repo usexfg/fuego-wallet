@@ -1,7 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:fl_chart/fl_chart.dart';
 
 class CandleData {
   final double open;
@@ -44,12 +43,9 @@ class TradingChart extends StatefulWidget {
 
 class _TradingChartState extends State<TradingChart> {
   int? _touchIndex;
-  double? _touchX;
-  double? _touchY;
-  bool _showCrosshair = false;
   double _scale = 1.0;
   int _scrollOffset = 0;
-  static const int _baseVisibleCount = 60;
+  static const int _baseVisibleCount = 80;
 
   List<CandleData> get _visibleCandles {
     final total = widget.candles.length;
@@ -61,8 +57,7 @@ class _TradingChartState extends State<TradingChart> {
     return widget.candles.sublist(start, end);
   }
 
-  List<double> _computeSMA(int period) {
-    final candles = widget.candles;
+  List<double> _computeSMA(List<CandleData> candles, int period) {
     final result = <double>[];
     for (int i = 0; i < candles.length; i++) {
       if (i < period - 1) {
@@ -78,8 +73,7 @@ class _TradingChartState extends State<TradingChart> {
     return result;
   }
 
-  List<double> _computeEMA(int period) {
-    final candles = widget.candles;
+  List<double> _computeEMA(List<CandleData> candles, int period) {
     final result = <double>[];
     if (candles.isEmpty) return result;
     double ema = candles[0].close;
@@ -104,403 +98,335 @@ class _TradingChartState extends State<TradingChart> {
     if (visible.isEmpty) {
       return SizedBox(
         height: widget.height,
-        child: const Center(
-          child: Text('No data', style: TextStyle(color: Color(0xFF6B6B6B))),
-        ),
+        child: const Center(child: Text('No data', style: TextStyle(color: Color(0xFF6B6B6B)))),
       );
     }
 
-    final allCandles = widget.candles;
-    final visibleStart = allCandles.indexOf(visible.first);
-    final sma7 = _computeSMA(7);
-    final sma25 = _computeSMA(25);
-    final ema9 = _computeEMA(9);
-
     final maxPrice = visible.map((c) => c.high).reduce(max);
     final minPrice = visible.map((c) => c.low).reduce(min);
-    final pricePadding = (maxPrice - minPrice) * 0.08;
-    final yMin = minPrice - pricePadding;
-    final yMax = maxPrice + pricePadding;
+    final pricePad = (maxPrice - minPrice) * 0.08;
+    final yMin = minPrice - pricePad;
+    final yMax = maxPrice + pricePad;
     final maxVolume = visible.map((c) => c.volume).reduce(max);
 
-    // Build bar data for volume
-    final volumeBars = <BarChartGroupData>[];
-    for (int i = 0; i < visible.length; i++) {
-      final candle = visible[i];
-      final volRatio = maxVolume > 0 ? candle.volume / maxVolume : 0;
-      volumeBars.add(BarChartGroupData(
-        x: i,
-        barRods: [
-          BarChartRodData(
-            toY: volRatio,
-            width: max(1.0, 8.0 * (300 / visible.length)),
-            color: candle.isBullish
-                ? widget.bullColor.withOpacity(0.3)
-                : widget.bearColor.withOpacity(0.3),
-          ),
-        ],
-      ));
-    }
+    final sma7 = _computeSMA(visible, 7);
+    final ema9 = _computeEMA(visible, 9);
+    final sma25 = _computeSMA(visible, 25);
 
-    // Build SMA/EMA line data
-    List<FlSpot> sma7Spots = [];
-    List<FlSpot> sma25Spots = [];
-    List<FlSpot> ema9Spots = [];
-    for (int i = 0; i < visible.length; i++) {
-      final globalIdx = visibleStart + i;
-      if (globalIdx < sma7.length && !sma7[globalIdx].isNaN) {
-        sma7Spots.add(FlSpot(i.toDouble(), sma7[globalIdx]));
-      }
-      if (globalIdx < sma25.length && !sma25[globalIdx].isNaN) {
-        sma25Spots.add(FlSpot(i.toDouble(), sma25[globalIdx]));
-      }
-      if (globalIdx < ema9.length && !ema9[globalIdx].isNaN) {
-        ema9Spots.add(FlSpot(i.toDouble(), ema9[globalIdx]));
-      }
-    }
-
-    // Build candle bar data (using scatter for candles)
-    final scatterDots = <FlSpot>[];
-    final scatterSpots = <ScatterSpot>[];
-    for (int i = 0; i < visible.length; i++) {
-      final c = visible[i];
-      final color = c.isBullish ? widget.bullColor : widget.bearColor;
-      scatterSpots.add(ScatterSpot(
-        i.toDouble(),
-        c.close,
-        dotPainter: _CandleDotPainter(
-          open: c.open,
-          close: c.close,
-          high: c.high,
-          low: c.low,
-          color: color,
-          yMin: yMin,
-          yMax: yMax,
-        ),
-      ));
-    }
-
-    final chartHeight = widget.height * 0.65;
-    final volumeHeight = widget.height * 0.2;
+    final allCandles = widget.candles;
+    final visibleStart = allCandles.indexOf(visible.first);
 
     return SizedBox(
       height: widget.height,
-      child: Column(
-        children: [
-          SizedBox(
-            height: chartHeight,
-            child: GestureDetector(
-              onScaleStart: (details) {},
-              onScaleUpdate: (details) {
-                setState(() {
-                  _scale = (_scale * details.scale).clamp(0.3, 5.0);
-                  final total = widget.candles.length;
-                  final visible = max(10, (_baseVisibleCount / _scale).round());
-                  final maxOffset = max(0, total - visible);
-                  _scrollOffset = (_scrollOffset - (details.focalPointDelta.dx * visible / 300).round())
-                      .clamp(0, maxOffset);
-                });
-              },
-              onLongPressStart: (d) => _handleTouch(d.localPosition, visible, visibleStart, yMin, yMax, chartHeight),
-              onLongPressMoveUpdate: (d) => _handleTouch(d.localPosition, visible, visibleStart, yMin, yMax, chartHeight),
-              onLongPressEnd: (_) => setState(() { _showCrosshair = false; _touchIndex = null; }),
-              child: Stack(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(left: 48, right: 8, top: 8, bottom: 4),
-                    child: ScatterChart(
-                      ScatterChartData(
-                        scatterSpots: scatterSpots,
-                        minX: -0.5,
-                        maxX: visible.length - 0.5,
-                        minY: yMin,
-                        maxY: yMax,
-                        borderData: FlBorderData(show: false),
-                        gridData: FlGridData(
-                          show: true,
-                          drawVerticalLine: false,
-                          horizontalInterval: (yMax - yMin) / 5,
-                          getDrawingHorizontalLine: (value) => FlLine(
-                            color: const Color(0xFF1E293B),
-                            strokeWidth: 0.5,
-                          ),
-                        ),
-                        titlesData: FlTitlesData(
-                          show: true,
-                          rightTitles: AxisTitles(sideTitles: SideTitles(
-                            showTitles: true,
-                            reservedSize: 48,
-                            interval: (yMax - yMin) / 5,
-                            getTitlesWidget: (value, meta) {
-                              return Padding(
-                                padding: const EdgeInsets.only(left: 4),
-                                child: Text(
-                                  _formatPrice(value),
-                                  style: GoogleFonts.jetBrainsMono(
-                                    color: const Color(0xFF64748B),
-                                    fontSize: 9,
-                                  ),
-                                ),
-                              );
-                            },
-                          )),
-                          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                          bottomTitles: AxisTitles(sideTitles: SideTitles(
-                            showTitles: true,
-                            reservedSize: 16,
-                            interval: max(1, visible.length / 4).toDouble(),
-                            getTitlesWidget: (value, meta) {
-                              final idx = value.round();
-                              if (idx < 0 || idx >= visible.length) return const SizedBox.shrink();
-                              final d = visible[idx].time;
-                              final months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-                              return Padding(
-                                padding: const EdgeInsets.only(top: 4),
-                                child: Text(
-                                  '${months[d.month - 1]} ${d.day}',
-                                  style: GoogleFonts.jetBrainsMono(
-                                    color: const Color(0xFF64748B),
-                                    fontSize: 9,
-                                  ),
-                                ),
-                              );
-                            },
-                          )),
-                        ),
-                        scatterTouchData: ScatterTouchData(enabled: false),
-                      ),
-                    ),
-                  ),
-                  // MA Legend
-                  Positioned(
-                    top: 8,
-                    left: 52,
-                    child: Row(
-                      children: [
-                        _MALegend(label: 'SMA7', color: const Color(0xFFFFAB40)),
-                        const SizedBox(width: 8),
-                        _MALegend(label: 'EMA9', color: const Color(0xFF42A5F5)),
-                        const SizedBox(width: 8),
-                        _MALegend(label: 'SMA25', color: const Color(0xFFAB47BC)),
-                      ],
-                    ),
-                  ),
-                  // Crosshair overlay
-                  if (_showCrosshair && _touchIndex != null && _touchIndex! < visible.length)
-                    _buildCrosshairTooltip(visible[_touchIndex!], _touchX ?? 0, _touchY ?? 0, chartHeight),
-                ],
-              ),
-            ),
+      child: GestureDetector(
+        onScaleUpdate: (details) {
+          setState(() {
+            _scale = (_scale * details.scale).clamp(0.3, 8.0);
+            final total = widget.candles.length;
+            final vis = max(10, (_baseVisibleCount / _scale).round());
+            final maxOff = max(0, total - vis);
+            _scrollOffset = (_scrollOffset - (details.focalPointDelta.dx * vis / 300).round())
+                .clamp(0, maxOff);
+          });
+        },
+        onLongPressStart: (d) => _handleTouch(d.localPosition, visible),
+        onLongPressMoveUpdate: (d) => _handleTouch(d.localPosition, visible),
+        onLongPressEnd: (_) => setState(() => _touchIndex = null),
+        child: CustomPaint(
+          painter: _ChartPainter(
+            candles: visible,
+            visibleStart: visibleStart,
+            sma7: sma7,
+            ema9: ema9,
+            sma25: sma25,
+            yMin: yMin,
+            yMax: yMax,
+            maxVolume: maxVolume,
+            bullColor: widget.bullColor,
+            bearColor: widget.bearColor,
+            touchIndex: _touchIndex,
           ),
-          // Volume chart
-          SizedBox(
-            height: volumeHeight,
-            child: Padding(
-              padding: const EdgeInsets.only(left: 48, right: 8, top: 0, bottom: 4),
-              child: BarChart(
-                BarChartData(
-                  barGroups: volumeBars,
-                  alignment: BarChartAlignment.spaceAround,
-                  maxY: 1.1,
-                  minY: 0,
-                  borderData: FlBorderData(show: false),
-                  gridData: const FlGridData(show: false),
-                  titlesData: const FlTitlesData(show: false),
-                  barTouchData: BarTouchData(enabled: false),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _handleTouch(Offset localPos, List<CandleData> visible, int globalStart, double yMin, double yMax, double chartHeight) {
-    final chartWidth = MediaQuery.of(context).size.width - 56;
-    final candleWidth = chartWidth / visible.length;
-    final index = (localPos.dx / candleWidth).floor().clamp(0, visible.length - 1);
-    setState(() {
-      _showCrosshair = true;
-      _touchIndex = index;
-      _touchX = localPos.dx;
-      _touchY = localPos.dy;
-    });
-  }
-
-  Widget _buildCrosshairTooltip(CandleData candle, double x, double y, double chartHeight) {
-    final bool isRight = x > chartHeight * 0.6;
-    return Positioned(
-      left: isRight ? null : x + 12,
-      right: isRight ? (chartHeight - x + 12) : null,
-      top: max(8, min(y - 40, chartHeight - 80)),
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: const Color(0xF0111827),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFF334155), width: 1),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 8),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '${candle.time.month}/${candle.time.day}/${candle.time.year}',
-              style: GoogleFonts.jetBrainsMono(
-                color: const Color(0xFF94A3B8),
-                fontSize: 10,
-              ),
-            ),
-            const SizedBox(height: 4),
-            _tooltipRow('O', candle.open, const Color(0xFF94A3B8)),
-            _tooltipRow('H', candle.high, const Color(0xFF94A3B8)),
-            _tooltipRow('L', candle.low, const Color(0xFF94A3B8)),
-            _tooltipRow('C', candle.close, candle.isBullish ? widget.bullColor : widget.bearColor),
-            _tooltipRow('Vol', candle.volume, const Color(0xFF94A3B8)),
-          ],
+          size: Size.infinite,
         ),
       ),
     );
   }
 
-  Widget _tooltipRow(String label, double value, Color color) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '$label: ',
-            style: GoogleFonts.jetBrainsMono(
-              color: const Color(0xFF64748B),
-              fontSize: 10,
-            ),
-          ),
-          Text(
-            _formatPrice(value),
-            style: GoogleFonts.jetBrainsMono(
-              color: color,
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatPrice(double price) {
-    if (price >= 1.0) return '\$${price.toStringAsFixed(2)}';
-    if (price >= 0.01) return '\$${price.toStringAsFixed(4)}';
-    if (price >= 0.0001) return '\$${price.toStringAsFixed(6)}';
-    return '\$${price.toStringAsFixed(8)}';
+  void _handleTouch(Offset localPos, List<CandleData> visible) {
+    final w = context.size?.width ?? 300;
+    final candleW = w / visible.length;
+    final idx = (localPos.dx / candleW).floor().clamp(0, visible.length - 1);
+    setState(() => _touchIndex = idx);
   }
 }
 
-class _MALegend extends StatelessWidget {
-  final String label;
-  final Color color;
-  const _MALegend({required this.label, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(width: 12, height: 2, color: color),
-        const SizedBox(width: 3),
-        Text(
-          label,
-          style: GoogleFonts.jetBrainsMono(
-            color: color,
-            fontSize: 9,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _CandleDotPainter extends ScatterSpotPainter {
-  final double open;
-  final double close;
-  final double high;
-  final double low;
-  final Color color;
+class _ChartPainter extends CustomPainter {
+  final List<CandleData> candles;
+  final int visibleStart;
+  final List<double> sma7;
+  final List<double> ema9;
+  final List<double> sma25;
   final double yMin;
   final double yMax;
+  final double maxVolume;
+  final Color bullColor;
+  final Color bearColor;
+  final int? touchIndex;
 
-  _CandleDotPainter({
-    required this.open,
-    required this.close,
-    required this.high,
-    required this.low,
-    required this.color,
+  _ChartPainter({
+    required this.candles,
+    required this.visibleStart,
+    required this.sma7,
+    required this.ema9,
+    required this.sma25,
     required this.yMin,
     required this.yMax,
+    required this.maxVolume,
+    required this.bullColor,
+    required this.bearColor,
+    this.touchIndex,
   });
 
   @override
-  void draw(ScatterSpot spot, Canvas canvas, Size size) {
-    final chartSize = Size(size.width * 300, size.height * 400);
-    final candleWidth = max(1.0, chartSize.width * 0.003);
+  void paint(Canvas canvas, Size size) {
+    final priceAreaHeight = size.height * 0.72;
+    final volumeAreaHeight = size.height * 0.18;
+    final volumeTop = priceAreaHeight + size.height * 0.04;
+    final priceRange = yMax - yMin;
+    if (priceRange <= 0 || candles.isEmpty) return;
 
-    final yRange = yMax - yMin;
-    if (yRange <= 0) return;
+    final candleW = size.width / candles.length;
+    final bodyW = max(1.0, candleW * 0.65);
 
-    double priceToY(double price) {
-      return chartSize.height * (1.0 - (price - yMin) / yRange);
+    // --- Grid ---
+    final gridPaint = Paint()..color = const Color(0xFF1E293B)..strokeWidth = 0.5;
+    for (int i = 0; i <= 5; i++) {
+      final y = priceAreaHeight * i / 5;
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
     }
 
-    final centerX = spot.x * (chartSize.width / max(1, 60));
-
-    final bodyTop = priceToY(max(open, close));
-    final bodyBottom = priceToY(min(open, close));
-    final highY = priceToY(high);
-    final lowY = priceToY(low);
-
-    final wickPaint = Paint()
-      ..color = color
-      ..strokeWidth = 1.0;
-
-    canvas.drawLine(
-      Offset(centerX, highY),
-      Offset(centerX, lowY),
-      wickPaint,
-    );
-
-    final bodyHeight = max(1.0, bodyBottom - bodyTop);
-    final bodyRect = RRect.fromRectAndRadius(
-      Rect.fromCenter(
-        center: Offset(centerX, (bodyTop + bodyBottom) / 2),
-        width: candleWidth,
-        height: bodyHeight,
-      ),
-      const Radius.circular(1),
-    );
-
-    final bodyPaint = Paint()..color = color;
-    if (open < close) {
-      bodyPaint.style = PaintingStyle.stroke;
-      bodyPaint.strokeWidth = 1.0;
-    } else {
-      bodyPaint.style = PaintingStyle.fill;
+    // --- Y-axis price labels ---
+    for (int i = 0; i <= 5; i++) {
+      final y = priceAreaHeight * i / 5;
+      final price = yMax - (priceRange * i / 5);
+      final label = _fmtPrice(price);
+      final tp = TextPainter(
+        text: TextSpan(text: label, style: const TextStyle(color: Color(0xFF64748B), fontSize: 9)),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas, Offset(2, y + 2));
     }
-    canvas.drawRRect(bodyRect, bodyPaint);
+
+    // --- Volume bars ---
+    for (int i = 0; i < candles.length; i++) {
+      final c = candles[i];
+      final volRatio = maxVolume > 0 ? c.volume / maxVolume : 0.0;
+      final barH = volRatio * volumeAreaHeight;
+      final barX = i * candleW + (candleW - bodyW) / 2;
+      final barY = volumeTop + volumeAreaHeight - barH;
+      final volPaint = Paint()
+        ..color = (c.isBullish ? bullColor : bearColor).withOpacity(0.25)
+        ..style = PaintingStyle.fill;
+      canvas.drawRect(Rect.fromLTWH(barX, barY, bodyW, barH), volPaint);
+    }
+
+    // --- X-axis date labels ---
+    final dateStep = max(1, candles.length ~/ 5);
+    for (int i = 0; i < candles.length; i += dateStep) {
+      final d = candles[i].time;
+      final months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      final label = '${months[d.month - 1]} ${d.day}';
+      final tp = TextPainter(
+        text: TextSpan(text: label, style: const TextStyle(color: Color(0xFF64748B), fontSize: 9)),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas, Offset(i * candleW + 2, priceAreaHeight - 12));
+    }
+
+    // --- Candlesticks ---
+    for (int i = 0; i < candles.length; i++) {
+      final c = candles[i];
+      final x = i * candleW + candleW / 2;
+      final color = c.isBullish ? bullColor : bearColor;
+
+      double priceToY(double p) => priceAreaHeight * (1.0 - (p - yMin) / priceRange);
+
+      final highY = priceToY(c.high);
+      final lowY = priceToY(c.low);
+      final bodyTop = priceToY(max(c.open, c.close));
+      final bodyBottom = priceToY(min(c.open, c.close));
+
+      // Wick
+      canvas.drawLine(Offset(x, highY), Offset(x, lowY), Paint()..color = color..strokeWidth = 1.0);
+
+      // Body
+      final bodyH = max(1.0, bodyBottom - bodyTop);
+      final bodyRect = RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset(x, (bodyTop + bodyBottom) / 2), width: bodyW, height: bodyH),
+        const Radius.circular(1),
+      );
+      final bodyPaint = Paint()..color = color;
+      if (c.isBullish) {
+        bodyPaint.style = PaintingStyle.stroke;
+        bodyPaint.strokeWidth = 1.2;
+      } else {
+        bodyPaint.style = PaintingStyle.fill;
+      }
+      canvas.drawRRect(bodyRect, bodyPaint);
+    }
+
+    // --- Moving Averages ---
+    _drawMA(canvas, sma7, visibleStart, candleW, priceAreaHeight, priceRange, const Color(0xFFFFAB40));
+    _drawMA(canvas, ema9, visibleStart, candleW, priceAreaHeight, priceRange, const Color(0xFF42A5F5));
+    _drawMA(canvas, sma25, visibleStart, candleW, priceAreaHeight, priceRange, const Color(0xFFAB47BC));
+
+    // --- MA Legend ---
+    final legends = [
+      ('SMA7', const Color(0xFFFFAB40)),
+      ('EMA9', const Color(0xFF42A5F5)),
+      ('SMA25', const Color(0xFFAB47BC)),
+    ];
+    double lx = 8;
+    for (final (label, color) in legends) {
+      final dp = Paint()..color = color..strokeWidth = 2;
+      canvas.drawLine(Offset(lx, 8), Offset(lx + 14, 8), dp);
+      final tp = TextPainter(
+        text: TextSpan(text: ' $label', style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w500)),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas, Offset(lx + 16, 1));
+      lx += tp.width + 22;
+    }
+
+    // --- Crosshair ---
+    if (touchIndex != null && touchIndex! < candles.length) {
+      final c = candles[touchIndex!];
+      final x = touchIndex! * candleW + candleW / 2;
+      final crossPaint = Paint()..color = const Color(0x50FFFFFF)..strokeWidth = 0.8;
+
+      // Vertical line
+      canvas.drawLine(Offset(x, 0), Offset(x, priceAreaHeight), crossPaint);
+
+      // Horizontal line at close price
+      final closeY = priceAreaHeight * (1.0 - (c.close - yMin) / priceRange);
+      canvas.drawLine(Offset(0, closeY), Offset(size.width, closeY), crossPaint);
+
+      // Price tag on right
+      final tagPaint = Paint()..color = c.isBullish ? bullColor : bearColor;
+      final tagRect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(size.width - 52, closeY - 10, 50, 20),
+        const Radius.circular(4),
+      );
+      canvas.drawRRect(tagRect, tagPaint);
+      final priceTp = TextPainter(
+        text: TextSpan(
+          text: _fmtPrice(c.close),
+          style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w600),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      priceTp.paint(canvas, Offset(size.width - 50, closeY - 6));
+
+      // OHLCV tooltip box
+      final boxW = 130.0;
+      final boxH = 90.0;
+      final boxX = x + 16 > size.width - boxW ? x - boxW - 16 : x + 16;
+      final boxY = max(8.0, min(closeY - boxH / 2, priceAreaHeight - boxH - 8));
+
+      final boxPaint = Paint()..color = const Color(0xF0111827);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(Rect.fromLTWH(boxX, boxY, boxW, boxH), const Radius.circular(8)),
+        boxPaint,
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(Rect.fromLTWH(boxX, boxY, boxW, boxH), const Radius.circular(8)),
+        Paint()..color = const Color(0xFF334155)..style = PaintingStyle.stroke..strokeWidth = 1,
+      );
+
+      final dateStr = '${c.time.month}/${c.time.day}/${c.time.year}';
+      final lines = [
+        ('Date: ', dateStr, const Color(0xFF94A3B8)),
+        ('O: ', _fmtPrice(c.open), const Color(0xFF94A3B8)),
+        ('H: ', _fmtPrice(c.high), const Color(0xFF94A3B8)),
+        ('L: ', _fmtPrice(c.low), const Color(0xFF94A3B8)),
+        ('C: ', _fmtPrice(c.close), c.isBullish ? bullColor : bearColor),
+        ('Vol: ', _fmtVol(c.volume), const Color(0xFF94A3B8)),
+      ];
+      double ty = boxY + 8;
+      for (final (lbl, val, col) in lines) {
+        final tp = TextPainter(
+          text: TextSpan(children: [
+            TextSpan(text: lbl, style: const TextStyle(color: Color(0xFF64748B), fontSize: 10)),
+            TextSpan(text: val, style: TextStyle(color: col, fontSize: 10, fontWeight: FontWeight.w600)),
+          ]),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        tp.paint(canvas, Offset(boxX + 8, ty));
+        ty += 13;
+      }
+    }
+  }
+
+  void _drawMA(Canvas canvas, List<double> values, int globalStart, double candleW, double chartH, double priceRange, Color color) {
+    final path = Path();
+    bool started = false;
+    for (int i = 0; i < candles.length; i++) {
+      final gIdx = globalStart + i;
+      if (gIdx >= values.length || values[gIdx].isNaN) continue;
+      final x = i * candleW + candleW / 2;
+      final y = chartH * (1.0 - (values[gIdx] - yMin) / priceRange);
+      if (!started) {
+        path.moveTo(x, y);
+        started = true;
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    canvas.drawPath(path, Paint()..color = color..strokeWidth = 1.5..style = PaintingStyle.stroke);
+  }
+
+  String _fmtPrice(double p) {
+    if (p >= 1.0) return '\$${p.toStringAsFixed(2)}';
+    if (p >= 0.01) return '\$${p.toStringAsFixed(4)}';
+    if (p >= 0.0001) return '\$${p.toStringAsFixed(6)}';
+    return '\$${p.toStringAsFixed(8)}';
+  }
+
+  String _fmtVol(double v) {
+    if (v >= 1e6) return '${(v / 1e6).toStringAsFixed(1)}M';
+    if (v >= 1e3) return '${(v / 1e3).toStringAsFixed(1)}K';
+    return v.toStringAsFixed(0);
   }
 
   @override
-  bool shouldRepaint(covariant _CandleDotPainter oldDelegate) {
-    return oldDelegate.open != open ||
-        oldDelegate.close != close ||
-        oldDelegate.high != high ||
-        oldDelegate.low != low ||
-        oldDelegate.color != color;
+  bool shouldRepaint(covariant _ChartPainter old) => old.touchIndex != touchIndex;
+}
+
+List<CandleData> generateSampleCandles(double basePrice, int count) {
+  final random = Random();
+  final candles = <CandleData>[];
+  double price = basePrice;
+  DateTime time = DateTime.now().subtract(Duration(days: count));
+
+  for (int i = 0; i < count; i++) {
+    final open = price;
+    final change = (random.nextDouble() - 0.48) * price * 0.06;
+    final close = (open + change).clamp(price * 0.5, price * 2.0);
+    final high = max(open, close) * (1 + random.nextDouble() * 0.03);
+    final low = min(open, close) * (1 - random.nextDouble() * 0.03);
+
+    candles.add(CandleData(
+      open: open,
+      high: high,
+      low: max(0.00001, low),
+      close: close,
+      volume: 100000 + random.nextDouble() * 5000000,
+      time: time,
+    ));
+
+    time = time.add(const Duration(days: 1));
+    price = close;
   }
+
+  return candles;
 }
