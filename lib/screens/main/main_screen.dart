@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../utils/theme.dart';
 import '../home/home_screen.dart';
 import '../messaging/messaging_screen.dart';
-import '../banking/atomic_swaps_screen.dart';
+import '../price_chart/price_chart_screen.dart';
 import '../settings/settings_screen.dart';
 
 class MainScreen extends StatefulWidget {
@@ -18,7 +18,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = [
     const HomeScreen(),
     const MessagingScreen(),
-    const AtomicSwapsScreen(),
+    const PriceChartScreen(),
     const SettingsScreen(),
   ];
 
@@ -56,8 +56,8 @@ class _MainScreenState extends State<MainScreen> {
                   index: 1,
                 ),
                 _buildNavItem(
-                  icon: Icons.swap_horiz,
-                  label: 'Swaps',
+                  icon: Icons.candlestick_chart,
+                  label: 'Chart',
                   index: 2,
                 ),
                 _buildNavItem(

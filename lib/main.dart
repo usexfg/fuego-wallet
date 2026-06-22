@@ -7,11 +7,9 @@ import 'services/wallet_daemon_service.dart';
 import 'models/network_config.dart';
 import 'screens/splash_screen.dart';
 import 'utils/theme.dart';
-import 'screens/banking/atomic_swaps_screen.dart';
 import 'screens/heat/heat_page.dart';
 import 'screens/banking/aliases_screen.dart';
 import 'screens/cd/cd_page.dart';
-import 'screens/price_chart/price_chart_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -66,11 +64,9 @@ class XFGWalletApp extends StatelessWidget {
         themeMode: ThemeMode.dark,
         home: const SplashScreen(),
       routes: {
-        '/swaps': (context) => const AtomicSwapsScreen(),
         '/heat': (context) => const HeatPage(),
         '/aliases': (context) => const AliasesScreen(),
         '/cd': (context) => const CDPage(),
-        '/price-chart': (context) => const PriceChartScreen(),
       },
         debugShowCheckedModeBanner: false,
       ),

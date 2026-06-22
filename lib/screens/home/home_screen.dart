@@ -115,17 +115,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     _buildFeatureCard(
                       icon: Icons.local_fire_department,
-                      title: 'Mint HEAT',
+                      title: 'Mint HⲶ∆T',
                       subtitle: 'Burn XFG',
                       color: AppTheme.primaryColor,
                       onTap: () => Navigator.pushNamed(context, '/heat'),
-                    ),
-                    _buildFeatureCard(
-                      icon: Icons.swap_horiz,
-                      title: 'SwapXFG',
-                      subtitle: 'Atomic Swaps Protocol',
-                      color: Colors.orangeAccent,
-                      onTap: () => Navigator.pushNamed(context, '/swaps'),
                     ),
                     _buildFeatureCard(
                       icon: Icons.account_balance,
@@ -142,11 +135,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       onTap: () => Navigator.pushNamed(context, '/aliases'),
                     ),
                     _buildFeatureCard(
-                      icon: Icons.candlestick_chart,
-                      title: 'Price Chart',
-                      subtitle: 'XFG/USD History',
-                      color: const Color(0xFFE8B84B),
-                      onTap: () => Navigator.pushNamed(context, '/price-chart'),
+                      icon: Icons.send,
+                      title: 'Send',
+                      subtitle: 'Transfer XFG',
+                      color: const Color(0xFF66BB6A),
+                      onTap: () {},
                     ),
                   ],
                 ),
