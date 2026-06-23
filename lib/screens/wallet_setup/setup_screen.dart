@@ -371,6 +371,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
       builder: (context, provider, _) {
         final connected = provider.isConnected;
         final syncing = provider.isSyncing;
+        final error = provider.error;
 
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -416,6 +417,16 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                         color: connected ? AppTheme.successColor : AppTheme.warningColor,
                       ),
                     ),
+                    if (!connected && error != null && error.isNotEmpty)
+                      Text(
+                        error,
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          color: AppTheme.textMuted,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     if (syncing)
                       Text(
                         'Syncing blockchain data...',

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:logging/logging.dart';
@@ -47,6 +48,12 @@ class WalletProvider extends ChangeNotifier {
        _securityService = securityService ?? SecurityService(),
        _sdkService = FuegoSDKService.instance {
     _initConnectivity();
+    // Test daemon connection immediately at startup
+    _checkConnection().then((_) {
+      if (!_isConnected) {
+        _startConnectionRetry();
+      }
+    });
   }
 
   // Getters
@@ -289,6 +296,7 @@ class WalletProvider extends ChangeNotifier {
       await _checkConnection();
 
       if (_isConnected) {
+        // Get daemon height first
         try {
           final height = await _rpcService.getHeight();
           final info = await _rpcService.getInfo();
@@ -297,6 +305,12 @@ class WalletProvider extends ChangeNotifier {
             localHeight: height,
           );
         } catch (_) {}
+
+        // Now do a full wallet refresh to get balance/transactions
+        notifyListeners();
+        await refreshWallet();
+      } else {
+        _setError('Could not connect to Fuego daemon at ${_rpcService.currentNodeUrl}');
       }
 
       notifyListeners();
@@ -352,73 +366,40 @@ class WalletProvider extends ChangeNotifier {
       _setLoading(true);
       _clearError();
 
-      // Try SDK path first
-      bool sdkOk = false;
+      // RPC path — always reliable
+      // 1. Get daemon height
       try {
-        await _sdkService.startNode();
-
-        final walletPath = walletFile;
-        _sdkService.openWallet(walletPath, walletPassword);
-
-        final height = await _sdkService.node.getBlockHeight();
-        final synced = await _sdkService.node.isSynchronized();
-
-        final xfgAvailable = _sdkService.wallet.xfgAvailable;
-        final xfgLocked = _sdkService.wallet.xfgLocked;
-        final heatAvailable = _sdkService.wallet.heatAvailable;
-        final heatLocked = _sdkService.wallet.heatLocked;
-
-        final balanceAtomic = (xfgAvailable * 10000000).round();
-        final lockedAtomic = (xfgLocked * 10000000).round();
-        final heatBalanceAtomic = (heatAvailable * 10000000).round();
-        final heatLockedAtomic = (heatLocked * 10000000).round();
-
+        final height = await _rpcService.getHeight();
         _wallet = _wallet!.copyWith(
-          balance: balanceAtomic,
-          unlockedBalance: lockedAtomic,
-          balanceHEAT: heatBalanceAtomic,
-          unlockedBalanceHEAT: heatLockedAtomic,
           blockchainHeight: height,
           localHeight: height,
-          synced: synced,
+          synced: true,
         );
-        sdkOk = true;
-      } catch (_) {
-        _logger.info('SDK path failed, using RPC fallback');
+        _logger.info('Daemon height: $height');
+      } catch (e) {
+        _logger.warning('Could not get height from daemon: $e');
       }
 
-      // RPC fallback - always try to get daemon height at minimum
-      if (!sdkOk) {
-        try {
-          final height = await _rpcService.getHeight();
-          _wallet = _wallet!.copyWith(
-            blockchainHeight: height,
-            localHeight: height,
-            synced: false,
-          );
-        } catch (e) {
-          _logger.warning('Could not get height from daemon: $e');
-        }
-
-        // Try wallet RPC if walletd is running locally
-        try {
-          final rpcWallet = await _rpcService.getBalance();
-          final address = await _rpcService.getAddress();
-          _wallet = Wallet(
-            address: address,
-            viewKey: _wallet?.viewKey ?? '',
-            spendKey: _wallet?.spendKey ?? '',
-            balance: rpcWallet.balance,
-            unlockedBalance: rpcWallet.unlockedBalance,
-            balanceHEAT: rpcWallet.balanceHEAT,
-            unlockedBalanceHEAT: rpcWallet.unlockedBalanceHEAT,
-            blockchainHeight: rpcWallet.blockchainHeight,
-            localHeight: rpcWallet.localHeight,
-            synced: rpcWallet.synced,
-          );
-        } catch (_) {
-          // Wallet RPC not available (no local walletd) - just show daemon height
-        }
+      // 2. Try wallet RPC if walletd is running locally (for balance)
+      try {
+        final rpcWallet = await _rpcService.getBalance();
+        final address = await _rpcService.getAddress();
+        _wallet = Wallet(
+          address: address,
+          viewKey: _wallet?.viewKey ?? '',
+          spendKey: _wallet?.spendKey ?? '',
+          balance: rpcWallet.balance,
+          unlockedBalance: rpcWallet.unlockedBalance,
+          balanceHEAT: rpcWallet.balanceHEAT,
+          unlockedBalanceHEAT: rpcWallet.unlockedBalanceHEAT,
+          blockchainHeight: rpcWallet.blockchainHeight,
+          localHeight: rpcWallet.localHeight,
+          synced: rpcWallet.synced,
+        );
+        _logger.info('Wallet balance loaded via wallet RPC');
+      } catch (e) {
+        // Wallet RPC not available (no local walletd) — daemon height only
+        _logger.info('Wallet RPC not available (RPC-only mode): $e');
       }
 
       _refreshPrices();
@@ -553,17 +534,6 @@ class WalletProvider extends ChangeNotifier {
       _rpcService.updateNode(host, port: port);
       _nodeUrl = url;
 
-      // Try SDK node start, but don't crash if native lib unavailable
-      try {
-        await _sdkService.startNode(
-          mode: FuegoNodeMode.remote,
-          remoteHost: host,
-          remotePort: port,
-        );
-      } catch (_) {
-        _logger.info('Native SDK unavailable, using RPC mode');
-      }
-
       await _checkConnection();
 
       if (_isConnected && hasWallet) {
@@ -589,25 +559,63 @@ class WalletProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Auto-retry connection timer
+  Timer? _connectionRetryTimer;
+  int _connectionAttempts = 0;
+  static const int _maxRetryInterval = 30;
+
+  void _startConnectionRetry() {
+    _connectionRetryTimer?.cancel();
+    _connectionAttempts = 0;
+    _scheduleRetry();
+  }
+
+  void _scheduleRetry() {
+    if (_isConnected) {
+      _connectionRetryTimer?.cancel();
+      return;
+    }
+    _connectionAttempts++;
+    final delaySeconds = min(3 * _connectionAttempts, _maxRetryInterval);
+    _connectionRetryTimer = Timer(Duration(seconds: delaySeconds), () async {
+      if (!_isConnected && !_isLoading) {
+        _logger.info('Connection retry #$_connectionAttempts');
+        await _checkConnection();
+        if (!_isConnected) {
+          _scheduleRetry();
+        }
+      }
+    });
+  }
+
+  void _stopConnectionRetry() {
+    _connectionRetryTimer?.cancel();
+    _connectionRetryTimer = null;
+  }
+
   Future<void> _checkConnection() async {
     try {
-      // Try SDK first
+      // Try SDK first (fast check, no network)
       try {
         final sdkRunning = _sdkService.isNodeRunning();
         if (sdkRunning) {
           _isConnected = true;
-          if (_isConnected) _error = null;
+          _error = null;
+          _stopConnectionRetry();
           notifyListeners();
           return;
         }
       } catch (_) {}
 
-      // Fall back to RPC - this is the reliable path
-      _isConnected = await _rpcService.testConnection();
+      // RPC connection check — the reliable path
+      final result = await _rpcService.testConnectionDetailed();
 
-      if (_isConnected) {
+      if (result['connected'] == true) {
+        _isConnected = true;
         _error = null;
-        // Get network height from daemon so it's not stuck at 0
+        _stopConnectionRetry();
+
+        // Fetch network height so it's not stuck at 0
         try {
           final height = await _rpcService.getHeight();
           if (_wallet != null && _wallet!.blockchainHeight == 0) {
@@ -616,10 +624,21 @@ class WalletProvider extends ChangeNotifier {
               localHeight: height,
             );
           }
-        } catch (_) {}
+          _logger.info('Connected to daemon at height $height');
+        } catch (e) {
+          _logger.warning('Connected but failed to get height: $e');
+        }
+      } else {
+        _isConnected = false;
+        _error = result['error']?.toString();
+        _logger.warning('Connection failed: ${_error ?? "unknown"}');
+        if (!_isLoading) _scheduleRetry();
       }
     } catch (e) {
       _isConnected = false;
+      _error = 'Connection check failed: $e';
+      _logger.severe('Connection check exception: $e');
+      if (!_isLoading) _scheduleRetry();
     }
     notifyListeners();
   }
@@ -661,17 +680,11 @@ class WalletProvider extends ChangeNotifier {
       int height = _wallet?.blockchainHeight ?? 0;
       bool synced = false;
 
-      // Try SDK first
+      // RPC is the reliable path — always use it
       try {
-        height = await _sdkService.node.getBlockHeight();
-        synced = await _sdkService.node.isSynchronized();
-      } catch (_) {
-        // Fall back to RPC
-        try {
-          height = await _rpcService.getHeight();
-          synced = false;
-        } catch (_) {}
-      }
+        height = await _rpcService.getHeight();
+        synced = (height > 0);
+      } catch (_) {}
 
       if (_wallet != null) {
         _wallet = _wallet!.copyWith(
@@ -764,6 +777,7 @@ class WalletProvider extends ChangeNotifier {
   @override
   void dispose() {
     _syncTimer?.cancel();
+    _connectionRetryTimer?.cancel();
     _rpcService.dispose();
     _sdkService.cleanup();
     super.dispose();

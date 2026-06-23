@@ -31,42 +31,58 @@ class WalletDaemonService {
     _walletPath = walletPath;
     _networkConfig = networkConfig ?? NetworkConfig.mainnet;
     
-    // Extract walletd binary
+    // Extract walletd binary (null if not available)
     _walletdPath = await _extractWalletdBinary();
     
     debugPrint('WalletDaemonService initialized');
     debugPrint('Network: ${_networkConfig.name}');
     debugPrint('Daemon: $_daemonAddress:$_daemonPort');
     debugPrint('Walletd port: ${_networkConfig.walletRpcPort}');
-    debugPrint('Walletd binary: $_walletdPath');
+    debugPrint('Walletd binary: ${_walletdPath ?? "NOT AVAILABLE (RPC-only mode)"}');
     debugPrint('Wallet path: $_walletPath');
   }
 
-  /// Extract the walletd binary from assets
-  static Future<String> _extractWalletdBinary() async {
-    final Directory tempDir = await getTemporaryDirectory();
-    final String binaryName = Platform.isWindows
-        ? 'fuego-walletd-windows.exe'
-        : Platform.isMacOS
-            ? 'fuego-walletd-macos'
-            : 'fuego-walletd-linux';
+  static bool _hasBinary = false;
 
-    final File binaryFile = File(path.join(tempDir.path, 'fuego-walletd'));
+  /// Extract the walletd binary from assets (graceful if missing)
+  static Future<String?> _extractWalletdBinary() async {
+    try {
+      final Directory tempDir = await getTemporaryDirectory();
+      final String binaryName = Platform.isWindows
+          ? 'fuego-walletd-windows.exe'
+          : Platform.isMacOS
+              ? 'fuego-walletd-macos'
+              : 'fuego-walletd-linux';
 
-    // Extract from assets if not already extracted
-    if (!await binaryFile.exists()) {
-      await binaryFile.create(recursive: true);
-      await binaryFile.writeAsBytes(
-        await rootBundle.load('assets/bin/$binaryName').then((data) => data.buffer.asUint8List())
-      );
+      final File binaryFile = File(path.join(tempDir.path, 'fuego-walletd'));
+
+      // Extract from assets if not already extracted
+      if (!await binaryFile.exists()) {
+        try {
+          await rootBundle.load('assets/bin/$binaryName');
+        } catch (_) {
+          debugPrint('Walletd binary not found in assets: assets/bin/$binaryName');
+          _hasBinary = false;
+          return null;
+        }
+        await binaryFile.create(recursive: true);
+        await binaryFile.writeAsBytes(
+          await rootBundle.load('assets/bin/$binaryName').then((data) => data.buffer.asUint8List())
+        );
+      }
+
+      // Set executable permissions for non-Windows platforms
+      if (!Platform.isWindows) {
+        await Process.run('chmod', ['+x', binaryFile.path]);
+      }
+
+      _hasBinary = true;
+      return binaryFile.path;
+    } catch (e) {
+      debugPrint('Failed to extract walletd binary: $e');
+      _hasBinary = false;
+      return null;
     }
-
-    // Set executable permissions for non-Windows platforms
-    if (!Platform.isWindows) {
-      await Process.run('chmod', ['+x', binaryFile.path]);
-    }
-
-    return binaryFile.path;
   }
 
   /// Start the wallet daemon
@@ -79,8 +95,9 @@ class WalletDaemonService {
       return true;
     }
 
-    if (_walletdPath == null) {
-      throw Exception('WalletDaemonService not initialized');
+    if (_walletdPath == null || !_hasBinary) {
+      debugPrint('Walletd binary not available — running in RPC-only mode');
+      return false;
     }
 
     try {

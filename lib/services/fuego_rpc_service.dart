@@ -308,14 +308,39 @@ Future<String> createIntegratedAddress(String paymentId) async {
     }
   }
 
-  // Test connection
-  Future<bool> testConnection() async {
+  // Test connection - returns detailed error info
+  Future<Map<String, dynamic>> testConnectionDetailed() async {
     try {
-      await getInfo();
-      return true;
+      final info = await getInfo();
+      return {
+        'connected': true,
+        'height': info['height'],
+        'version': info['version'],
+        'difficulty': info['difficulty'],
+      };
+    } on FuegoRPCException catch (e) {
+      return {
+        'connected': false,
+        'error': e.message,
+      };
+    } on DioException catch (e) {
+      return {
+        'connected': false,
+        'error': 'Network error: ${e.type.name} - ${e.message}',
+        'details': e.error?.toString(),
+      };
     } catch (e) {
-      return false;
+      return {
+        'connected': false,
+        'error': 'Unknown error: $e',
+      };
     }
+  }
+
+  // Test connection (simple boolean)
+  Future<bool> testConnection() async {
+    final result = await testConnectionDetailed();
+    return result['connected'] == true;
   }
 
   void dispose() {
