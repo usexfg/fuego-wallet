@@ -1,5 +1,4 @@
 import 'dart:math';
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -24,10 +23,6 @@ class CandleData {
   bool get isBearish => close < open;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// TradingView-style chart with pinch-zoom, momentum scroll, crosshair
-// ═══════════════════════════════════════════════════════════════════════════════
-
 class TradingChart extends StatefulWidget {
   final List<CandleData> candles;
   final double height;
@@ -46,102 +41,42 @@ class TradingChart extends StatefulWidget {
   State<TradingChart> createState() => _TradingChartState();
 }
 
-class _TradingChartState extends State<TradingChart>
-    with SingleTickerProviderStateMixin {
-  // Viewport state
+class _TradingChartState extends State<TradingChart> {
+  // Viewport
   double _scale = 1.0;
-  double _targetScale = 1.0;
-  double _offsetX = 0.0; // in candle units (fractional)
-  double _targetOffsetX = 0.0;
+  double _offsetX = 0.0; // left edge in candle-index units
+
+  // Gesture tracking
+  double _lastScale = 1.0;
+  double _panStartX = 0;
+  double _panStartOffset = 0;
+  bool _isPanning = false;
 
   // Crosshair
-  int? _crosshairCandleIndex;
-  Offset? _crosshairScreenPos;
+  int? _crosshairIndex;
   bool _crosshairLocked = false;
 
-  // Animation
-  late AnimationController _animController;
-  Animation<double>? _scaleAnim;
-  Animation<double>? _offsetAnim;
-
   static const int _baseVisible = 60;
-  static const double _minScale = 0.5;
-  static const double _maxScale = 12.0;
-
-  // Gesture state
-  double _lastScale = 1.0;
-  double _dragStartX = 0;
-  double _dragStartOffset = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _animController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 200),
-    );
-  }
-
-  @override
-  void dispose() {
-    _animController.dispose();
-    super.dispose();
-  }
+  static const double _minScale = 0.3;
+  static const double _maxScale = 20.0;
 
   int get _totalCandles => widget.candles.length;
 
   int get _visibleCount {
     final raw = (_baseVisible / _scale).round();
-    return max(5, min(raw, _totalCandles));
+    return max(3, min(raw, _totalCandles));
   }
 
   double get _leftIndex {
-    final raw = _offsetX;
-    return max(0.0, min(raw, (_totalCandles - _visibleCount).toDouble()));
-  }
-
-  double get _rightIndex => _leftIndex + _visibleCount;
-
-  void _clampOffset() {
     final maxOff = max(0.0, (_totalCandles - _visibleCount).toDouble());
-    _offsetX = _offsetX.clamp(-_visibleCount * 0.3, maxOff + _visibleCount * 0.3);
+    return _offsetX.clamp(-_visibleCount * 0.2, maxOff + _visibleCount * 0.2);
   }
 
-  void _clampTarget() {
-    final maxOff = max(0.0, (_totalCandles - _visibleCount).toDouble());
-    _targetOffsetX = _targetOffsetX.clamp(0.0, maxOff);
-  }
-
-  void _animateToState() {
-    _animController.removeListener(_onAnimTick);
-    _animController.reset();
-
-    _scaleAnim = Tween<double>(begin: _scale, end: _targetScale);
-    _offsetAnim = Tween<double>(begin: _offsetX, end: _targetOffsetX);
-
-    _animController.addListener(_onAnimTick);
-    _animController.forward();
-  }
-
-  void _onAnimTick() {
-    if (_scaleAnim != null && _offsetAnim != null) {
-      setState(() {
-        _scale = _scaleAnim!.value;
-        _offsetX = _offsetAnim!.value;
-        _clampOffset();
-      });
-    }
-  }
-
-  // ── Touch-to-candle mapping ──────────────────────────────────────────────
-
-  int _screenXToCandleIndex(double screenX, double chartWidth) {
-    final candleWidth = chartWidth / _visibleCount;
-    final idx = (screenX / candleWidth) + _leftIndex;
+  int _screenToIndex(double dx, double chartWidth) {
+    final candleW = chartWidth / _visibleCount;
+    final idx = (dx / candleW) + _leftIndex;
     return idx.round().clamp(0, _totalCandles - 1);
   }
-
-  // ── Build ────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -158,111 +93,87 @@ class _TradingChartState extends State<TradingChart>
       height: widget.height,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final chartWidth = constraints.maxWidth;
-          final chartHeight = constraints.maxHeight.isFinite
-              ? constraints.maxHeight
-              : widget.height;
+          final W = constraints.maxWidth;
+          final H = constraints.maxHeight.isFinite ? constraints.maxHeight : widget.height;
 
           return GestureDetector(
-            // ── Horizontal drag (scroll) ──
-            onHorizontalDragStart: (d) {
-              _dragStartX = d.localPosition.dx;
-              _dragStartOffset = _offsetX;
-              _crosshairLocked = false;
-            },
-            onHorizontalDragUpdate: (d) {
-              final dx = d.localPosition.dx - _dragStartX;
-              final candleWidth = chartWidth / _visibleCount;
-              final deltaCandles = -dx / candleWidth;
-              setState(() {
-                _offsetX = _dragStartOffset + deltaCandles;
-                _clampOffset();
-                _crosshairCandleIndex =
-                    _screenXToCandleIndex(d.localPosition.dx, chartWidth);
-                _crosshairScreenPos = d.localPosition;
-              });
-            },
-            onHorizontalDragEnd: (d) {
-              // Momentum
-              final vx = d.primaryVelocity ?? 0;
-              final candleWidth = chartWidth / _visibleCount;
-              final velCandles = -vx / candleWidth / 1000 * 16;
-              _targetOffsetX = _offsetX + velCandles * 16;
-              _targetScale = _scale;
-              _clampTarget();
-              _animateToState();
-            },
+            // ALL gestures go through onScaleUpdate — no horizontalDrag
+            behavior: HitTestBehavior.opaque,
 
-            // ── Pinch zoom ──
             onScaleStart: (d) {
+              _lastScale = _scale;
+              _panStartX = d.focalPoint.dx;
+              _panStartOffset = _offsetX;
+              _isPanning = true;
               if (d.pointerCount == 2) {
-                _lastScale = _scale;
                 _crosshairLocked = true;
               }
             },
+
             onScaleUpdate: (d) {
-              if (d.pointerCount == 2) {
-                final newScale =
-                    (_lastScale * d.scale).clamp(_minScale, _maxScale);
-                // Zoom toward center of pinch
-                final centerX = d.focalPoint.dx;
-                final candleWidth = chartWidth / _visibleCount;
-                final centerCandleIdx =
-                    (centerX / candleWidth) + _leftIndex;
-
-                final newVisible = max(5, (_baseVisible / newScale).round());
-                final newLeftIdx = centerCandleIdx - centerX / (chartWidth / newVisible);
-
-                setState(() {
-                  _scale = newScale;
-                  _targetScale = newScale;
-                  _offsetX = newLeftIdx;
-                  _clampOffset();
-                });
-              } else if (d.pointerCount == 1) {
-                // Single finger: crosshair tracking
-                setState(() {
-                  _crosshairCandleIndex =
-                      _screenXToCandleIndex(d.localPosition.dx, chartWidth);
-                  _crosshairScreenPos = d.localPosition;
-                });
-              }
-            },
-
-            // ── Double tap: reset zoom ──
-            onDoubleTap: () {
-              _targetScale = 1.0;
-              _targetOffsetX = max(
-                  0.0,
-                  (_totalCandles - _baseVisible).toDouble());
-              _animateToState();
               setState(() {
-                _crosshairCandleIndex = null;
-                _crosshairScreenPos = null;
+                if (d.pointerCount == 2) {
+                  // ── Pinch zoom ──
+                  final newScale = (_lastScale * d.scale).clamp(_minScale, _maxScale);
+                  final centerX = d.focalPoint.dx;
+                  final newVisible = max(3, (_baseVisible / newScale).round());
+                  final centerIdx = (centerX / (W / newVisible)) + _leftIndex;
+                  final newLeft = centerIdx - centerX / (W / newVisible);
+
+                  _scale = newScale;
+                  _offsetX = newLeft;
+                  _crosshairIndex = _screenToIndex(centerX, W);
+                } else if (_isPanning) {
+                  // ── Single-finger pan / scroll ──
+                  final dx = d.focalPoint.dx - _panStartX;
+                  final candleW = W / _visibleCount;
+                  _offsetX = _panStartOffset - dx / candleW;
+
+                  // Clamp
+                  final maxOff = max(0.0, (_totalCandles - _visibleCount).toDouble());
+                  _offsetX = _offsetX.clamp(
+                      -_visibleCount * 0.3, maxOff + _visibleCount * 0.3);
+
+                  // Crosshair while panning
+                  if (!_crosshairLocked) {
+                    _crosshairIndex = _screenToIndex(d.focalPoint.dx, W);
+                  }
+                }
               });
             },
 
-            // ── Long press: lock crosshair ──
+            onScaleEnd: (d) {
+              // Snap offset to valid range
+              final maxOff = max(0.0, (_totalCandles - _visibleCount).toDouble());
+              _offsetX = _offsetX.clamp(0.0, maxOff);
+              setState(() {
+                _crosshairLocked = false;
+              });
+            },
+
             onLongPressStart: (d) {
               setState(() {
                 _crosshairLocked = true;
-                _crosshairCandleIndex =
-                    _screenXToCandleIndex(d.localPosition.dx, chartWidth);
-                _crosshairScreenPos = d.localPosition;
+                _crosshairIndex = _screenToIndex(d.localPosition.dx, W);
               });
             },
             onLongPressMoveUpdate: (d) {
               setState(() {
-                _crosshairCandleIndex =
-                    _screenXToCandleIndex(d.localPosition.dx, chartWidth);
-                _crosshairScreenPos = d.localPosition;
+                _crosshairIndex = _screenToIndex(d.localPosition.dx, W);
               });
             },
             onLongPressEnd: (_) {
               setState(() {
                 _crosshairLocked = false;
-                _crosshairCandleIndex = null;
-                _crosshairScreenPos = null;
+                _crosshairIndex = null;
+              });
+            },
+
+            onDoubleTap: () {
+              setState(() {
+                _scale = 1.0;
+                _offsetX = max(0.0, (_totalCandles - _baseVisible).toDouble());
+                _crosshairIndex = null;
               });
             },
 
@@ -273,11 +184,9 @@ class _TradingChartState extends State<TradingChart>
                 visibleCount: _visibleCount,
                 bullColor: widget.bullColor,
                 bearColor: widget.bearColor,
-                crosshairIndex: _crosshairLocked ? _crosshairCandleIndex : null,
-                crosshairScreenX:
-                    _crosshairLocked ? _crosshairScreenPos?.dx : null,
+                crosshairIndex: _crosshairLocked ? _crosshairIndex : null,
               ),
-              size: Size(chartWidth, chartHeight),
+              size: Size(W, H),
             ),
           );
         },
@@ -287,7 +196,7 @@ class _TradingChartState extends State<TradingChart>
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// CustomPainter — renders candles, volume, MAs, grid, crosshair
+// CustomPainter
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class _ChartPainter extends CustomPainter {
@@ -297,7 +206,6 @@ class _ChartPainter extends CustomPainter {
   final Color bullColor;
   final Color bearColor;
   final int? crosshairIndex;
-  final double? crosshairScreenX;
 
   _ChartPainter({
     required this.candles,
@@ -306,7 +214,6 @@ class _ChartPainter extends CustomPainter {
     required this.bullColor,
     required this.bearColor,
     this.crosshairIndex,
-    this.crosshairScreenX,
   });
 
   @override
@@ -336,9 +243,10 @@ class _ChartPainter extends CustomPainter {
     if (yRange <= 0) return;
 
     final maxVol = visible.map((c) => c.volume).reduce(max);
-
     final candleW = W / visibleCount;
-    final bodyW = max(1.5, candleW * 0.6);
+    final bodyW = max(1.5, candleW * 0.65);
+
+    double p2y(double p) => priceH * (1.0 - (p - yMin) / yRange);
 
     // ── Grid ──────────────────────────────────────────────────────────────
     final gridPaint = Paint()..color = const Color(0xFF1A2332)..strokeWidth = 0.5;
@@ -363,18 +271,15 @@ class _ChartPainter extends CustomPainter {
       final bx = (i - localLeft) * candleW + (candleW - bodyW) / 2;
       final by = volTop + volH - bh;
       canvas.drawRect(
-          Rect.fromLTWH(bx, by, bodyW, bh),
+          Rect.fromLTWH(bx, by, bodyW, max(0.5, bh)),
           Paint()
-            ..color = (c.isBullish ? bullColor : bearColor).withOpacity(0.22)
+            ..color = (c.isBullish ? bullColor : bearColor).withOpacity(0.25)
             ..style = PaintingStyle.fill);
     }
 
     // ── X-axis date labels ───────────────────────────────────────────────
-    final step = max(1, visibleCount ~/ 6);
-    final months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
+    final step = max(1, visibleCount ~/ 5);
+    final months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     for (int i = 0; i < visible.length; i += step) {
       final d = visible[i].time;
       final label = '${months[d.month - 1]} ${d.day}';
@@ -384,8 +289,6 @@ class _ChartPainter extends CustomPainter {
     }
 
     // ── Candlesticks ─────────────────────────────────────────────────────
-    double p2y(double p) => priceH * (1.0 - (p - yMin) / yRange);
-
     for (int i = 0; i < visible.length; i++) {
       final c = visible[i];
       final cx = (i - localLeft + 0.5) * candleW;
@@ -399,7 +302,7 @@ class _ChartPainter extends CustomPainter {
       // Body
       final top = p2y(max(c.open, c.close));
       final bot = p2y(min(c.open, c.close));
-      final bh = max(1.0, bot - top);
+      final bh = max(1.5, bot - top);
       final bodyRect = RRect.fromRectAndRadius(
         Rect.fromCenter(
             center: Offset(cx, (top + bot) / 2), width: bodyW, height: bh),
@@ -417,12 +320,16 @@ class _ChartPainter extends CustomPainter {
     }
 
     // ── Moving Averages ──────────────────────────────────────────────────
-    _drawMA(canvas, visible, startIdx, localLeft, candleW, priceH, yMin, yRange,
-        7, const Color(0xFFFFAB40));
-    _drawMA(canvas, visible, startIdx, localLeft, candleW, priceH, yMin, yRange,
-        9, const Color(0xFF42A5F5), ema: true);
-    _drawMA(canvas, visible, startIdx, localLeft, candleW, priceH, yMin, yRange,
-        25, const Color(0xFFAB47BC));
+    final bufStart = max(0, startIdx - 30);
+    final bufEnd = min(candles.length, endIdx);
+    final buf = candles.sublist(bufStart, bufEnd);
+
+    _drawMA(canvas, buf, bufStart, startIdx, localLeft, candleW, priceH,
+        yMin, yRange, 7, const Color(0xFFFFAB40));
+    _drawMA(canvas, buf, bufStart, startIdx, localLeft, candleW, priceH,
+        yMin, yRange, 9, const Color(0xFF42A5F5), ema: true);
+    _drawMA(canvas, buf, bufStart, startIdx, localLeft, candleW, priceH,
+        yMin, yRange, 25, const Color(0xFFAB47BC));
 
     // ── MA Legend ─────────────────────────────────────────────────────────
     double lx = 8;
@@ -431,14 +338,16 @@ class _ChartPainter extends CustomPainter {
       ('EMA9', const Color(0xFF42A5F5)),
       ('SMA25', const Color(0xFFAB47BC)),
     ]) {
-      final dp = Paint()..color = col..strokeWidth = 2;
-      canvas.drawLine(Offset(lx, 10), Offset(lx + 14, 10), dp);
-      _drawText(canvas, ' $label', Offset(lx + 16, 3), col, 9, bold: false);
+      canvas.drawLine(Offset(lx, 10), Offset(lx + 14, 10),
+          Paint()..color = col..strokeWidth = 2);
+      _drawText(canvas, ' $label', Offset(lx + 16, 3), col, 9);
       lx += 52;
     }
 
     // ── Crosshair ────────────────────────────────────────────────────────
-    if (crosshairIndex != null && crosshairIndex! >= startIdx && crosshairIndex! < endIdx) {
+    if (crosshairIndex != null &&
+        crosshairIndex! >= startIdx &&
+        crosshairIndex! < endIdx) {
       final ci = crosshairIndex!;
       final c = candles[ci];
       final li = (ci - startIdx - localLeft + 0.5) * candleW;
@@ -454,7 +363,7 @@ class _ChartPainter extends CustomPainter {
       final closeY = p2y(c.close);
       canvas.drawLine(Offset(0, closeY), Offset(W, closeY), crossPaint);
 
-      // Price tag
+      // Price tag on right
       final tagColor = c.isBullish ? bullColor : bearColor;
       final tagW = 52.0;
       final tagH = 18.0;
@@ -500,33 +409,39 @@ class _ChartPainter extends CustomPainter {
         ty += 13.5;
       }
     }
+
+    // ── Current price line (dashed) ──────────────────────────────────────
+    if (candles.isNotEmpty) {
+      final last = candles.last;
+      final ly = p2y(last.close);
+      final linePaint = Paint()
+        ..color = last.isBullish ? bullColor.withOpacity(0.6) : bearColor.withOpacity(0.6)
+        ..strokeWidth = 1
+        ..style = PaintingStyle.stroke;
+      for (double x = 0; x < W; x += 6) {
+        canvas.drawLine(Offset(x, ly), Offset(min(x + 3, W), ly), linePaint);
+      }
+    }
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────
 
-  void _drawMA(Canvas canvas, List<CandleData> visible, int startIdx,
-      double localLeft, double candleW, double priceH, double yMin,
-      double yRange, int period, Color color, {bool ema = false}) {
-    // Compute MA on the full visible + buffer slice
-    final bufStart = max(0, startIdx - period);
-    final bufEnd = min(candles.length, startIdx + visible.length + 2);
-    final buf = candles.sublist(bufStart, bufEnd);
-
-    List<double> vals;
-    if (ema) {
-      vals = _ema(buf, period);
-    } else {
-      vals = _sma(buf, period);
-    }
+  void _drawMA(Canvas canvas, List<CandleData> buf, int bufStart,
+      int startIdx, double localLeft, double candleW, double priceH,
+      double yMin, double yRange, int period, Color color,
+      {bool ema = false}) {
+    final vals = ema ? _ema(buf, period) : _sma(buf, period);
 
     final path = Path();
     bool started = false;
-    for (int i = 0; i < visible.length; i++) {
-      final globalI = startIdx + i;
-      final bufI = globalI - bufStart;
-      if (bufI < 0 || bufI >= vals.length || vals[bufI].isNaN) continue;
-      final x = (i - localLeft + 0.5) * candleW;
-      final y = priceH * (1.0 - (vals[bufI] - yMin) / yRange);
+    for (int i = 0; i < buf.length; i++) {
+      final globalI = bufStart + i;
+      if (globalI < startIdx || globalI >= startIdx + visibleCount) continue;
+      if (i >= vals.length || vals[i].isNaN) continue;
+
+      final localI = globalI - startIdx;
+      final x = (localI - localLeft + 0.5) * candleW;
+      final y = priceH * (1.0 - (vals[i] - yMin) / yRange);
       if (!started) {
         path.moveTo(x, y);
         started = true;
@@ -631,7 +546,7 @@ class _ChartPainter extends CustomPainter {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Sample data generator (used by atomic_swaps_screen and demo)
+// Sample data generator
 // ═══════════════════════════════════════════════════════════════════════════════
 
 List<CandleData> generateSampleCandles(double basePrice, int count) {
