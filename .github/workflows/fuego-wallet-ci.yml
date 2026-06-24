@@ -3,11 +3,6 @@ name: Fuego Wallet CI
 on:
   push:
     branches: [master]
-    paths:
-      - 'lib/**'
-      - 'pubspec.yaml'
-      - 'analysis_options.yaml'
-      - '.github/workflows/fuego-wallet-ci.yml'
   pull_request:
     branches: [master]
   workflow_dispatch:
