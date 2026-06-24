@@ -123,8 +123,12 @@ dependency_overrides:
     path: sdk/packages/fuego_defi_types
   fuego_legacy_wallet_migration:
     path: sdk/packages/fuego_legacy_wallet_migration
+  fuego_symbol_converter:
+    path: sdk/packages/fuego_symbol_converter
   fuego_ui:
     path: sdk/packages/fuego_ui
+  fuego_wallet_build_transformer:
+    path: sdk/packages/fuego_wallet_build_transformer
   dragon_logs:
     path: sdk/packages/dragon_logs
   dragon_charts_flutter:
