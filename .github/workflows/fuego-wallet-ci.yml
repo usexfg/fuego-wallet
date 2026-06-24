@@ -11,6 +11,8 @@ on:
   pull_request:
     branches: [master]
   workflow_dispatch:
+  release:
+    types: [published]
 
 concurrency:
   group: fuego-wallet-${{ github.ref }}
@@ -18,7 +20,7 @@ concurrency:
 
 jobs:
   analyze:
-    name: Analyze & Test
+    name: Analyze
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -40,4 +42,47 @@ jobs:
       - name: Analyze
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
+  build-macos:
+    name: Build macOS
+    runs-on: macos-latest
+    timeout-minutes: 25
+    needs: analyze
 
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.0'
+          channel: 'stable'
+
+      - name: Enable macOS desktop
+        run: flutter config --enable-macos-desktop
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build macOS app
+        run: flutter build macos --release
+
+      - name: Package app
+        run: |
+          cd build/macos/Build/Products/Release
+          zip -r Fuego-Wallet-macOS.zip "fuego_wallet.app"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuego-wallet-macos
+          path: build/macos/Build/Products/Release/Fuego-Wallet-macOS.zip
+          retention-days: 30
+
+      - name: Upload to Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/macos/Build/Products/Release/Fuego-Wallet-macOS.zip
