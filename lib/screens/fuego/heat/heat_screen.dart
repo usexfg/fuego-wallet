@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../services/fuego_daemon_client.dart';
 import '../../../models/heat_amm.dart';
 import '../../../utils/theme.dart';
+import 'mint_heat_dialog.dart';
 
 class HeatScreen extends StatefulWidget {
   const HeatScreen({super.key});
@@ -174,10 +175,13 @@ class _HeatScreenState extends State<HeatScreen> {
       height: 52,
       child: ElevatedButton.icon(
         onPressed: () {
-          // TODO: Show mint dialog
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Mint HEAT dialog — coming soon')),
-          );
+          showDialog(
+            context: context,
+            builder: (_) => BlocProvider.value(
+              value: context.read<FuegoDaemonClient>(),
+              child: const MintHeatDialog(),
+            ),
+          ).then((_) => _loadMetrics());
         },
         icon: const Icon(Icons.local_fire_department),
         label: const Text('Mint HEAT', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
