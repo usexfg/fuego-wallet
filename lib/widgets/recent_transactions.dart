@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/wallet_provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../bloc/wallet/wallet_cubit.dart';
 import '../models/wallet.dart';
 import '../utils/theme.dart';
 
@@ -49,11 +49,11 @@ class RecentTransactions extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          Consumer<WalletProvider>(
-            builder: (context, walletProvider, child) {
-              final transactions = walletProvider.transactions;
+          BlocBuilder<WalletCubit, WalletState>(
+            builder: (context, state) {
+              final transactions = state.transactions;
               
-              if (walletProvider.isLoading) {
+              if (state.isLoading) {
                 return _buildLoadingState();
               }
               

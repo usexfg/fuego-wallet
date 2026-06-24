@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
-import '../providers/wallet_provider.dart';
+import '../bloc/wallet/wallet_cubit.dart';
 import '../utils/theme.dart';
 
 class BalanceCard extends StatefulWidget {
@@ -30,46 +30,27 @@ class _BalanceCardState extends State<BalanceCard>
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
-
     _bounceController = AnimationController(
       duration: const Duration(milliseconds: 600),
       vsync: this,
     );
-
-    _shimmerAnimation = Tween<double>(
-      begin: -2,
-      end: 2,
-    ).animate(CurvedAnimation(
-      parent: _shimmerController,
-      curve: Curves.easeInOut,
-    ));
-
-    _bounceAnimation = Tween<double>(
-      begin: 1,
-      end: 1.05,
-    ).animate(CurvedAnimation(
-      parent: _bounceController,
-      curve: Curves.elasticOut,
-    ));
-
+    _shimmerAnimation = Tween<double>(begin: -2, end: 2).animate(
+        CurvedAnimation(parent: _shimmerController, curve: Curves.easeInOut));
+    _bounceAnimation = Tween<double>(begin: 1, end: 1.05).animate(
+        CurvedAnimation(parent: _bounceController, curve: Curves.elasticOut));
     _shimmerController.repeat();
   }
 
   void _toggleBalanceVisibility() {
-    setState(() {
-      _showBalance = !_showBalance;
-    });
-    _bounceController.forward().then((_) {
-      _bounceController.reverse();
-    });
+    setState(() => _showBalance = !_showBalance);
+    _bounceController.forward().then((_) => _bounceController.reverse());
   }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<WalletProvider>(
-      builder: (context, walletProvider, child) {
-        final wallet = walletProvider.wallet;
-        final isLoading = walletProvider.isLoading && wallet == null;
+    return BlocBuilder<WalletCubit, WalletState>(
+      builder: (context, state) {
+        final isLoading = state.isLoading && state.xfgBalance == 0;
 
         return AnimatedBuilder(
           animation: _bounceAnimation,
@@ -93,7 +74,6 @@ class _BalanceCardState extends State<BalanceCard>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Header row
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -105,21 +85,12 @@ class _BalanceCardState extends State<BalanceCard>
                                 color: Colors.white.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: const Icon(
-                                Icons.account_balance_wallet,
-                                color: Colors.white,
-                                size: 20,
-                              ),
+                              child: const Icon(Icons.account_balance_wallet,
+                                  color: Colors.white, size: 20),
                             ),
                             const SizedBox(width: 12),
-                            const Text(
-                              'Total Balance',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
+                            const Text('Total Balance', style: TextStyle(
+                                color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500)),
                           ],
                         ),
                         GestureDetector(
@@ -132,65 +103,43 @@ class _BalanceCardState extends State<BalanceCard>
                             ),
                             child: Icon(
                               _showBalance ? Icons.visibility : Icons.visibility_off,
-                              color: Colors.white,
-                              size: 20,
+                              color: Colors.white, size: 20,
                             ),
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 20),
-
-                    // Balance display
                     if (isLoading)
                       _buildLoadingShimmer()
-                    else if (wallet != null)
-                      _buildBalanceDisplay(wallet.balanceXFG)
+                    else if (state.isConnected)
+                      _buildBalanceDisplay(state.xfgBalance)
                     else
                       _buildErrorState(),
-
                     const SizedBox(height: 12),
-
-                    // Available balance
-                    if (!isLoading && wallet != null)
+                    if (!isLoading && state.isConnected)
                       Row(
                         children: [
-                          const Icon(
-                            Icons.check_circle_outline,
-                            color: Colors.white,
-                            size: 16,
-                          ),
+                          const Icon(Icons.check_circle_outline, color: Colors.white, size: 16),
                           const SizedBox(width: 8),
                           Text(
-                            'Available: ${_showBalance ? '${wallet.unlockedBalanceXFG.toStringAsFixed(8)} XFG' : '••••••••'}',
+                            'Available: ${_showBalance ? '${state.xfgUnlockedBalance.toStringAsFixed(8)} XFG' : '••••••••'}',
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.9),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w400,
-                            ),
+                                color: Colors.white.withOpacity(0.9), fontSize: 14),
                           ),
                         ],
                       ),
-
                     const SizedBox(height: 16),
-
-                    // Status indicators
                     Row(
                       children: [
                         _buildStatusIndicator(
-                          walletProvider.isConnected ? Icons.wifi : Icons.wifi_off,
-                          walletProvider.isConnected ? 'Connected' : 'Offline',
-                          walletProvider.isConnected 
-                              ? AppTheme.successColor 
-                              : AppTheme.errorColor,
+                          state.isConnected ? Icons.wifi : Icons.wifi_off,
+                          state.isConnected ? 'Connected' : 'Offline',
+                          state.isConnected ? AppTheme.successColor : AppTheme.errorColor,
                         ),
                         const SizedBox(width: 16),
-                        if (walletProvider.isSyncing)
-                          _buildStatusIndicator(
-                            Icons.sync,
-                            'Syncing',
-                            AppTheme.warningColor,
-                          ),
+                        if (state.isSyncing)
+                          _buildStatusIndicator(Icons.sync, 'Syncing', AppTheme.warningColor),
                       ],
                     ),
                   ],
@@ -221,11 +170,8 @@ class _BalanceCardState extends State<BalanceCard>
                           TyperAnimatedText(
                             balance.toStringAsFixed(8),
                             textStyle: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 36,
-                              fontWeight: FontWeight.bold,
-                              fontFamily: 'monospace',
-                            ),
+                                color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold,
+                                fontFamily: 'monospace'),
                             speed: const Duration(milliseconds: 50),
                           ),
                         ],
@@ -235,27 +181,14 @@ class _BalanceCardState extends State<BalanceCard>
                     ),
                     const Padding(
                       padding: EdgeInsets.only(bottom: 8),
-                      child: Text(
-                        'XFG',
-                        style: TextStyle(
-                          color: AppTheme.accentColor,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      child: Text('XFG', style: TextStyle(
+                          color: AppTheme.accentColor, fontSize: 18, fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
-                // USD equivalent (placeholder)
-                Text(
-                  '≈ \$${(balance * 0.001).toStringAsFixed(2)} USD',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.8),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
+                Text('≈ \$${(balance * 0.001).toStringAsFixed(2)} USD',
+                    style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 16)),
               ],
             )
           : Container(
@@ -263,24 +196,12 @@ class _BalanceCardState extends State<BalanceCard>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    '••••••••',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'monospace',
-                    ),
-                  ),
+                  const Text('••••••••', style: TextStyle(
+                      color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold,
+                      fontFamily: 'monospace')),
                   const SizedBox(height: 8),
-                  Text(
-                    'Balance Hidden',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.8),
-                      fontSize: 16,
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
+                  Text('Balance Hidden',
+                      style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 16)),
                 ],
               ),
             ),
@@ -316,25 +237,14 @@ class _BalanceCardState extends State<BalanceCard>
   }
 
   Widget _buildErrorState() {
-    return Column(
+    return const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Unable to load balance',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Check your connection',
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.8),
-            fontSize: 14,
-          ),
-        ),
+        Text('Unable to load balance',
+            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w500)),
+        SizedBox(height: 8),
+        Text('Check your connection',
+            style: TextStyle(color: Colors.white70, fontSize: 14)),
       ],
     );
   }
@@ -343,20 +253,9 @@ class _BalanceCardState extends State<BalanceCard>
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(
-          icon,
-          color: color,
-          size: 16,
-        ),
+        Icon(icon, color: color, size: 16),
         const SizedBox(width: 4),
-        Text(
-          label,
-          style: TextStyle(
-            color: color,
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
+        Text(label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w500)),
       ],
     );
   }

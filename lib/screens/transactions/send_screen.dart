@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
-import '../../providers/wallet_provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../bloc/wallet/wallet_cubit.dart';
 import '../../utils/theme.dart';
 
 class SendScreen extends StatefulWidget {
@@ -45,9 +45,9 @@ class _SendScreenState extends State<SendScreen> {
     });
 
     try {
-      final walletProvider = Provider.of<WalletProvider>(context, listen: false);
+      final cubit = context.read<WalletCubit>();
       
-      final txHash = await walletProvider.sendTransaction(
+      final txHash = await cubit.sendTransaction(
         address: _addressController.text.trim(),
         amount: double.parse(_amountController.text),
         paymentId: _paymentIdController.text.trim().isEmpty 
@@ -176,15 +176,14 @@ class _SendScreenState extends State<SendScreen> {
     }
   }
 
-  void _generatePaymentId() async {
-    final walletProvider = Provider.of<WalletProvider>(context, listen: false);
-    final paymentId = await walletProvider.generatePaymentId();
-    _paymentIdController.text = paymentId;
+  void _generatePaymentId() {
+    final cubit = context.read<WalletCubit>();
+    _paymentIdController.text = cubit.generatePaymentId();
   }
 
   void _setMaxAmount() {
-    final walletProvider = Provider.of<WalletProvider>(context, listen: false);
-    final availableBalance = walletProvider.wallet?.unlockedBalanceXFG ?? 0.0;
+    final state = context.read<WalletCubit>().state;
+    final availableBalance = state.xfgUnlockedBalance;
     
     // Reserve some amount for fees (approximately 0.01 XFG)
     final maxAmount = (availableBalance - 0.01).clamp(0.0, availableBalance);
@@ -199,9 +198,9 @@ class _SendScreenState extends State<SendScreen> {
         elevation: 0,
         backgroundColor: Colors.transparent,
       ),
-      body: Consumer<WalletProvider>(
-        builder: (context, walletProvider, child) {
-          final availableBalance = walletProvider.wallet?.unlockedBalanceXFG ?? 0.0;
+      body: BlocBuilder<WalletCubit, WalletState>(
+        builder: (context, state) {
+          final availableBalance = state.xfgUnlockedBalance;
           
           return SingleChildScrollView(
             padding: const EdgeInsets.all(24),

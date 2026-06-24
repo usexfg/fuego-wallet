@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import '../../providers/wallet_provider.dart';
+import '../../bloc/wallet/wallet_cubit.dart';
 import '../../utils/theme.dart';
 
 class ReceiveScreen extends StatefulWidget {
@@ -69,9 +69,8 @@ class _ReceiveScreenState extends State<ReceiveScreen>
 
   Future<void> _loadWalletAddress() async {
     try {
-      final walletProvider = Provider.of<WalletProvider>(context, listen: false);
-      final address = walletProvider.wallet?.address ?? 
-          await _getAddressFromProvider();
+      final cubit = context.read<WalletCubit>();
+      final address = cubit.state.xfgAddress ?? await cubit.getAddress();
       
       setState(() {
         _walletAddress = address;
@@ -100,8 +99,8 @@ class _ReceiveScreenState extends State<ReceiveScreen>
 
   Future<void> _generatePaymentId() async {
     try {
-      final walletProvider = Provider.of<WalletProvider>(context, listen: false);
-      final paymentId = await walletProvider.generatePaymentId();
+      final cubit = context.read<WalletCubit>();
+      final paymentId = cubit.generatePaymentId();
       
       setState(() {
         _paymentId = paymentId;
@@ -124,8 +123,8 @@ class _ReceiveScreenState extends State<ReceiveScreen>
     if (_paymentId == null || _walletAddress == null) return;
 
     try {
-      final walletProvider = Provider.of<WalletProvider>(context, listen: false);
-      final integrated = await walletProvider.createIntegratedAddress(_paymentId!);
+      final cubit = context.read<WalletCubit>();
+      final integrated = await cubit.createIntegratedAddress(_paymentId!);
       
       setState(() {
         _integratedAddress = integrated;

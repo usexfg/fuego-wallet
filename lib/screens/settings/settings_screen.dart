@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
+import '../../bloc/wallet/wallet_cubit.dart';
 import '../../providers/wallet_provider.dart';
 import '../../services/fuego_rpc_service.dart';
 import '../../services/security_service.dart';
@@ -390,8 +392,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         backgroundColor: Colors.transparent,
         automaticallyImplyLeading: false,
       ),
-      body: Consumer<WalletProvider>(
-        builder: (context, walletProvider, child) {
+      body: BlocBuilder<WalletCubit, WalletState>(
+        builder: (context, state) {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [

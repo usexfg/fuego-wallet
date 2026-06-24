@@ -85,7 +85,7 @@ class FuegoApp extends StatelessWidget {
               create: (_) => AuthCubit(sdk)..initialize(),
             ),
             BlocProvider<WalletCubit>(
-              create: (_) => WalletCubit(sdk),
+              create: (_) => WalletCubit(sdk, rpcService),
             ),
             BlocProvider<CdCubit>(
               create: (_) => CdCubit(rpcService)..loadAll(),
