@@ -8,6 +8,7 @@ import 'package:logging/logging.dart';
 import 'bloc/app_bloc_observer.dart';
 import 'bloc/auth/auth_cubit.dart';
 import 'bloc/wallet/wallet_cubit.dart';
+import 'bloc/dex/dex_cubit.dart';
 import 'bloc/cd/cd_cubit.dart';
 import 'bloc/hearth/hearth_cubit.dart';
 import 'providers/wallet_provider.dart';
@@ -91,6 +92,9 @@ class FuegoApp extends StatelessWidget {
             ),
             BlocProvider<HearthCubit>(
               create: (_) => HearthCubit(daemonClient),
+            ),
+            BlocProvider<DexCubit>(
+              create: (_) => DexCubit(sdk),
             ),
           ],
           child: MaterialApp(
