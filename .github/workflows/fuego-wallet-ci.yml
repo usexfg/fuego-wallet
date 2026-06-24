@@ -63,14 +63,19 @@ jobs:
 
       - name: Fix stale komodo references in SDK
         run: |
-          find sdk/packages -name "*.dart" -not -path "*/test/*" -not -path "*/.dart_tool/*" | \
+          echo "=== Checking submodule _komodo_index.dart ==="
+          head -10 sdk/packages/fuego_cex_market_data/lib/src/fuego/_komodo_index.dart
+          find sdk/packages -name "*.dart" -not -path "*/test/*" -not -path "*/.dart_tool/*" -not -path "*/example/*" | \
           while read f; do
+            sed -i '' 's/src\/komodo\//src\/fuego\//g' "$f"
+            sed -i '' "s/'komodo\//'fuego\//g" "$f"
             sed -i '' 's/komodo_price_provider/fuego_price_provider/g' "$f"
             sed -i '' 's/komodo_price_repository/fuego_price_repository/g' "$f"
             sed -i '' 's/komodo_defi_sdk\.dart/fuego_defi_sdk.dart/g' "$f"
             sed -i '' 's/komodo_defi_framework_bindings_generated/fuego_defi_framework_bindings_generated/g' "$f"
-            sed -i '' 's|komodo/_komodo_index|fuego/_komodo_index|g' "$f"
           done
+          echo "=== After fix ==="
+          head -10 sdk/packages/fuego_cex_market_data/lib/src/fuego/_komodo_index.dart
 
       - name: Build macOS app
         run: flutter build macos --release
