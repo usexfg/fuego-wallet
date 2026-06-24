@@ -103,3 +103,29 @@ flutter:
     - assets/icons/
     - assets/logo/
     - assets/bin/
+
+dependency_overrides:
+  fuego_cex_market_data:
+    path: sdk/packages/fuego_cex_market_data
+  fuego_coin_updates:
+    path: sdk/packages/fuego_coin_updates
+  fuego_coins:
+    path: sdk/packages/fuego_coins
+  fuego_defi_framework:
+    path: sdk/packages/fuego_defi_framework
+  fuego_defi_local_auth:
+    path: sdk/packages/fuego_defi_local_auth
+  fuego_defi_rpc_methods:
+    path: sdk/packages/fuego_defi_rpc_methods
+  fuego_defi_sdk:
+    path: sdk/packages/fuego_defi_sdk
+  fuego_defi_types:
+    path: sdk/packages/fuego_defi_types
+  fuego_legacy_wallet_migration:
+    path: sdk/packages/fuego_legacy_wallet_migration
+  fuego_ui:
+    path: sdk/packages/fuego_ui
+  dragon_logs:
+    path: sdk/packages/dragon_logs
+  dragon_charts_flutter:
+    path: sdk/packages/dragon_charts_flutter
