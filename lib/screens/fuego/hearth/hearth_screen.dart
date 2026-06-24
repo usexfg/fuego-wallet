@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../bloc/hearth/hearth_cubit.dart';
 import '../../../utils/theme.dart';
+import 'liquidity_dialogs.dart';
 
 class HearthScreen extends StatefulWidget {
   const HearthScreen({super.key});
@@ -26,6 +27,26 @@ class _HearthScreenState extends State<HearthScreen> {
     _xfgAmount.dispose();
     _heatAmount.dispose();
     super.dispose();
+  }
+
+  void _showAddLiquidity(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => BlocProvider.value(
+        value: context.read<HearthCubit>(),
+        child: const AddLiquidityDialog(),
+      ),
+    );
+  }
+
+  void _showRemoveLiquidity(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => BlocProvider.value(
+        value: context.read<HearthCubit>(),
+        child: const RemoveLiquidityDialog(),
+      ),
+    );
   }
 
   @override
@@ -249,7 +270,7 @@ class _HearthScreenState extends State<HearthScreen> {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () {},
+                    onPressed: () => _showAddLiquidity(context),
                     icon: const Icon(Icons.add, size: 18),
                     label: const Text('Add'),
                     style: OutlinedButton.styleFrom(
@@ -261,7 +282,7 @@ class _HearthScreenState extends State<HearthScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () {},
+                    onPressed: () => _showRemoveLiquidity(context),
                     icon: const Icon(Icons.remove, size: 18),
                     label: const Text('Remove'),
                     style: OutlinedButton.styleFrom(

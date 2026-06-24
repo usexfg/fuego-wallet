@@ -3,8 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../bloc/cd/cd_cubit.dart';
 import '../../../models/cd.dart';
 import '../../../utils/theme.dart';
-
-class CdOverviewScreen extends StatelessWidget {
+import 'create_cd_dialog.dart';
   const CdOverviewScreen({super.key});
 
   @override
@@ -115,9 +114,12 @@ class CdOverviewScreen extends StatelessWidget {
   }
 
   void _showCreateCdSheet(BuildContext context) {
-    // TODO: Build create CD form dialog
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Create CD form — coming soon')),
+    showDialog(
+      context: context,
+      builder: (_) => BlocProvider.value(
+        value: context.read<CdCubit>(),
+        child: const CreateCdDialog(),
+      ),
     );
   }
 }
