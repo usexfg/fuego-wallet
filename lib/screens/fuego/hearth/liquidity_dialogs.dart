@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../bloc/hearth/hearth_cubit.dart';
-import '../../utils/theme.dart';
+import '../../../bloc/hearth/hearth_cubit.dart';
+import '../../../utils/theme.dart';
 
 class AddLiquidityDialog extends StatefulWidget {
   const AddLiquidityDialog({super.key});

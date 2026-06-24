@@ -4,6 +4,8 @@ import '../../../bloc/cd/cd_cubit.dart';
 import '../../../models/cd.dart';
 import '../../../utils/theme.dart';
 import 'create_cd_dialog.dart';
+
+class CdOverviewScreen extends StatelessWidget {
   const CdOverviewScreen({super.key});
 
   @override

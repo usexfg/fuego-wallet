@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../bloc/cd/cd_cubit.dart';
-import '../../utils/theme.dart';
+import '../../../bloc/cd/cd_cubit.dart';
+import '../../../utils/theme.dart';
 
 class CreateCdDialog extends StatefulWidget {
   const CreateCdDialog({super.key});

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../services/fuego_daemon_client.dart';
-import '../../utils/theme.dart';
+import '../../../services/fuego_daemon_client.dart';
+import '../../../utils/theme.dart';
 
 class MintHeatDialog extends StatefulWidget {
   const MintHeatDialog({super.key});
