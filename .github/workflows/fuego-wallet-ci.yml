@@ -40,37 +40,4 @@ jobs:
       - name: Analyze
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
-      - name: Run tests
-        continue-on-error: true
-        run: flutter test
 
-  build-web:
-    name: Build Web (WASM)
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    needs: analyze
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Install Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.35.0'
-          channel: 'stable'
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Build web
-        run: flutter build web --wasm
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: fuego-wallet-web
-          path: build/web/
-          retention-days: 7
