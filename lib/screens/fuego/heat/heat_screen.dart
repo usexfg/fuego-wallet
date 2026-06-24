@@ -177,7 +177,7 @@ class _HeatScreenState extends State<HeatScreen> {
         onPressed: () {
           showDialog(
             context: context,
-            builder: (_) => BlocProvider.value(
+            builder: (_) => RepositoryProvider.value(
               value: context.read<FuegoDaemonClient>(),
               child: const MintHeatDialog(),
             ),

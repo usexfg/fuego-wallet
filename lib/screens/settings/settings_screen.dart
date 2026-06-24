@@ -23,6 +23,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _biometricEnabled = false;
   bool _isLoading = false;
 
+  WalletProvider get walletProvider =>
+      Provider.of<WalletProvider>(context, listen: false);
+
   @override
   void initState() {
     super.initState();

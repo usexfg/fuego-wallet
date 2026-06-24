@@ -148,6 +148,12 @@ class WalletCubit extends Cubit<WalletState> {
     return _rpc.createIntegratedAddress(paymentId);
   }
 
+  Future<void> refreshTransactions() async {
+    try {
+      final txs = await _rpc.getTransactions();
+    } catch (_) {}
+  }
+
   Future<void> refreshSdkBalances() async {
     emit(state.copyWith(isLoading: true, error: null));
     try {

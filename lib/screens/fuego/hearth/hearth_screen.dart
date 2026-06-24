@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../bloc/hearth/hearth_cubit.dart';
+import '../../../models/heat_amm.dart';
 import '../../../utils/theme.dart';
 import 'liquidity_dialogs.dart';
 
