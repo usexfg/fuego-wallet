@@ -359,8 +359,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 8),
               Text(
                 '• Private transactions with ring signatures\n'
-                '• Encrypted blockchain messaging\n'
-                '• Elderfier node participation\n'
+                '• HEAT stablecoin mint & redeem\n'
+                '• Certificates of Deposit earning yield\n'
                 '• Built-in mining capabilities\n'
                 '• Advanced security features',
                 style: TextStyle(

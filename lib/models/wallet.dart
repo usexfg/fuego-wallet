@@ -122,32 +122,3 @@ class SendTransactionRequest {
       _$SendTransactionRequestFromJson(json);
   Map<String, dynamic> toJson() => _$SendTransactionRequestToJson(this);
 }
-
-@JsonSerializable()
-class ElderfierNode {
-  final String nodeId;
-  final String customName;
-  final String address;
-  final int stakeAmount;
-  final bool isActive;
-  final int uptime;
-  final int lastSeenBlock;
-  final String consensusType;
-
-  const ElderfierNode({
-    required this.nodeId,
-    required this.customName,
-    required this.address,
-    required this.stakeAmount,
-    required this.isActive,
-    required this.uptime,
-    required this.lastSeenBlock,
-    required this.consensusType,
-  });
-
-  factory ElderfierNode.fromJson(Map<String, dynamic> json) => 
-      _$ElderfierNodeFromJson(json);
-  Map<String, dynamic> toJson() => _$ElderfierNodeToJson(this);
-
-  double get stakeAmountXFG => stakeAmount / 10000000.0;
-}

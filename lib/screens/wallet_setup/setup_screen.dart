@@ -166,7 +166,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                               ),
                               const SizedBox(height: 20),
                               Text(
-                                'Your gateway to secure, private banking and untraceable transactions.',
+                                 'Your gateway to private DeFi — swap, earn yield, and trade cross-chain.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 18,
@@ -215,13 +215,19 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                                     _buildFeatureItem(
                                       Icons.message_outlined,
                                       'Encrypted Messaging',
-                                      'Secure blockchain-based communication',
+                                      'HEAT Stablecoin & Certificates of Deposit',
                                     ),
                                     const SizedBox(height: 16),
                                     _buildFeatureItem(
-                                      Icons.account_tree,
-                                      'Elderfier Staking',
-                                      'New consensus nodes for zkSTARK proofs & cross-chain communication',
+                                      Icons.swap_horiz,
+                                      'Hearth AMM',
+                                      'XFG\u2194HEAT on-chain pool with LP yield',
+                                    ),
+                                    const SizedBox(height: 16),
+                                    _buildFeatureItem(
+                                      Icons.swap_calls,
+                                      'Cross-Chain DEX',
+                                      'Atomic swaps with 783 coins via adaptor signatures',
                                     ),
                                   ],
                                 ),
@@ -322,7 +328,7 @@ class _SetupScreenState extends State<SetupScreen> with TickerProviderStateMixin
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                'Your Fuego L1 gateway to secure, private banking and untraceable transactions.',
+                                 'Your Fuego L1 gateway to private DeFi — swap, earn yield, trade cross-chain.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 16,

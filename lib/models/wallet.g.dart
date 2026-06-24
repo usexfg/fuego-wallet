@@ -73,27 +73,3 @@ Map<String, dynamic> _$SendTransactionRequestToJson(
       'fee': instance.fee,
       'mixins': instance.mixins,
     };
-
-ElderfierNode _$ElderfierNodeFromJson(Map<String, dynamic> json) =>
-    ElderfierNode(
-      nodeId: json['nodeId'] as String,
-      customName: json['customName'] as String,
-      address: json['address'] as String,
-      stakeAmount: json['stakeAmount'] as int,
-      isActive: json['isActive'] as bool,
-      uptime: json['uptime'] as int,
-      lastSeenBlock: json['lastSeenBlock'] as int,
-      consensusType: json['consensusType'] as String,
-    );
-
-Map<String, dynamic> _$ElderfierNodeToJson(ElderfierNode instance) =>
-    <String, dynamic>{
-      'nodeId': instance.nodeId,
-      'customName': instance.customName,
-      'address': instance.address,
-      'stakeAmount': instance.stakeAmount,
-      'isActive': instance.isActive,
-      'uptime': instance.uptime,
-      'lastSeenBlock': instance.lastSeenBlock,
-      'consensusType': instance.consensusType,
-    };

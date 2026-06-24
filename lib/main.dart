@@ -1,30 +1,39 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart';
+import 'package:fuego_defi_sdk/fuego_defi_sdk.dart';
+import 'package:logging/logging.dart';
+
+import 'bloc/app_bloc_observer.dart';
+import 'bloc/auth/auth_cubit.dart';
+import 'bloc/wallet/wallet_cubit.dart';
+import 'bloc/cd/cd_cubit.dart';
+import 'bloc/hearth/hearth_cubit.dart';
 import 'providers/wallet_provider.dart';
+import 'services/sdk_service.dart';
 import 'services/fuego_rpc_service.dart';
-import 'services/wallet_daemon_service.dart';
+import 'services/fuego_daemon_client.dart';
 import 'models/network_config.dart';
 import 'screens/splash_screen.dart';
 import 'utils/theme.dart';
 
-void main() async {
+final _sdkService = SdkService();
+
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize WalletDaemonService
-  await WalletDaemonService.initialize(
-    daemonAddress: '207.244.247.64',
-    daemonPort: 18180,
-    networkConfig: NetworkConfig.mainnet,
-  );
-  
-  // Set preferred orientations
+
+  Bloc.observer = AppBlocObserver();
+
+  Logger.root.level = Level.ALL;
+  Logger.root.onRecord.listen((record) {
+    debugPrint('${record.level.name}: ${record.time}: ${record.message}');
+  });
+
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
-  
-  // Set system UI overlay style
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -34,33 +43,65 @@ void main() async {
     ),
   );
 
-  runApp(const XFGWalletApp());
+  // Initialize the SDK (starts KDF/mm2 under the hood)
+  final fuegoDefiSdk = await _sdkService.initialize();
+
+  runApp(FuegoApp(sdk: fuegoDefiSdk));
 }
 
-class XFGWalletApp extends StatelessWidget {
-  const XFGWalletApp({super.key});
+class FuegoApp extends StatelessWidget {
+  final FuegoDefiSdk sdk;
+
+  const FuegoApp({super.key, required this.sdk});
 
   @override
   Widget build(BuildContext context) {
+    final rpcService = FuegoRPCService(
+      host: '207.244.247.64',
+      port: 18180,
+      networkConfig: NetworkConfig.mainnet,
+    );
+    final daemonClient = FuegoDaemonClient(
+      host: '207.244.247.64',
+      networkConfig: NetworkConfig.mainnet,
+    );
+
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(
-          create: (_) => WalletProvider(
-            rpcService: FuegoRPCService(
-              host: '207.244.247.64',
-              port: 18180,
-              networkConfig: NetworkConfig.mainnet,
-            ),
-          ),
+          create: (_) => WalletProvider(rpcService: rpcService),
         ),
       ],
-      child: MaterialApp(
-        title: 'XF₲ Wallet',
-        theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.dark, // Default to dark theme for crypto aesthetic
-        home: const SplashScreen(),
-        debugShowCheckedModeBanner: false,
+      child: MultiRepositoryProvider(
+        providers: [
+          RepositoryProvider<FuegoDefiSdk>.value(value: sdk),
+          RepositoryProvider<FuegoRPCService>.value(value: rpcService),
+          RepositoryProvider<FuegoDaemonClient>.value(value: daemonClient),
+        ],
+        child: MultiBlocProvider(
+          providers: [
+            BlocProvider<AuthCubit>(
+              create: (_) => AuthCubit(sdk)..initialize(),
+            ),
+            BlocProvider<WalletCubit>(
+              create: (_) => WalletCubit(sdk),
+            ),
+            BlocProvider<CdCubit>(
+              create: (_) => CdCubit(rpcService)..loadAll(),
+            ),
+            BlocProvider<HearthCubit>(
+              create: (_) => HearthCubit(daemonClient),
+            ),
+          ],
+          child: MaterialApp(
+            title: 'Fuego',
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: ThemeMode.dark,
+            home: const SplashScreen(),
+            debugShowCheckedModeBanner: false,
+          ),
+        ),
       ),
     );
   }

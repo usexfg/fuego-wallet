@@ -7,6 +7,7 @@ import 'package:dio/dio.dart';
 import 'package:crypto/crypto.dart';
 import '../models/wallet.dart';
 import '../models/network_config.dart';
+import '../models/cd.dart';
 
 class FuegoRPCService {
   final Dio _dio;
@@ -217,73 +218,65 @@ Future<String> createIntegratedAddress(String paymentId) async {
     }
   }
 
-  // Elderfier Methods (custom implementation for Fuego)
-  Future<List<ElderfierNode>> getElderfierNodes() async {
-    try {
-      // This would be a custom RPC call specific to Fuego's Elderfier system
-      final response = await _makeRPCCall('get_elderfier_nodes', {});
-      final nodes = response['nodes'] as List;
-      
-      return nodes.map((node) => ElderfierNode(
-        nodeId: node['node_id'] as String,
-        customName: node['custom_name'] as String,
-        address: node['address'] as String,
-        stakeAmount: node['stake_amount'] as int,
-        isActive: node['is_active'] as bool,
-        uptime: node['uptime'] as int,
-        lastSeenBlock: node['last_seen_block'] as int,
-        consensusType: node['consensus_type'] as String,
-      )).toList();
-    } catch (e) {
-      // Return empty list if Elderfier functionality is not available
-      return [];
-    }
+  // ── CD Methods (through mm2 v2 RPC) ──
+  Future<CdListResult> cdList() async {
+    final response = await _makeRPCCall('cd::list', {});
+    return CdListResult.fromJson(response);
   }
 
-  Future<bool> registerElderfierNode({
-    required String customName,
-    required String address,
-    required int stakeAmount,
+  Future<CdCreateResult> cdCreate({
+    required String coin,
+    required String amount,
+    int? durationBlocks,
   }) async {
-    try {
-      await _makeRPCCall('register_elderfier', {
-        'custom_name': customName,
-        'address': address,
-        'stake_amount': stakeAmount,
-      });
-      return true;
-    } catch (e) {
-      throw FuegoRPCException('Failed to register Elderfier node: $e');
+    final params = <String, dynamic>{
+      'coin': coin,
+      'amount': amount,
+    };
+    if (durationBlocks != null) {
+      params['duration_blocks'] = durationBlocks;
     }
+    final response = await _makeRPCCall('cd::create', params);
+    return CdCreateResult.fromJson(response);
   }
 
-  // Message Methods (encrypted messaging)
-  Future<bool> sendMessage({
-    required String recipientAddress,
-    required String message,
-    bool selfDestruct = false,
-    int? destructTime,
+  Future<CdClaimResult> cdClaim(String cdId) async {
+    final response = await _makeRPCCall('cd::claim', {'cd_id': cdId});
+    return CdClaimResult.fromJson(response);
+  }
+
+  Future<CdMarketListResult> cdMarketList() async {
+    final response = await _makeRPCCall('cd::market_list', {});
+    return CdMarketListResult.fromJson(response);
+  }
+
+  Future<CdSellResult> cdSell({
+    required String cdId,
+    required String price,
   }) async {
-    try {
-      await _makeRPCCall('send_message', {
-        'recipient': recipientAddress,
-        'message': message,
-        'self_destruct': selfDestruct,
-        'destruct_time': destructTime,
-      });
-      return true;
-    } catch (e) {
-      throw FuegoRPCException('Failed to send message: $e');
-    }
+    final response = await _makeRPCCall('cd::sell', {
+      'cd_id': cdId,
+      'price': price,
+    });
+    return CdSellResult.fromJson(response);
   }
 
-  Future<List<Map<String, dynamic>>> getMessages() async {
-    try {
-      final response = await _makeRPCCall('get_messages', {});
-      return List<Map<String, dynamic>>.from(response['messages'] as List);
-    } catch (e) {
-      return []; // Return empty list if messaging not available
-    }
+  Future<CdBuyResult> cdBuy(String listingId) async {
+    final response = await _makeRPCCall('cd::buy', {
+      'listing_id': listingId,
+    });
+    return CdBuyResult.fromJson(response);
+  }
+
+  Future<void> cdCancelListing(String listingId) async {
+    await _makeRPCCall('cd::cancel_listing', {
+      'listing_id': listingId,
+    });
+  }
+
+  Future<CdApyResult> cdApy() async {
+    final response = await _makeRPCCall('cd::apy', {});
+    return CdApyResult.fromJson(response);
   }
 
   // Private helper methods

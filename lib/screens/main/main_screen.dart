@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../utils/theme.dart';
 import '../home/home_screen.dart';
-import '../elderfier/elderfier_screen.dart';
-import '../messaging/messaging_screen.dart';
-import '../banking/banking_screen.dart';
 import '../settings/settings_screen.dart';
-import '../banking/burn_deposits_screen.dart';
+import '../fuego/cd/cd_overview_screen.dart';
+import '../fuego/hearth/hearth_screen.dart';
+import '../fuego/heat/heat_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -19,11 +18,18 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _screens = [
     const HomeScreen(),
-    const MessagingScreen(),
-    const BankingScreen(),
-    const BurnDepositsScreen(),
+    const CdOverviewScreen(),
+    const HearthScreen(),
+    const HeatScreen(),
     const SettingsScreen(),
-    const ElderfierScreen(),
+  ];
+
+  final List<_NavItem> _navItems = const [
+    _NavItem(icon: Icons.home, label: 'Wallet'),
+    _NavItem(icon: Icons.savings, label: 'CDs'),
+    _NavItem(icon: Icons.swap_horiz, label: 'Hearth'),
+    _NavItem(icon: Icons.local_fire_department, label: 'HEAT'),
+    _NavItem(icon: Icons.settings, label: 'Settings'),
   ];
 
   @override
@@ -45,41 +51,15 @@ class _MainScreenState extends State<MainScreen> {
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildNavItem(
-                  icon: Icons.home,
-                  label: 'Home',
-                  index: 0,
-                ),
-                _buildNavItem(
-                  icon: Icons.message,
-                  label: 'Messages',
-                  index: 1,
-                ),
-                _buildNavItem(
-                  icon: Icons.account_balance,
-                  label: 'Banking',
-                  index: 2,
-                ),
-                _buildNavItem(
-                  icon: Icons.local_fire_department,
-                  label: 'Mint Ξmbers',
-                  index: 3,
-                ),
-                _buildNavItem(
-                  icon: Icons.settings,
-                  label: 'Settings',
-                  index: 4,
-                ),
-                _buildNavItem(
-                  icon: Icons.account_tree,
-                  label: 'Elderfiers',
-                  index: 5,
-                ),
-              ],
+              children: List.generate(_navItems.length, (i) {
+                return _buildNavItem(
+                  item: _navItems[i],
+                  index: i,
+                );
+              }),
             ),
           ),
         ),
@@ -88,20 +68,15 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Widget _buildNavItem({
-    required IconData icon,
-    required String label,
+    required _NavItem item,
     required int index,
   }) {
     final isSelected = _currentIndex == index;
 
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _currentIndex = index;
-        });
-      },
+      onTap: () => setState(() => _currentIndex = index),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
               ? AppTheme.primaryColor.withOpacity(0.1)
@@ -112,13 +87,13 @@ class _MainScreenState extends State<MainScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              icon,
+              item.icon,
               color: isSelected ? AppTheme.primaryColor : AppTheme.textMuted,
               size: 24,
             ),
             const SizedBox(height: 4),
             Text(
-              label,
+              item.label,
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
@@ -130,4 +105,11 @@ class _MainScreenState extends State<MainScreen> {
       ),
     );
   }
+}
+
+class _NavItem {
+  final IconData icon;
+  final String label;
+
+  const _NavItem({required this.icon, required this.label});
 }
