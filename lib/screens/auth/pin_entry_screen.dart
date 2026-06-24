@@ -5,7 +5,7 @@ import '../../services/security_service.dart';
 import '../../utils/theme.dart';
 import '../../widgets/pin_input_widget.dart';
 import '../main/main_screen.dart';
-import '../wallet_setup/setup_screen.dart';
+
 
 class PinEntryScreen extends StatefulWidget {
   const PinEntryScreen({super.key});
@@ -230,7 +230,7 @@ class _PinEntryScreenState extends State<PinEntryScreen>
       
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const SetupScreen()),
+          MaterialPageRoute(builder: (context) => const MainScreen()),
         );
       }
     } catch (e) {

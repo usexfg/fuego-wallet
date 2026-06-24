@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:crypto/crypto.dart';
 import 'package:fuego_defi_sdk/fuego_defi_sdk.dart';
-import 'package:fuego_defi_types/fuego_defi_types.dart';
+import 'package:fuego_defi_rpc_methods/src/common_structures/general/balance_info.dart';
 import '../../services/fuego_rpc_service.dart';
 import '../../models/wallet.dart' as legacy;
 
@@ -14,14 +14,12 @@ class WalletState {
   final int miningSpeed;
   final int miningThreads;
   final String? error;
-  final Map<String, AssetBalanceInfo> balances;
-  final List<String> enabledCoins;
   final double xfgBalance;
   final double xfgUnlockedBalance;
   final String? xfgAddress;
-  final int syncProgress;
+  final double syncProgress;
   final bool isSynced;
-  final List<legacy.WalletTransaction> transactions;
+  final List<String> enabledCoins;
 
   const WalletState({
     this.isLoading = false,
@@ -31,14 +29,12 @@ class WalletState {
     this.miningSpeed = 0,
     this.miningThreads = 1,
     this.error,
-    this.balances = const {},
-    this.enabledCoins = const [],
     this.xfgBalance = 0,
     this.xfgUnlockedBalance = 0,
     this.xfgAddress,
     this.syncProgress = 0,
     this.isSynced = false,
-    this.transactions = const [],
+    this.enabledCoins = const [],
   });
 
   WalletState copyWith({
@@ -49,14 +45,12 @@ class WalletState {
     int? miningSpeed,
     int? miningThreads,
     String? error,
-    Map<String, AssetBalanceInfo>? balances,
-    List<String>? enabledCoins,
     double? xfgBalance,
     double? xfgUnlockedBalance,
     String? xfgAddress,
-    int? syncProgress,
+    double? syncProgress,
     bool? isSynced,
-    List<legacy.WalletTransaction>? transactions,
+    List<String>? enabledCoins,
   }) =>
       WalletState(
         isLoading: isLoading ?? this.isLoading,
@@ -66,14 +60,12 @@ class WalletState {
         miningSpeed: miningSpeed ?? this.miningSpeed,
         miningThreads: miningThreads ?? this.miningThreads,
         error: error,
-        balances: balances ?? this.balances,
-        enabledCoins: enabledCoins ?? this.enabledCoins,
         xfgBalance: xfgBalance ?? this.xfgBalance,
         xfgUnlockedBalance: xfgUnlockedBalance ?? this.xfgUnlockedBalance,
         xfgAddress: xfgAddress ?? this.xfgAddress,
         syncProgress: syncProgress ?? this.syncProgress,
         isSynced: isSynced ?? this.isSynced,
-        transactions: transactions ?? this.transactions,
+        enabledCoins: enabledCoins ?? this.enabledCoins,
       );
 }
 
@@ -82,8 +74,6 @@ class WalletCubit extends Cubit<WalletState> {
   final FuegoRPCService _rpc;
 
   WalletCubit(this._sdk, this._rpc) : super(const WalletState());
-
-  // ── Legacy XFG wallet ops (via daemon RPC) ──
 
   Future<void> refreshWallet() async {
     emit(state.copyWith(isLoading: true, isSyncing: true, error: null));
@@ -96,9 +86,6 @@ class WalletCubit extends Cubit<WalletState> {
         isConnected: true,
         isSynced: wallet.synced,
         syncProgress: wallet.syncProgress,
-        xfgBalance: wallet.balanceXFG,
-        xfgUnlockedBalance: wallet.unlockedBalanceXFG,
-        xfgAddress: address,
       ));
     } catch (e) {
       emit(state.copyWith(
@@ -108,13 +95,6 @@ class WalletCubit extends Cubit<WalletState> {
         error: e.toString(),
       ));
     }
-  }
-
-  Future<void> refreshTransactions() async {
-    try {
-      final txs = await _rpc.getTransactions();
-      emit(state.copyWith(transactions: txs));
-    } catch (_) {}
   }
 
   Future<String> getAddress() async {
@@ -137,8 +117,6 @@ class WalletCubit extends Cubit<WalletState> {
     );
     return _rpc.sendTransaction(request);
   }
-
-  // ── Mining (via daemon RPC) ──
 
   Future<void> startMining({int threads = 1}) async {
     await _rpc.startMining(threads: threads);
@@ -170,34 +148,14 @@ class WalletCubit extends Cubit<WalletState> {
     return _rpc.createIntegratedAddress(paymentId);
   }
 
-  // ── SDK multi-coin ops ──
-
-  Future<void> refresh() async {
+  Future<void> refreshSdkBalances() async {
     emit(state.copyWith(isLoading: true, error: null));
     try {
-      final balanceManager = _sdk.balances;
-      final balances = await balanceManager.getAllBalances();
-      final assets = _sdk.assets;
-      final enabled = await assets.getEnabledAssetIds();
+      final enabled = await _sdk.assets.getEnabledCoins();
       emit(state.copyWith(
         isLoading: false,
-        balances: balances,
-        enabledCoins: enabled.map((e) => e.toString()).toList(),
+        enabledCoins: enabled.toList(),
       ));
-    } catch (e) {
-      emit(state.copyWith(isLoading: false, error: e.toString()));
-    }
-  }
-
-  Future<void> enableCoin(String ticker, {required List<String> electrumServers}) async {
-    emit(state.copyWith(isLoading: true));
-    try {
-      final assetId = AssetId.fromString(ticker);
-      await _sdk.activation.enableCoin(
-        assetId,
-        ActivationConfig.electrum(servers: electrumServers),
-      );
-      await refresh();
     } catch (e) {
       emit(state.copyWith(isLoading: false, error: e.toString()));
     }

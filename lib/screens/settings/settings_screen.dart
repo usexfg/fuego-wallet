@@ -7,7 +7,8 @@ import '../../services/fuego_rpc_service.dart';
 import '../../services/security_service.dart';
 import '../../models/network_config.dart';
 import '../../utils/theme.dart';
-import '../wallet_setup/setup_screen.dart';
+import '../main/main_screen.dart';
+
 import 'network_selection_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -163,7 +164,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const SetupScreen()),
+          MaterialPageRoute(builder: (context) => const MainScreen()),
           (route) => false,
         );
       }

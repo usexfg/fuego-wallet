@@ -4,7 +4,7 @@ import 'package:animated_text_kit/animated_text_kit.dart';
 import '../providers/wallet_provider.dart';
 import '../services/security_service.dart';
 import '../utils/theme.dart';
-import 'wallet_setup/setup_screen.dart';
+
 import 'auth/pin_entry_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -93,7 +93,7 @@ class _SplashScreenState extends State<SplashScreen>
         _navigateToScreen(const PinEntryScreen());
       } else {
         // No wallet, go to setup
-        _navigateToScreen(const SetupScreen());
+        _navigateToScreen(const PinEntryScreen());
       }
     } catch (e) {
       if (!mounted) return;
@@ -102,10 +102,10 @@ class _SplashScreenState extends State<SplashScreen>
         _initMessage = 'Error: ${e.toString()}';
       });
 
-      // Show error and navigate to setup after delay
+      // Show error and navigate after delay
       await Future.delayed(const Duration(milliseconds: 2000));
       if (mounted) {
-        _navigateToScreen(const SetupScreen());
+        _navigateToScreen(const PinEntryScreen());
       }
     }
   }
