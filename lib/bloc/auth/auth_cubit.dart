@@ -1,8 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fuego_defi_sdk/fuego_defi_sdk.dart';
 
-// ── State ──
-
 enum AuthStatus { initial, initializing, authenticated, unauthenticated, error }
 
 class AuthState {
@@ -27,8 +25,6 @@ class AuthState {
   String toString() => 'AuthState($status)';
 }
 
-// ── Cubit ──
-
 class AuthCubit extends Cubit<AuthState> {
   final FuegoDefiSdk _sdk;
 
@@ -39,10 +35,10 @@ class AuthCubit extends Cubit<AuthState> {
     try {
       final signedIn = await _sdk.auth.isSignedIn();
       if (signedIn) {
-        final user = await _sdk.auth.getCurrentUser();
+        final user = await _sdk.auth.currentUser;
         emit(AuthState(
           status: AuthStatus.authenticated,
-          userId: user,
+          userId: user?.toString(),
         ));
       } else {
         emit(const AuthState(status: AuthStatus.unauthenticated));
@@ -55,9 +51,11 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void> signIn(String password) async {
     emit(const AuthState(status: AuthStatus.initializing));
     try {
-      await _sdk.auth.login(password);
-      final user = await _sdk.auth.getCurrentUser();
-      emit(AuthState(status: AuthStatus.authenticated, userId: user));
+      final user = await _sdk.auth.signIn(
+        walletName: 'fuego',
+        password: password,
+      );
+      emit(AuthState(status: AuthStatus.authenticated, userId: user.toString()));
     } catch (e) {
       emit(AuthState(status: AuthStatus.error, error: e.toString()));
     }
@@ -65,7 +63,7 @@ class AuthCubit extends Cubit<AuthState> {
 
   Future<void> signOut() async {
     try {
-      await _sdk.auth.logout();
+      await _sdk.auth.signOut();
     } catch (_) {}
     emit(const AuthState(status: AuthStatus.unauthenticated));
   }
