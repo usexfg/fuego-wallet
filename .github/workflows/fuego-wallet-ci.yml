@@ -61,6 +61,17 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Fix stale komodo references in SDK
+        run: |
+          find sdk/packages -name "*.dart" -not -path "*/test/*" -not -path "*/.dart_tool/*" | \
+          while read f; do
+            sed -i '' 's/komodo_price_provider/fuego_price_provider/g' "$f"
+            sed -i '' 's/komodo_price_repository/fuego_price_repository/g' "$f"
+            sed -i '' 's/komodo_defi_sdk\.dart/fuego_defi_sdk.dart/g' "$f"
+            sed -i '' 's/komodo_defi_framework_bindings_generated/fuego_defi_framework_bindings_generated/g' "$f"
+            sed -i '' 's|komodo/_komodo_index|fuego/_komodo_index|g' "$f"
+          done
+
       - name: Build macOS app
         run: flutter build macos --release
 
