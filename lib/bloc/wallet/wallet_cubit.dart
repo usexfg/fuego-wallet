@@ -20,6 +20,7 @@ class WalletState {
   final double syncProgress;
   final bool isSynced;
   final List<String> enabledCoins;
+  final List<legacy.WalletTransaction> transactions;
 
   const WalletState({
     this.isLoading = false,
@@ -35,6 +36,7 @@ class WalletState {
     this.syncProgress = 0,
     this.isSynced = false,
     this.enabledCoins = const [],
+    this.transactions = const [],
   });
 
   WalletState copyWith({
@@ -51,6 +53,7 @@ class WalletState {
     double? syncProgress,
     bool? isSynced,
     List<String>? enabledCoins,
+    List<legacy.WalletTransaction>? transactions,
   }) =>
       WalletState(
         isLoading: isLoading ?? this.isLoading,
@@ -66,6 +69,7 @@ class WalletState {
         syncProgress: syncProgress ?? this.syncProgress,
         isSynced: isSynced ?? this.isSynced,
         enabledCoins: enabledCoins ?? this.enabledCoins,
+        transactions: transactions ?? this.transactions,
       );
 }
 
@@ -151,6 +155,7 @@ class WalletCubit extends Cubit<WalletState> {
   Future<void> refreshTransactions() async {
     try {
       final txs = await _rpc.getTransactions();
+      emit(state.copyWith(transactions: txs));
     } catch (_) {}
   }
 

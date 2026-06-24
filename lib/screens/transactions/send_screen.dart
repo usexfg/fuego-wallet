@@ -49,9 +49,10 @@ class _SendScreenState extends State<SendScreen> {
       
       final txHash = await cubit.sendTransaction(
         address: _addressController.text.trim(),
-        amount: double.parse(_amountController.text),
+        amount: _amountController.text.trim(),
+        fee: '8000',
         paymentId: _paymentIdController.text.trim().isEmpty 
-            ? null 
+            ? '' 
             : _paymentIdController.text.trim(),
         mixins: _mixins,
       );
@@ -60,7 +61,7 @@ class _SendScreenState extends State<SendScreen> {
         _showSuccessDialog(txHash);
       } else {
         setState(() {
-          _errorMessage = walletProvider.error ?? 'Transaction failed';
+          _errorMessage = cubit.state.error ?? 'Transaction failed';
         });
       }
     } catch (e) {
