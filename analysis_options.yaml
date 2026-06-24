@@ -27,6 +27,7 @@ linter:
 analyzer:
   exclude:
     - sdk/**
+    - src/**
     - "**/*.g.dart"
     - "**/*.freezed.dart"
 
