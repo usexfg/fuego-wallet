@@ -80,6 +80,18 @@ jobs:
       - name: Build macOS app
         run: flutter build macos --release
 
+      - name: Strip camera framework & ad-hoc sign
+        run: |
+          APP="build/macos/Build/Products/Release/fuego_wallet.app"
+          # mobile_scanner is a camera plugin useless on desktop; its framework breaks codesign
+          rm -rf "$APP/Contents/Frameworks/mobile_scanner.framework"
+          # Sign remaining frameworks
+          for fw in "$APP/Contents/Frameworks"/*.framework; do
+            [ -d "$fw" ] && codesign --force --sign - "$fw" 2>/dev/null || true
+          done
+          # Main bundle
+          codesign --force --deep --sign - "$APP"
+
       - name: Package app
         run: |
           cd build/macos/Build/Products/Release
