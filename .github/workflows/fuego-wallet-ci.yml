@@ -81,6 +81,8 @@ jobs:
         run: flutter build macos --release
 
       - name: Package app
+
+      - name: Package app
         run: |
           cd build/macos/Build/Products/Release
           zip -r Fuego-Wallet-macOS.zip "fuego_wallet.app"
