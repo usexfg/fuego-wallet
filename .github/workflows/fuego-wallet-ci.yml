@@ -80,11 +80,6 @@ jobs:
       - name: Build macOS app
         run: flutter build macos --release
 
-      - name: Ad-hoc sign
-        run: |
-          APP="build/macos/Build/Products/Release/fuego_wallet.app"
-          codesign --force --sign - --entitlements macos/Runner/Release.entitlements --timestamp=none "$APP"
-
       - name: Package app
         run: |
           cd build/macos/Build/Products/Release
