@@ -78,9 +78,22 @@ jobs:
           head -10 sdk/packages/fuego_cex_market_data/lib/src/fuego/_komodo_index.dart
 
       - name: Build macOS app
-        run: flutter build macos --release
+        run: flutter build macos --release --no-codesign
 
-      - name: Package app
+      - name: Sign app bundle
+        run: |
+          APP="build/macos/Build/Products/Release/fuego_wallet.app"
+          echo "=== Binary file type ==="
+          file "$APP/Contents/MacOS/fuego_wallet"
+          echo "=== Sign all frameworks ==="
+          find "$APP/Contents/Frameworks" -mindepth 1 -maxdepth 1 -type d -name "*.framework" | while read fw; do
+            echo "Signing: $fw"
+            codesign --force --sign - "$fw"
+          done
+          echo "=== Sign main bundle ==="
+          codesign --force --sign - --entitlements macos/Runner/Release.entitlements "$APP"
+          echo "=== Verify signature ==="
+          codesign --verify --verbose=2 "$APP" 2>&1 || true
 
       - name: Package app
         run: |
