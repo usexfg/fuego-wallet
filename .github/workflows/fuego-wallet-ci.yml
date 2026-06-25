@@ -83,15 +83,13 @@ jobs:
       - name: Ad-hoc sign
         run: |
           APP="build/macos/Build/Products/Release/fuego_wallet.app"
-          # sign frameworks individually (mobile_scanner has ambiguous bundle, needs explicit type)
+          MS="$APP/Contents/Frameworks/mobile_scanner.framework"
+          # Fix ambiguous bundle: keep only versioned structure (Versions/A/...)
+          [ -f "$MS/mobile_scanner" ] && rm -f "$MS/mobile_scanner"
+          [ -d "$MS/Resources" ] && rm -rf "$MS/Resources"
           for fw in "$APP/Contents/Frameworks"/*.framework; do
             [ -d "$fw" ] || continue
-            bn=$(basename "$fw" .framework)
-            if [ "$bn" = "mobile_scanner" ]; then
-              codesign --force --sign - --type framework "$fw" 2>/dev/null || true
-            else
-              codesign --force --sign - "$fw" 2>/dev/null || true
-            fi
+            codesign --force --sign - "$fw" 2>/dev/null || true
           done
           codesign --force --deep --sign - "$APP"
 
