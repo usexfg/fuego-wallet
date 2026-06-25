@@ -80,18 +80,30 @@ jobs:
       - name: Build macOS app
         run: flutter build macos --release
 
-      - name: Ad-hoc sign
+      - name: Fix framework layout & ad-hoc sign
         run: |
           APP="build/macos/Build/Products/Release/fuego_wallet.app"
-          MS="$APP/Contents/Frameworks/mobile_scanner.framework"
-          # Fix ambiguous bundle: keep only versioned structure (Versions/A/...)
-          [ -f "$MS/mobile_scanner" ] && rm -f "$MS/mobile_scanner"
-          [ -d "$MS/Resources" ] && rm -rf "$MS/Resources"
+          # Flutter frameworks ship with hybrid flat+versioned layout. macOS codesign
+          # requires all content inside Versions/A/ for versioned frameworks.
+          # Remove flat duplicates so signing produces a valid sealed bundle.
           for fw in "$APP/Contents/Frameworks"/*.framework; do
             [ -d "$fw" ] || continue
-            codesign --force --sign - "$fw" 2>/dev/null || true
+            # Remove flat binary if versioned one exists
+            bn=$(basename "$fw" .framework)
+            if [ -f "$fw/$bn" ] && [ -f "$fw/Versions/A/$bn" ]; then
+              rm -f "$fw/$bn"
+            fi
+            # Remove flat Resources if versioned one exists
+            if [ -d "$fw/Resources" ] && [ -d "$fw/Versions/A/Resources" ]; then
+              rm -rf "$fw/Resources"
+            fi
           done
+          # Sign frameworks + main bundle in one --deep pass now that layout is clean
           codesign --force --deep --sign - --entitlements macos/Runner/Release.entitlements "$APP"
+
+      - name: Verify entitlements
+        run: |
+          codesign -d --entitlements - build/macos/Build/Products/Release/fuego_wallet.app | grep -c "fuegoWallet"
 
       - name: Package app
         run: |
