@@ -83,17 +83,13 @@ jobs:
       - name: Verify and re-sign
         run: |
           APP="build/macos/Build/Products/Release/fuego_wallet.app"
-          echo "=== Binary architecture ==="
-          file "$APP/Contents/MacOS/fuego_wallet"
-          echo "=== Current signature ==="
-          codesign -dvv "$APP" 2>&1 | head -20 || true
-          echo "=== Re-sign with ad-hoc ==="
-          find "$APP/Contents/Frameworks" -mindepth 1 -maxdepth 1 -type d -name "*.framework" | while read fw; do
-            codesign --force --sign - "$fw"
-          done
-          codesign --force --sign - --entitlements macos/Runner/Release.entitlements "$APP"
+          echo "=== Re-sign frameworks ==="
+          find "$APP/Contents/Frameworks" -mindepth 1 -maxdepth 1 -type d -name "*.framework" -exec codesign --force --sign - {} \;
+          echo "=== Re-sign main bundle (no entitlements) ==="
+          codesign --force --sign - "$APP"
           echo "=== Verify ==="
           codesign --verify --verbose=2 "$APP" 2>&1 || true
+          codesign -d --entitlements - "$APP" 2>&1 | head -5 || true
 
       - name: Package app
         run: |
