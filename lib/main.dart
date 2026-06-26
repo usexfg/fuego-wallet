@@ -45,15 +45,21 @@ Future<void> main() async {
   );
 
   // Initialize the SDK (starts KDF/mm2 under the hood)
-  final fuegoDefiSdk = await _sdkService.initialize();
+  FuegoDefiSdk? fuegoDefiSdk;
+  try {
+    fuegoDefiSdk = await _sdkService.initialize();
+  } catch (e) {
+    debugPrint('SDK initialization failed (keychain?): $e');
+    debugPrint('Continuing with limited functionality...');
+  }
 
   runApp(FuegoApp(sdk: fuegoDefiSdk));
 }
 
 class FuegoApp extends StatelessWidget {
-  final FuegoDefiSdk sdk;
+  final FuegoDefiSdk? sdk;
 
-  const FuegoApp({super.key, required this.sdk});
+  const FuegoApp({super.key, this.sdk});
 
   @override
   Widget build(BuildContext context) {
@@ -73,29 +79,29 @@ class FuegoApp extends StatelessWidget {
           create: (_) => WalletProvider(rpcService: rpcService),
         ),
       ],
-      child: MultiRepositoryProvider(
-        providers: [
-          RepositoryProvider<FuegoDefiSdk>.value(value: sdk),
-          RepositoryProvider<FuegoRPCService>.value(value: rpcService),
-          RepositoryProvider<FuegoDaemonClient>.value(value: daemonClient),
-        ],
-        child: MultiBlocProvider(
+        child: MultiRepositoryProvider(
           providers: [
-            BlocProvider<AuthCubit>(
-              create: (_) => AuthCubit(sdk)..initialize(),
-            ),
-            BlocProvider<WalletCubit>(
-              create: (_) => WalletCubit(sdk, rpcService),
-            ),
-            BlocProvider<CdCubit>(
-              create: (_) => CdCubit(rpcService)..loadAll(),
-            ),
-            BlocProvider<HearthCubit>(
-              create: (_) => HearthCubit(daemonClient),
-            ),
-            BlocProvider<DexCubit>(
-              create: (_) => DexCubit(sdk),
-            ),
+            if (sdk != null) RepositoryProvider<FuegoDefiSdk>.value(value: sdk!),
+            RepositoryProvider<FuegoRPCService>.value(value: rpcService),
+            RepositoryProvider<FuegoDaemonClient>.value(value: daemonClient),
+          ],
+          child: MultiBlocProvider(
+            providers: [
+              if (sdk != null) BlocProvider<AuthCubit>(
+                create: (_) => AuthCubit(sdk!)..initialize(),
+              ),
+              if (sdk != null) BlocProvider<WalletCubit>(
+                create: (_) => WalletCubit(sdk!, rpcService),
+              ),
+              BlocProvider<CdCubit>(
+                create: (_) => CdCubit(rpcService)..loadAll(),
+              ),
+              BlocProvider<HearthCubit>(
+                create: (_) => HearthCubit(daemonClient),
+              ),
+              if (sdk != null) BlocProvider<DexCubit>(
+                create: (_) => DexCubit(sdk!),
+              ),
           ],
           child: MaterialApp(
             title: 'Fuego',
