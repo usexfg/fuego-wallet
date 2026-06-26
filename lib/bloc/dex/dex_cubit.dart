@@ -1,13 +1,20 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fuego_defi_sdk/fuego_defi_sdk.dart';
+import 'package:fuego_defi_framework/fuego_defi_framework.dart';
 
 class DexState {
   final bool isLoading;
   final String? baseCoin;
   final String? relCoin;
   final String? error;
-  final List<Map<String, dynamic>> bids;
-  final List<Map<String, dynamic>> asks;
+  final List<OrderRow> bids;
+  final List<OrderRow> asks;
+  final List<String> availableCoins;
+  final double? bestBid;
+  final double? bestAsk;
+  final double? spread;
 
   const DexState({
     this.isLoading = false,
@@ -16,6 +23,10 @@ class DexState {
     this.error,
     this.bids = const [],
     this.asks = const [],
+    this.availableCoins = const [],
+    this.bestBid,
+    this.bestAsk,
+    this.spread,
   });
 
   DexState copyWith({
@@ -23,8 +34,12 @@ class DexState {
     String? baseCoin,
     String? relCoin,
     String? error,
-    List<Map<String, dynamic>>? bids,
-    List<Map<String, dynamic>>? asks,
+    List<OrderRow>? bids,
+    List<OrderRow>? asks,
+    List<String>? availableCoins,
+    double? bestBid,
+    double? bestAsk,
+    double? spread,
   }) =>
       DexState(
         isLoading: isLoading ?? this.isLoading,
@@ -33,59 +48,171 @@ class DexState {
         error: error,
         bids: bids ?? this.bids,
         asks: asks ?? this.asks,
+        availableCoins: availableCoins ?? this.availableCoins,
+        bestBid: bestBid ?? this.bestBid,
+        bestAsk: bestAsk ?? this.bestAsk,
+        spread: spread ?? this.spread,
       );
+}
+
+class OrderRow {
+  final String price;
+  final String volume;
+  final double priceNum;
+  final double volNum;
+  final double depthPct;
+  final bool isMine;
+
+  const OrderRow({
+    required this.price,
+    required this.volume,
+    required this.priceNum,
+    required this.volNum,
+    this.depthPct = 0,
+    this.isMine = false,
+  });
 }
 
 class DexCubit extends Cubit<DexState> {
   final FuegoDefiSdk? _sdk;
+  StreamSubscription<OrderbookEvent>? _orderbookSub;
 
   DexCubit(this._sdk) : super(const DexState());
 
-  Future<void> loadOrderbook(String base, String rel) async {
+  void loadAvailableCoins() {
     if (_sdk == null) {
       emit(state.copyWith(error: 'SDK not initialized'));
       return;
     }
-    emit(state.copyWith(isLoading: true, baseCoin: base, relCoin: rel));
     try {
-      final result = await _sdk!.client.executeRpc({
-        'method': 'orderbook',
-        'base': base,
-        'rel': rel,
-      });
-      final bids = (result['bids'] as List<dynamic>?)
-              ?.map((e) => Map<String, dynamic>.from(e as Map))
-              .toList() ??
-          [];
-      final asks = (result['asks'] as List<dynamic>?)
-              ?.map((e) => Map<String, dynamic>.from(e as Map))
-              .toList() ??
-          [];
-      emit(state.copyWith(isLoading: false, bids: bids, asks: asks));
+      final coins = _sdk!.assets.available.keys
+          .map((id) => id.id)
+          .where((t) => t.isNotEmpty)
+          .toList()
+        ..sort();
+      emit(state.copyWith(availableCoins: coins));
     } catch (e) {
-      emit(state.copyWith(isLoading: false, error: e.toString()));
+      debugPrint('DexCubit: loadAvailableCoins error: $e');
     }
   }
 
-  Future<void> submitBuyOrder(String base, String rel, String price, String volume) async {
-    if (_sdk == null) return;
-    await _sdk!.client.executeRpc({
-      'method': 'buy',
-      'base': base,
-      'rel': rel,
-      'price': price,
-      'volume': volume,
-    });
+  Future<void> selectPair(String base, String rel) async {
+    await _orderbookSub?.cancel();
+    emit(state.copyWith(baseCoin: base, relCoin: rel, isLoading: true, error: null));
+
+    if (_sdk == null) {
+      emit(state.copyWith(isLoading: false, error: 'SDK not initialized'));
+      return;
+    }
+
+    try {
+      final ob = await _sdk!.trading.getOrderbook(base: base, rel: rel);
+      final json = ob.toJson();
+      _applyOrderbook(json);
+    } catch (e) {
+      debugPrint('DexCubit: getOrderbook failed: $e');
+      emit(state.copyWith(isLoading: false));
+    }
+
+    try {
+      _orderbookSub?.cancel();
+      final sub = await _sdk!.subscribeToOrderbook(base: base, rel: rel);
+      _orderbookSub = sub;
+      sub.onData((event) {
+        _applyEventOrders(event.bids, event.asks);
+      });
+    } catch (e) {
+      debugPrint('DexCubit: subscribe failed: $e (ok, will use polling)');
+    }
   }
 
-  Future<void> submitSellOrder(String base, String rel, String price, String volume) async {
-    if (_sdk == null) return;
-    await _sdk!.client.executeRpc({
-      'method': 'sell',
-      'base': base,
-      'rel': rel,
-      'price': price,
-      'volume': volume,
-    });
+  void _applyEventOrders(List<Map<String, dynamic>> bidsRaw, List<Map<String, dynamic>> asksRaw) {
+    _computeOrderbookState(bidsRaw, asksRaw);
+  }
+
+  void _applyOrderbook(Map<String, dynamic> json) {
+    final result = json['result'] as Map<String, dynamic>? ?? json;
+    final bidsRaw = (result['bids'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
+    final asksRaw = (result['asks'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
+    _computeOrderbookState(bidsRaw, asksRaw);
+  }
+
+  void _computeOrderbookState(List<Map<String, dynamic>> bidsRaw, List<Map<String, dynamic>> asksRaw) {
+
+    final bids = _parseOrders(bidsRaw);
+    final asks = _parseOrders(asksRaw);
+
+    final totalBidVol = bids.fold<double>(0, (s, b) => s + b.volNum);
+    double bidAccum = 0;
+    final bidsWithDepth = bids.map((b) {
+      bidAccum += b.volNum;
+      return OrderRow(
+        price: b.price,
+        volume: b.volume,
+        priceNum: b.priceNum,
+        volNum: b.volNum,
+        depthPct: totalBidVol > 0 ? (bidAccum / totalBidVol) : 0,
+        isMine: b.isMine,
+      );
+    }).toList();
+
+    final totalAskVol = asks.fold<double>(0, (s, a) => s + a.volNum);
+    double askAccum = 0;
+    final asksWithDepth = asks.map((a) {
+      askAccum += a.volNum;
+      return OrderRow(
+        price: a.price,
+        volume: a.volume,
+        priceNum: a.priceNum,
+        volNum: a.volNum,
+        depthPct: totalAskVol > 0 ? (askAccum / totalAskVol) : 0,
+        isMine: a.isMine,
+      );
+    }).toList();
+
+    final bestBid = bidsWithDepth.isNotEmpty ? bidsWithDepth.first.priceNum : null;
+    final bestAsk = asksWithDepth.isNotEmpty ? asksWithDepth.first.priceNum : null;
+    final spread = (bestBid != null && bestAsk != null) ? bestAsk - bestBid : null;
+
+    emit(state.copyWith(
+      isLoading: false,
+      bids: bidsWithDepth,
+      asks: asksWithDepth,
+      bestBid: bestBid,
+      bestAsk: bestAsk,
+      spread: spread,
+    ));
+  }
+
+  List<OrderRow> _parseOrders(List<Map<String, dynamic>> orders) {
+    return orders.map((o) {
+      final price = _toDouble(o['price']);
+      final vol = _toDouble(o['max_volume'] ?? o['base_max_volume'] ?? o['maxvolume']);
+      return OrderRow(
+        price: price.toStringAsFixed(7),
+        volume: vol.toStringAsFixed(7),
+        priceNum: price,
+        volNum: vol,
+        isMine: o['is_mine'] == true,
+      );
+    }).toList()
+      ..sort((a, b) => b.priceNum.compareTo(a.priceNum));
+  }
+
+  double _toDouble(dynamic v) {
+    if (v == null) return 0;
+    if (v is num) return v.toDouble();
+    if (v is String) return double.tryParse(v) ?? 0;
+    if (v is Map) {
+      final d = v['decimal'] ?? v['Decimal'];
+      if (d != null) return double.tryParse(d.toString()) ?? 0;
+    }
+    return 0;
+  }
+
+  @override
+  Future<void> close() {
+    _orderbookSub?.cancel();
+    return super.close();
   }
 }

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:fuego_defi_sdk/fuego_defi_sdk.dart';
 import '../../bloc/dex/dex_cubit.dart';
 import '../../utils/theme.dart';
 
@@ -12,284 +11,223 @@ class DexScreen extends StatefulWidget {
 }
 
 class _DexScreenState extends State<DexScreen> {
-  final _baseController = TextEditingController(text: 'XFG');
-  final _relController = TextEditingController(text: 'KMD');
-  final _priceController = TextEditingController();
-  final _volumeController = TextEditingController();
-  bool _isBuy = true;
-
   @override
-  void dispose() {
-    _baseController.dispose();
-    _relController.dispose();
-    _priceController.dispose();
-    _volumeController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<DexCubit>().loadAvailableCoins();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<DexCubit, DexState>(
       builder: (context, state) {
-        return Scaffold(
-          backgroundColor: AppTheme.backgroundColor,
-          appBar: AppBar(
-            title: const Text('DEX'),
-            backgroundColor: AppTheme.surfaceColor,
-          ),
-          body: Column(
-            children: [
-              _buildPairSelector(context),
-              Expanded(child: _buildOrderbook(state)),
-              _buildTradeForm(context),
-            ],
-          ),
+        return Column(
+          children: [
+            _buildPairBar(state),
+            _buildPriceBar(state),
+            if (state.error != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                child: Text(state.error!, style: const TextStyle(color: AppTheme.errorColor, fontSize: 11)),
+              ),
+            Expanded(child: _buildOrderbook(state)),
+          ],
         );
       },
     );
   }
 
-  Widget _buildPairSelector(BuildContext context) {
+  Widget _buildPairBar(DexState state) {
+    final coins = state.availableCoins;
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(8),
       color: AppTheme.surfaceColor,
       child: Row(
         children: [
+          const Icon(Icons.currency_exchange, color: AppTheme.primaryColor, size: 20),
+          const SizedBox(width: 8),
           Expanded(
-            child: TextField(
-              controller: _baseController,
-              decoration: InputDecoration(
-                labelText: 'Base',
-                filled: true,
-                fillColor: AppTheme.backgroundColor,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              ),
-              style: const TextStyle(color: AppTheme.textPrimary),
+            child: _coinDropdown(
+              value: state.baseCoin,
+              hint: 'Base coin',
+              coins: coins,
+              onChanged: (c) {
+                if (state.relCoin != null && state.relCoin != c) {
+                  context.read<DexCubit>().selectPair(c, state.relCoin!);
+                } else {
+                  context.read<DexCubit>().selectPair(c, c);
+                }
+              },
             ),
           ),
           const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8),
-            child: Text('/', style: TextStyle(color: AppTheme.textMuted, fontSize: 20)),
+            padding: EdgeInsets.symmetric(horizontal: 6),
+            child: Text('/', style: TextStyle(color: AppTheme.textMuted, fontSize: 18, fontWeight: FontWeight.w300)),
           ),
           Expanded(
-            child: TextField(
-              controller: _relController,
-              decoration: InputDecoration(
-                labelText: 'Rel',
-                filled: true,
-                fillColor: AppTheme.backgroundColor,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              ),
-              style: const TextStyle(color: AppTheme.textPrimary),
+            child: _coinDropdown(
+              value: state.relCoin,
+              hint: 'Quote coin',
+              coins: coins,
+              onChanged: (c) {
+                if (state.baseCoin != null && state.baseCoin != c) {
+                  context.read<DexCubit>().selectPair(state.baseCoin!, c);
+                } else {
+                  context.read<DexCubit>().selectPair(c, c);
+                }
+              },
             ),
           ),
+          if (state.baseCoin != null && state.relCoin != null) ...[
+            const SizedBox(width: 4),
+            IconButton(
+              icon: const Icon(Icons.refresh, size: 18, color: AppTheme.primaryColor),
+              onPressed: () => context.read<DexCubit>().selectPair(state.baseCoin!, state.relCoin!),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _coinDropdown({
+    required String? value,
+    required String hint,
+    required List<String> coins,
+    required ValueChanged<String> onChanged,
+  }) {
+    return DropdownButtonFormField<String>(
+      value: value != null && coins.contains(value) ? value : null,
+      hint: Text(hint, style: const TextStyle(color: AppTheme.textMuted, fontSize: 13)),
+      isExpanded: true,
+      dropdownColor: AppTheme.cardColor,
+      style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+      decoration: const InputDecoration(
+        isDense: true,
+        contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        border: OutlineInputBorder(),
+      ),
+      items: coins.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+      onChanged: (c) { if (c != null) onChanged(c); },
+    );
+  }
+
+  Widget _buildPriceBar(DexState state) {
+    if (state.baseCoin == null || state.relCoin == null) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      color: AppTheme.surfaceColor.withOpacity(0.4),
+      child: Row(
+        children: [
+          Text(state.baseCoin!,
+              style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
+          Text('/${state.relCoin!}',
+              style: const TextStyle(color: AppTheme.textMuted, fontSize: 13)),
+          const Spacer(),
+          if (state.spread != null)
+            Text('spread ${state.spread!.toStringAsFixed(7)}',
+                style: const TextStyle(color: AppTheme.textMuted, fontSize: 10)),
+          const SizedBox(width: 12),
+          if (state.bestBid != null)
+            Text(state.bestBid!.toStringAsFixed(7),
+                style: const TextStyle(color: AppTheme.successColor, fontSize: 16, fontWeight: FontWeight.bold)),
           const SizedBox(width: 8),
-          ElevatedButton(
-            onPressed: () {
-              context.read<DexCubit>().loadOrderbook(
-                    _baseController.text.toUpperCase(),
-                    _relController.text.toUpperCase(),
-                  );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-            ),
-            child: const Icon(Icons.search, size: 20),
-          ),
+          if (state.bestAsk != null)
+            Text(state.bestAsk!.toStringAsFixed(7),
+                style: const TextStyle(color: AppTheme.errorColor, fontSize: 16, fontWeight: FontWeight.bold)),
         ],
       ),
     );
   }
 
   Widget _buildOrderbook(DexState state) {
-    if (state.baseCoin == null) {
+    if (state.baseCoin == null || state.relCoin == null) {
       return const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.search, size: 48, color: AppTheme.textMuted),
-            SizedBox(height: 8),
-            Text('Select a pair to view orderbook', style: TextStyle(color: AppTheme.textMuted)),
-          ],
-        ),
-      );
+        child: Text('Select a trading pair above', style: TextStyle(color: AppTheme.textMuted, fontSize: 14)));
     }
-
     if (state.isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor));
     }
 
-    if (state.error != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.cloud_off, size: 32, color: AppTheme.textMuted),
-            const SizedBox(height: 8),
-            Text(state.error!, style: const TextStyle(color: AppTheme.errorColor, fontSize: 12)),
-          ],
-        ),
-      );
-    }
+    return Row(
+      children: [
+        Expanded(child: _orderColumn('BIDS', state.bids, AppTheme.successColor, isAsk: false)),
+        Container(width: 1, color: AppTheme.surfaceColor),
+        Expanded(child: _orderColumn('ASKS', state.asks, AppTheme.errorColor, isAsk: true)),
+      ],
+    );
+  }
 
-    final pair = '${state.baseCoin}/${state.relCoin}';
-
+  Widget _orderColumn(String title, List<OrderRow> orders, Color color, {required bool isAsk}) {
     return Column(
       children: [
         Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          color: AppTheme.surfaceColor,
-          child: Text(pair, style: const TextStyle(
-              fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
-        ),
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            border: Border(bottom: BorderSide(color: AppTheme.surfaceColor)),
+          ),
+          child: Row(
             children: [
-              ...state.asks.reversed.map((o) => _orderRow(o, false)),
-              const Divider(height: 1, color: AppTheme.textMuted),
-              ...state.bids.map((o) => _orderRow(o, true)),
+              Text(title, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w600)),
+              const Spacer(),
+              const Text('Price', style: TextStyle(color: AppTheme.textMuted, fontSize: 9)),
+              const SizedBox(width: 4),
+              const Text('Vol', style: TextStyle(color: AppTheme.textMuted, fontSize: 9)),
+              const SizedBox(width: 4),
+              const Text('Σ', style: TextStyle(color: AppTheme.textMuted, fontSize: 9)),
             ],
           ),
+        ),
+        Expanded(
+          child: orders.isEmpty
+              ? Center(child: Text('-', style: TextStyle(color: AppTheme.textMuted, fontSize: 11)))
+              : ListView.builder(
+                  itemCount: orders.length > 30 ? 30 : orders.length,
+                  itemExtent: 22,
+                  itemBuilder: (_, i) => _orderRow(orders[i], color),
+                ),
         ),
       ],
     );
   }
 
-  Widget _orderRow(Map<String, dynamic> order, bool isBid) {
-    final price = order['price']?.toString() ?? '-';
-    final volume = order['maxvolume']?.toString() ?? order['volume']?.toString() ?? '-';
-    final color = isBid ? AppTheme.successColor : AppTheme.errorColor;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(price, style: TextStyle(color: color, fontSize: 13, fontFamily: 'monospace')),
-          ),
-          Text(volume, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontFamily: 'monospace')),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTradeForm(BuildContext context) {
-    final state = context.watch<DexCubit>().state;
-    final hasPair = state.baseCoin != null;
-
+  Widget _orderRow(OrderRow o, Color color) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceColor,
-        border: Border(top: BorderSide(color: AppTheme.textMuted.withOpacity(0.2))),
+        border: o.isMine ? Border.all(color: AppTheme.primaryColor.withOpacity(0.5), width: 0.5) : null,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Stack(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => setState(() => _isBuy = true),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    decoration: BoxDecoration(
-                      color: _isBuy ? AppTheme.successColor : AppTheme.surfaceColor,
-                      borderRadius: const BorderRadius.horizontal(left: Radius.circular(8)),
-                    ),
-                    child: const Text('BUY', textAlign: TextAlign.center, style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    )),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => setState(() => _isBuy = false),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    decoration: BoxDecoration(
-                      color: !_isBuy ? AppTheme.errorColor : AppTheme.surfaceColor,
-                      borderRadius: const BorderRadius.horizontal(right: Radius.circular(8)),
-                    ),
-                    child: const Text('SELL', textAlign: TextAlign.center, style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    )),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _priceController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: 'Price',
-                    filled: true,
-                    fillColor: AppTheme.backgroundColor,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  ),
-                  style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextField(
-                  controller: _volumeController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: 'Volume',
-                    filled: true,
-                    fillColor: AppTheme.backgroundColor,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  ),
-                  style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            height: 44,
-            child: ElevatedButton(
-              onPressed: hasPair
-                  ? () {
-                      final price = _priceController.text;
-                      final volume = _volumeController.text;
-                      if (price.isEmpty || volume.isEmpty) return;
-                      final cubit = context.read<DexCubit>();
-                      if (_isBuy) {
-                        cubit.submitBuyOrder(state.baseCoin!, state.relCoin!, price, volume);
-                      } else {
-                        cubit.submitSellOrder(state.baseCoin!, state.relCoin!, price, volume);
-                      }
-                    }
-                  : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _isBuy ? AppTheme.successColor : AppTheme.errorColor,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-              child: Text(
-                _isBuy ? 'BUY ${state.baseCoin ?? ''}' : 'SELL ${state.baseCoin ?? ''}',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          Positioned.fill(
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: FractionallySizedBox(
+                widthFactor: o.depthPct.clamp(0.0, 1.0),
+                child: Container(color: color.withOpacity(0.07)),
               ),
             ),
+          ),
+          Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: Text(o.price, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w500)),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text(o.volume, style: const TextStyle(color: AppTheme.textPrimary, fontSize: 11)),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text('${(o.depthPct * 100).toStringAsFixed(1)}%',
+                    style: const TextStyle(color: AppTheme.textMuted, fontSize: 9)),
+              ),
+            ],
           ),
         ],
       ),
