@@ -5,8 +5,9 @@ import 'package:logging/logging.dart';
 final _log = Logger('SdkService');
 
 class SdkService {
-  SdkService() {
+  SdkService({IKdfHostConfig? hostConfig}) {
     _sdk = FuegoDefiSdk(
+      host: hostConfig,
       config: const FuegoDefiSdkConfig(
         preActivateHistoricalAssets: false,
         preActivateDefaultAssets: false,

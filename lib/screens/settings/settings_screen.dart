@@ -5,6 +5,7 @@ import '../../bloc/wallet/wallet_cubit.dart';
 import '../../providers/wallet_provider.dart';
 import '../../services/fuego_rpc_service.dart';
 import '../../services/security_service.dart';
+import '../../services/kdf_config_service.dart';
 import '../../models/network_config.dart';
 import '../../utils/theme.dart';
 import '../main/main_screen.dart';
@@ -20,8 +21,12 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final SecurityService _securityService = SecurityService();
+  final KdfConfigService _kdfConfigService = KdfConfigService();
   bool _biometricEnabled = false;
   bool _isLoading = false;
+  String _kdfHost = '';
+  int _kdfPort = KdfConfigService.defaultPort;
+  bool _kdfConfigured = false;
 
   WalletProvider get walletProvider =>
       Provider.of<WalletProvider>(context, listen: false);
@@ -34,8 +39,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadSettings() async {
     final biometricEnabled = await _securityService.isBiometricEnabled();
+    final kdfHost = await _kdfConfigService.getHost();
+    final kdfPort = await _kdfConfigService.getPort();
+    final kdfConfigured = await _kdfConfigService.isConfigured();
     setState(() {
       _biometricEnabled = biometricEnabled;
+      _kdfHost = kdfHost;
+      _kdfPort = kdfPort;
+      _kdfConfigured = kdfConfigured;
     });
   }
 
@@ -309,6 +320,207 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  void _showKdfConfigDialog() {
+    final hostController = TextEditingController(text: _kdfHost);
+    final portController = TextEditingController(text: _kdfPort.toString());
+    bool https = false;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: AppTheme.cardColor,
+              title: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.primaryGradient,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.swap_horiz,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'KDF Server',
+                    style: TextStyle(color: AppTheme.textPrimary),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Enter your KDF (Komodo DeFi Framework) server address to enable DEX trading.',
+                    style: TextStyle(color: AppTheme.textSecondary),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: hostController,
+                    decoration: InputDecoration(
+                      hintText: 'kdf.example.com',
+                      hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.5)),
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: AppTheme.primaryColor),
+                      ),
+                      labelText: 'Host',
+                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    ),
+                    style: const TextStyle(color: AppTheme.textPrimary),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: portController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      hintText: '7783',
+                      hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.5)),
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: AppTheme.primaryColor),
+                      ),
+                      labelText: 'RPC Port',
+                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    ),
+                    style: const TextStyle(color: AppTheme.textPrimary),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Switch(
+                        value: https,
+                        onChanged: (value) {
+                          setState(() {
+                            https = value;
+                          });
+                        },
+                        activeColor: AppTheme.primaryColor,
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Use HTTPS',
+                        style: TextStyle(color: AppTheme.textSecondary),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppTheme.primaryColor.withOpacity(0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.info_outline,
+                          color: AppTheme.primaryColor,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Run KDF on a server:\ncargo build --release --bin kdf\n./target/release/kdf --rpcip 0.0.0.0 --rpcport 7783',
+                            style: TextStyle(
+                              color: AppTheme.textSecondary,
+                              fontSize: 12,
+                              fontFamily: 'monospace',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(
+                    'Cancel',
+                    style: TextStyle(color: AppTheme.textSecondary),
+                  ),
+                ),
+                if (_kdfConfigured)
+                  TextButton(
+                    onPressed: () async {
+                      await _kdfConfigService.clear();
+                      setState(() {
+                        _kdfHost = '';
+                        _kdfPort = KdfConfigService.defaultPort;
+                        _kdfConfigured = false;
+                      });
+                      if (mounted) {
+                        Navigator.of(context).pop();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: const Text('KDF connection removed. Restart app to apply.'),
+                            backgroundColor: AppTheme.warningColor,
+                          ),
+                        );
+                      }
+                    },
+                    child: const Text('Disconnect', style: TextStyle(color: AppTheme.errorColor)),
+                  ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final host = hostController.text.trim();
+                    final port = int.tryParse(portController.text.trim()) ?? KdfConfigService.defaultPort;
+
+                    if (host.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text('Please enter a KDF server address'),
+                          backgroundColor: AppTheme.errorColor,
+                        ),
+                      );
+                      return;
+                    }
+
+                    await _kdfConfigService.save(host: host, port: port, https: https);
+
+                    setState(() {
+                      _kdfHost = host;
+                      _kdfPort = port;
+                      _kdfConfigured = true;
+                    });
+
+                    if (mounted) {
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('KDF configured: $host:$port. Restart app to connect.'),
+                          backgroundColor: AppTheme.successColor,
+                        ),
+                      );
+                    }
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _showAboutDialog() {
     showDialog(
       context: context,
@@ -512,6 +724,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onTap: () {
                   // TODO: Show sync details
                 },
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // DEX Server section
+              _buildSectionHeader('DEX Server (KDF)'),
+              _buildSettingsTile(
+                icon: Icons.swap_horiz,
+                title: 'KDF Connection',
+                subtitle: _kdfConfigured
+                    ? 'Connected to $_kdfHost:$_kdfPort'
+                    : 'Not configured — DEX unavailable',
+                trailing: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: _kdfConfigured
+                        ? AppTheme.successColor
+                        : AppTheme.errorColor,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                onTap: _showKdfConfigDialog,
               ),
               
               const SizedBox(height: 24),

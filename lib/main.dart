@@ -14,13 +14,14 @@ import 'bloc/cd/cd_cubit.dart';
 import 'bloc/hearth/hearth_cubit.dart';
 import 'providers/wallet_provider.dart';
 import 'services/sdk_service.dart';
+import 'services/kdf_config_service.dart';
 import 'services/fuego_rpc_service.dart';
 import 'services/fuego_daemon_client.dart' as hearth;
 import 'models/network_config.dart';
 import 'screens/splash_screen.dart';
 import 'utils/theme.dart';
 
-final _sdkService = SdkService();
+final _log = Logger('main');
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,10 +45,31 @@ Future<void> main() async {
     ),
   );
 
+  // Read KDF config from settings
+  final kdfConfigService = KdfConfigService();
+  IKdfHostConfig? hostConfig;
+  try {
+    final kdfHost = await kdfConfigService.getHost();
+    if (kdfHost.isNotEmpty) {
+      final port = await kdfConfigService.getPort();
+      final https = await kdfConfigService.getHttps();
+      hostConfig = RemoteConfig(
+        ipAddress: kdfHost,
+        port: port,
+        https: https,
+        rpcPassword: '', // SDK generates this automatically
+      );
+      _log.info('Using remote KDF: $kdfHost:$port');
+    }
+  } catch (e) {
+    _log.warning('Failed to load KDF config: $e');
+  }
+
   // Initialize SDK (optional — needed for DEX, not for wallet/daemon ops)
   FuegoDefiSdk? fuegoDefiSdk;
   try {
-    fuegoDefiSdk = await _sdkService.initialize();
+    final sdkService = SdkService(hostConfig: hostConfig);
+    fuegoDefiSdk = await sdkService.initialize();
     debugPrint('SDK initialized successfully');
   } catch (e) {
     debugPrint('SDK not available (expected without KDF): $e');
