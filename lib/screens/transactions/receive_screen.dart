@@ -70,7 +70,7 @@ class _ReceiveScreenState extends State<ReceiveScreen>
   Future<void> _loadWalletAddress() async {
     try {
       final cubit = context.read<WalletCubit>();
-      final address = cubit.state.xfgAddress ?? await cubit.getAddress();
+      final address = cubit.state.address ?? await cubit.getAddress();
       
       setState(() {
         _walletAddress = address;

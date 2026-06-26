@@ -54,7 +54,7 @@ class _SendScreenState extends State<SendScreen> {
         paymentId: _paymentIdController.text.trim().isEmpty 
             ? '' 
             : _paymentIdController.text.trim(),
-        mixins: _mixins,
+        mixin: _mixins,
       );
 
       if (txHash != null && mounted) {

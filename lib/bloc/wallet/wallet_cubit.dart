@@ -1,3 +1,5 @@
+import 'dart:math';
+import 'package:crypto/crypto.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fuego_core/fuego_core.dart';
 
@@ -85,17 +87,22 @@ class WalletCubit extends Cubit<WalletState> {
   Future<void> refreshWallet() async {
     emit(state.copyWith(isLoading: true, isSyncing: true, error: null));
     try {
-      final results = await Future.wait([
-        _daemon.getInfo().catchError((_) => null),
-        _daemon.getAddress().catchError((_) => ''),
-        _daemon.getBalance().catchError((_) => 0),
-        _daemon.getPeerCount().catchError((_) => 0),
-      ]);
-
-      final info = results[0] as NetworkInfo?;
-      final addr = results[1] as String;
-      final bal = results[2] as int;
-      final peers = results[3] as int;
+      NetworkInfo? info;
+      String addr = '';
+      int bal = 0;
+      int peers = 0;
+      try {
+        info = await _daemon.getInfo();
+      } catch (_) { info = null; }
+      try {
+        addr = await _daemon.getAddress();
+      } catch (_) {}
+      try {
+        bal = await _daemon.getBalance();
+      } catch (_) {}
+      try {
+        peers = await _daemon.getPeerCount();
+      } catch (_) {}
 
       emit(state.copyWith(
         isLoading: false,
@@ -177,4 +184,15 @@ class WalletCubit extends Cubit<WalletState> {
   }
 
   void clearError() => emit(state.copyWith(error: null));
+
+  String generatePaymentId() {
+    final rand = Random().nextInt(1 << 30);
+    final bytes = '$rand${DateTime.now().millisecondsSinceEpoch}'.codeUnits;
+    return sha256.convert(bytes).toString().substring(0, 64);
+  }
+
+  Future<String> createIntegratedAddress(String paymentId) async {
+    final addr = await _daemon.getAddress();
+    return '$addr?payment_id=$paymentId';
+  }
 }
