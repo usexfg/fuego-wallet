@@ -49,7 +49,7 @@ class Wallet {
     );
   }
 
-  // Convert atomic units to XFG (assuming 8 decimal places)
+  // Convert atomic units to XFG (7 decimal places)
   double get balanceXFG => balance / 10000000.0;
   double get unlockedBalanceXFG => unlockedBalance / 10000000.0;
   

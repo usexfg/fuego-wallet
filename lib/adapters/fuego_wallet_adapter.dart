@@ -252,7 +252,7 @@ class FuegoWalletAdapter {
           'method': 'transfer',
           'params': {
             'destinations': destinations,
-            'fee': fee ?? 1000000000, // 0.01 XFG
+            'fee': fee ?? 1000000000, // deprecated default
             'payment_id': paymentId,
             'mixin': mixin,
             'get_tx_key': true,

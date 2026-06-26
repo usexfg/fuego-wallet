@@ -123,7 +123,7 @@ class _BalanceCardState extends State<BalanceCard>
                           const Icon(Icons.check_circle_outline, color: Colors.white, size: 16),
                           const SizedBox(width: 8),
                           Text(
-                            'Available: ${_showBalance ? '${state.xfgUnlockedBalance.toStringAsFixed(8)} XFG' : '••••••••'}',
+                            'Available: ${_showBalance ? '${state.xfgUnlockedBalance.toStringAsFixed(7)} XFG' : '••••••••'}',
                             style: TextStyle(
                                 color: Colors.white.withOpacity(0.9), fontSize: 14),
                           ),
@@ -168,7 +168,7 @@ class _BalanceCardState extends State<BalanceCard>
                         key: ValueKey(balance),
                         animatedTexts: [
                           TyperAnimatedText(
-                            balance.toStringAsFixed(8),
+                            balance.toStringAsFixed(7),
                             textStyle: const TextStyle(
                                 color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold,
                                 fontFamily: 'monospace'),

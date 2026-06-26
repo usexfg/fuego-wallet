@@ -188,7 +188,7 @@ class _SendScreenState extends State<SendScreen> {
     
     // Reserve some amount for fees (approximately 0.01 XFG)
     final maxAmount = (availableBalance - 0.01).clamp(0.0, availableBalance);
-    _amountController.text = maxAmount.toStringAsFixed(8);
+    _amountController.text = maxAmount.toStringAsFixed(7);
   }
 
   @override
@@ -236,7 +236,7 @@ class _SendScreenState extends State<SendScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              '${availableBalance.toStringAsFixed(8)} XFG',
+                              '${availableBalance.toStringAsFixed(7)} XFG',
                               style: const TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
