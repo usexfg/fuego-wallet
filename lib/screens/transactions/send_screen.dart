@@ -184,7 +184,7 @@ class _SendScreenState extends State<SendScreen> {
 
   void _setMaxAmount() {
     final state = context.read<WalletCubit>().state;
-    final availableBalance = state.xfgUnlockedBalance;
+    final availableBalance = state.unlockedBalanceXfg;
     
     // Reserve some amount for fees (approximately 0.01 XFG)
     final maxAmount = (availableBalance - 0.01).clamp(0.0, availableBalance);
@@ -201,7 +201,7 @@ class _SendScreenState extends State<SendScreen> {
       ),
       body: BlocBuilder<WalletCubit, WalletState>(
         builder: (context, state) {
-          final availableBalance = state.xfgUnlockedBalance;
+          final availableBalance = state.unlockedBalanceXfg;
           
           return SingleChildScrollView(
             padding: const EdgeInsets.all(24),
