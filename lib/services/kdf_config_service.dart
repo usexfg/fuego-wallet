@@ -6,6 +6,7 @@ class KdfConfigService {
   static const _kHostKey = 'kdf_host';
   static const _kPortKey = 'kdf_port';
   static const _kHttpsKey = 'kdf_https';
+  static const _kPasswordKey = 'kdf_rpc_password';
 
   static const defaultHost = '';
   static const defaultPort = 7783;
@@ -26,16 +27,27 @@ class KdfConfigService {
     return prefs.getBool(_kHttpsKey) ?? defaultHttps;
   }
 
+  Future<String> getPassword() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_kPasswordKey) ?? '';
+  }
+
   Future<bool> isConfigured() async {
     final host = await getHost();
     return host.isNotEmpty;
   }
 
-  Future<void> save({required String host, required int port, required bool https}) async {
+  Future<void> save({
+    required String host,
+    required int port,
+    required bool https,
+    required String password,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kHostKey, host);
     await prefs.setInt(_kPortKey, port);
     await prefs.setBool(_kHttpsKey, https);
+    await prefs.setString(_kPasswordKey, password);
   }
 
   Future<void> clear() async {
@@ -43,5 +55,6 @@ class KdfConfigService {
     await prefs.remove(_kHostKey);
     await prefs.remove(_kPortKey);
     await prefs.remove(_kHttpsKey);
+    await prefs.remove(_kPasswordKey);
   }
 }

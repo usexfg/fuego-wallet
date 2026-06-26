@@ -146,6 +146,42 @@ class _DexScreenState extends State<DexScreen> {
 
   Widget _buildOrderbook(DexState state) {
     if (state.baseCoin == null || state.relCoin == null) {
+      if (state.error != null) {
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.swap_horiz, color: AppTheme.textMuted, size: 48),
+                const SizedBox(height: 16),
+                Text(
+                  'DEX requires KDF',
+                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  state.error!,
+                  style: const TextStyle(color: AppTheme.errorColor, fontSize: 13),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Configure a KDF server in Settings > DEX Server',
+                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Or run KDF locally:\n./kdf --rpcip 0.0.0.0 --rpcport 7783 --rpc_password PASS --allow_weak_password',
+                  style: TextStyle(color: AppTheme.textMuted, fontSize: 10, fontFamily: 'monospace'),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        );
+      }
       return const Center(
         child: Text('Select a trading pair above', style: TextStyle(color: AppTheme.textMuted, fontSize: 14)));
     }

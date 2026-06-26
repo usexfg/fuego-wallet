@@ -323,6 +323,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _showKdfConfigDialog() {
     final hostController = TextEditingController(text: _kdfHost);
     final portController = TextEditingController(text: _kdfPort.toString());
+    final passwordController = TextEditingController();
     bool https = false;
 
     showDialog(
@@ -354,100 +355,119 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ],
               ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Enter your KDF (Komodo DeFi Framework) server address to enable DEX trading.',
-                    style: TextStyle(color: AppTheme.textSecondary),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: hostController,
-                    decoration: InputDecoration(
-                      hintText: 'kdf.example.com',
-                      hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.5)),
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: AppTheme.primaryColor),
-                      ),
-                      labelText: 'Host',
-                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Connect to a KDF server to enable DEX trading, orderbook, and swaps.',
+                      style: TextStyle(color: AppTheme.textSecondary),
                     ),
-                    style: const TextStyle(color: AppTheme.textPrimary),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: portController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      hintText: '7783',
-                      hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.5)),
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: hostController,
+                      decoration: InputDecoration(
+                        hintText: 'kdf.example.com',
+                        hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.5)),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: AppTheme.primaryColor),
+                        ),
+                        labelText: 'Host',
+                        labelStyle: TextStyle(color: AppTheme.textSecondary),
                       ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: AppTheme.primaryColor),
-                      ),
-                      labelText: 'RPC Port',
-                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                      style: const TextStyle(color: AppTheme.textPrimary),
                     ),
-                    style: const TextStyle(color: AppTheme.textPrimary),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Switch(
-                        value: https,
-                        onChanged: (value) {
-                          setState(() {
-                            https = value;
-                          });
-                        },
-                        activeColor: AppTheme.primaryColor,
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: portController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        hintText: '7783',
+                        hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.5)),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: AppTheme.primaryColor),
+                        ),
+                        labelText: 'RPC Port',
+                        labelStyle: TextStyle(color: AppTheme.textSecondary),
                       ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Use HTTPS',
-                        style: TextStyle(color: AppTheme.textSecondary),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: AppTheme.primaryColor.withOpacity(0.3),
-                      ),
+                      style: const TextStyle(color: AppTheme.textPrimary),
                     ),
-                    child: Row(
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: passwordController,
+                      obscureText: true,
+                      decoration: InputDecoration(
+                        hintText: 'RPC password (from KDF --rpc_password)',
+                        hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.5)),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: AppTheme.primaryColor),
+                        ),
+                        labelText: 'RPC Password',
+                        labelStyle: TextStyle(color: AppTheme.textSecondary),
+                      ),
+                      style: const TextStyle(color: AppTheme.textPrimary),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
                       children: [
-                        const Icon(
-                          Icons.info_outline,
-                          color: AppTheme.primaryColor,
-                          size: 20,
+                        Switch(
+                          value: https,
+                          onChanged: (value) {
+                            setState(() {
+                              https = value;
+                            });
+                          },
+                          activeColor: AppTheme.primaryColor,
                         ),
                         const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Run KDF on a server:\ncargo build --release --bin kdf\n./target/release/kdf --rpcip 0.0.0.0 --rpcport 7783',
-                            style: TextStyle(
-                              color: AppTheme.textSecondary,
-                              fontSize: 12,
-                              fontFamily: 'monospace',
-                            ),
-                          ),
+                        const Text(
+                          'Use HTTPS',
+                          style: TextStyle(color: AppTheme.textSecondary),
                         ),
                       ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: AppTheme.primaryColor.withOpacity(0.3),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Quick start:',
+                            style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.w600, fontSize: 12),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            '1. Build KDF:\n   cargo build --release --bin kdf\n\n2. Run KDF server:\n   ./target/release/kdf \\\n     --rpcip 0.0.0.0 \\\n     --rpcport 7783 \\\n     --rpc_password YOUR_PASSWORD \\\n     --allow_weak_password\n\n3. Open port 7783 on your firewall',
+                            style: TextStyle(
+                              color: AppTheme.textSecondary,
+                              fontSize: 11,
+                              fontFamily: 'monospace',
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
               actions: [
                 TextButton(
@@ -470,7 +490,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         Navigator.of(context).pop();
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: const Text('KDF connection removed. Restart app to apply.'),
+                            content: const Text('KDF disconnected. Restart app to apply.'),
                             backgroundColor: AppTheme.warningColor,
                           ),
                         );
@@ -482,6 +502,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onPressed: () async {
                     final host = hostController.text.trim();
                     final port = int.tryParse(portController.text.trim()) ?? KdfConfigService.defaultPort;
+                    final password = passwordController.text;
 
                     if (host.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -493,7 +514,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       return;
                     }
 
-                    await _kdfConfigService.save(host: host, port: port, https: https);
+                    await _kdfConfigService.save(
+                      host: host,
+                      port: port,
+                      https: https,
+                      password: password,
+                    );
 
                     setState(() {
                       _kdfHost = host;

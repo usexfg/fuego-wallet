@@ -53,11 +53,12 @@ Future<void> main() async {
     if (kdfHost.isNotEmpty) {
       final port = await kdfConfigService.getPort();
       final https = await kdfConfigService.getHttps();
+      final password = await kdfConfigService.getPassword();
       hostConfig = RemoteConfig(
         ipAddress: kdfHost,
         port: port,
         https: https,
-        rpcPassword: '', // SDK generates this automatically
+        rpcPassword: password,
       );
       _log.info('Using remote KDF: $kdfHost:$port');
     }
