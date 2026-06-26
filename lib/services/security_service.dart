@@ -65,7 +65,7 @@ class SecurityService {
     try {
       final salt = _generateSalt();
       final hashedPin = await _hashPIN(pin, salt);
-      await _write(_pinKey, '$salt:$hashedPin');
+      await _write(key: _pinKey, value: '$salt:$hashedPin');
       return true;
     } catch (e) {
       return false;
@@ -97,7 +97,7 @@ class SecurityService {
 
   Future<bool> removePIN() async {
     try {
-      await _delete(_pinKey);
+      await _delete(key: _pinKey);
       return true;
     } catch (e) {
       return false;
