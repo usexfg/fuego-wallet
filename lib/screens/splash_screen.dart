@@ -6,6 +6,7 @@ import '../services/security_service.dart';
 import '../utils/theme.dart';
 
 import 'auth/pin_entry_screen.dart';
+import 'main/main_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -80,8 +81,14 @@ class _SplashScreenState extends State<SplashScreen>
       final walletProvider = Provider.of<WalletProvider>(context, listen: false);
 
       // Check if wallet exists
-      final hasWallet = await walletProvider.hasWalletData();
-      final hasPIN = await securityService.hasPIN();
+      bool hasWallet = false;
+      bool hasPIN = false;
+      try {
+        hasWallet = await walletProvider.hasWalletData();
+        hasPIN = await securityService.hasPIN();
+      } catch (e) {
+        debugPrint('Keychain unavailable, skipping wallet check: $e');
+      }
 
       await Future.delayed(const Duration(milliseconds: 1000));
 
@@ -91,9 +98,12 @@ class _SplashScreenState extends State<SplashScreen>
       if (hasWallet && hasPIN) {
         // Wallet exists, go to PIN entry
         _navigateToScreen(const PinEntryScreen());
+      } else if (!hasPIN) {
+        // No PIN set yet (fresh install), skip to main
+        _navigateToScreen(const MainScreen());
       } else {
-        // No wallet, go to setup
-        _navigateToScreen(const PinEntryScreen());
+        // Wallet exists but no PIN, go to main
+        _navigateToScreen(const MainScreen());
       }
     } catch (e) {
       if (!mounted) return;
