@@ -1,18 +1,58 @@
 import 'dart:convert';
 import 'package:crypto/crypto.dart' as crypto;
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:cryptography/cryptography.dart';
 
 class SecurityService {
-  static const _storage = FlutterSecureStorage(
-    aOptions: AndroidOptions(
-      encryptedSharedPreferences: true,
-    ),
-    iOptions: IOSOptions(
-      accessibility: KeychainAccessibility.first_unlock_this_device,
-    ),
-  );
+  static FlutterSecureStorage? _secureStorage;
+  static SharedPreferences? _prefs;
+
+  static Future<void> _init() async {
+    if (_secureStorage != null || _prefs != null) return;
+    try {
+      _secureStorage = const FlutterSecureStorage(
+        aOptions: AndroidOptions(encryptedSharedPreferences: true),
+        iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock_this_device),
+      );
+      await _secureStorage!.read(key: 'test');
+    } catch (e) {
+      debugPrint('SecurityService: Keychain unavailable, using SharedPreferences');
+      _secureStorage = null;
+      _prefs = await SharedPreferences.getInstance();
+    }
+  }
+
+  static Future<String?> _read({required String key}) async {
+    await _init();
+    if (_secureStorage != null) {
+      try {
+        return await _secureStorage!.read(key: key);
+      } catch (_) {}
+    }
+    return _prefs?.getString(key);
+  }
+
+  static Future<void> _write({required String key, required String value}) async {
+    await _init();
+    if (_secureStorage != null) {
+      try {
+        await _secureStorage!.write(key: key, value: value);
+        return;
+      } catch (_) {}
+    }
+    await _prefs?.setString(key, value);
+  }
+
+  static Future<void> _delete({required String key}) async {
+    await _init();
+    if (_secureStorage != null) {
+      try { await _secureStorage!.delete(key: key); } catch (_) {}
+    }
+    await _prefs?.remove(key);
+  }
   
   final LocalAuthentication _localAuth = LocalAuthentication();
   static const String _pinKey = 'wallet_pin_hash';
@@ -25,7 +65,7 @@ class SecurityService {
     try {
       final salt = _generateSalt();
       final hashedPin = await _hashPIN(pin, salt);
-      await _storage.write(key: _pinKey, value: '$salt:$hashedPin');
+      await _write(_pinKey, '$salt:$hashedPin');
       return true;
     } catch (e) {
       return false;
@@ -34,7 +74,7 @@ class SecurityService {
 
   Future<bool> verifyPIN(String pin) async {
     try {
-      final stored = await _storage.read(key: _pinKey);
+      final stored = await _read(key: _pinKey);
       if (stored == null) return false;
       
       final parts = stored.split(':');
@@ -51,13 +91,13 @@ class SecurityService {
   }
 
   Future<bool> hasPIN() async {
-    final pin = await _storage.read(key: _pinKey);
+    final pin = await _read(key: _pinKey);
     return pin != null && pin.isNotEmpty;
   }
 
   Future<bool> removePIN() async {
     try {
-      await _storage.delete(key: _pinKey);
+      await _delete(_pinKey);
       return true;
     } catch (e) {
       return false;
@@ -102,11 +142,11 @@ class SecurityService {
   }
 
   Future<void> setBiometricEnabled(bool enabled) async {
-    await _storage.write(key: _biometricKey, value: enabled.toString());
+    await _write(key: _biometricKey, value: enabled.toString());
   }
 
   Future<bool> isBiometricEnabled() async {
-    final enabled = await _storage.read(key: _biometricKey);
+    final enabled = await _read(key: _biometricKey);
     return enabled == 'true';
   }
 
@@ -114,7 +154,7 @@ class SecurityService {
   Future<bool> storeWalletSeed(String mnemonic, String pin) async {
     try {
       final encrypted = await _encryptData(mnemonic, pin);
-      await _storage.write(key: _seedKey, value: encrypted);
+      await _write(key: _seedKey, value: encrypted);
       return true;
     } catch (e) {
       return false;
@@ -123,7 +163,7 @@ class SecurityService {
 
   Future<String?> getWalletSeed(String pin) async {
     try {
-      final encrypted = await _storage.read(key: _seedKey);
+      final encrypted = await _read(key: _seedKey);
       if (encrypted == null) return null;
       
       return await _decryptData(encrypted, pin);
@@ -145,7 +185,7 @@ class SecurityService {
       });
       
       final encrypted = await _encryptData(keysJson, pin);
-      await _storage.write(key: _keysKey, value: encrypted);
+      await _write(key: _keysKey, value: encrypted);
       return true;
     } catch (e) {
       return false;
@@ -154,7 +194,7 @@ class SecurityService {
 
   Future<Map<String, String>?> getWalletKeys(String pin) async {
     try {
-      final encrypted = await _storage.read(key: _keysKey);
+      final encrypted = await _read(key: _keysKey);
       if (encrypted == null) return null;
       
       final decrypted = await _decryptData(encrypted, pin);
@@ -170,16 +210,16 @@ class SecurityService {
   }
 
   Future<bool> hasWalletData() async {
-    final seed = await _storage.read(key: _seedKey);
-    final keys = await _storage.read(key: _keysKey);
+    final seed = await _read(key: _seedKey);
+    final keys = await _read(key: _keysKey);
     return (seed != null && seed.isNotEmpty) || (keys != null && keys.isNotEmpty);
   }
 
   Future<void> clearWalletData() async {
-    await _storage.delete(key: _seedKey);
-    await _storage.delete(key: _keysKey);
-    await _storage.delete(key: _pinKey);
-    await _storage.delete(key: _biometricKey);
+    await _delete(key: _seedKey);
+    await _delete(key: _keysKey);
+    await _delete(key: _pinKey);
+    await _delete(key: _biometricKey);
   }
 
   // Private helper methods

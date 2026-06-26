@@ -86,6 +86,19 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.only(top: 8),
               child: Text('Block $state.blockHeight', style: const TextStyle(color: Colors.white38, fontSize: 11)),
             ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _actionBtn('Send', Icons.arrow_upward, () {
+                Navigator.of(context).pushNamed('/send');
+              }),
+              const SizedBox(width: 24),
+              _actionBtn('Receive', Icons.arrow_downward, () {
+                Navigator.of(context).pushNamed('/receive');
+              }),
+            ],
+          ),
         ],
       ),
     );
@@ -116,6 +129,26 @@ class _HomeScreenState extends State<HomeScreen> {
             child: const Icon(Icons.copy, color: AppTheme.textMuted, size: 14),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _actionBtn(String label, IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: Colors.white, size: 18),
+            const SizedBox(width: 6),
+            Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+          ],
+        ),
       ),
     );
   }
