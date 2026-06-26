@@ -87,11 +87,11 @@ class FuegoApp extends StatelessWidget {
           ],
           child: MultiBlocProvider(
             providers: [
-              if (sdk != null) BlocProvider<AuthCubit>(
-                create: (_) => AuthCubit(sdk!)..initialize(),
+              BlocProvider<AuthCubit>(
+                create: (_) => AuthCubit(sdk)..initialize(),
               ),
-              if (sdk != null) BlocProvider<WalletCubit>(
-                create: (_) => WalletCubit(sdk!, rpcService),
+              BlocProvider<WalletCubit>(
+                create: (_) => WalletCubit(sdk, rpcService),
               ),
               BlocProvider<CdCubit>(
                 create: (_) => CdCubit(rpcService)..loadAll(),
@@ -99,8 +99,8 @@ class FuegoApp extends StatelessWidget {
               BlocProvider<HearthCubit>(
                 create: (_) => HearthCubit(daemonClient),
               ),
-              if (sdk != null) BlocProvider<DexCubit>(
-                create: (_) => DexCubit(sdk!),
+              BlocProvider<DexCubit>(
+                create: (_) => DexCubit(sdk),
               ),
           ],
           child: MaterialApp(

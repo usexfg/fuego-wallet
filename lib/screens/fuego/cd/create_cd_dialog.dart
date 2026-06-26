@@ -11,24 +11,26 @@ class CreateCdDialog extends StatefulWidget {
 }
 
 class _CreateCdDialogState extends State<CreateCdDialog> {
-  final _amountController = TextEditingController();
-  int _termEpochs = 12;
+  static const _termTiers = [6, 18, 36, 72];
+  static const _amountTiers = [8.0, 80.0, 800.0, 8000.0];
+
+  int _selectedTerm = 6;
+  double _selectedAmount = 8.0;
   bool _submitting = false;
   String? _error;
 
   static const _epochBlocks = 900;
 
   @override
-  void dispose() {
-    _amountController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final totalBlocks = _termEpochs * _epochBlocks;
+    final totalBlocks = _selectedTerm * _epochBlocks;
     final blockTimeSec = 480;
     final days = (totalBlocks * blockTimeSec) ~/ 86400;
+    final interest = _selectedAmount * 0.02;
+    final apy = (_selectedTerm == 6)   ? '4.2%' :
+               (_selectedTerm == 18)  ? '5.8%' :
+               (_selectedTerm == 36)  ? '7.1%' :
+                                        '8.5%';
 
     return AlertDialog(
       backgroundColor: AppTheme.cardColor,
@@ -39,45 +41,46 @@ class _CreateCdDialogState extends State<CreateCdDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('Amount (HEAT)', style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
-            const SizedBox(height: 4),
-            TextField(
-              controller: _amountController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                hintText: '1000.0',
-                filled: true,
-                fillColor: AppTheme.surfaceColor,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-              style: const TextStyle(color: AppTheme.textPrimary),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _amountTiers.map((a) => ChoiceChip(
+                label: Text('${a.toInt()} HEAT'),
+                selected: _selectedAmount == a,
+                selectedColor: AppTheme.primaryColor,
+                labelStyle: TextStyle(
+                  color: _selectedAmount == a ? Colors.white : AppTheme.textPrimary,
+                ),
+                backgroundColor: AppTheme.surfaceColor,
+                onSelected: (_) => setState(() => _selectedAmount = a),
+              )).toList(),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             const Text('Term (epochs)', style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Expanded(
-                  child: Slider(
-                    value: _termEpochs.toDouble(),
-                    min: 1,
-                    max: 52,
-                    divisions: 51,
-                    label: '$_termEpochs epochs',
-                    activeColor: AppTheme.primaryColor,
-                    onChanged: (v) => setState(() => _termEpochs = v.round()),
-                  ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _termTiers.map((t) => ChoiceChip(
+                label: Text('$t epochs'),
+                selected: _selectedTerm == t,
+                selectedColor: AppTheme.primaryColor,
+                labelStyle: TextStyle(
+                  color: _selectedTerm == t ? Colors.white : AppTheme.textPrimary,
                 ),
-                SizedBox(
-                  width: 60,
-                  child: Text('$_termEpochs', style: const TextStyle(
-                      color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
-                ),
-              ],
+                backgroundColor: AppTheme.surfaceColor,
+                onSelected: (_) => setState(() => _selectedTerm = t),
+              )).toList(),
             ),
-            const SizedBox(height: 4),
-            Text('≈ $days days — ${_termEpochs * _epochBlocks} blocks at 8 min/block',
+            const SizedBox(height: 8),
+            Text('≈ $days days — ${_selectedTerm * _epochBlocks} blocks at 8 min/block',
                 style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
             const SizedBox(height: 12),
+            _buildDetailRow('Deposit', '${_selectedAmount.toInt()} HEAT'),
+            _buildDetailRow('Interest (APY ~$apy)', '${interest.toStringAsFixed(2)} HEAT'),
+            _buildDetailRow('At maturity', '${(_selectedAmount + interest).toStringAsFixed(2)} HEAT'),
+            const SizedBox(height: 8),
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
@@ -108,18 +111,26 @@ class _CreateCdDialogState extends State<CreateCdDialog> {
     );
   }
 
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+          Text(value, style: const TextStyle(color: AppTheme.textPrimary, fontSize: 12, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+
   Future<void> _submit() async {
-    final amount = _amountController.text.trim();
-    if (amount.isEmpty) {
-      setState(() => _error = 'Enter an amount');
-      return;
-    }
     setState(() { _submitting = true; _error = null; });
     try {
       await context.read<CdCubit>().createCd(
             coin: 'HEAT',
-            amount: amount,
-            durationBlocks: _termEpochs * _epochBlocks,
+            amount: _selectedAmount.toString(),
+            durationBlocks: _selectedTerm * _epochBlocks,
           );
       if (mounted) Navigator.of(context).pop();
     } catch (e) {

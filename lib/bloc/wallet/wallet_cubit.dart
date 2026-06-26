@@ -74,7 +74,7 @@ class WalletState {
 }
 
 class WalletCubit extends Cubit<WalletState> {
-  final FuegoDefiSdk _sdk;
+  final FuegoDefiSdk? _sdk;
   final FuegoRPCService _rpc;
 
   WalletCubit(this._sdk, this._rpc) : super(const WalletState());
@@ -160,9 +160,10 @@ class WalletCubit extends Cubit<WalletState> {
   }
 
   Future<void> refreshSdkBalances() async {
+    if (_sdk == null) return;
     emit(state.copyWith(isLoading: true, error: null));
     try {
-      final enabled = await _sdk.assets.getEnabledCoins();
+      final enabled = await _sdk!.assets.getEnabledCoins();
       emit(state.copyWith(
         isLoading: false,
         enabledCoins: enabled.toList(),

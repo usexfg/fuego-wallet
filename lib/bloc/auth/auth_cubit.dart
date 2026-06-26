@@ -26,16 +26,20 @@ class AuthState {
 }
 
 class AuthCubit extends Cubit<AuthState> {
-  final FuegoDefiSdk _sdk;
+  final FuegoDefiSdk? _sdk;
 
   AuthCubit(this._sdk) : super(const AuthState());
 
   Future<void> initialize() async {
+    if (_sdk == null) {
+      emit(const AuthState(status: AuthStatus.unauthenticated));
+      return;
+    }
     emit(const AuthState(status: AuthStatus.initializing));
     try {
-      final signedIn = await _sdk.auth.isSignedIn();
+      final signedIn = await _sdk!.auth.isSignedIn();
       if (signedIn) {
-        final user = await _sdk.auth.currentUser;
+        final user = await _sdk!.auth.currentUser;
         emit(AuthState(
           status: AuthStatus.authenticated,
           userId: user?.toString(),
@@ -49,9 +53,13 @@ class AuthCubit extends Cubit<AuthState> {
   }
 
   Future<void> signIn(String password) async {
+    if (_sdk == null) {
+      emit(AuthState(status: AuthStatus.error, error: 'SDK not initialized'));
+      return;
+    }
     emit(const AuthState(status: AuthStatus.initializing));
     try {
-      final user = await _sdk.auth.signIn(
+      final user = await _sdk!.auth.signIn(
         walletName: 'fuego',
         password: password,
       );
@@ -63,7 +71,7 @@ class AuthCubit extends Cubit<AuthState> {
 
   Future<void> signOut() async {
     try {
-      await _sdk.auth.signOut();
+      await _sdk?.auth.signOut();
     } catch (_) {}
     emit(const AuthState(status: AuthStatus.unauthenticated));
   }

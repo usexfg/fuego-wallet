@@ -37,14 +37,18 @@ class DexState {
 }
 
 class DexCubit extends Cubit<DexState> {
-  final FuegoDefiSdk _sdk;
+  final FuegoDefiSdk? _sdk;
 
   DexCubit(this._sdk) : super(const DexState());
 
   Future<void> loadOrderbook(String base, String rel) async {
+    if (_sdk == null) {
+      emit(state.copyWith(error: 'SDK not initialized'));
+      return;
+    }
     emit(state.copyWith(isLoading: true, baseCoin: base, relCoin: rel));
     try {
-      final result = await _sdk.client.executeRpc({
+      final result = await _sdk!.client.executeRpc({
         'method': 'orderbook',
         'base': base,
         'rel': rel,
@@ -64,7 +68,8 @@ class DexCubit extends Cubit<DexState> {
   }
 
   Future<void> submitBuyOrder(String base, String rel, String price, String volume) async {
-    await _sdk.client.executeRpc({
+    if (_sdk == null) return;
+    await _sdk!.client.executeRpc({
       'method': 'buy',
       'base': base,
       'rel': rel,
@@ -74,7 +79,8 @@ class DexCubit extends Cubit<DexState> {
   }
 
   Future<void> submitSellOrder(String base, String rel, String price, String volume) async {
-    await _sdk.client.executeRpc({
+    if (_sdk == null) return;
+    await _sdk!.client.executeRpc({
       'method': 'sell',
       'base': base,
       'rel': rel,
