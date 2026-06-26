@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fuego_core/fuego_core.dart';
 import '../../bloc/wallet/wallet_cubit.dart';
 import '../../utils/theme.dart';
-import '../../widgets/balance_card.dart';
-import '../../widgets/quick_actions.dart';
-import '../../widgets/recent_transactions.dart';
-import '../transactions/send_screen.dart';
-import '../transactions/receive_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,280 +11,212 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
-  late AnimationController _refreshController;
-  late Animation<double> _refreshAnimation;
-  bool _isRefreshing = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _setupAnimations();
-    _initializeWallet();
-  }
-
-  void _setupAnimations() {
-    _refreshController = AnimationController(
-      duration: const Duration(milliseconds: 1000),
-      vsync: this,
-    );
-    _refreshAnimation = Tween<double>(begin: 0, end: 1).animate(
-        CurvedAnimation(parent: _refreshController, curve: Curves.easeInOut));
-  }
-
-  Future<void> _initializeWallet() async {
-    final cubit = context.read<WalletCubit>();
-    await cubit.refreshWallet();
-    await cubit.refreshTransactions();
-  }
-
-  Future<void> _onRefresh() async {
-    if (_isRefreshing) return;
-    setState(() => _isRefreshing = true);
-    _refreshController.forward();
-    try {
-      final cubit = context.read<WalletCubit>();
-      await Future.wait([cubit.refreshWallet(), cubit.refreshTransactions()]);
-    } finally {
-      _refreshController.reset();
-      if (mounted) setState(() => _isRefreshing = false);
-    }
-  }
-
-  void _navigateToSend() {
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SendScreen()));
-  }
-
-  void _navigateToReceive() {
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ReceiveScreen()));
-  }
+class _HomeScreenState extends State<HomeScreen> {
+  bool _showBalance = true;
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<WalletCubit, WalletState>(
       builder: (context, state) {
-        return Scaffold(
-          body: Container(
-            decoration: const BoxDecoration(gradient: AppTheme.backgroundGradient),
-            child: SafeArea(
-              child: RefreshIndicator(
-                onRefresh: _onRefresh,
-                color: AppTheme.primaryColor,
-                backgroundColor: AppTheme.cardColor,
-                child: CustomScrollView(
-                  slivers: [
-                    SliverAppBar(
-                      expandedHeight: 120,
-                      floating: true,
-                      pinned: true,
-                      backgroundColor: Colors.transparent,
-                      elevation: 0,
-                      flexibleSpace: FlexibleSpaceBar(
-                        titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
-                        title: Column(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Fuego Wallet', style: TextStyle(
-                                color: AppTheme.textPrimary, fontSize: 24, fontWeight: FontWeight.bold)),
-                            Text(
-                              state.isConnected
-                                  ? (state.isSynced ? 'Synchronized' : 'Syncing...')
-                                  : 'Offline',
-                              style: TextStyle(
-                                color: state.isConnected
-                                    ? (state.isSynced ? AppTheme.successColor : AppTheme.warningColor)
-                                    : AppTheme.errorColor,
-                                fontSize: 12, fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      actions: [
-                        AnimatedBuilder(
-                          animation: _refreshAnimation,
-                          builder: (context, child) {
-                            return Transform.rotate(
-                              angle: _refreshAnimation.value * 2 * 3.14159,
-                              child: IconButton(
-                                icon: Icon(Icons.refresh,
-                                    color: _isRefreshing ? AppTheme.primaryColor : AppTheme.textSecondary),
-                                onPressed: _isRefreshing ? null : _onRefresh,
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                    SliverPadding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      sliver: SliverList(
-                        delegate: SliverChildListDelegate([
-                          const BalanceCard(),
-                          const SizedBox(height: 20),
-                          QuickActions(
-                            onSendTap: _navigateToSend,
-                            onReceiveTap: _navigateToReceive,
-                            onScanTap: _onScanQR,
-                            onMineTap: _onToggleMining,
-                          ),
-                          const SizedBox(height: 20),
-                          if (state.isSyncing && !state.isSynced)
-                            _buildSyncProgress(state),
-                          const RecentTransactions(),
-                          const SizedBox(height: 20),
-                          if (state.isMining) _buildMiningStatus(state),
-                        ]),
-                      ),
-                    ),
-                  ],
+        return RefreshIndicator(
+          onRefresh: () => context.read<WalletCubit>().refreshWallet(),
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              _balanceCard(state),
+              const SizedBox(height: 16),
+              if (state.address != null) _addressCard(state),
+              const SizedBox(height: 16),
+              _infoRow(state),
+              const SizedBox(height: 16),
+              _miningControls(state),
+              const SizedBox(height: 16),
+              const Text('Recent Transactions', style: TextStyle(color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              if (state.transactions.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Text('No transactions yet', style: TextStyle(color: AppTheme.textMuted, fontSize: 13), textAlign: TextAlign.center),
+                )
+              else
+                ...state.transactions.take(10).map((tx) => _txCard(tx)),
+              if (state.error != null)
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Text(state.error!, style: const TextStyle(color: AppTheme.errorColor, fontSize: 12)),
                 ),
-              ),
-            ),
+            ],
           ),
         );
       },
     );
   }
 
-  Widget _buildSyncProgress(WalletState state) {
+  Widget _balanceCard(WalletState state) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 20),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppTheme.cardColor,
-        borderRadius: BorderRadius.circular(12),
+        gradient: AppTheme.primaryGradient,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: AppTheme.primaryColor.withOpacity(0.3), blurRadius: 12)],
       ),
       child: Column(
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Icon(Icons.sync, color: AppTheme.primaryColor, size: 20),
-              const SizedBox(width: 8),
-              const Text('Synchronizing Blockchain', style: TextStyle(
-                  color: AppTheme.textPrimary, fontWeight: FontWeight.w600)),
-              const Spacer(),
-              Text('${state.syncProgress}%',
-                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+              const Text('XFG BALANCE', style: TextStyle(color: Colors.white70, fontSize: 11, letterSpacing: 1)),
+              IconButton(
+                icon: Icon(_showBalance ? Icons.visibility : Icons.visibility_off, color: Colors.white70, size: 20),
+                onPressed: () => setState(() => _showBalance = !_showBalance),
+              ),
             ],
           ),
-          const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: state.syncProgress / 100,
-              backgroundColor: AppTheme.surfaceColor,
-              valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+          const SizedBox(height: 4),
+          Text(
+            _showBalance ? state.balanceXfg.toStringAsFixed(decimalPlaces) : '••••••••',
+            style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold),
+          ),
+          Text(
+            _showBalance ? '${state.unlockedBalanceXfg.toStringAsFixed(decimalPlaces)} available' : '••••••••',
+            style: const TextStyle(color: Colors.white60, fontSize: 13),
+          ),
+          if (state.blockHeight > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text('Block $state.blockHeight', style: const TextStyle(color: Colors.white38, fontSize: 11)),
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _addressCard(WalletState state) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceColor,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.wallet, color: AppTheme.primaryColor, size: 16),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              state.address!,
+              style: const TextStyle(color: AppTheme.textPrimary, fontSize: 11, fontFamily: 'monospace'),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          GestureDetector(
+            onTap: () {
+              // copy to clipboard
+            },
+            child: const Icon(Icons.copy, color: AppTheme.textMuted, size: 14),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildMiningStatus(WalletState state) {
+  Widget _infoRow(WalletState state) {
+    return Row(
+      children: [
+        _infoTile('Peers', '${state.peerCount}', Icons.people),
+        const SizedBox(width: 8),
+        _infoTile('Fee', formatXfg(txFee), Icons.receipt),
+        const SizedBox(width: 8),
+        _infoTile('Block', '${avgBlockTime}s', Icons.timer),
+      ],
+    );
+  }
+
+  Widget _infoTile(String label, String value, IconData icon) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceColor,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: AppTheme.primaryColor, size: 18),
+            const SizedBox(height: 4),
+            Text(value, style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
+            Text(label, style: const TextStyle(color: AppTheme.textMuted, fontSize: 10)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _miningControls(WalletState state) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.successColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.successColor.withOpacity(0.3)),
+        color: AppTheme.surfaceColor,
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
-          const Icon(Icons.memory, color: AppTheme.successColor),
-          const SizedBox(width: 12),
+          Icon(Icons.memory, color: state.isMining ? AppTheme.successColor : AppTheme.textMuted, size: 18),
+          const SizedBox(width: 8),
+          Text(state.isMining ? 'Mining - ${state.miningSpeed} H/s' : 'Miner idle', style: TextStyle(color: state.isMining ? AppTheme.successColor : AppTheme.textMuted, fontSize: 12)),
+          const Spacer(),
+          ElevatedButton(
+            onPressed: state.isMining
+                ? () => context.read<WalletCubit>().stopMining()
+                : () => context.read<WalletCubit>().startMining(threads: 1),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: state.isMining ? AppTheme.errorColor : AppTheme.successColor,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            ),
+            child: Text(state.isMining ? 'Stop' : 'Start'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _txCard(FuegoTransaction tx) {
+    final isIn = tx.isIncoming;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceColor,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isIn ? Icons.arrow_downward : Icons.arrow_upward,
+            color: isIn ? AppTheme.successColor : AppTheme.errorColor,
+            size: 16,
+          ),
+          const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Mining Active', style: TextStyle(
-                    color: AppTheme.successColor, fontWeight: FontWeight.bold)),
-                Text('${state.miningSpeed} H/s with ${state.miningThreads} threads',
-                    style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                Text(tx.txHash.substring(0, 16) + '...', style: const TextStyle(color: AppTheme.textPrimary, fontSize: 12, fontFamily: 'monospace')),
+                Text(tx.dateTime.toString().substring(0, 19), style: const TextStyle(color: AppTheme.textMuted, fontSize: 10)),
               ],
             ),
           ),
-          TextButton(
-            onPressed: () => context.read<WalletCubit>().stopMining(),
-            child: const Text('Stop'),
+          Text(
+            '${isIn ? '+' : '-'}${tx.amount.toStringAsFixed(decimalPlaces)} XFG',
+            style: TextStyle(
+              color: isIn ? AppTheme.successColor : AppTheme.errorColor,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
     );
-  }
-
-  void _onScanQR() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('QR scanning coming soon'), backgroundColor: AppTheme.primaryColor),
-    );
-  }
-
-  void _onToggleMining() {
-    final cubit = context.read<WalletCubit>();
-    if (cubit.state.isMining) {
-      cubit.stopMining();
-    } else {
-      _showMiningDialog();
-    }
-  }
-
-  void _showMiningDialog() {
-    int threads = 1;
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setDialogState) {
-            return AlertDialog(
-              backgroundColor: AppTheme.cardColor,
-              title: const Text('Start Mining', style: TextStyle(color: AppTheme.textPrimary)),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('Choose the number of CPU threads:',
-                      style: TextStyle(color: AppTheme.textSecondary)),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      const Text('Threads:', style: TextStyle(color: AppTheme.textPrimary)),
-                      Expanded(
-                        child: Slider(
-                          value: threads.toDouble(),
-                          min: 1, max: 8, divisions: 7,
-                          label: threads.toString(),
-                          activeColor: AppTheme.primaryColor,
-                          onChanged: (v) => setDialogState(() => threads = v.round()),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary)),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    context.read<WalletCubit>().startMining(threads: threads);
-                    Navigator.of(ctx).pop();
-                  },
-                  child: const Text('Start Mining'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  @override
-  void dispose() {
-    _refreshController.dispose();
-    super.dispose();
   }
 }

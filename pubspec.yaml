@@ -13,6 +13,8 @@ dependencies:
     sdk: flutter
 
   # ── Fuego DeFi SDK (path deps → switch to git ref after GitHub push) ──
+  fuego_core:
+    path: sdk/packages/fuego_core
   fuego_defi_sdk:
     path: sdk/packages/fuego_defi_sdk
   fuego_defi_framework:
@@ -105,6 +107,8 @@ flutter:
     - assets/bin/
 
 dependency_overrides:
+  fuego_core:
+    path: sdk/packages/fuego_core
   fuego_cex_market_data:
     path: sdk/packages/fuego_cex_market_data
   fuego_coin_updates:

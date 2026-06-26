@@ -1,10 +1,5 @@
-import 'dart:convert';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:crypto/crypto.dart';
-import 'package:fuego_defi_sdk/fuego_defi_sdk.dart';
-import 'package:fuego_defi_rpc_methods/src/common_structures/general/balance_info.dart';
-import '../../services/fuego_rpc_service.dart';
-import '../../models/wallet.dart' as legacy;
+import 'package:fuego_core/fuego_core.dart';
 
 class WalletState {
   final bool isLoading;
@@ -14,13 +9,14 @@ class WalletState {
   final int miningSpeed;
   final int miningThreads;
   final String? error;
-  final double xfgBalance;
-  final double xfgUnlockedBalance;
-  final String? xfgAddress;
+  final int balance;
+  final int unlockedBalance;
+  final String? address;
   final double syncProgress;
   final bool isSynced;
-  final List<String> enabledCoins;
-  final List<legacy.WalletTransaction> transactions;
+  final List<FuegoTransaction> transactions;
+  final int blockHeight;
+  final int peerCount;
 
   const WalletState({
     this.isLoading = false,
@@ -30,13 +26,14 @@ class WalletState {
     this.miningSpeed = 0,
     this.miningThreads = 1,
     this.error,
-    this.xfgBalance = 0,
-    this.xfgUnlockedBalance = 0,
-    this.xfgAddress,
+    this.balance = 0,
+    this.unlockedBalance = 0,
+    this.address,
     this.syncProgress = 0,
     this.isSynced = false,
-    this.enabledCoins = const [],
     this.transactions = const [],
+    this.blockHeight = 0,
+    this.peerCount = 0,
   });
 
   WalletState copyWith({
@@ -47,13 +44,14 @@ class WalletState {
     int? miningSpeed,
     int? miningThreads,
     String? error,
-    double? xfgBalance,
-    double? xfgUnlockedBalance,
-    String? xfgAddress,
+    int? balance,
+    int? unlockedBalance,
+    String? address,
     double? syncProgress,
     bool? isSynced,
-    List<String>? enabledCoins,
-    List<legacy.WalletTransaction>? transactions,
+    List<FuegoTransaction>? transactions,
+    int? blockHeight,
+    int? peerCount,
   }) =>
       WalletState(
         isLoading: isLoading ?? this.isLoading,
@@ -63,114 +61,119 @@ class WalletState {
         miningSpeed: miningSpeed ?? this.miningSpeed,
         miningThreads: miningThreads ?? this.miningThreads,
         error: error,
-        xfgBalance: xfgBalance ?? this.xfgBalance,
-        xfgUnlockedBalance: xfgUnlockedBalance ?? this.xfgUnlockedBalance,
-        xfgAddress: xfgAddress ?? this.xfgAddress,
+        balance: balance ?? this.balance,
+        unlockedBalance: unlockedBalance ?? this.unlockedBalance,
+        address: address ?? this.address,
         syncProgress: syncProgress ?? this.syncProgress,
         isSynced: isSynced ?? this.isSynced,
-        enabledCoins: enabledCoins ?? this.enabledCoins,
         transactions: transactions ?? this.transactions,
+        blockHeight: blockHeight ?? this.blockHeight,
+        peerCount: peerCount ?? this.peerCount,
       );
+
+  double get balanceXfg => balance / atomicPerCoin;
+  double get unlockedBalanceXfg => unlockedBalance / atomicPerCoin;
 }
 
 class WalletCubit extends Cubit<WalletState> {
-  final FuegoDefiSdk? _sdk;
-  final FuegoRPCService _rpc;
+  final FuegoDaemonClient _daemon;
 
-  WalletCubit(this._sdk, this._rpc) : super(const WalletState());
+  WalletCubit(this._daemon) : super(const WalletState()) {
+    refreshWallet();
+  }
 
   Future<void> refreshWallet() async {
     emit(state.copyWith(isLoading: true, isSyncing: true, error: null));
     try {
-      final wallet = await _rpc.getBalance();
-      final address = await _rpc.getAddress();
+      final results = await Future.wait([
+        _daemon.getInfo().catchError((_) => null),
+        _daemon.getAddress().catchError((_) => ''),
+        _daemon.getBalance().catchError((_) => 0),
+        _daemon.getPeerCount().catchError((_) => 0),
+      ]);
+
+      final info = results[0] as NetworkInfo?;
+      final addr = results[1] as String;
+      final bal = results[2] as int;
+      final peers = results[3] as int;
+
       emit(state.copyWith(
         isLoading: false,
         isSyncing: false,
         isConnected: true,
-        isSynced: wallet.synced,
-        syncProgress: wallet.syncProgress,
+        blockHeight: info?.height ?? 0,
+        address: addr.isNotEmpty ? addr : state.address,
+        balance: bal,
+        unlockedBalance: bal,
+        peerCount: peers,
+        syncProgress: 1.0,
+        isSynced: true,
       ));
+
+      refreshTransactions();
     } catch (e) {
       emit(state.copyWith(
         isLoading: false,
         isSyncing: false,
         isConnected: false,
-        error: e.toString(),
+        error: 'Connection failed: $e',
       ));
     }
   }
 
   Future<String> getAddress() async {
-    return await _rpc.getAddress();
+    try {
+      return await _daemon.getAddress();
+    } catch (_) {
+      return state.address ?? '';
+    }
   }
 
   Future<String> sendTransaction({
     required String address,
-    required String amount,
-    required String fee,
-    required int mixins,
+    required double amount,
+    required double fee,
+    int mixin = 0,
     String paymentId = '',
   }) async {
-    final request = legacy.SendTransactionRequest(
-      amount: int.parse(amount),
+    final req = SendTransactionRequest(
       address: address,
-      fee: int.parse(fee),
-      mixins: mixins,
-      paymentId: paymentId,
+      amount: amount,
+      fee: fee,
+      mixin: mixin,
+      paymentId: paymentId.isNotEmpty ? paymentId : null,
     );
-    return _rpc.sendTransaction(request);
+    final txHash = await _daemon.sendTransaction(req);
+    refreshWallet();
+    return txHash;
   }
 
-  Future<void> startMining({int threads = 1}) async {
-    await _rpc.startMining(threads: threads);
+  Future<void> startMining({int threads = 1, String? address}) async {
+    await _daemon.startMining(threads: threads, address: address);
     emit(state.copyWith(isMining: true, miningThreads: threads));
   }
 
   Future<void> stopMining() async {
-    await _rpc.stopMining();
+    await _daemon.stopMining();
     emit(state.copyWith(isMining: false, miningSpeed: 0));
   }
 
   Future<void> refreshMiningStatus() async {
     try {
-      final status = await _rpc.getMiningStatus();
+      final status = await _daemon.getMiningStatus();
+      final active = (status['active'] ?? status['status'] == 'active') as bool? ?? false;
       emit(state.copyWith(
-        isMining: status['active'] as bool,
-        miningSpeed: status['speed'] as int,
-        miningThreads: status['threads'] as int? ?? 1,
+        isMining: active,
+        miningSpeed: (status['speed'] ?? status['hashrate'] ?? 0) as int,
       ));
     } catch (_) {}
-  }
-
-  String generatePaymentId() {
-    final bytes = List<int>.generate(32, (i) => DateTime.now().millisecondsSinceEpoch + i);
-    return sha256.convert(bytes).toString().substring(0, 64);
-  }
-
-  Future<String> createIntegratedAddress(String paymentId) async {
-    return _rpc.createIntegratedAddress(paymentId);
   }
 
   Future<void> refreshTransactions() async {
     try {
-      final txs = await _rpc.getTransactions();
+      final txs = await _daemon.getTransactions(count: 50);
       emit(state.copyWith(transactions: txs));
     } catch (_) {}
-  }
-
-  Future<void> refreshSdkBalances() async {
-    if (_sdk == null) return;
-    emit(state.copyWith(isLoading: true, error: null));
-    try {
-      final enabled = await _sdk!.assets.getEnabledCoins();
-      emit(state.copyWith(
-        isLoading: false,
-        enabledCoins: enabled.toList(),
-      ));
-    } catch (e) {
-      emit(state.copyWith(isLoading: false, error: e.toString()));
-    }
   }
 
   void clearError() => emit(state.copyWith(error: null));

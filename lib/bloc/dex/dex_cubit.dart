@@ -81,7 +81,7 @@ class DexCubit extends Cubit<DexState> {
 
   void loadAvailableCoins() {
     if (_sdk == null) {
-      emit(state.copyWith(error: 'SDK not initialized'));
+      emit(state.copyWith(error: 'KDF not running — DEX requires KDF'));
       return;
     }
     try {

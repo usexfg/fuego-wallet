@@ -49,8 +49,8 @@ class _SendScreenState extends State<SendScreen> {
       
       final txHash = await cubit.sendTransaction(
         address: _addressController.text.trim(),
-        amount: _amountController.text.trim(),
-        fee: '8000',
+        amount: double.tryParse(_amountController.text.trim()) ?? 0,
+        fee: 0.008,
         paymentId: _paymentIdController.text.trim().isEmpty 
             ? '' 
             : _paymentIdController.text.trim(),
