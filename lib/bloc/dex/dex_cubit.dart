@@ -166,17 +166,17 @@ class DexCubit extends Cubit<DexState> {
     emit(state.copyWith(isSubmitting: true, lastOrderResult: null, error: null));
 
     try {
-      final rpc = _sdk!.client;
-      final response = await rpc.executeRpc<Map<String, dynamic>>(
-        method: 'setprice',
-        params: {
+      final response = await _sdk!.client.executeRpc({
+        'mmrpc': '2.0',
+        'method': 'setprice',
+        'params': {
           'base': state.baseCoin,
           'rel': state.relCoin,
           'price': price,
           'volume': volume,
         },
-      );
-      final uuid = response['result']['uuid'] ?? 'unknown';
+      });
+      final uuid = response['result']?['uuid'] ?? 'unknown';
       emit(state.copyWith(
         isSubmitting: false,
         lastOrderResult: 'Order placed: $uuid',
@@ -200,17 +200,17 @@ class DexCubit extends Cubit<DexState> {
     emit(state.copyWith(isSubmitting: true, lastOrderResult: null, error: null));
 
     try {
-      final rpc = _sdk!.client;
-      final response = await rpc.executeRpc<Map<String, dynamic>>(
-        method: 'buy',
-        params: {
+      final response = await _sdk!.client.executeRpc({
+        'mmrpc': '2.0',
+        'method': 'buy',
+        'params': {
           'base': state.baseCoin,
           'rel': state.relCoin,
           'volume': volume,
           'price': price,
         },
-      );
-      final uuid = response['result']['uuid'] ?? 'unknown';
+      });
+      final uuid = response['result']?['uuid'] ?? 'unknown';
       emit(state.copyWith(
         isSubmitting: false,
         lastOrderResult: 'Swap started: $uuid',
@@ -232,17 +232,17 @@ class DexCubit extends Cubit<DexState> {
     emit(state.copyWith(isSubmitting: true, lastOrderResult: null, error: null));
 
     try {
-      final rpc = _sdk!.client;
-      final response = await rpc.executeRpc<Map<String, dynamic>>(
-        method: 'sell',
-        params: {
+      final response = await _sdk!.client.executeRpc({
+        'mmrpc': '2.0',
+        'method': 'sell',
+        'params': {
           'base': state.baseCoin,
           'rel': state.relCoin,
           'volume': volume,
           'price': price,
         },
-      );
-      final uuid = response['result']['uuid'] ?? 'unknown';
+      });
+      final uuid = response['result']?['uuid'] ?? 'unknown';
       emit(state.copyWith(
         isSubmitting: false,
         lastOrderResult: 'Swap started: $uuid',
@@ -259,11 +259,11 @@ class DexCubit extends Cubit<DexState> {
   Future<void> loadOpenOrders() async {
     if (_sdk == null) return;
     try {
-      final rpc = _sdk!.client;
-      final response = await rpc.executeRpc<Map<String, dynamic>>(
-        method: 'my_orders',
-        params: {},
-      );
+      final response = await _sdk!.client.executeRpc({
+        'mmrpc': '2.0',
+        'method': 'my_orders',
+        'params': {},
+      });
       final result = response['result'] as Map<String, dynamic>? ?? {};
       final rawOrders = result['orders'] as List<dynamic>? ?? [];
       final orders = rawOrders.map((o) {
@@ -285,11 +285,11 @@ class DexCubit extends Cubit<DexState> {
   Future<void> cancelOrder(String uuid) async {
     if (_sdk == null) return;
     try {
-      final rpc = _sdk!.client;
-      await rpc.executeRpc<Map<String, dynamic>>(
-        method: 'cancel_order',
-        params: {'uuid': uuid},
-      );
+      await _sdk!.client.executeRpc({
+        'mmrpc': '2.0',
+        'method': 'cancel_order',
+        'params': {'uuid': uuid},
+      });
       await loadOpenOrders();
     } catch (e) {
       debugPrint('DexCubit: cancelOrder failed: $e');
@@ -299,11 +299,11 @@ class DexCubit extends Cubit<DexState> {
   Future<void> cancelAllOrders() async {
     if (_sdk == null) return;
     try {
-      final rpc = _sdk!.client;
-      await rpc.executeRpc<Map<String, dynamic>>(
-        method: 'cancel_all_orders',
-        params: {'cancel_by': {'type': 'All'}},
-      );
+      await _sdk!.client.executeRpc({
+        'mmrpc': '2.0',
+        'method': 'cancel_all_orders',
+        'params': {'cancel_by': {'type': 'All'}},
+      });
       await loadOpenOrders();
     } catch (e) {
       debugPrint('DexCubit: cancelAllOrders failed: $e');
