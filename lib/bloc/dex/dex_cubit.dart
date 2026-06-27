@@ -15,6 +15,9 @@ class DexState {
   final double? bestBid;
   final double? bestAsk;
   final double? spread;
+  final List<OpenOrder> openOrders;
+  final String? lastOrderResult;
+  final bool isSubmitting;
 
   const DexState({
     this.isLoading = false,
@@ -27,6 +30,9 @@ class DexState {
     this.bestBid,
     this.bestAsk,
     this.spread,
+    this.openOrders = const [],
+    this.lastOrderResult,
+    this.isSubmitting = false,
   });
 
   DexState copyWith({
@@ -40,6 +46,9 @@ class DexState {
     double? bestBid,
     double? bestAsk,
     double? spread,
+    List<OpenOrder>? openOrders,
+    String? lastOrderResult,
+    bool? isSubmitting,
   }) =>
       DexState(
         isLoading: isLoading ?? this.isLoading,
@@ -52,6 +61,9 @@ class DexState {
         bestBid: bestBid ?? this.bestBid,
         bestAsk: bestAsk ?? this.bestAsk,
         spread: spread ?? this.spread,
+        openOrders: openOrders ?? this.openOrders,
+        lastOrderResult: lastOrderResult,
+        isSubmitting: isSubmitting ?? this.isSubmitting,
       );
 }
 
@@ -73,6 +85,24 @@ class OrderRow {
   });
 }
 
+class OpenOrder {
+  final String uuid;
+  final String base;
+  final String rel;
+  final String price;
+  final String volume;
+  final bool isMine;
+
+  const OpenOrder({
+    required this.uuid,
+    required this.base,
+    required this.rel,
+    required this.price,
+    required this.volume,
+    this.isMine = false,
+  });
+}
+
 class DexCubit extends Cubit<DexState> {
   final FuegoDefiSdk? _sdk;
   StreamSubscription<OrderbookEvent>? _orderbookSub;
@@ -81,7 +111,7 @@ class DexCubit extends Cubit<DexState> {
 
   void loadAvailableCoins() {
     if (_sdk == null) {
-      emit(state.copyWith(error: 'KDF not running — DEX requires KDF'));
+      emit(state.copyWith(error: 'KDF not running — configure KDF in Settings > DEX Server'));
       return;
     }
     try {
@@ -123,6 +153,160 @@ class DexCubit extends Cubit<DexState> {
       });
     } catch (e) {
       debugPrint('DexCubit: subscribe failed: $e (ok, will use polling)');
+    }
+
+    await loadOpenOrders();
+  }
+
+  Future<void> placeMakerOrder({
+    required String price,
+    required String volume,
+  }) async {
+    if (_sdk == null || state.baseCoin == null || state.relCoin == null) return;
+    emit(state.copyWith(isSubmitting: true, lastOrderResult: null, error: null));
+
+    try {
+      final rpc = _sdk!.client;
+      final response = await rpc.executeRpc<Map<String, dynamic>>(
+        method: 'setprice',
+        params: {
+          'base': state.baseCoin,
+          'rel': state.relCoin,
+          'price': price,
+          'volume': volume,
+        },
+      );
+      final uuid = response['result']['uuid'] ?? 'unknown';
+      emit(state.copyWith(
+        isSubmitting: false,
+        lastOrderResult: 'Order placed: $uuid',
+      ));
+      await loadOpenOrders();
+      await selectPair(state.baseCoin!, state.relCoin!);
+    } catch (e) {
+      debugPrint('DexCubit: placeMakerOrder failed: $e');
+      emit(state.copyWith(
+        isSubmitting: false,
+        error: 'Order failed: $e',
+      ));
+    }
+  }
+
+  Future<void> takerBuy({
+    required String volume,
+    required String price,
+  }) async {
+    if (_sdk == null || state.baseCoin == null || state.relCoin == null) return;
+    emit(state.copyWith(isSubmitting: true, lastOrderResult: null, error: null));
+
+    try {
+      final rpc = _sdk!.client;
+      final response = await rpc.executeRpc<Map<String, dynamic>>(
+        method: 'buy',
+        params: {
+          'base': state.baseCoin,
+          'rel': state.relCoin,
+          'volume': volume,
+          'price': price,
+        },
+      );
+      final uuid = response['result']['uuid'] ?? 'unknown';
+      emit(state.copyWith(
+        isSubmitting: false,
+        lastOrderResult: 'Swap started: $uuid',
+      ));
+    } catch (e) {
+      debugPrint('DexCubit: takerBuy failed: $e');
+      emit(state.copyWith(
+        isSubmitting: false,
+        error: 'Buy failed: $e',
+      ));
+    }
+  }
+
+  Future<void> takerSell({
+    required String volume,
+    required String price,
+  }) async {
+    if (_sdk == null || state.baseCoin == null || state.relCoin == null) return;
+    emit(state.copyWith(isSubmitting: true, lastOrderResult: null, error: null));
+
+    try {
+      final rpc = _sdk!.client;
+      final response = await rpc.executeRpc<Map<String, dynamic>>(
+        method: 'sell',
+        params: {
+          'base': state.baseCoin,
+          'rel': state.relCoin,
+          'volume': volume,
+          'price': price,
+        },
+      );
+      final uuid = response['result']['uuid'] ?? 'unknown';
+      emit(state.copyWith(
+        isSubmitting: false,
+        lastOrderResult: 'Swap started: $uuid',
+      ));
+    } catch (e) {
+      debugPrint('DexCubit: takerSell failed: $e');
+      emit(state.copyWith(
+        isSubmitting: false,
+        error: 'Sell failed: $e',
+      ));
+    }
+  }
+
+  Future<void> loadOpenOrders() async {
+    if (_sdk == null) return;
+    try {
+      final rpc = _sdk!.client;
+      final response = await rpc.executeRpc<Map<String, dynamic>>(
+        method: 'my_orders',
+        params: {},
+      );
+      final result = response['result'] as Map<String, dynamic>? ?? {};
+      final rawOrders = result['orders'] as List<dynamic>? ?? [];
+      final orders = rawOrders.map((o) {
+        return OpenOrder(
+          uuid: o['uuid'] ?? '',
+          base: o['base'] ?? '',
+          rel: o['rel'] ?? '',
+          price: o['price'] ?? '0',
+          volume: o['amount'] ?? o['volume'] ?? '0',
+          isMine: o['is_mine'] == true,
+        );
+      }).toList();
+      emit(state.copyWith(openOrders: orders));
+    } catch (e) {
+      debugPrint('DexCubit: loadOpenOrders failed: $e');
+    }
+  }
+
+  Future<void> cancelOrder(String uuid) async {
+    if (_sdk == null) return;
+    try {
+      final rpc = _sdk!.client;
+      await rpc.executeRpc<Map<String, dynamic>>(
+        method: 'cancel_order',
+        params: {'uuid': uuid},
+      );
+      await loadOpenOrders();
+    } catch (e) {
+      debugPrint('DexCubit: cancelOrder failed: $e');
+    }
+  }
+
+  Future<void> cancelAllOrders() async {
+    if (_sdk == null) return;
+    try {
+      final rpc = _sdk!.client;
+      await rpc.executeRpc<Map<String, dynamic>>(
+        method: 'cancel_all_orders',
+        params: {'cancel_by': {'type': 'All'}},
+      );
+      await loadOpenOrders();
+    } catch (e) {
+      debugPrint('DexCubit: cancelAllOrders failed: $e');
     }
   }
 

@@ -10,13 +10,26 @@ class DexScreen extends StatefulWidget {
   State<DexScreen> createState() => _DexScreenState();
 }
 
-class _DexScreenState extends State<DexScreen> {
+class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  final _priceController = TextEditingController();
+  final _volumeController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 3, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<DexCubit>().loadAvailableCoins();
     });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _priceController.dispose();
+    _volumeController.dispose();
+    super.dispose();
   }
 
   @override
@@ -32,10 +45,43 @@ class _DexScreenState extends State<DexScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 child: Text(state.error!, style: const TextStyle(color: AppTheme.errorColor, fontSize: 11)),
               ),
-            Expanded(child: _buildOrderbook(state)),
+            if (state.lastOrderResult != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                child: Text(state.lastOrderResult!, style: const TextStyle(color: AppTheme.successColor, fontSize: 11)),
+              ),
+            _buildTabBar(),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildOrderbook(state),
+                  _buildTradeForm(state),
+                  _buildOpenOrders(state),
+                ],
+              ),
+            ),
           ],
         );
       },
+    );
+  }
+
+  Widget _buildTabBar() {
+    return Container(
+      color: AppTheme.surfaceColor,
+      child: TabBar(
+        controller: _tabController,
+        labelColor: AppTheme.primaryColor,
+        unselectedLabelColor: AppTheme.textMuted,
+        indicatorColor: AppTheme.primaryColor,
+        labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        tabs: const [
+          Tab(text: 'Orderbook'),
+          Tab(text: 'Trade'),
+          Tab(text: 'Orders'),
+        ],
+      ),
     );
   }
 
@@ -194,6 +240,185 @@ class _DexScreenState extends State<DexScreen> {
         Expanded(child: _orderColumn('BIDS', state.bids, AppTheme.successColor, isAsk: false)),
         Container(width: 1, color: AppTheme.surfaceColor),
         Expanded(child: _orderColumn('ASKS', state.asks, AppTheme.errorColor, isAsk: true)),
+      ],
+    );
+  }
+
+  Widget _buildTradeForm(DexState state) {
+    if (state.baseCoin == null || state.relCoin == null) {
+      return const Center(
+        child: Text('Select a trading pair first', style: TextStyle(color: AppTheme.textMuted, fontSize: 14)),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Trade ${state.baseCoin}/${state.relCoin}',
+            style: const TextStyle(color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _priceController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              labelText: 'Price (${state.relCoin})',
+              labelStyle: const TextStyle(color: AppTheme.textSecondary),
+              hintText: state.bestAsk?.toStringAsFixed(7) ?? '0.0000000',
+              hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.5)),
+              enabledBorder: OutlineInputBorder(
+                borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
+              ),
+              focusedBorder: const OutlineInputBorder(
+                borderSide: BorderSide(color: AppTheme.primaryColor),
+              ),
+            ),
+            style: const TextStyle(color: AppTheme.textPrimary),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _volumeController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              labelText: 'Amount (${state.baseCoin})',
+              labelStyle: const TextStyle(color: AppTheme.textSecondary),
+              hintText: '0.0000000',
+              hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.5)),
+              enabledBorder: OutlineInputBorder(
+                borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
+              ),
+              focusedBorder: const OutlineInputBorder(
+                borderSide: BorderSide(color: AppTheme.primaryColor),
+              ),
+            ),
+            style: const TextStyle(color: AppTheme.textPrimary),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: state.isSubmitting ? null : () {
+                    final price = _priceController.text.trim();
+                    final volume = _volumeController.text.trim();
+                    if (price.isEmpty || volume.isEmpty) return;
+                    context.read<DexCubit>().takerBuy(volume: volume, price: price);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.successColor,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: state.isSubmitting
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Text('BUY', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: state.isSubmitting ? null : () {
+                    final price = _priceController.text.trim();
+                    final volume = _volumeController.text.trim();
+                    if (price.isEmpty || volume.isEmpty) return;
+                    context.read<DexCubit>().takerSell(volume: volume, price: price);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.errorColor,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: state.isSubmitting
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Text('SELL', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton(
+            onPressed: state.isSubmitting ? null : () {
+              final price = _priceController.text.trim();
+              final volume = _volumeController.text.trim();
+              if (price.isEmpty || volume.isEmpty) return;
+              context.read<DexCubit>().placeMakerOrder(price: price, volume: volume);
+            },
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: AppTheme.primaryColor),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+            child: state.isSubmitting
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Text('Place Limit Order', style: TextStyle(color: AppTheme.primaryColor)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOpenOrders(DexState state) {
+    if (state.openOrders.isEmpty) {
+      return const Center(
+        child: Text('No open orders', style: TextStyle(color: AppTheme.textMuted, fontSize: 14)),
+      );
+    }
+
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            children: [
+              Text('${state.openOrders.length} orders', style: const TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+              const Spacer(),
+              TextButton(
+                onPressed: () => context.read<DexCubit>().cancelAllOrders(),
+                child: const Text('Cancel All', style: TextStyle(color: AppTheme.errorColor, fontSize: 12)),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            itemCount: state.openOrders.length,
+            itemBuilder: (context, i) {
+              final order = state.openOrders[i];
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  border: Border(bottom: BorderSide(color: AppTheme.surfaceColor)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${order.base}/${order.rel}',
+                            style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Price: ${order.price}  Vol: ${order.volume}',
+                            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 16, color: AppTheme.errorColor),
+                      onPressed: () => context.read<DexCubit>().cancelOrder(order.uuid),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
       ],
     );
   }
