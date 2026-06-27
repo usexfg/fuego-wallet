@@ -123,7 +123,7 @@ class FuegoApp extends StatelessWidget {
               create: (_) => HearthCubit(hearth.FuegoDaemonClient(host: '207.244.247.64')),
             ),
             BlocProvider<DexCubit>(
-              create: (_) => DexCubit(sdk)..loadAvailableCoins(),
+              create: (_) => DexCubit()..init(),
             ),
           ],
           child: MaterialApp(

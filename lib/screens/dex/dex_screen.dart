@@ -20,7 +20,7 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<DexCubit>().loadAvailableCoins();
+      context.read<DexCubit>().init();
     });
   }
 
