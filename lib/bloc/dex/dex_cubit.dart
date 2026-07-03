@@ -169,8 +169,16 @@ class DexCubit extends Cubit<DexState> {
   Future<void> _loadCoins() async {
     try {
       final response = await _rpc('get_enabled_coins', {});
-      final result = response['result'] as Map<String, dynamic>? ?? {};
-      final coins = (result['coins'] as List<dynamic>? ?? [])
+      final List<dynamic> resultList;
+      if (response['result'] is List) {
+        resultList = response['result'] as List<dynamic>;
+      } else if (response['result'] is Map) {
+        final result = response['result'] as Map<String, dynamic>;
+        resultList = result['coins'] as List<dynamic>? ?? [];
+      } else {
+        resultList = [];
+      }
+      final coins = resultList
           .map((c) => c['ticker'] as String? ?? c['coin'] as String? ?? '')
           .where((t) => t.isNotEmpty)
           .toList()
