@@ -156,7 +156,7 @@ class DexCubit extends Cubit<DexState> {
     final body = jsonEncode({
       'userpass': _rpcPassword,
       'method': method,
-      'params': params,
+      ...params,
     });
     final response = await _http.post(
       Uri.parse(_rpcUrl),
