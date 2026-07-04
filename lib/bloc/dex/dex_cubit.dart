@@ -166,11 +166,9 @@ class DexCubit extends Cubit<DexState> {
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
-  bool _enableAttempted = false;
-
   Future<void> _loadCoins() async {
     try {
-      final response = await _rpc('get_enabled_coins', {});
+      final response = await _rpc('get_coins', {});
       final List<dynamic> resultList;
       if (response['result'] is List) {
         resultList = response['result'] as List<dynamic>;
@@ -185,18 +183,11 @@ class DexCubit extends Cubit<DexState> {
           .where((t) => t.isNotEmpty)
           .toList()
         ..sort();
-      if (coins.isEmpty && !_enableAttempted) {
-        _enableAttempted = true;
-        final response2 = await _rpc('enable', {'coin': 'XFG'});
-        debugPrint('DexCubit: enable XFG result: $response2');
-        await Future.delayed(const Duration(seconds: 1));
-        await _loadCoins();
-        return;
+      if (coins.isEmpty) {
+        emit(state.copyWith(error: 'No coins returned from KDF — check daemon connection'));
+      } else {
+        emit(state.copyWith(availableCoins: coins, error: null));
       }
-      if (coins.isEmpty && _enableAttempted) {
-        emit(state.copyWith(error: 'XFG enabled but not syncing — check daemon connection'));
-      }
-      emit(state.copyWith(availableCoins: coins));
     } catch (e) {
       debugPrint('DexCubit: _loadCoins error: $e');
       emit(state.copyWith(error: 'Failed to load coins: $e'));

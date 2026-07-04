@@ -45,34 +45,44 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
   @override
   Widget build(BuildContext context) {
     final screenH = MediaQuery.of(context).size.height;
+    final tabH = screenH * 0.38;
     return BlocBuilder<DexCubit, DexState>(
       builder: (context, state) {
         return Column(
           children: [
-            if (_candles != null && _candles!.isNotEmpty)
-              SizedBox(
-                height: screenH * 0.4,
-                child: FuegoChart(
-                  candles: _candles!,
-                  pair: state.baseCoin != null && state.relCoin != null
-                      ? '${state.baseCoin}/${state.relCoin}'
-                      : 'XFG/USD',
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    if (_candles != null && _candles!.isNotEmpty)
+                      SizedBox(
+                        height: screenH * 0.35,
+                        child: FuegoChart(
+                          candles: _candles!,
+                          pair: state.baseCoin != null && state.relCoin != null
+                              ? '${state.baseCoin}/${state.relCoin}'
+                              : 'XFG/USD',
+                        ),
+                      ),
+                    _buildPairBar(state),
+                    _buildPriceBar(state),
+                    if (state.error != null)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        child: Text(state.error!, style: const TextStyle(color: AppTheme.errorColor, fontSize: 11)),
+                      ),
+                    if (state.lastOrderResult != null)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        child: Text(state.lastOrderResult!, style: const TextStyle(color: AppTheme.successColor, fontSize: 11)),
+                      ),
+                  ],
                 ),
               ),
-            _buildPairBar(state),
-            _buildPriceBar(state),
-            if (state.error != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                child: Text(state.error!, style: const TextStyle(color: AppTheme.errorColor, fontSize: 11)),
-              ),
-            if (state.lastOrderResult != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                child: Text(state.lastOrderResult!, style: const TextStyle(color: AppTheme.successColor, fontSize: 11)),
-              ),
+            ),
             _buildTabBar(),
-            Expanded(
+            SizedBox(
+              height: tabH,
               child: TabBarView(
                 controller: _tabController,
                 children: [

@@ -5,20 +5,17 @@ import '../models/candlestick.dart';
 class FuegoChart extends StatelessWidget {
   final List<Candlestick> candles;
   final String pair;
-  final double? height;
 
   const FuegoChart({
     super.key,
     required this.candles,
     this.pair = '',
-    this.height,
   });
 
   @override
   Widget build(BuildContext context) {
     if (candles.isEmpty) return const SizedBox.shrink();
-
-    final data = candles
+    final impCandles = candles
         .map((c) => Candle(
               time: c.time,
               open: c.open,
@@ -28,60 +25,66 @@ class FuegoChart extends StatelessWidget {
               volume: c.volume,
             ))
         .toList();
-
-    return Container(
-      height: height,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFF0A0E14), // fuego background (dark sky)
-            Color(0xFF1A1F26), // fuego surface (mid)
-            Color(0xFFBF360C), // fuego primary dark (deep orange)
-            Color(0xFFD84315), // fuego primary (horizon glow)
-          ],
-          stops: [0.0, 0.5, 0.85, 1.0],
-        ),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFD84315).withOpacity(0.2)),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFD84315).withOpacity(0.08),
-            blurRadius: 16,
-            spreadRadius: 2,
+    return LayoutBuilder(builder: (context, constraints) {
+      return Container(
+        height: constraints.maxHeight,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFFFFAB91),
+              Color(0xFFFF8A65),
+              Color(0xFFBF360C),
+              Color(0xFF1A1F26),
+              Color(0xFF0A0E14),
+            ],
+            stops: [0.0, 0.12, 0.35, 0.65, 1.0],
           ),
-        ],
-      ),
-      clipBehavior: Clip.hardEdge,
-      child: Column(
-        children: [
-          if (pair.isNotEmpty)
-            Container(
-              padding: const EdgeInsets.only(left: 12, top: 8, bottom: 2),
-              alignment: Alignment.centerLeft,
-              child: Text(pair,
-                  style: const TextStyle(
-                      color: Color(0xFFFFD700),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.2)),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFFFD700).withAlpha(38)),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFFFD700).withAlpha(15),
+              blurRadius: 16,
+              spreadRadius: 2,
             ),
-          Expanded(
-            child: ImpChart.trading(
-              candles: data,
-              backgroundColor: Colors.transparent,
+          ],
+        ),
+        clipBehavior: Clip.hardEdge,
+        child: Stack(
+          children: [
+            ImpChart.trading(
+              candles: impCandles,
               lineColor: const Color(0xFFFFD700),
-              pulseColor: const Color(0xFFFF5722),
+              backgroundColor: Colors.transparent,
+              pulseColor: const Color(0xFFFFAB91),
               enableGestures: true,
               showCrosshair: true,
               defaultVisibleCount: 60,
-              plotFeedback: true,
-              crosshairChangeFeedback: true,
             ),
-          ),
-        ],
-      ),
-    );
+            if (pair.isNotEmpty)
+              Positioned(
+                top: 8,
+                left: 12,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFAB91).withAlpha(220),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(pair,
+                      style: const TextStyle(
+                          color: Color(0xFF0A0E14),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.2)),
+                ),
+              ),
+          ],
+        ),
+      );
+    });
   }
 }
