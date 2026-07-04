@@ -36,17 +36,19 @@ class FuegoChart extends StatelessWidget {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            Color(0xFF0a0a1a),
-            Color(0xFF0d0520),
-            Color(0xFF120828),
+            Color(0xFF0A0E14), // fuego background (dark sky)
+            Color(0xFF1A1F26), // fuego surface (mid)
+            Color(0xFFBF360C), // fuego primary dark (deep orange)
+            Color(0xFFD84315), // fuego primary (horizon glow)
           ],
+          stops: [0.0, 0.5, 0.85, 1.0],
         ),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFF00f0ff).withOpacity(0.15)),
+        border: Border.all(color: const Color(0xFFD84315).withOpacity(0.2)),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF00f0ff).withOpacity(0.05),
-            blurRadius: 12,
+            color: const Color(0xFFD84315).withOpacity(0.08),
+            blurRadius: 16,
             spreadRadius: 2,
           ),
         ],
@@ -60,7 +62,7 @@ class FuegoChart extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: Text(pair,
                   style: const TextStyle(
-                      color: Color(0xFF00f0ff),
+                      color: Color(0xFFFFD700),
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1.2)),
@@ -69,8 +71,8 @@ class FuegoChart extends StatelessWidget {
             child: ImpChart.trading(
               candles: data,
               backgroundColor: Colors.transparent,
-              lineColor: const Color(0xFF00f0ff),
-              pulseColor: const Color(0xFFff00ff),
+              lineColor: const Color(0xFFFFD700),
+              pulseColor: const Color(0xFFFF5722),
               enableGestures: true,
               showCrosshair: true,
               defaultVisibleCount: 60,
