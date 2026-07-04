@@ -1,9 +1,8 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:webview_flutter/webview_flutter.dart';
+import 'package:imp_trading_chart/imp_trading_chart.dart';
 import '../models/candlestick.dart';
 
-class FuegoChart extends StatefulWidget {
+class FuegoChart extends StatelessWidget {
   final List<Candlestick> candles;
   final String pair;
   final double? height;
@@ -16,72 +15,56 @@ class FuegoChart extends StatefulWidget {
   });
 
   @override
-  State<FuegoChart> createState() => _FuegoChartState();
-}
-
-class _FuegoChartState extends State<FuegoChart> {
-  WebViewController? _controller;
-  bool _loaded = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _initController();
-  }
-
-  void _initController() {
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(const Color(0xFF0D1117))
-      ..addJavaScriptChannel(
-        'onCrosshairMove',
-        onMessageReceived: (msg) {},
-      )
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageFinished: (_) {
-            _loaded = true;
-            _pushChartData();
-          },
-        ),
-      );
-
-    _loadChart();
-  }
-
-  Future<void> _loadChart() async {
-    await _controller!.loadFlutterAsset('assets/charts/tv_chart.html');
-  }
-
-  void _pushChartData() {
-    if (!_loaded || _controller == null || widget.candles.isEmpty) return;
-    final data = {
-      'pair': widget.pair,
-      'candles': widget.candles.map((c) => c.toChartJson()).toList(),
-    };
-    _controller!.runJavaScript('updateChart(${jsonEncode(data)});');
-  }
-
-  @override
-  void didUpdateWidget(FuegoChart oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.candles != widget.candles || oldWidget.pair != widget.pair) {
-      _pushChartData();
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    if (_controller == null) return const SizedBox.shrink();
+    if (candles.isEmpty) return const SizedBox.shrink();
+
+    final data = candles
+        .map((c) => Candle(
+              time: c.time,
+              open: c.open,
+              high: c.high,
+              low: c.low,
+              close: c.close,
+              volume: c.volume,
+            ))
+        .toList();
+
+    const bg = Color(0xFF0D1117);
+
     return Container(
-      height: widget.height,
+      height: height,
       decoration: BoxDecoration(
-        color: const Color(0xFF0D1117),
+        color: bg,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: const Color(0xFF1f2937)),
       ),
       clipBehavior: Clip.hardEdge,
-      child: WebViewWidget(controller: _controller!),
+      child: Column(
+        children: [
+          if (pair.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.only(left: 12, top: 8, bottom: 2),
+              alignment: Alignment.centerLeft,
+              child: Text(pair,
+                  style: const TextStyle(
+                      color: Color(0xFFe5e7eb),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700)),
+            ),
+          Expanded(
+            child: ImpChart.trading(
+              candles: data,
+              backgroundColor: bg,
+              lineColor: const Color(0xFF3b82f6),
+              pulseColor: const Color(0xFF22c55e),
+              enableGestures: true,
+              showCrosshair: true,
+              plotFeedback: false,
+              crosshairChangeFeedback: false,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

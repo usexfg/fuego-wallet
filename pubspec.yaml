@@ -82,7 +82,7 @@ dependencies:
   connectivity_plus: ^5.0.2
 
   # ── Charts ──
-  webview_flutter: ^4.8.0
+  imp_trading_chart: ^0.1.2
 
   # ── Notifications / Logging ──
   flutter_local_notifications: ^17.0.0
