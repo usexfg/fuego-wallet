@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../models/candlestick.dart';
 
@@ -22,27 +23,27 @@ class FuegoChart extends StatefulWidget {
 class _FuegoChartState extends State<FuegoChart> {
   late final WebViewController _controller;
   bool _pageReady = false;
-  bool _error = false;
+  String? _htmlContent;
 
   @override
   void initState() {
     super.initState();
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(const Color(0xFF0d1117))
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageStarted: (_) {},
-          onPageFinished: (_) {
-            setState(() => _pageReady = true);
-            _pushData();
-          },
-          onWebResourceError: (error) {
-            if (mounted) setState(() => _error = true);
-          },
-        ),
-      )
-      ..loadFlutterAsset('assets/charts/tv_chart.html');
+      ..setBackgroundColor(const Color(0xFF0d1117));
+    _loadHtml();
+  }
+
+  Future<void> _loadHtml() async {
+    try {
+      final html = await rootBundle.loadString('assets/charts/tv_chart.html');
+      if (!mounted) return;
+      _htmlContent = html;
+      await _controller.loadHtmlString(html);
+      if (mounted) setState(() => _pageReady = true);
+    } catch (e) {
+      debugPrint('FuegoChart load error: $e');
+    }
   }
 
   @override
@@ -82,30 +83,14 @@ class _FuegoChartState extends State<FuegoChart> {
         border: Border.all(color: const Color(0xFF1a1a2e)),
       ),
       clipBehavior: Clip.hardEdge,
-      child: Stack(
-        children: [
-          WebViewWidget(controller: _controller),
-          if (!_pageReady && !_error)
-            const Center(
+      child: _htmlContent == null
+          ? const Center(
               child: CircularProgressIndicator(
                 color: Color(0xFF3b82f6),
                 strokeWidth: 2,
               ),
-            ),
-          if (_error)
-            const Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.error_outline, color: Color(0xFF6b7280), size: 24),
-                  SizedBox(height: 8),
-                  Text('Chart unavailable',
-                      style: TextStyle(color: Color(0xFF6b7280), fontSize: 12)),
-                ],
-              ),
-            ),
-        ],
-      ),
+            )
+          : WebViewWidget(controller: _controller),
     );
   }
 }
