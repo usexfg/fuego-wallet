@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../bloc/dex/dex_cubit.dart';
+import '../../models/candlestick.dart';
+import '../../services/price_history_service.dart';
 import '../../utils/theme.dart';
+import '../../widgets/fuego_chart.dart';
 
 class DexScreen extends StatefulWidget {
   const DexScreen({super.key});
@@ -14,14 +17,21 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
   late TabController _tabController;
   final _priceController = TextEditingController();
   final _volumeController = TextEditingController();
+  List<Candlestick>? _candles;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _loadPriceData();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<DexCubit>().init();
     });
+  }
+
+  Future<void> _loadPriceData() async {
+    final candles = await PriceHistoryService().loadAll();
+    if (mounted) setState(() => _candles = candles);
   }
 
   @override
@@ -38,6 +48,16 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
       builder: (context, state) {
         return Column(
           children: [
+            if (_candles != null && _candles!.isNotEmpty)
+              SizedBox(
+                height: 280,
+                child: FuegoChart(
+                  candles: _candles!,
+                  pair: state.baseCoin != null && state.relCoin != null
+                      ? '${state.baseCoin}/${state.relCoin}'
+                      : 'XFG/USD',
+                ),
+              ),
             _buildPairBar(state),
             _buildPriceBar(state),
             if (state.error != null)

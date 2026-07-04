@@ -81,6 +81,9 @@ dependencies:
   device_info_plus: ^10.1.0
   connectivity_plus: ^5.0.2
 
+  # ── Charts ──
+  webview_flutter: ^4.8.0
+
   # ── Notifications / Logging ──
   flutter_local_notifications: ^17.0.0
   logging: ^1.3.0
@@ -105,6 +108,8 @@ flutter:
     - assets/icons/
     - assets/logo/
     - assets/bin/
+    - assets/data/
+    - assets/charts/
 
 dependency_overrides:
   fuego_core:

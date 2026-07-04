@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../bloc/hearth/hearth_cubit.dart';
+import '../../../models/candlestick.dart';
 import '../../../models/heat_amm.dart';
+import '../../../services/price_history_service.dart';
 import '../../../utils/theme.dart';
+import '../../../widgets/fuego_chart.dart';
 import 'liquidity_dialogs.dart';
 
 class HearthScreen extends StatefulWidget {
@@ -16,11 +19,18 @@ class _HearthScreenState extends State<HearthScreen> {
   final _xfgAmount = TextEditingController();
   final _heatAmount = TextEditingController();
   bool _sellXfg = true;
+  List<Candlestick>? _candles;
 
   @override
   void initState() {
     super.initState();
     context.read<HearthCubit>().loadPool();
+    _loadPriceData();
+  }
+
+  Future<void> _loadPriceData() async {
+    final candles = await PriceHistoryService().loadAll();
+    if (mounted) setState(() => _candles = candles);
   }
 
   @override
@@ -66,6 +76,14 @@ class _HearthScreenState extends State<HearthScreen> {
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     children: [
+                      if (_candles != null && _candles!.isNotEmpty)
+                        SizedBox(
+                          height: 260,
+                          child: FuegoChart(
+                            candles: _candles!,
+                            pair: 'XFG/HEAT',
+                          ),
+                        ),
                       if (state.pool != null) _buildPoolStats(state.pool!),
                       const SizedBox(height: 20),
                       _buildSwapForm(context),

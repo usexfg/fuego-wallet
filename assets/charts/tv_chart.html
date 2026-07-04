@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0d1117; }
+  #chart { width: 100%; height: 100%; }
+  .tv-spinner {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    width: 32px; height: 32px; border: 2px solid rgba(255,255,255,0.15);
+    border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: translate(-50%,-50%) rotate(360deg); } }
+  .tv-pair-label {
+    position: absolute; top: 8px; left: 12px; z-index: 10;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 14px; font-weight: 700; color: #e5e7eb; pointer-events: none;
+  }
+</style>
+<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+</head>
+<body>
+<div class="tv-pair-label" id="pairLabel"></div>
+<div class="tv-spinner" id="spinner"></div>
+<div id="chart"></div>
+<script>
+const chart = LightweightCharts.createChart(document.getElementById('chart'), {
+  layout: {
+    background: { type: 'solid', color: '#0d1117' },
+    textColor: '#6b7280',
+  },
+  grid: {
+    vertLines: { color: 'rgba(255,255,255,0.04)' },
+    horzLines: { color: 'rgba(255,255,255,0.04)' },
+  },
+  crosshair: { mode: 0, vertLine: { color: '#3b82f6', style: 2, width: 1, labelBackgroundColor: '#3b82f6' }, horzLine: { color: '#3b82f6', style: 2, width: 1, labelBackgroundColor: '#3b82f6' } },
+  rightPriceScale: { borderColor: 'rgba(255,255,255,0.1)', scaleMargins: { top: 0.05, bottom: 0.25 }, autoScale: true },
+  timeScale: { borderColor: 'rgba(255,255,255,0.1)', timeVisible: true, secondsVisible: false },
+  handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true },
+  handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true },
+});
+
+const candlestickSeries = chart.addCandlestickSeries({
+  upColor: '#22c55e', downColor: '#ef4444', borderUpColor: '#22c55e', borderDownColor: '#ef4444',
+  wickUpColor: '#22c55e', wickDownColor: '#ef4444',
+});
+
+const volumeSeries = chart.addHistogramSeries({
+  priceFormat: { type: 'volume' },
+  priceScaleId: 'volume',
+  color: '#ef444480',
+});
+chart.priceScale('volume').applyOptions({
+  scaleMargins: { top: 0.85, bottom: 0 },
+  visible: true,
+});
+
+document.getElementById('spinner').style.display = 'none';
+
+window.currentSeriesType = 'candlestick';
+window.ma7  = null;
+window.ma25 = null;
+
+function setPairLabel(text) {
+  document.getElementById('pairLabel').innerText = text;
+  document.title = text;
+}
+
+function updateChart(dataJson) {
+  var data = JSON.parse(dataJson);
+  if (!data.candles || data.candles.length === 0) return;
+
+  var candles = data.candles.map(function(c) {
+    return { time: c.time, open: c.open, high: c.high, low: c.low, close: c.close };
+  });
+  var volumes = data.candles.map(function(c) {
+    return { time: c.time, value: c.volume, color: c.close >= c.open ? '#22c55e40' : '#ef444440' };
+  });
+
+  var firstTime = candles[0].time;
+  var isDaily = (candles.length > 1) && ((candles[1].time - candles[0].time) >= 80000);
+
+  candlestickSeries.setData(candles);
+  volumeSeries.setData(volumes);
+
+  chart.timeScale().fitContent();
+
+  if (data.pair) setPairLabel(data.pair);
+
+  // Add MAs
+  if (window.ma7) { chart.removeSeries(window.ma7); window.ma7 = null; }
+  if (window.ma25) { chart.removeSeries(window.ma25); window.ma25 = null; }
+  if (candles.length >= 7) {
+    window.ma7 = chart.addLineSeries({ color: '#f59e0b', lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+    window.ma7.setData(calcMA(candles, 7));
+  }
+  if (candles.length >= 25) {
+    window.ma25 = chart.addLineSeries({ color: '#8b5cf6', lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+    window.ma25.setData(calcMA(candles, 25));
+  }
+}
+
+function calcMA(candles, period) {
+  var result = [];
+  for (var i = period - 1; i < candles.length; i++) {
+    var sum = 0;
+    for (var j = 0; j < period; j++) sum += candles[i - j].close;
+    result.push({ time: candles[i].time, value: sum / period });
+  }
+  return result;
+}
+
+function setTheme(theme) {
+  var isLight = theme === 'light';
+  chart.applyOptions({
+    layout: {
+      background: { type: 'solid', color: isLight ? '#ffffff' : '#0d1117' },
+      textColor: isLight ? '#4b5563' : '#6b7280',
+    },
+    grid: {
+      vertLines: { color: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.04)' },
+      horzLines: { color: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.04)' },
+    },
+    rightPriceScale: { borderColor: isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.1)' },
+    timeScale: { borderColor: isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.1)' },
+  });
+}
+
+function setPeriod(period) {
+  var seconds = { '1D': 86400, '1W': 604800, '1M': 2592000, '3M': 7776000, '1Y': 31536000, 'ALL': 0 }[period] || 2592000;
+  if (seconds > 0) {
+    var to = Math.floor(Date.now() / 1000);
+    chart.timeScale().setVisibleRange({ from: to - seconds, to: to });
+  } else {
+    chart.timeScale().fitContent();
+  }
+}
+</script>
+</body>
+</html>
