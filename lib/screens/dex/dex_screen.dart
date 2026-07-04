@@ -42,20 +42,16 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
     super.dispose();
   }
 
-  String _selectedPeriod = 'ALL';
-
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-    final chartHeight = screenHeight * 0.4;
-
+    final screenH = MediaQuery.of(context).size.height;
     return BlocBuilder<DexCubit, DexState>(
       builder: (context, state) {
         return Column(
           children: [
-            if (_candles != null && _candles!.isNotEmpty) ...[
+            if (_candles != null && _candles!.isNotEmpty)
               SizedBox(
-                height: chartHeight,
+                height: screenH * 0.4,
                 child: FuegoChart(
                   candles: _candles!,
                   pair: state.baseCoin != null && state.relCoin != null
@@ -63,8 +59,6 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
                       : 'XFG/USD',
                 ),
               ),
-              _buildPeriodBar(),
-            ],
             _buildPairBar(state),
             _buildPriceBar(state),
             if (state.error != null)
@@ -108,40 +102,6 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
           Tab(text: 'Trade'),
           Tab(text: 'Orders'),
         ],
-      ),
-    );
-  }
-
-  Widget _buildPeriodBar() {
-    final periods = ['1D', '1W', '1M', '3M', '1Y', 'ALL'];
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      color: AppTheme.surfaceColor,
-      child: Row(
-        children: periods.map((p) {
-          final isActive = _selectedPeriod == p;
-          return Padding(
-            padding: const EdgeInsets.only(right: 4),
-            child: GestureDetector(
-              onTap: () => setState(() => _selectedPeriod = p),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isActive ? AppTheme.primaryColor : Colors.transparent,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  p,
-                  style: TextStyle(
-                    color: isActive ? Colors.white : AppTheme.textMuted,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          );
-        }).toList(),
       ),
     );
   }

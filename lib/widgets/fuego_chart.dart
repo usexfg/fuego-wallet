@@ -1,10 +1,8 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:webview_flutter/webview_flutter.dart';
+import 'package:imp_trading_chart/imp_trading_chart.dart';
 import '../models/candlestick.dart';
 
-class FuegoChart extends StatefulWidget {
+class FuegoChart extends StatelessWidget {
   final List<Candlestick> candles;
   final String pair;
   final double? height;
@@ -17,80 +15,71 @@ class FuegoChart extends StatefulWidget {
   });
 
   @override
-  State<FuegoChart> createState() => _FuegoChartState();
-}
-
-class _FuegoChartState extends State<FuegoChart> {
-  late final WebViewController _controller;
-  bool _pageReady = false;
-  String? _htmlContent;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(const Color(0xFF0d1117));
-    _loadHtml();
-  }
-
-  Future<void> _loadHtml() async {
-    try {
-      final html = await rootBundle.loadString('assets/charts/tv_chart.html');
-      if (!mounted) return;
-      _htmlContent = html;
-      await _controller.loadHtmlString(html);
-      if (mounted) setState(() => _pageReady = true);
-    } catch (e) {
-      debugPrint('FuegoChart load error: $e');
-    }
-  }
-
-  @override
-  void didUpdateWidget(FuegoChart oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (_pageReady) _pushData();
-  }
-
-  void _pushData() {
-    if (!_pageReady) return;
-    final data = jsonEncode({
-      'candles': widget.candles
-          .map((c) => {
-                'time': c.time,
-                'open': c.open,
-                'high': c.high,
-                'low': c.low,
-                'close': c.close,
-                'volume': c.volume,
-              })
-          .toList(),
-      'pair': widget.pair,
-    });
-    _controller.runJavaScript('updateChart($data)');
-    if (widget.pair.isNotEmpty) {
-      _controller.runJavaScript("setPairLabel('${widget.pair}')");
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
+    if (candles.isEmpty) return const SizedBox.shrink();
+
+    final data = candles
+        .map((c) => Candle(
+              time: c.time,
+              open: c.open,
+              high: c.high,
+              low: c.low,
+              close: c.close,
+              volume: c.volume,
+            ))
+        .toList();
+
     return Container(
-      height: widget.height,
+      height: height,
       decoration: BoxDecoration(
-        color: const Color(0xFF0d1117),
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFF0a0a1a),
+            Color(0xFF0d0520),
+            Color(0xFF120828),
+          ],
+        ),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFF1a1a2e)),
+        border: Border.all(color: const Color(0xFF00f0ff).withOpacity(0.15)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF00f0ff).withOpacity(0.05),
+            blurRadius: 12,
+            spreadRadius: 2,
+          ),
+        ],
       ),
       clipBehavior: Clip.hardEdge,
-      child: _htmlContent == null
-          ? const Center(
-              child: CircularProgressIndicator(
-                color: Color(0xFF3b82f6),
-                strokeWidth: 2,
-              ),
-            )
-          : WebViewWidget(controller: _controller),
+      child: Column(
+        children: [
+          if (pair.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.only(left: 12, top: 8, bottom: 2),
+              alignment: Alignment.centerLeft,
+              child: Text(pair,
+                  style: const TextStyle(
+                      color: Color(0xFF00f0ff),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.2)),
+            ),
+          Expanded(
+            child: ImpChart.trading(
+              candles: data,
+              backgroundColor: Colors.transparent,
+              lineColor: const Color(0xFF00f0ff),
+              pulseColor: const Color(0xFFff00ff),
+              enableGestures: true,
+              showCrosshair: true,
+              defaultVisibleCount: 60,
+              plotFeedback: true,
+              crosshairChangeFeedback: true,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

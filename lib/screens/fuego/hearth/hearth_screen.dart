@@ -62,9 +62,7 @@ class _HearthScreenState extends State<HearthScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-    final chartHeight = screenHeight * 0.35;
-
+    final screenH = MediaQuery.of(context).size.height;
     return BlocBuilder<HearthCubit, HearthState>(
       builder: (context, state) {
         return Scaffold(
@@ -81,7 +79,7 @@ class _HearthScreenState extends State<HearthScreen> {
                     children: [
                       if (_candles != null && _candles!.isNotEmpty)
                         SizedBox(
-                          height: chartHeight,
+                          height: screenH * 0.35,
                           child: FuegoChart(
                             candles: _candles!,
                             pair: 'XFG/HEAT',
