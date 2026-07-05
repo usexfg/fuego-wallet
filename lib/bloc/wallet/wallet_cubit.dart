@@ -87,13 +87,20 @@ class WalletCubit extends Cubit<WalletState> {
   Future<void> refreshWallet() async {
     emit(state.copyWith(isLoading: true, isSyncing: true, error: null));
     try {
+      // Node info — always available via /getinfo
       NetworkInfo? info;
-      String addr = '';
-      int bal = 0;
       int peers = 0;
       try {
         info = await _daemon.getInfo();
-      } catch (_) { info = null; }
+      } catch (_) {}
+      try {
+        peers = await _daemon.getPeerCount();
+      } catch (_) {}
+
+      // Wallet ops — only work if payment gate is running
+      String addr = '';
+      int bal = 0;
+      List<FuegoTransaction> txs = [];
       try {
         addr = await _daemon.getAddress();
       } catch (_) {}
@@ -101,7 +108,7 @@ class WalletCubit extends Cubit<WalletState> {
         bal = await _daemon.getBalance();
       } catch (_) {}
       try {
-        peers = await _daemon.getPeerCount();
+        txs = await _daemon.getTransactions(count: 50);
       } catch (_) {}
 
       emit(state.copyWith(
@@ -113,11 +120,10 @@ class WalletCubit extends Cubit<WalletState> {
         balance: bal,
         unlockedBalance: bal,
         peerCount: peers,
+        transactions: txs,
         syncProgress: 1.0,
         isSynced: true,
       ));
-
-      refreshTransactions();
     } catch (e) {
       emit(state.copyWith(
         isLoading: false,
