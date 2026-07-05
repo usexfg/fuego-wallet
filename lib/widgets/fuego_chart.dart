@@ -75,7 +75,7 @@ class FuegoChart extends StatelessWidget {
                   ),
                   child: Text(pair,
                       style: const TextStyle(
-                          color: Color(0xFF0A0E14),
+                          color: Color(0xFFFF5722),
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 1.2)),
