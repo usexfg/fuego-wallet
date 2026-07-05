@@ -166,32 +166,71 @@ class DexCubit extends Cubit<DexState> {
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
+  static const _seedCoins = [
+    'XFG', 'BTC', 'ETH', 'BCH', 'LTC', 'DOGE', 'DASH', 'QTUM',
+    'RICK', 'MORTY', 'BNB', 'MATIC', 'AVAX', 'FTM', 'ARB', 'OP',
+    'USDT', 'USDC', 'DAI', 'WBTC', 'WETH', 'AAVE', 'UNI', 'LINK',
+    'ATOM', 'DOT', 'SOL', 'ADA', 'XRP', 'TRX', 'FIL', 'ZEC',
+    'KMD', 'VRSC', 'FIRO', 'GRS', 'AXE', 'BTG',
+  ];
+
+  bool _coinsLoaded = false;
+
   Future<void> _loadCoins() async {
+    if (_coinsLoaded) return;
+    _coinsLoaded = true;
+
     try {
-      final response = await _rpc('get_coins', {});
-      final List<dynamic> resultList;
-      if (response['result'] is List) {
-        resultList = response['result'] as List<dynamic>;
-      } else if (response['result'] is Map) {
-        final result = response['result'] as Map<String, dynamic>;
-        resultList = result['coins'] as List<dynamic>? ?? [];
-      } else {
-        resultList = [];
+      final response = await _rpc('get_enabled_coins', {});
+      final coins = _parseCoinList(response);
+      if (coins.isNotEmpty) {
+        emit(state.copyWith(availableCoins: coins, error: null));
+        return;
       }
-      final coins = resultList
-          .map((c) => c['ticker'] as String? ?? c['coin'] as String? ?? '')
-          .where((t) => t.isNotEmpty)
-          .toList()
-        ..sort();
+    } catch (e) {
+      debugPrint('DexCubit: get_enabled_coins failed: $e');
+    }
+
+    // None enabled yet — enable seed coins
+    debugPrint('DexCubit: enabling ${_seedCoins.length} seed coins...');
+    for (final coin in _seedCoins) {
+      try {
+        final r = await _rpc('enable', {'coin': coin, 'mm2': 1});
+        debugPrint('DexCubit: enable $coin => ${r['result']?['ticker'] ?? r}');
+      } catch (e) {
+        debugPrint('DexCubit: enable $coin FAILED: $e');
+      }
+    }
+
+    await Future.delayed(const Duration(seconds: 3));
+    try {
+      final response = await _rpc('get_enabled_coins', {});
+      final coins = _parseCoinList(response);
+      debugPrint('DexCubit: get_enabled_coins returned ${coins.length} coins');
       if (coins.isEmpty) {
-        emit(state.copyWith(error: 'No coins returned from KDF — check daemon connection'));
+        emit(state.copyWith(error: 'No coins enabled — check KDF logs'));
       } else {
         emit(state.copyWith(availableCoins: coins, error: null));
       }
     } catch (e) {
-      debugPrint('DexCubit: _loadCoins error: $e');
       emit(state.copyWith(error: 'Failed to load coins: $e'));
     }
+  }
+
+  List<String> _parseCoinList(Map<String, dynamic> response) {
+    List<dynamic> raw;
+    if (response['result'] is List) {
+      raw = response['result'] as List<dynamic>;
+    } else if (response['result'] is Map) {
+      raw = (response['result'] as Map<String, dynamic>)['coins'] as List<dynamic>? ?? [];
+    } else {
+      return [];
+    }
+    return raw
+        .map((c) => (c['ticker'] ?? c['coin'] ?? '').toString())
+        .where((t) => t.isNotEmpty)
+        .toList()
+      ..sort();
   }
 
   Future<void> selectPair(String base, String rel) async {

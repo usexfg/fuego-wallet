@@ -61,7 +61,7 @@ class FuegoChart extends StatelessWidget {
               pulseColor: const Color(0xFFFFAB91),
               enableGestures: true,
               showCrosshair: true,
-              defaultVisibleCount: 60,
+              defaultVisibleCount: candles.length,
             ),
             if (pair.isNotEmpty)
               Positioned(
