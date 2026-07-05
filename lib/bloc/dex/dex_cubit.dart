@@ -166,13 +166,30 @@ class DexCubit extends Cubit<DexState> {
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
-  static const _seedCoins = [
-    'XFG', 'BTC', 'ETH', 'BCH', 'LTC', 'DOGE', 'DASH', 'QTUM',
-    'RICK', 'MORTY', 'BNB', 'MATIC', 'AVAX', 'FTM', 'ARB', 'OP',
-    'USDT', 'USDC', 'DAI', 'WBTC', 'WETH', 'AAVE', 'UNI', 'LINK',
-    'ATOM', 'DOT', 'SOL', 'ADA', 'XRP', 'TRX', 'FIL', 'ZEC',
-    'KMD', 'VRSC', 'FIRO', 'GRS', 'AXE', 'BTG',
-  ];
+  // Coins with public Electrum servers — no local daemon needed
+  static const _electrumCoins = <String, List<String>>{
+    'BTC': [
+      'electrum1.bluewallet.io:50001',
+      'electrum2.bluewallet.io:50001',
+      'electrum3.bluewallet.io:50001',
+    ],
+    'LTC': [
+      'ltc1.bluewallet.io:50001',
+      'ltc2.bluewallet.io:50001',
+    ],
+    'BCH': [
+      'electroncash.bitcoin.com:50002',
+    ],
+    'DASH': [
+      'dash-electrum.dash.org:50002',
+    ],
+    'DOGE': [
+      'electrum.dogecoin.com:50006',
+    ],
+  };
+
+  // Coins enabled via native daemon (XFG runs locally)
+  static const _nativeCoins = ['XFG'];
 
   bool _coinsLoaded = false;
 
@@ -180,25 +197,28 @@ class DexCubit extends Cubit<DexState> {
     if (_coinsLoaded) return;
     _coinsLoaded = true;
 
-    try {
-      final response = await _rpc('get_enabled_coins', {});
-      final coins = _parseCoinList(response);
-      if (coins.isNotEmpty) {
-        emit(state.copyWith(availableCoins: coins, error: null));
-        return;
-      }
-    } catch (e) {
-      debugPrint('DexCubit: get_enabled_coins failed: $e');
-    }
-
-    // None enabled yet — enable seed coins
-    debugPrint('DexCubit: enabling ${_seedCoins.length} seed coins...');
-    for (final coin in _seedCoins) {
+    // Enable XFG via native daemon
+    for (final coin in _nativeCoins) {
       try {
         final r = await _rpc('enable', {'coin': coin, 'mm2': 1});
-        debugPrint('DexCubit: enable $coin => ${r['result']?['ticker'] ?? r}');
+        debugPrint('DexCubit: enable $coin (native) => ${r['result']?['ticker'] ?? 'ok'}');
       } catch (e) {
         debugPrint('DexCubit: enable $coin FAILED: $e');
+      }
+    }
+
+    // Enable UTXO coins via Electrum servers
+    for (final entry in _electrumCoins.entries) {
+      try {
+        final servers = entry.value.map((url) => {'url': url}).toList();
+        final r = await _rpc('enable', {
+          'coin': entry.key,
+          'mm2': 1,
+          'electrum': servers,
+        });
+        debugPrint('DexCubit: enable ${entry.key} (electrum) => ${r['result']?['ticker'] ?? 'ok'}');
+      } catch (e) {
+        debugPrint('DexCubit: enable ${entry.key} FAILED: $e');
       }
     }
 
@@ -206,7 +226,7 @@ class DexCubit extends Cubit<DexState> {
     try {
       final response = await _rpc('get_enabled_coins', {});
       final coins = _parseCoinList(response);
-      debugPrint('DexCubit: get_enabled_coins returned ${coins.length} coins');
+      debugPrint('DexCubit: get_enabled_coins returned ${coins.length} coins: $coins');
       if (coins.isEmpty) {
         emit(state.copyWith(error: 'No coins enabled — check KDF logs'));
       } else {
