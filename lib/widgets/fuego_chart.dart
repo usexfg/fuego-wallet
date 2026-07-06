@@ -33,31 +33,20 @@ class FuegoChart extends StatelessWidget {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF1A1F26),
-              Color(0xFFFFAB91),
-              Color(0xFFFF8A65),
-              Color(0xFFFFAB91),
+              Color(0xFF252B33),
+              Color(0xFF0A0E14),
             ],
-            stops: [0.0, 0.3, 0.65, 1.0],
           ),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFFFFD700).withAlpha(38)),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFFFFD700).withAlpha(15),
-              blurRadius: 16,
-              spreadRadius: 2,
-            ),
-          ],
         ),
         clipBehavior: Clip.hardEdge,
         child: Stack(
           children: [
             ImpChart.trading(
               candles: impCandles,
-              lineColor: const Color(0xFFFFD700),
+              lineColor: const Color(0xFFFF5722),
               backgroundColor: Colors.transparent,
-              pulseColor: const Color(0xFFFFAB91),
+              pulseColor: const Color(0xFFFF5722),
               enableGestures: true,
               showCrosshair: true,
               defaultVisibleCount: candles.length,
@@ -70,7 +59,7 @@ class FuegoChart extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFAB91).withAlpha(220),
+                    color: const Color(0xFF252B33).withAlpha(200),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(pair,
