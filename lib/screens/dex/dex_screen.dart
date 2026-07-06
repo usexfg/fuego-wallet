@@ -15,8 +15,8 @@ class DexScreen extends StatefulWidget {
 
 class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final _priceController = TextEditingController();
-  final _volumeController = TextEditingController();
+  final _amountController = TextEditingController();
+  final _rateController = TextEditingController();
   List<Candlestick>? _candles;
 
   @override
@@ -37,8 +37,8 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
   @override
   void dispose() {
     _tabController.dispose();
-    _priceController.dispose();
-    _volumeController.dispose();
+    _amountController.dispose();
+    _rateController.dispose();
     super.dispose();
   }
 
@@ -59,9 +59,7 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
                         height: screenH * 0.35,
                         child: FuegoChart(
                           candles: _candles!,
-                          pair: state.baseCoin != null && state.relCoin != null
-                              ? '${state.baseCoin}/${state.relCoin}'
-                              : 'XFG/USD',
+                          pair: 'XFG/${state.selectedPair.ticker}',
                         ),
                       ),
                     _buildPairBar(state),
@@ -69,12 +67,14 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
                     if (state.error != null)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        child: Text(state.error!, style: const TextStyle(color: AppTheme.errorColor, fontSize: 11)),
+                        child: Text(state.error!,
+                            style: const TextStyle(color: AppTheme.errorColor, fontSize: 11)),
                       ),
-                    if (state.lastOrderResult != null)
+                    if (state.lastResult != null)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        child: Text(state.lastOrderResult!, style: const TextStyle(color: AppTheme.successColor, fontSize: 11)),
+                        child: Text(state.lastResult!,
+                            style: const TextStyle(color: AppTheme.successColor, fontSize: 11)),
                       ),
                   ],
                 ),
@@ -88,7 +88,7 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
                 children: [
                   _buildOrderbook(state),
                   _buildTradeForm(state),
-                  _buildOpenOrders(state),
+                  _buildRecentTrades(state),
                 ],
               ),
             ),
@@ -110,14 +110,13 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
         tabs: const [
           Tab(text: 'Orderbook'),
           Tab(text: 'Trade'),
-          Tab(text: 'Orders'),
+          Tab(text: 'Trades'),
         ],
       ),
     );
   }
 
   Widget _buildPairBar(DexState state) {
-    final coins = state.availableCoins;
     return Container(
       padding: const EdgeInsets.all(8),
       color: AppTheme.surfaceColor,
@@ -125,180 +124,213 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
         children: [
           const Icon(Icons.currency_exchange, color: AppTheme.primaryColor, size: 20),
           const SizedBox(width: 8),
-          Expanded(
-            child: _coinDropdown(
-              value: state.baseCoin,
-              hint: 'Base coin',
-              coins: coins,
-              onChanged: (c) {
-                if (state.relCoin != null && state.relCoin != c) {
-                  context.read<DexCubit>().selectPair(c, state.relCoin!);
-                } else {
-                  context.read<DexCubit>().selectPair(c, c);
-                }
+          const Text('XFG/',
+              style: TextStyle(
+                  color: AppTheme.primaryColor, fontSize: 14, fontWeight: FontWeight.w600)),
+          SizedBox(
+            width: 90,
+            child: DropdownButtonFormField<SwapPairVal>(
+              value: state.selectedPair,
+              isExpanded: true,
+              dropdownColor: AppTheme.cardColor,
+              style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              decoration: const InputDecoration(
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                border: OutlineInputBorder(),
+              ),
+              items: SwapPairVal.values
+                  .map((p) => DropdownMenuItem(value: p, child: Text(p.ticker)))
+                  .toList(),
+              onChanged: (p) {
+                if (p != null) context.read<DexCubit>().selectPair(p);
               },
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 6),
-            child: Text('/', style: TextStyle(color: AppTheme.textMuted, fontSize: 18, fontWeight: FontWeight.w300)),
+          const Spacer(),
+          if (!state.isConnected)
+            const Icon(Icons.cloud_off, color: AppTheme.errorColor, size: 16)
+          else
+            const Icon(Icons.cloud_done, color: AppTheme.successColor, size: 16),
+          const SizedBox(width: 4),
+          IconButton(
+            icon: const Icon(Icons.refresh, size: 18, color: AppTheme.primaryColor),
+            onPressed: () => context.read<DexCubit>().refresh(),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
           ),
-          Expanded(
-            child: _coinDropdown(
-              value: state.relCoin,
-              hint: 'Quote coin',
-              coins: coins,
-              onChanged: (c) {
-                if (state.baseCoin != null && state.baseCoin != c) {
-                  context.read<DexCubit>().selectPair(state.baseCoin!, c);
-                } else {
-                  context.read<DexCubit>().selectPair(c, c);
-                }
-              },
-            ),
-          ),
-          if (state.baseCoin != null && state.relCoin != null) ...[
-            const SizedBox(width: 4),
-            IconButton(
-              icon: const Icon(Icons.refresh, size: 18, color: AppTheme.primaryColor),
-              onPressed: () => context.read<DexCubit>().selectPair(state.baseCoin!, state.relCoin!),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-            ),
-          ],
         ],
       ),
     );
   }
 
-  Widget _coinDropdown({
-    required String? value,
-    required String hint,
-    required List<String> coins,
-    required ValueChanged<String> onChanged,
-  }) {
-    return DropdownButtonFormField<String>(
-      value: value != null && coins.contains(value) ? value : null,
-      hint: Text(hint, style: const TextStyle(color: AppTheme.textMuted, fontSize: 13)),
-      isExpanded: true,
-      dropdownColor: AppTheme.cardColor,
-      style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13),
-      decoration: const InputDecoration(
-        isDense: true,
-        contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        border: OutlineInputBorder(),
-      ),
-      items: coins.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-      onChanged: (c) { if (c != null) onChanged(c); },
-    );
-  }
-
   Widget _buildPriceBar(DexState state) {
-    if (state.baseCoin == null || state.relCoin == null) return const SizedBox.shrink();
+    final p = state.price;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       color: AppTheme.surfaceColor.withOpacity(0.4),
       child: Row(
         children: [
-          Text(state.baseCoin!,
-              style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
-          Text('/${state.relCoin!}',
-              style: const TextStyle(color: AppTheme.textMuted, fontSize: 13)),
+          Text('XFG/${state.selectedPair.ticker}',
+              style: const TextStyle(
+                  color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
           const Spacer(),
-          if (state.spread != null)
-            Text('spread ${state.spread!.toStringAsFixed(7)}',
+          if (p != null) ...[
+            Text('TWAP: ${p.twap}',
                 style: const TextStyle(color: AppTheme.textMuted, fontSize: 10)),
-          const SizedBox(width: 12),
-          if (state.bestBid != null)
-            Text(state.bestBid!.toStringAsFixed(7),
-                style: const TextStyle(color: AppTheme.successColor, fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(width: 8),
-          if (state.bestAsk != null)
-            Text(state.bestAsk!.toStringAsFixed(7),
-                style: const TextStyle(color: AppTheme.errorColor, fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(width: 12),
+            Text('\$${p.xfgUsdMid}',
+                style: const TextStyle(
+                    color: AppTheme.primaryColor, fontSize: 13, fontWeight: FontWeight.bold)),
+          ] else
+            const Text('--',
+                style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
         ],
       ),
     );
   }
 
   Widget _buildOrderbook(DexState state) {
-    if (state.baseCoin == null || state.relCoin == null) {
-      if (state.error != null) {
-        return Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.swap_horiz, color: AppTheme.textMuted, size: 48),
-                const SizedBox(height: 16),
-                Text(
-                  'DEX requires KDF',
-                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  state.error!,
-                  style: const TextStyle(color: AppTheme.errorColor, fontSize: 13),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Configure a KDF server in Settings > DEX Server',
-                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Or run KDF locally:\n./kdf --rpcip 0.0.0.0 --rpcport 7783 --rpc_password PASS --allow_weak_password',
-                  style: TextStyle(color: AppTheme.textMuted, fontSize: 10, fontFamily: 'monospace'),
-                  textAlign: TextAlign.center,
-                ),
-              ],
+    if (!state.isConnected) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.cloud_off, color: AppTheme.textMuted, size: 48),
+            const SizedBox(height: 16),
+            Text(
+              'fuego-native DEX',
+              style: TextStyle(
+                  color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600),
             ),
-          ),
-        );
-      }
-      return const Center(
-        child: Text('Select a trading pair above', style: TextStyle(color: AppTheme.textMuted, fontSize: 14)));
+            const SizedBox(height: 8),
+            Text(
+              state.error ?? 'Connecting to fuegod...',
+              style: const TextStyle(color: AppTheme.errorColor, fontSize: 13),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No KDF required.\nSwap offers sourced from fuego P2P network.',
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
     }
-    if (state.isLoading) {
+    if (state.isLoading && state.offers.isEmpty) {
       return const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor));
     }
+    if (state.offers.isEmpty) {
+      return const Center(
+        child: Text('No active offers',
+            style: TextStyle(color: AppTheme.textMuted, fontSize: 14)),
+      );
+    }
 
-    return Row(
+    return Column(
       children: [
-        Expanded(child: _orderColumn('BIDS', state.bids, AppTheme.successColor, isAsk: false)),
-        Container(width: 1, color: AppTheme.surfaceColor),
-        Expanded(child: _orderColumn('ASKS', state.asks, AppTheme.errorColor, isAsk: true)),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            border: Border(bottom: BorderSide(color: AppTheme.surfaceColor)),
+          ),
+          child: Row(
+            children: [
+              Text('OFFERS (${state.offers.length})',
+                  style: const TextStyle(
+                      color: AppTheme.primaryColor, fontSize: 10, fontWeight: FontWeight.w600)),
+              const Spacer(),
+              const Text('XFG', style: TextStyle(color: AppTheme.textMuted, fontSize: 9)),
+              const SizedBox(width: 4),
+              const Text('Rate', style: TextStyle(color: AppTheme.textMuted, fontSize: 9)),
+              const SizedBox(width: 4),
+              const Text('Time', style: TextStyle(color: AppTheme.textMuted, fontSize: 9)),
+            ],
+          ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            itemCount: state.offers.length,
+            itemBuilder: (context, i) => _offerRow(state.offers[i]),
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildTradeForm(DexState state) {
-    if (state.baseCoin == null || state.relCoin == null) {
-      return const Center(
-        child: Text('Select a trading pair first', style: TextStyle(color: AppTheme.textMuted, fontSize: 14)),
-      );
-    }
+  Widget _offerRow(SwapOffer o) {
+    final age = DateTime.now().difference(
+        DateTime.fromMillisecondsSinceEpoch(o.timestamp * 1000));
+    final ageStr = age.inHours > 0
+        ? '${age.inHours}h'
+        : age.inMinutes > 0
+            ? '${age.inMinutes}m'
+            : '${age.inSeconds}s';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: AppTheme.surfaceColor)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 3,
+            child: Text(o.pairLabel,
+                style: const TextStyle(
+                    color: AppTheme.textPrimary, fontSize: 11, fontWeight: FontWeight.w500)),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text('${(o.xfgAmount / 1e7).toStringAsFixed(2)} XFG',
+                style: const TextStyle(color: AppTheme.textPrimary, fontSize: 11)),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(o.rateNum > 0 ? (o.rate).toStringAsFixed(4) : '--',
+                style: const TextStyle(color: AppTheme.primaryColor, fontSize: 11)),
+          ),
+          Text(ageStr, style: const TextStyle(color: AppTheme.textMuted, fontSize: 9)),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: () => _fillOffer(o),
+            child: const Text('FILL',
+                style: TextStyle(
+                    color: AppTheme.successColor,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
 
+  void _fillOffer(SwapOffer offer) {
+    _amountController.clear();
+    _rateController.text = offer.rateNum > 0 ? offer.rate.toStringAsFixed(4) : '';
+    _tabController.animateTo(1);
+  }
+
+  Widget _buildTradeForm(DexState state) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Trade ${state.baseCoin}/${state.relCoin}',
-            style: const TextStyle(color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600),
+            'Trade XFG/${state.selectedPair.ticker}',
+            style: const TextStyle(
+                color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 16),
           TextField(
-            controller: _priceController,
+            controller: _amountController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(
-              labelText: 'Price (${state.relCoin})',
+              labelText: 'XFG Amount',
               labelStyle: const TextStyle(color: AppTheme.textSecondary),
-              hintText: state.bestAsk?.toStringAsFixed(7) ?? '0.0000000',
+              hintText: '100.00',
               hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.5)),
               enabledBorder: OutlineInputBorder(
                 borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
@@ -311,12 +343,12 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
           ),
           const SizedBox(height: 12),
           TextField(
-            controller: _volumeController,
+            controller: _rateController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(
-              labelText: 'Amount (${state.baseCoin})',
+              labelText: 'Rate (${state.selectedPair.ticker} per XFG)',
               labelStyle: const TextStyle(color: AppTheme.textSecondary),
-              hintText: '0.0000000',
+              hintText: state.price?.compositeRate ?? '0.00',
               hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.5)),
               enabledBorder: OutlineInputBorder(
                 borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
@@ -332,129 +364,81 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
             children: [
               Expanded(
                 child: ElevatedButton(
-                  onPressed: state.isSubmitting ? null : () {
-                    final price = _priceController.text.trim();
-                    final volume = _volumeController.text.trim();
-                    if (price.isEmpty || volume.isEmpty) return;
-                    context.read<DexCubit>().takerBuy(volume: volume, price: price);
-                  },
+                  onPressed: state.isLoading ? null : () => _submitOffer(state),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.successColor,
+                    backgroundColor: AppTheme.primaryColor,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
-                  child: state.isSubmitting
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Text('BUY', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  child: state.isLoading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Text('POST OFFER',
+                          style: TextStyle(
+                              color: Colors.white, fontWeight: FontWeight.bold)),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: state.isSubmitting ? null : () {
-                    final price = _priceController.text.trim();
-                    final volume = _volumeController.text.trim();
-                    if (price.isEmpty || volume.isEmpty) return;
-                    context.read<DexCubit>().takerSell(volume: volume, price: price);
-                  },
+                  onPressed: state.isLoading ? null : () => _requestSwap(state),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.errorColor,
+                    backgroundColor: AppTheme.successColor,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
-                  child: state.isSubmitting
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Text('SELL', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  child: state.isLoading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Text('REQUEST SWAP',
+                          style: TextStyle(
+                              color: Colors.white, fontWeight: FontWeight.bold)),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          OutlinedButton(
-            onPressed: state.isSubmitting ? null : () {
-              final price = _priceController.text.trim();
-              final volume = _volumeController.text.trim();
-              if (price.isEmpty || volume.isEmpty) return;
-              context.read<DexCubit>().placeMakerOrder(price: price, volume: volume);
-            },
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: AppTheme.primaryColor),
-              padding: const EdgeInsets.symmetric(vertical: 14),
+          const SizedBox(height: 16),
+          if (state.price != null) ...[
+            Text(
+              'Price Info',
+              style: TextStyle(
+                  color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
             ),
-            child: state.isSubmitting
-                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Text('Place Limit Order', style: TextStyle(color: AppTheme.primaryColor)),
-          ),
+            const SizedBox(height: 4),
+            _infoRow('TWAP', state.price!.twap),
+            _infoRow('Composite', state.price!.compositeRate),
+            _infoRow('XFG USD', '\$${state.price!.xfgUsdMid}'),
+            _infoRow('HEAT/XFG', state.price!.hearthRatio),
+            _infoRow('HEAT USD', '\$${state.price!.heatUsd}'),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildOpenOrders(DexState state) {
-    if (state.openOrders.isEmpty) {
-      return const Center(
-        child: Text('No open orders', style: TextStyle(color: AppTheme.textMuted, fontSize: 14)),
-      );
-    }
-
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Row(
-            children: [
-              Text('${state.openOrders.length} orders', style: const TextStyle(color: AppTheme.textMuted, fontSize: 12)),
-              const Spacer(),
-              TextButton(
-                onPressed: () => context.read<DexCubit>().cancelAllOrders(),
-                child: const Text('Cancel All', style: TextStyle(color: AppTheme.errorColor, fontSize: 12)),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: ListView.builder(
-            itemCount: state.openOrders.length,
-            itemBuilder: (context, i) {
-              final order = state.openOrders[i];
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  border: Border(bottom: BorderSide(color: AppTheme.surfaceColor)),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${order.base}/${order.rel}',
-                            style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Price: ${order.price}  Vol: ${order.volume}',
-                            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close, size: 16, color: AppTheme.errorColor),
-                      onPressed: () => context.read<DexCubit>().cancelOrder(order.uuid),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-      ],
+  Widget _infoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Text(label, style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+          const Spacer(),
+          Text(value, style: const TextStyle(color: AppTheme.textPrimary, fontSize: 11)),
+        ],
+      ),
     );
   }
 
-  Widget _orderColumn(String title, List<OrderRow> orders, Color color, {required bool isAsk}) {
+  Widget _buildRecentTrades(DexState state) {
+    if (state.recentTrades.isEmpty) {
+      return const Center(
+        child: Text('No recent trades',
+            style: TextStyle(color: AppTheme.textMuted, fontSize: 14)),
+      );
+    }
+
     return Column(
       children: [
         Container(
@@ -464,65 +448,99 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
           ),
           child: Row(
             children: [
-              Text(title, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w600)),
+              const Text('RECENT TRADES',
+                  style: TextStyle(
+                      color: AppTheme.primaryColor,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600)),
               const Spacer(),
-              const Text('Price', style: TextStyle(color: AppTheme.textMuted, fontSize: 9)),
+              const Text('XFG', style: TextStyle(color: AppTheme.textMuted, fontSize: 9)),
               const SizedBox(width: 4),
-              const Text('Vol', style: TextStyle(color: AppTheme.textMuted, fontSize: 9)),
+              const Text('Rate', style: TextStyle(color: AppTheme.textMuted, fontSize: 9)),
               const SizedBox(width: 4),
-              const Text('Σ', style: TextStyle(color: AppTheme.textMuted, fontSize: 9)),
+              const Text('Block', style: TextStyle(color: AppTheme.textMuted, fontSize: 9)),
             ],
           ),
         ),
         Expanded(
-          child: orders.isEmpty
-              ? Center(child: Text('-', style: TextStyle(color: AppTheme.textMuted, fontSize: 11)))
-              : ListView.builder(
-                  itemCount: orders.length > 30 ? 30 : orders.length,
-                  itemExtent: 22,
-                  itemBuilder: (_, i) => _orderRow(orders[i], color),
-                ),
+          child: ListView.builder(
+            itemCount: state.recentTrades.length,
+            itemBuilder: (context, i) => _tradeRow(state.recentTrades[i]),
+          ),
         ),
       ],
     );
   }
 
-  Widget _orderRow(OrderRow o, Color color) {
+  Widget _tradeRow(TradeRecord t) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
-        border: o.isMine ? Border.all(color: AppTheme.primaryColor.withOpacity(0.5), width: 0.5) : null,
+        border: Border(bottom: BorderSide(color: AppTheme.surfaceColor)),
       ),
-      child: Stack(
+      child: Row(
         children: [
-          Positioned.fill(
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: FractionallySizedBox(
-                widthFactor: o.depthPct.clamp(0.0, 1.0),
-                child: Container(color: color.withOpacity(0.07)),
-              ),
-            ),
+          Expanded(
+            flex: 2,
+            child: Text('${(t.xfgAmount / 1e7).toStringAsFixed(2)} XFG',
+                style: const TextStyle(color: AppTheme.textPrimary, fontSize: 11)),
           ),
-          Row(
-            children: [
-              Expanded(
-                flex: 3,
-                child: Text(o.price, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w500)),
-              ),
-              Expanded(
-                flex: 2,
-                child: Text(o.volume, style: const TextStyle(color: AppTheme.textPrimary, fontSize: 11)),
-              ),
-              Expanded(
-                flex: 2,
-                child: Text('${(o.depthPct * 100).toStringAsFixed(1)}%',
-                    style: const TextStyle(color: AppTheme.textMuted, fontSize: 9)),
-              ),
-            ],
+          Expanded(
+            flex: 2,
+            child: Text(t.rate,
+                style: const TextStyle(color: AppTheme.primaryColor, fontSize: 11)),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text('#${t.blockHeight}',
+                style: const TextStyle(color: AppTheme.textMuted, fontSize: 10)),
           ),
         ],
       ),
     );
   }
+
+  void _submitOffer(DexState state) async {
+    final amountStr = _amountController.text.trim();
+    final rateStr = _rateController.text.trim();
+    if (amountStr.isEmpty || rateStr.isEmpty) return;
+
+    final amountXfg = double.tryParse(amountStr);
+    final rate = double.tryParse(rateStr);
+    if (amountXfg == null || rate == null || amountXfg <= 0 || rate <= 0) return;
+
+    final xfgAmount = (amountXfg * 1e7).toInt();
+    final rateNum = (rate * 1e7).toInt();
+
+    context.read<DexCubit>().submitOffer(
+          xfgAmount: xfgAmount,
+          rateNum: rateNum,
+          makerPubKey: '',
+          signature: '',
+        );
+  }
+
+  void _requestSwap(DexState state) async {
+    if (state.offers.isEmpty) {
+      emit(state.copyWith(error: 'No offers available'));
+      return;
+    }
+    final offer = state.offers.first;
+    final amountStr = _amountController.text.trim();
+    if (amountStr.isEmpty) return;
+
+    final amountXfg = double.tryParse(amountStr);
+    if (amountXfg == null || amountXfg <= 0) return;
+
+    final amount = (amountXfg * 1e7).toInt();
+
+    context.read<DexCubit>().requestSwap(
+          offerId: offer.offerId,
+          amount: amount,
+          takerPubKey: '',
+          proofOfFunds: '',
+        );
+  }
+
+  void emit(DexState state) {}
 }

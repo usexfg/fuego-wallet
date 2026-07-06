@@ -1,24 +1,24 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:fuego_defi_sdk/fuego_defi_sdk.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 enum AuthStatus { initial, initializing, authenticated, unauthenticated, error }
 
 class AuthState {
   final AuthStatus status;
   final String? error;
-  final String? userId;
+  final String? address;
 
   const AuthState({
     this.status = AuthStatus.initial,
     this.error,
-    this.userId,
+    this.address,
   });
 
-  AuthState copyWith({AuthStatus? status, String? error, String? userId}) =>
+  AuthState copyWith({AuthStatus? status, String? error, String? address}) =>
       AuthState(
         status: status ?? this.status,
         error: error,
-        userId: userId ?? this.userId,
+        address: address ?? this.address,
       );
 
   @override
@@ -26,44 +26,30 @@ class AuthState {
 }
 
 class AuthCubit extends Cubit<AuthState> {
-  final FuegoDefiSdk? _sdk;
+  static const _kAddress = 'fuego_address';
+  static const _storage = FlutterSecureStorage();
 
-  AuthCubit(this._sdk) : super(const AuthState());
+  AuthCubit() : super(const AuthState());
 
   Future<void> initialize() async {
-    if (_sdk == null) {
-      emit(const AuthState(status: AuthStatus.unauthenticated));
-      return;
-    }
     emit(const AuthState(status: AuthStatus.initializing));
     try {
-      final signedIn = await _sdk!.auth.isSignedIn();
-      if (signedIn) {
-        final user = await _sdk!.auth.currentUser;
-        emit(AuthState(
-          status: AuthStatus.authenticated,
-          userId: user?.toString(),
-        ));
+      final address = await _storage.read(key: _kAddress);
+      if (address != null && address.isNotEmpty) {
+        emit(AuthState(status: AuthStatus.authenticated, address: address));
       } else {
         emit(const AuthState(status: AuthStatus.unauthenticated));
       }
-    } catch (e) {
-      emit(AuthState(status: AuthStatus.error, error: e.toString()));
+    } catch (_) {
+      emit(const AuthState(status: AuthStatus.unauthenticated));
     }
   }
 
-  Future<void> signIn(String password) async {
-    if (_sdk == null) {
-      emit(AuthState(status: AuthStatus.error, error: 'SDK not initialized'));
-      return;
-    }
+  Future<void> signIn(String address) async {
     emit(const AuthState(status: AuthStatus.initializing));
     try {
-      final user = await _sdk!.auth.signIn(
-        walletName: 'fuego',
-        password: password,
-      );
-      emit(AuthState(status: AuthStatus.authenticated, userId: user.toString()));
+      await _storage.write(key: _kAddress, value: address);
+      emit(AuthState(status: AuthStatus.authenticated, address: address));
     } catch (e) {
       emit(AuthState(status: AuthStatus.error, error: e.toString()));
     }
@@ -71,7 +57,7 @@ class AuthCubit extends Cubit<AuthState> {
 
   Future<void> signOut() async {
     try {
-      await _sdk?.auth.signOut();
+      await _storage.delete(key: _kAddress);
     } catch (_) {}
     emit(const AuthState(status: AuthStatus.unauthenticated));
   }
