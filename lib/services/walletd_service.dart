@@ -10,6 +10,7 @@ class WalletdService {
   String? _walletDir;
   String? _walletFile;
   bool _running = false;
+  int _walletdPid = 0;
 
   bool get isRunning => _running;
   int get rpcPort => 8070;
@@ -20,55 +21,61 @@ class WalletdService {
   }) async {
     if (_running) return;
 
-    final binary = await _findBinary();
-    if (binary == null) {
-      throw Exception('walletd binary not found');
-    }
+    try {
+      _walletDir = await _getWalletDir();
+      _walletFile = p.join(_walletDir!, 'fuego_wallet');
 
-    _walletDir = await _getWalletDir();
-    _walletFile = p.join(_walletDir!, 'fuego_wallet');
+      // Copy binary to writable location if needed
+      final binary = await _prepareBinary();
 
-    // Generate wallet if it doesn't exist
-    if (!await File(_walletFile!).exists()) {
-      await _generateWallet(binary);
-    }
-
-    // Start walletd
-    debugPrint('WalletdService: starting $binary');
-    _process = await Process.start(binary, [
-      '--daemon-address', daemonHost,
-      '--daemon-port', daemonPort.toString(),
-      '--container-file', _walletFile!,
-      '--container-password', 'fuego',
-      '--bind-port', rpcPort.toString(),
-      '--bind-address', '127.0.0.1',
-      '--log-level', '1',
-    ]);
-
-    _process!.stdout.transform(utf8.decoder).listen((line) {
-      if (line.contains('Started server')) {
-        debugPrint('WalletdService: RPC server started on port $rpcPort');
+      // Generate wallet if it doesn't exist
+      if (!await File(_walletFile!).exists()) {
+        await _generateWallet(binary);
       }
-    });
 
-    _process!.stderr.transform(utf8.decoder).listen((line) {
-      debugPrint('WalletdService stderr: $line');
-    });
+      // Start walletd
+      debugPrint('WalletdService: starting $binary');
+      _process = await Process.start(binary, [
+        '--daemon-address', daemonHost,
+        '--daemon-port', daemonPort.toString(),
+        '--container-file', _walletFile!,
+        '--container-password', 'fuego',
+        '--bind-port', rpcPort.toString(),
+        '--bind-address', '127.0.0.1',
+        '--log-level', '2',
+      ]);
 
-    _process!.exitCode.then((code) {
-      debugPrint('WalletdService: exited with code $code');
+      _walletdPid = _process!.pid;
+      debugPrint('WalletdService: PID=$_walletdPid');
+
+      _process!.stdout.transform(utf8.decoder).listen((line) {
+        debugPrint('[walletd] $line');
+      });
+
+      _process!.stderr.transform(utf8.decoder).listen((line) {
+        debugPrint('[walletd:err] $line');
+      });
+
+      _process!.exitCode.then((code) {
+        debugPrint('WalletdService: exited with code $code');
+        _running = false;
+      });
+
+      _running = true;
+
+      // Wait for RPC to be ready
+      await _waitForReady();
+      debugPrint('WalletdService: ready on port $rpcPort');
+    } catch (e) {
+      debugPrint('WalletdService: FAILED to start: $e');
       _running = false;
-    });
-
-    _running = true;
-
-    // Wait for RPC to be ready
-    await _waitForReady();
-    debugPrint('WalletdService: ready on port $rpcPort');
+      rethrow;
+    }
   }
 
   Future<void> stop() async {
     if (_process != null) {
+      debugPrint('WalletdService: stopping PID=$_walletdPid');
       _process!.kill(ProcessSignal.sigterm);
       await _process!.exitCode.timeout(
         const Duration(seconds: 5),
@@ -81,6 +88,55 @@ class WalletdService {
     }
     _running = false;
     debugPrint('WalletdService: stopped');
+  }
+
+  Future<String> _prepareBinary() async {
+    // Binary lives next to the wallet data in Application Support
+    final appDir = await getApplicationSupportDirectory();
+    final binDir = Directory(p.join(appDir.path, 'bin'));
+    await binDir.create(recursive: true);
+    final target = File(p.join(binDir.path, 'walletd'));
+
+    if (!await target.exists()) {
+      // Copy from source
+      final source = _findSourceBinary();
+      if (source == null) throw Exception('walletd source binary not found');
+      debugPrint('WalletdService: copying $source -> ${target.path}');
+      await File(source).copy(target.path);
+    }
+
+    // Ensure executable
+    await Process.run('chmod', ['+x', target.path]);
+    return target.path;
+  }
+
+  String? _findSourceBinary() {
+    // Relative to project root (dev mode)
+    final devPaths = [
+      p.join(Directory.current.path, 'macos', 'bin', 'walletd'),
+      '/Users/aejt/fuego-flutter-wallet/macos/bin/walletd',
+      '/Users/aejt/fuego-flutter-wallet/.build/tool-output/*/bin/walletd',
+    ];
+    for (final path in devPaths) {
+      if (File(path).existsSync()) return path;
+    }
+
+    // In app bundle
+    try {
+      final appDir = Directory.current.path;
+      final resources = p.join(appDir, 'macos', 'Runner', 'Resources', 'bin', 'walletd');
+      if (File(resources).existsSync()) return resources;
+    } catch (_) {}
+
+    // Try to find via executable path
+    try {
+      final exe = Platform.resolvedExecutable;
+      final appDir = p.dirname(p.dirname(exe));
+      final resources = p.join(appDir, 'Resources', 'bin', 'walletd');
+      if (File(resources).existsSync()) return resources;
+    } catch (_) {}
+
+    return null;
   }
 
   Future<void> _generateWallet(String binary) async {
@@ -96,31 +152,7 @@ class WalletdService {
     if (result.exitCode != 0) {
       throw Exception('Failed to generate wallet: ${result.stderr}');
     }
-    debugPrint('WalletdService: wallet generated');
-    debugPrint('WalletdService stdout: ${result.stdout}');
-  }
-
-  Future<String?> _findBinary() async {
-    // Try app bundle Resources first (macOS .app)
-    final appDir = await getApplicationSupportDirectory();
-    final bundled = p.join(appDir.parent.path, 'Resources', 'bin', 'walletd');
-    if (await File(bundled).exists()) return bundled;
-
-    // Try macos/bin/ relative to project (dev mode)
-    final devPath = p.join(Directory.current.path, 'macos', 'bin', 'walletd');
-    if (await File(devPath).exists()) return devPath;
-
-    // Try absolute dev path
-    const absDev = '/Users/aejt/fuego-flutter-wallet/macos/bin/walletd';
-    if (await File(absDev).exists()) return absDev;
-
-    // Try PATH
-    final which = await Process.run('which', ['walletd']);
-    if (which.exitCode == 0) {
-      return (which.stdout as String).trim();
-    }
-
-    return null;
+    debugPrint('WalletdService: wallet generated successfully');
   }
 
   Future<String> _getWalletDir() async {
@@ -134,12 +166,18 @@ class WalletdService {
     for (var i = 0; i < maxAttempts; i++) {
       try {
         final client = HttpClient();
-        final req = await client.getUrl(Uri.parse('http://127.0.0.1:$rpcPort/status'));
+        client.badCertificateCallback = (_, __, ___) => true;
+        final req = await client.getUrl(Uri.parse('http://127.0.0.1:$rpcPort/json_rpc'));
         final resp = await req.close().timeout(const Duration(seconds: 2));
-        await resp.drain();
+        final body = await resp.transform(utf8.decoder).join();
         client.close();
-        if (resp.statusCode == 200) return;
-      } catch (_) {}
+        if (resp.statusCode == 200 && body.contains('result')) {
+          debugPrint('WalletdService: RPC confirmed ready');
+          return;
+        }
+      } catch (e) {
+        debugPrint('WalletdService: waiting... ($e)');
+      }
       await Future.delayed(const Duration(seconds: 1));
     }
     throw Exception('walletd failed to start within ${maxAttempts}s');
