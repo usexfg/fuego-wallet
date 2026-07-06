@@ -33,10 +33,10 @@ class FuegoChart extends StatelessWidget {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
+              Color(0xFF1A1F26),
               Color(0xFFFFAB91),
               Color(0xFFFF8A65),
-              Color(0xFFFF7043),
-              Color(0xFFFF5722),
+              Color(0xFFFFAB91),
             ],
             stops: [0.0, 0.3, 0.65, 1.0],
           ),
