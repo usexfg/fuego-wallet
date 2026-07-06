@@ -263,13 +263,13 @@ class _HearthScreenState extends State<HearthScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: isActive ? AppTheme.primaryColor : AppTheme.surfaceColor,
+          color: isActive ? const Color(0xFFFF5722) : AppTheme.surfaceColor,
           borderRadius: BorderRadius.circular(10),
         ),
         child: Text(label, textAlign: TextAlign.center, style: TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.bold,
-          color: isActive ? Colors.white : AppTheme.textMuted,
+          color: isActive ? Colors.black : AppTheme.textMuted,
         )),
       ),
     );
