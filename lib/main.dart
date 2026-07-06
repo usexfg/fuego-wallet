@@ -13,10 +13,14 @@ import 'bloc/cd/cd_cubit.dart';
 import 'bloc/hearth/hearth_cubit.dart';
 import 'providers/wallet_provider.dart';
 import 'services/fuego_rpc_service.dart';
+import 'services/walletd_service.dart';
 import 'services/fuego_daemon_client.dart' as hearth;
 import 'models/network_config.dart';
 import 'screens/splash_screen.dart';
 import 'utils/theme.dart';
+
+final _log = Logger('main');
+final _walletd = WalletdService();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -40,15 +44,39 @@ Future<void> main() async {
     ),
   );
 
-  runApp(const FuegoApp());
+  // Start walletd before app launches
+  try {
+    await _walletd.start(daemonHost: '207.244.247.64', daemonPort: 18180);
+    _log.info('walletd started on port ${_walletd.rpcPort}');
+  } catch (e) {
+    _log.warning('walletd failed to start: $e');
+  }
+
+  runApp(FuegoApp(walletd: _walletd));
 }
 
-class FuegoApp extends StatelessWidget {
-  const FuegoApp({super.key});
+class FuegoApp extends StatefulWidget {
+  final WalletdService walletd;
+  const FuegoApp({super.key, required this.walletd});
+
+  @override
+  State<FuegoApp> createState() => _FuegoAppState();
+}
+
+class _FuegoAppState extends State<FuegoApp> {
+  @override
+  void dispose() {
+    widget.walletd.stop();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final daemon = FuegoDaemonClient(host: '207.244.247.64', port: defaultRpcPort);
+    final daemon = FuegoDaemonClient(
+      host: '207.244.247.64',
+      port: defaultRpcPort,
+      walletPort: widget.walletd.rpcPort,
+    );
 
     final rpcService = FuegoRPCService(
       host: '207.244.247.64',
