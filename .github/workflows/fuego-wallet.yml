@@ -1,0 +1,94 @@
+name: fuego-wallet
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'rust-fuego-wallet/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/fuego-wallet.yml'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  release:
+    types: [published]
+
+concurrency:
+  group: fuego-wallet-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@v1
+        with: { toolchain: stable }
+      - run: cargo test -p rust_fuego_wallet
+
+  build-macos:
+    name: Build macOS
+    runs-on: macos-14
+    timeout-minutes: 45
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+          targets: aarch64-apple-darwin
+
+      - name: Cache Rust
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: rust-wallet-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+
+      - name: Build fuego-wallet
+        run: cargo build --release -p rust_fuego_wallet --target aarch64-apple-darwin
+
+      - name: Checkout fuego-suite
+        uses: actions/checkout@v4
+        with:
+          repository: usexfg/fuego-suite
+          ref: master
+          path: fuego-suite
+
+      - name: Install walletd deps
+        run: brew install cmake boost openssl jsoncpp
+
+      - name: Build walletd
+        run: |
+          cd fuego-suite
+          mkdir build && cd build
+          cmake .. -DBUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release
+          make -j$(sysctl -n hw.logicalcpu) PaymentGateService
+          cd ../..
+
+      - name: Package
+        run: |
+          mkdir -p release
+          cp target/aarch64-apple-darwin/release/fuego-wallet release/
+          cp fuego-suite/build/src/walletd/walletd release/
+          chmod +x release/fuego-wallet release/walletd
+          cd release && zip -r ../fuego-wallet-macos-arm64.zip .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuego-wallet-macos-arm64
+          path: fuego-wallet-macos-arm64.zip
+          retention-days: 30
+
+      - name: Upload to Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: fuego-wallet-macos-arm64.zip
