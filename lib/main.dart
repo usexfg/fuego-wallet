@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -19,6 +20,46 @@ import 'screens/splash_screen.dart';
 import 'utils/theme.dart';
 
 final _log = Logger('main');
+Process? _backend;
+
+Future<void> _startBackend() async {
+  final binary = _findBackendBinary();
+  if (binary == null) {
+    _log.warning('fuego-wallet binary not found — running without backend');
+    return;
+  }
+  _log.info('Starting backend: $binary');
+  _backend = await Process.start(binary, ['serve', '--daemon-host', '127.0.0.1']);
+  _backend!.stdout.transform(utf8.decoder).listen((l) => _log.fine('[backend] $l'));
+  _backend!.stderr.transform(utf8.decoder).listen((l) => _log.warning('[backend] $l'));
+
+  // Wait for backend to be ready
+  for (var i = 0; i < 15; i++) {
+    try {
+      final resp = await HttpClient()
+          .getUrl(Uri.parse('http://127.0.0.1:8070/health'))
+          .then((r) => r.close());
+      if (resp.statusCode == 200) {
+        _log.info('Backend ready');
+        return;
+      }
+    } catch (_) {}
+    await Future.delayed(const Duration(seconds: 2));
+  }
+  _log.warning('Backend did not become ready');
+}
+
+String? _findBackendBinary() {
+  final exe = File(Platform.resolvedExecutable);
+  final candidates = [
+    '${exe.parent.path}/fuego-wallet',
+    if (Platform.isMacOS) '${exe.parent.parent.parent.path}/Resources/bin/fuego-wallet',
+  ];
+  for (final c in candidates) {
+    if (File(c).existsSync()) return c;
+  }
+  return null;
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,6 +74,8 @@ Future<void> main() async {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
+
+  await _startBackend();
 
   runApp(const FuegoApp());
 }
