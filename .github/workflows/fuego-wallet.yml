@@ -20,17 +20,19 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@v1
         with: { toolchain: stable }
-      - run: cargo test -p rust_fuego_wallet
+      - name: Test
+        working-directory: rust-fuego-wallet
+        run: cargo test
 
   build-macos:
     name: Build macOS
     runs-on: macos-14
-    timeout-minutes: 45
+    timeout-minutes: 20
     needs: test
     steps:
       - uses: actions/checkout@v4
@@ -46,36 +48,18 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            target
-          key: rust-wallet-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+            rust-fuego-wallet/target
+          key: rust-wallet-${{ runner.os }}-${{ hashFiles('rust-fuego-wallet/Cargo.lock') }}
 
-      - name: Build fuego-wallet
-        run: cargo build --release -p rust_fuego_wallet --target aarch64-apple-darwin
-
-      - name: Checkout fuego-suite
-        uses: actions/checkout@v4
-        with:
-          repository: usexfg/fuego-suite
-          ref: master
-          path: fuego-suite
-
-      - name: Install walletd deps
-        run: brew install cmake boost openssl jsoncpp
-
-      - name: Build walletd
-        run: |
-          cd fuego-suite
-          mkdir build && cd build
-          cmake .. -DBUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release
-          make -j$(sysctl -n hw.logicalcpu) PaymentGateService
-          cd ../..
+      - name: Build
+        working-directory: rust-fuego-wallet
+        run: cargo build --release --target aarch64-apple-darwin
 
       - name: Package
         run: |
-          mkdir -p release
-          cp target/aarch64-apple-darwin/release/fuego-wallet release/
-          cp fuego-suite/build/src/walletd/walletd release/
-          chmod +x release/fuego-wallet release/walletd
+          mkdir release
+          cp rust-fuego-wallet/target/aarch64-apple-darwin/release/fuego-wallet release/
+          chmod +x release/fuego-wallet
           cd release && zip -r ../fuego-wallet-macos-arm64.zip .
 
       - name: Upload artifact

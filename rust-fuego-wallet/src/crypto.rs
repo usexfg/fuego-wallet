@@ -2,9 +2,8 @@ use bip39::Mnemonic;
 use ed25519_dalek::{SigningKey, VerifyingKey, Signature, Signer, Verifier, SecretKey};
 use rand::rngs::OsRng;
 use rand::RngCore;
-use sha2::{Sha512, Digest as Sha2Digest};
+use sha2::{Sha512, Digest};
 use sha3::Keccak256;
-use sha3::Digest;
 
 #[derive(Clone)]
 pub struct KeyPair {
@@ -18,6 +17,7 @@ pub struct KeyPair {
 // No additional zeroization needed — ed25519-dalek handles this.
 
 pub fn cn_fast_hash(data: &[u8]) -> [u8; 32] {
+    use sha3::Digest;
     let mut hasher = Keccak256::new();
     hasher.update(data);
     let result = hasher.finalize();
