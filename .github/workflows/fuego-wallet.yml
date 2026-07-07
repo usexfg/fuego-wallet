@@ -2,14 +2,12 @@ name: fuego-wallet
 
 on:
   push:
-    branches: [main]
+    branches: [master]
     paths:
       - 'rust-fuego-wallet/**'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
       - '.github/workflows/fuego-wallet.yml'
   pull_request:
-    branches: [main]
+    branches: [master]
   workflow_dispatch:
   release:
     types: [published]
