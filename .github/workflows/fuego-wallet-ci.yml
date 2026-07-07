@@ -61,29 +61,25 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with: { toolchain: stable }
 
-      - name: Build fuego-wallet (Rust)
+      - name: Build Rust backend
         working-directory: rust-fuego-wallet
         run: cargo build --release
-
-      - name: Copy Rust backend into app
-        run: |
-          mkdir -p macos/Runner/Resources/bin
-          cp rust-fuego-wallet/target/release/fuego-wallet macos/Runner/Resources/bin/
-          chmod +x macos/Runner/Resources/bin/fuego-wallet
 
       - name: Build macOS app
         run: flutter build macos --release
 
-      - name: Verify and re-sign
+      - name: Bundle Rust backend into app
         run: |
           APP="build/macos/Build/Products/Release/fuego_wallet.app"
-          echo "=== Re-sign frameworks ==="
+          cp rust-fuego-wallet/target/release/fuego-wallet "$APP/Contents/MacOS/"
+          chmod +x "$APP/Contents/MacOS/fuego-wallet"
+
+      - name: Re-sign
+        run: |
+          APP="build/macos/Build/Products/Release/fuego_wallet.app"
+          codesign --force --sign - "$APP/Contents/MacOS/fuego-wallet" 2>/dev/null || true
           find "$APP/Contents/Frameworks" -mindepth 1 -maxdepth 1 -type d -name "*.framework" -exec codesign --force --sign - {} \;
-          echo "=== Re-sign main bundle (no entitlements) ==="
           codesign --force --sign - "$APP"
-          echo "=== Verify ==="
-          codesign --verify --verbose=2 "$APP" 2>&1 || true
-          codesign -d --entitlements - "$APP" 2>&1 | head -5 || true
 
       - name: Package app
         run: |
