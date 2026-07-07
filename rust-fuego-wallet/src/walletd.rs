@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 
 pub struct WalletdProcess {
@@ -15,13 +15,62 @@ impl WalletdProcess {
         format!("http://127.0.0.1:{}", self.port)
     }
 
+    pub async fn ensure_binary() -> Result<PathBuf, String> {
+        match Self::find_binary() {
+            Ok(path) => return Ok(path),
+            Err(_) => {}
+        }
+
+        log::info!("walletd not found locally — downloading from fuego-suite releases...");
+
+        let name = Self::binary_name();
+        let url = format!(
+            "https://github.com/usexfg/fuego-suite/releases/latest/download/{}",
+            name
+        );
+
+        let target = Self::default_binary_path().join(&name);
+
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(300))
+            .build()
+            .map_err(|e| format!("http client: {}", e))?;
+
+        let resp = client.get(&url).send().await
+            .map_err(|e| format!("download walletd: {}", e))?;
+
+        if !resp.status().is_success() {
+            return Err(format!("download failed: HTTP {}", resp.status()));
+        }
+
+        let bytes = resp.bytes().await
+            .map_err(|e| format!("read response: {}", e))?;
+
+        if let Some(parent) = target.parent() {
+            std::fs::create_dir_all(parent).ok();
+        }
+
+        std::fs::write(&target, &bytes)
+            .map_err(|e| format!("write walletd: {}", e))?;
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&target, std::fs::Permissions::from_mode(0o755))
+                .map_err(|e| format!("chmod: {}", e))?;
+        }
+
+        log::info!("walletd downloaded to {}", target.display());
+        Ok(target)
+    }
+
     pub async fn start(
         &mut self,
         daemon_host: &str,
         daemon_port: u16,
         wallet_file: &str,
     ) -> Result<String, String> {
-        let binary = Self::find_binary()?;
+        let binary = Self::ensure_binary().await?;
         log::info!("Starting walletd: {}", binary.display());
 
         let child = Command::new(&binary)
@@ -63,41 +112,40 @@ impl WalletdProcess {
         }
     }
 
-    fn find_binary() -> Result<PathBuf, String> {
-        let name = if cfg!(target_os = "windows") {
-            "fuego-walletd-windows.exe"
-        } else if cfg!(target_os = "macos") {
-            if cfg!(target_arch = "aarch64") {
-                "fuego-walletd-macos-arm64"
-            } else {
-                "fuego-walletd-macos-x86_64"
-            }
-        } else {
-            if cfg!(target_arch = "x86_64") {
-                "fuego-walletd-linux-x86_64"
-            } else {
-                "fuego-walletd-linux-arm64"
-            }
-        };
+    fn binary_name() -> String {
+        let os = if cfg!(target_os = "macos") { "macos" }
+            else if cfg!(target_os = "linux") { "linux" }
+            else { "windows" };
+        let arch = if cfg!(target_arch = "aarch64") || cfg!(target_arch = "arm") { "arm64" }
+            else { "x86_64" };
+        let ext = if cfg!(windows) { ".exe" } else { "" };
+        format!("fuego-walletd-{}-{}{}", os, arch, ext)
+    }
 
+    fn default_binary_path() -> PathBuf {
+        std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+            .unwrap_or_else(|| PathBuf::from("."))
+    }
+
+    fn find_binary() -> Result<PathBuf, String> {
+        let name = Self::binary_name();
         let candidates: Vec<PathBuf> = [
-            std::env::current_exe().ok().and_then(|p| p.parent().map(|d| d.join(name))),
-            Some(PathBuf::from(name)),
-            #[cfg(target_os = "macos")]
+            Some(Self::default_binary_path().join(&name)),
             std::env::current_exe().ok().and_then(|p| {
-                // Resources/bin/walletd inside macOS app bundle
-                p.parent()?.parent()?.parent()?.join("Resources").join("bin").join(name).into()
+                // macOS app bundle: Contents/MacOS/fuego-wallet -> Resources/bin/walletd
+                let app = p.parent()?.parent()?.parent()?;
+                Some(app.join("Resources").join("bin").join(&name))
             }),
         ].into_iter().flatten().collect();
 
         for path in &candidates {
             if path.exists() {
-                log::info!("Found walletd at: {}", path.display());
                 return Ok(path.clone());
             }
         }
-
-        Err(format!("walletd binary '{}' not found. Looked in: {:?}", name, candidates.iter().map(|p| p.display().to_string()).collect::<Vec<_>>()))
+        Err(format!("walletd '{}' not found", name))
     }
 }
 
