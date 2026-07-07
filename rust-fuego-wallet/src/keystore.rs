@@ -29,25 +29,27 @@ impl Keystore {
         // Try macOS keychain
         if let Ok(entry) = keyring::Entry::new(SERVICE, ACCOUNT) {
             if let Ok(hex_key) = entry.get_password() {
-                let bytes: Vec<u8> = hex_key.chars()
-                    .collect::<Vec<char>>()
-                    .chunks(2)
-                    .map(|c| u8::from_str_radix(&c.iter().collect::<String>(), 16))
-                    .collect::<Result<Vec<_>, _>>()
-                    .map_err(|e| format!("hex: {}", e))?;
-                if bytes.len() == 32 {
-                    let mut key = [0u8; 32];
-                    key.copy_from_slice(&bytes);
-                    return Ok(key);
+                let clean: String = hex_key.chars().filter(|c| c.is_ascii_hexdigit()).collect();
+                if let Ok(bytes) = hex::decode(&clean) {
+                    if bytes.len() == 32 {
+                        let mut key = [0u8; 32];
+                        key.copy_from_slice(&bytes);
+                        return Ok(key);
+                    }
                 }
             }
         }
         // Fallback: file-based key
         let key_path = self.path.with_extension("key");
         if key_path.exists() {
-            let s = std::fs::read_to_string(&key_path).map_err(|e| format!("read: {}", e))?;
-            return hex::decode(s.trim()).map_err(|e| format!("decode: {}", e))
-                .and_then(|b| b.try_into().map_err(|_| "bad length".into()));
+            let s = std::fs::read_to_string(&key_path).map_err(|e| format!("read keyfile: {}", e))?;
+            let clean: String = s.chars().filter(|c| c.is_ascii_hexdigit()).collect();
+            let bytes = hex::decode(&clean).map_err(|e| format!("decode keyfile: {}", e))?;
+            if bytes.len() == 32 {
+                let mut key = [0u8; 32];
+                key.copy_from_slice(&bytes);
+                return Ok(key);
+            }
         }
         Err("no key".into())
     }
