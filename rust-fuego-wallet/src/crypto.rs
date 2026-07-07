@@ -4,25 +4,17 @@ use rand::rngs::OsRng;
 use rand::RngCore;
 use sha2::{Sha512, Digest as Sha2Digest};
 use sha3::{Digest, Keccak256};
-use zeroize::Zeroize;
 
-#[derive(Clone, Zeroize)]
+#[derive(Clone)]
 pub struct KeyPair {
-    #[zeroize(skip)]
     pub spend_secret: SigningKey,
-    #[zeroize(skip)]
     pub spend_public: VerifyingKey,
-    #[zeroize(skip)]
     pub view_secret: SigningKey,
-    #[zeroize(skip)]
     pub view_public: VerifyingKey,
 }
 
-impl Drop for KeyPair {
-    fn drop(&mut self) {
-        self.zeroize();
-    }
-}
+// SigningKey implements Drop which zeroizes its internal secret bytes.
+// No additional zeroization needed — ed25519-dalek handles this.
 
 pub fn cn_fast_hash(data: &[u8]) -> [u8; 32] {
     let mut hasher = Keccak256::new();
@@ -106,16 +98,9 @@ pub fn keypair_from_mnemonic(mnemonic: &str) -> Option<KeyPair> {
 
 pub fn keypair_to_mnemonic(keypair: &KeyPair) -> String {
     let seed_bytes = keypair.spend_secret.as_bytes();
-    match Mnemonic::from_entropy_in(bip39::Language::English, seed_bytes) {
-        Ok(m) => m.to_string(),
-        Err(_) => {
-            let mut entropy = [0u8; 16];
-            OsRng.fill_bytes(&mut entropy);
-            Mnemonic::from_entropy_in(bip39::Language::English, &entropy)
-                .unwrap()
-                .to_string()
-        }
-    }
+    Mnemonic::from_entropy_in(bip39::Language::English, seed_bytes)
+        .expect("spend key must be valid BIP39 entropy")
+        .to_string()
 }
 
 pub fn generate_mnemonic() -> String {

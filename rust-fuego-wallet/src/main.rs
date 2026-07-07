@@ -37,11 +37,11 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     Create {
-        #[arg(short, long, default_value = "fuego")]
+        #[arg(short, long)]
         password: String,
     },
     Open {
-        #[arg(short, long, default_value = "fuego")]
+        #[arg(short, long)]
         password: String,
     },
     Serve {
@@ -51,7 +51,7 @@ enum Commands {
         #[arg(long, default_value_t = 18180)]
         daemon_port: u16,
 
-        #[arg(long, default_value = "fuego")]
+        #[arg(long)]
         password: String,
 
         #[arg(long)]

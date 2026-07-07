@@ -138,7 +138,11 @@ pub async fn run_server(
     });
 
     let cors = CorsLayer::new()
-        .allow_origin(Any)
+        .allow_origin([
+            "http://localhost:8070".parse().unwrap(),
+            "http://127.0.0.1:8070".parse().unwrap(),
+            "http://localhost:8080".parse().unwrap(),
+        ])
         .allow_methods(Any)
         .allow_headers(Any);
 
