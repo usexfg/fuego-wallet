@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../core/core.dart';
+import '../../core/core.dart';
 import '../../bloc/wallet/wallet_cubit.dart';
 import '../../utils/theme.dart';
 

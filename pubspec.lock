@@ -480,13 +480,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.0.0"
-  fuego_core:
-    dependency: "direct main"
-    description:
-      path: "sdk/packages/fuego_core"
-      relative: true
-    source: path
-    version: "0.1.0"
   get_it:
     dependency: "direct main"
     description:

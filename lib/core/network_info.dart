@@ -1,5 +1,3 @@
-import 'constants.dart';
-
 class NetworkInfo {
   final int height;
   final String topBlockHash;

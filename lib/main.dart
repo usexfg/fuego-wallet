@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
-import '../core/core.dart';
+import 'core/core.dart';
 import 'package:logging/logging.dart';
 
 import 'bloc/app_bloc_observer.dart';
