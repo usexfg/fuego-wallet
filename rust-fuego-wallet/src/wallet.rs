@@ -99,7 +99,7 @@ impl WalletState {
         self.secrets.as_ref().map(|s| s.address.clone())
     }
 
-    pub fn create(&mut self, password: &str) -> Result<(String, WalletSecrets), String> {
+    pub fn create(&mut self) -> Result<(String, WalletSecrets), String> {
         let kp = crypto::generate_keypair();
         let address = generate_address(
             kp.spend_public.as_bytes(),
@@ -116,14 +116,14 @@ impl WalletState {
             address: address.clone(),
         };
 
-        self.keystore.save(&secrets, password)?;
+        self.keystore.save(&secrets)?;
         self.keypair = Some(kp);
         self.secrets = Some(secrets.clone());
 
         Ok((mnemonic, secrets))
     }
 
-    pub fn create_testnet(&mut self, password: &str) -> Result<(String, WalletSecrets), String> {
+    pub fn create_testnet(&mut self) -> Result<(String, WalletSecrets), String> {
         let kp = crypto::generate_keypair();
         let address = generate_address(
             kp.spend_public.as_bytes(),
@@ -140,15 +140,15 @@ impl WalletState {
             address,
         };
 
-        self.keystore.save(&secrets, password)?;
+        self.keystore.save(&secrets)?;
         self.keypair = Some(kp);
         self.secrets = Some(secrets.clone());
 
         Ok((mnemonic, secrets))
     }
 
-    pub fn open(&mut self, password: &str) -> Result<WalletSecrets, String> {
-        let secrets = self.keystore.load(password)?;
+    pub fn open(&mut self) -> Result<WalletSecrets, String> {
+        let secrets = self.keystore.load()?;
 
         let spend_priv: Vec<u8> = hex::decode(&secrets.spend_secret_hex)
             .map_err(|e| format!("hex decode spend_priv: {}", e))?;

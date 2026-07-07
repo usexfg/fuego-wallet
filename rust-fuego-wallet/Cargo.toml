@@ -28,6 +28,7 @@ hex = "0.4"
 argon2 = "0.5"
 aes-gcm = "0.10"
 zeroize = { version = "1", features = ["zeroize_derive"] }
+keyring = "3"
 log = "0.4"
 env_logger = "0.11"
 directories = "5"
@@ -37,6 +38,7 @@ reqwest = { version = "0.11", default-features = false, features = ["json", "rus
 chrono = { version = "0.4", features = ["serde"] }
 num-bigint = "0.4"
 num-traits = "0.2"
+chacha20poly1305 = "0.11.0"
 
 [dev-dependencies]
 tokio-test = "0.4"

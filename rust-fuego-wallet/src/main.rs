@@ -36,23 +36,14 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    Create {
-        #[arg(short, long, default_value = "")]
-        password: String,
-    },
-    Open {
-        #[arg(short, long, default_value = "")]
-        password: String,
-    },
+    Create,
+    Open,
     Serve {
         #[arg(long, default_value = "207.244.247.64")]
         daemon_host: String,
 
         #[arg(long, default_value_t = 18180)]
         daemon_port: u16,
-
-        #[arg(long, default_value = "")]
-        password: String,
 
         #[arg(long)]
         testnet: bool,
@@ -72,7 +63,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let has_keystore = keystore_path.exists();
 
     match cli.command.unwrap_or(Commands::Status) {
-        Commands::Create { password } => {
+        Commands::Create => {
             if has_keystore {
                 println!("Wallet already exists at {:?}", keystore_path);
                 println!("Use 'open' to unlock or delete the keystore file to recreate.");
@@ -82,7 +73,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let daemon = DaemonClient::new("http://127.0.0.1:18180");
             let keystore = Keystore::new(keystore_path);
             let mut wallet = WalletState::new(keystore, daemon);
-            let (mnemonic, _secrets) = wallet.create(&password)?;
+            let (mnemonic, _secrets) = wallet.create()?;
             println!("Wallet created successfully.");
             println!();
             println!("Mnemonic (SAVE THIS SECURELY):");
@@ -91,7 +82,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("Address: {}", wallet.address().unwrap());
         }
 
-        Commands::Open { password } => {
+        Commands::Open => {
             if !has_keystore {
                 println!("No wallet found at {:?}", keystore_path);
                 println!("Create one with 'fuego-wallet create'.");
@@ -101,19 +92,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let daemon = DaemonClient::new("http://127.0.0.1:18180");
             let keystore = Keystore::new(keystore_path);
             let mut wallet = WalletState::new(keystore, daemon);
-            wallet.open(&password)?;
+            wallet.open()?;
             println!("Wallet unlocked.");
             println!("Address: {}", wallet.address().unwrap());
         }
 
-        Commands::Serve { daemon_host, daemon_port, password, testnet: _testnet } => {
+        Commands::Serve { daemon_host, daemon_port, testnet: _testnet } => {
             let daemon_url = format!("http://{}:{}", daemon_host, daemon_port);
             let daemon = DaemonClient::new(&daemon_url);
             let keystore = Keystore::new(keystore_path.clone());
             let mut wallet = WalletState::new(keystore, daemon);
 
             if has_keystore {
-                wallet.open(&password)?;
+                wallet.open()?;
                 log::info!("Wallet unlocked. Address: {}", wallet.address().unwrap_or_default());
             } else {
                 log::warn!("Keystore not found. Create one first with 'fuego-wallet create'.");

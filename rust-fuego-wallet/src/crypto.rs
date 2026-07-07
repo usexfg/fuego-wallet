@@ -3,7 +3,8 @@ use ed25519_dalek::{SigningKey, VerifyingKey, Signature, Signer, Verifier, Secre
 use rand::rngs::OsRng;
 use rand::RngCore;
 use sha2::{Sha512, Digest as Sha2Digest};
-use sha3::{Digest, Keccak256};
+use sha3::Keccak256;
+use sha3::Digest;
 
 #[derive(Clone)]
 pub struct KeyPair {
