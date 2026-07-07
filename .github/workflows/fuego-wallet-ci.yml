@@ -57,6 +57,20 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@v1
+        with: { toolchain: stable }
+
+      - name: Build fuego-wallet (Rust)
+        working-directory: rust-fuego-wallet
+        run: cargo build --release
+
+      - name: Copy Rust backend into app
+        run: |
+          mkdir -p macos/Runner/Resources/bin
+          cp rust-fuego-wallet/target/release/fuego-wallet macos/Runner/Resources/bin/
+          chmod +x macos/Runner/Resources/bin/fuego-wallet
+
       - name: Build macOS app
         run: flutter build macos --release
 
