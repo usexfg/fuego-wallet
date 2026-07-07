@@ -13,8 +13,6 @@ dependencies:
     sdk: flutter
 
   # ── Fuego Core ──
-  fuego_core:
-    path: sdk/packages/fuego_core
 
   # ── State Management ──
   flutter_bloc: ^9.1.1
@@ -94,5 +92,3 @@ flutter:
     - assets/charts/
 
 dependency_overrides:
-  fuego_core:
-    path: sdk/packages/fuego_core

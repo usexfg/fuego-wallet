@@ -1,7 +1,7 @@
 import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:fuego_core/fuego_core.dart';
+import '../core/core.dart';
 
 class WalletState {
   final bool isLoading;
