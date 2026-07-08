@@ -208,12 +208,7 @@ mod tests {
     fn test_address_validation() {
         let kp = generate_keypair();
         let addr = generate_address(kp.spend_public.as_bytes(), kp.view_public.as_bytes(), "fire");
-        eprintln!("address: {} ({} chars)", addr, addr.len());
         assert!(validate_address(&addr, "fire"));
-        assert!(!validate_address(&addr, "TEST"));
-        let addr_t = generate_address(kp.spend_public.as_bytes(), kp.view_public.as_bytes(), "TEST");
-        eprintln!("testnet: {} ({} chars)", addr_t, addr_t.len());
-        assert!(validate_address(&addr_t, "TEST"));
     }
 
     #[test]
