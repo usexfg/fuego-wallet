@@ -129,8 +129,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
 
             let mut wp = WalletdProcess::new(8071);
+            let container_path = wallet_dir.join("fuego_wallet.container");
             let walletd_url = match wp.start(&actual_host, daemon_port,
-                keystore_path.to_str().unwrap_or("fuego_wallet")).await
+                container_path.to_str().unwrap_or("fuego_wallet.container")).await
             {
                 Ok(url) => Some(url),
                 Err(e) => {

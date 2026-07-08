@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::Path;
 use std::process::{Child, Command, Stdio};
 
 pub struct WalletdProcess {
@@ -11,16 +11,35 @@ impl WalletdProcess {
     pub fn rpc_url(&self) -> String { format!("http://127.0.0.1:{}", self.port) }
 
     pub async fn start(
-        &mut self, daemon_host: &str, daemon_port: u16, wallet_file: &str,
+        &mut self, daemon_host: &str, daemon_port: u16, container_file: &str,
     ) -> Result<String, String> {
-        let (_, walletd) = crate::release::ensure_binaries().await?;
-        log::info!("Starting walletd: {}", walletd.display());
+        let (_, walletd_bin) = crate::release::ensure_binaries().await?;
+        log::info!("Starting walletd: {}", walletd_bin.display());
 
-        let child = Command::new(&walletd)
+        // Generate walletd container if it doesn't exist
+        if !Path::new(container_file).exists() {
+            log::info!("Generating walletd container at {}", container_file);
+            let output = Command::new(&walletd_bin)
+                .args([
+                    "--generate-container",
+                    "--container-file", container_file,
+                    "--container-password", "fuego",
+                    "--daemon-address", daemon_host,
+                    "--daemon-port", &daemon_port.to_string(),
+                ])
+                .output().map_err(|e| format!("generate container: {}", e))?;
+            if !output.status.success() {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                return Err(format!("generate container failed: {}", stderr));
+            }
+            log::info!("Walletd container generated");
+        }
+
+        let child = Command::new(&walletd_bin)
             .args([
                 "--daemon-address", daemon_host,
                 "--daemon-port", &daemon_port.to_string(),
-                "--container-file", wallet_file,
+                "--container-file", container_file,
                 "--container-password", "fuego",
                 "--bind-port", &self.port.to_string(),
                 "--bind-address", "127.0.0.1",
@@ -30,18 +49,31 @@ impl WalletdProcess {
             .spawn().map_err(|e| format!("spawn: {}", e))?;
 
         self.child = Some(child);
-        Self::wait_ready(self.rpc_url(), 30).await?;
+        Self::wait_ready(self.rpc_url(), 10).await?;
         log::info!("walletd ready on port {}", self.port);
         Ok(self.rpc_url())
     }
 
     async fn wait_ready(url: String, max_secs: u32) -> Result<(), String> {
-        let check = format!("{}/json_rpc", url);
+        let client = reqwest::Client::new();
+        let body = serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": "1",
+            "method": "getBalance",
+            "params": {}
+        });
         for _ in 0..max_secs {
-            if let Ok(resp) = reqwest::get(&check).await {
-                if resp.status().is_success() { return Ok(()); }
+            if let Ok(resp) = client.post(format!("{}/json_rpc", url))
+                .json(&body).send().await
+            {
+                if resp.status().is_success() {
+                    let val: serde_json::Value = resp.json().await.unwrap_or_default();
+                    if val.get("result").is_some() {
+                        return Ok(());
+                    }
+                }
             }
-            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
         }
         Err(format!("walletd not ready after {}s", max_secs))
     }

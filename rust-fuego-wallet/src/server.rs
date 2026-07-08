@@ -44,7 +44,9 @@ async fn proxy_to_walletd(walletd_url: &str, body: &serde_json::Value) -> Result
         .map_err(|e| format!("walletd request: {}", e))?;
     let val: serde_json::Value = resp.json().await
         .map_err(|e| format!("walletd response: {}", e))?;
-    Ok(val)
+    // Unwrap: return only the result field, not the full walletd JSON-RPC envelope
+    let result = val.get("result").cloned().unwrap_or(val);
+    Ok(result)
 }
 
 async fn json_rpc_handler(
