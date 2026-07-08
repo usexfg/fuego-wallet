@@ -153,21 +153,48 @@ class FuegoDaemonClient {
 
   Future<void> startMining({int threads = 1, String? address}) async {
     try {
-      await _post('/start_mining', {
-        'threads_count': threads,
-        if (address != null) 'miner_address': address,
-      });
+      await _post('/json_rpc', {
+        'jsonrpc': '2.0',
+        'id': 'fuego_core',
+        'method': 'start_mining',
+        'params': {
+          'threads_count': threads,
+          if (address != null) 'miner_address': address,
+        },
+      }, useWallet: true);
     } catch (_) {}
   }
 
   Future<void> stopMining() async {
     try {
-      await _post('/stop_mining', {});
+      await _post('/json_rpc', {
+        'jsonrpc': '2.0',
+        'id': 'fuego_core',
+        'method': 'stop_mining',
+        'params': {},
+      }, useWallet: true);
     } catch (_) {}
   }
 
-  Future<Map<String, dynamic>> getMiningStatus() async =>
-      await _get('/mining_status');
+  Future<Map<String, dynamic>> getMiningStatus() async {
+    try {
+      final r = await _post('/json_rpc', {
+        'jsonrpc': '2.0',
+        'id': 'fuego_core',
+        'method': 'getinfo',
+        'params': {},
+      }, useWallet: true);
+      final result = r['result'] as Map<String, dynamic>? ?? r;
+      return {
+        'active': (result['mining_speed'] ?? 0) > 0,
+        'speed': result['mining_speed'] ?? 0,
+        'hashrate': result['mining_speed'] ?? 0,
+        'threads': result['threads_count'] ?? 0,
+      };
+    } catch (_) {
+      return {};
+    }
+  }
 
   void dispose() => _http.close();
 }

@@ -15,6 +15,7 @@ pub struct WalletState {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BalanceResult {
     pub available_balance: u64,
     pub locked_amount: u64,
@@ -22,11 +23,13 @@ pub struct BalanceResult {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AddressResult {
     pub addresses: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct WalletTx {
     pub transaction_hash: String,
     pub amount: i64,
@@ -39,17 +42,20 @@ pub struct WalletTx {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TransferEntry {
     pub address: String,
     pub amount: i64,
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TransactionsResult {
     pub items: Vec<BlockTransactions>,
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BlockTransactions {
     pub block_index: u64,
     pub block_hash: String,
@@ -57,6 +63,7 @@ pub struct BlockTransactions {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SendTxRequest {
     pub destinations: Vec<SendDestination>,
     pub fee: u64,
@@ -65,17 +72,20 @@ pub struct SendTxRequest {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SendDestination {
     pub amount: u64,
     pub address: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SendTxResult {
     pub transaction_hash: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct IntegratedAddressResult {
     pub integrated_address: String,
 }

@@ -79,8 +79,18 @@ class WalletState {
 
 class WalletCubit extends Cubit<WalletState> {
   final FuegoDaemonClient _daemon;
+  final Future<void>? _backendReady;
 
-  WalletCubit(this._daemon) : super(const WalletState()) {
+  WalletCubit(this._daemon, {Future<void>? backendReady})
+      : _backendReady = backendReady,
+        super(const WalletState()) {
+    _init();
+  }
+
+  Future<void> _init() async {
+    if (_backendReady != null) {
+      await _backendReady;
+    }
     refreshWallet();
   }
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -22,16 +23,20 @@ import 'utils/theme.dart';
 
 final _log = Logger('main');
 Process? _backend;
+final Completer<void> _backendReady = Completer<void>();
+
+const String _defaultDaemonHost = '207.244.247.64';
+const int _backendPort = 8070;
 
 final daemon = FuegoDaemonClient(
   host: '127.0.0.1',
   port: defaultRpcPort,
-  walletPort: 8070,
+  walletPort: _backendPort,
 );
 
 final rpcService = FuegoRPCService(
   host: '127.0.0.1',
-  port: 18180,
+  port: _backendPort,
   networkConfig: NetworkConfig.mainnet,
 );
 
@@ -39,17 +44,23 @@ Future<void> _startBackend() async {
   final binary = _findBackendBinary();
   if (binary == null) {
     print('[backend] ERROR: fuego-wallet binary not found — running without backend');
+    if (!_backendReady.isCompleted) _backendReady.complete();
     return;
   }
   print('[backend] Starting: $binary');
   try {
-    _backend = await Process.start(binary, ['serve', '--daemon-host', '127.0.0.1']);
+    _backend = await Process.start(binary, [
+      'serve',
+      '--daemon-host', _defaultDaemonHost,
+      '--port', _backendPort.toString(),
+    ]);
     print('[backend] Process started (pid=${_backend!.pid})');
     _backend!.stdout.transform(utf8.decoder).listen((l) => print('[backend:stdout] $l'));
     _backend!.stderr.transform(utf8.decoder).listen((l) => print('[backend:stderr] $l'));
     _backend!.exitCode.then((code) => print('[backend] Exited with code $code'));
   } catch (e) {
     print('[backend] ERROR starting process: $e');
+    if (!_backendReady.isCompleted) _backendReady.complete();
     return;
   }
 
@@ -57,11 +68,12 @@ Future<void> _startBackend() async {
   for (var i = 0; i < 30; i++) {
     try {
       final resp = await HttpClient()
-          .getUrl(Uri.parse('http://127.0.0.1:8070/health'))
+          .getUrl(Uri.parse('http://127.0.0.1:$_backendPort/health'))
           .then((r) => r.close());
       final body = await resp.transform(utf8.decoder).join();
       if (resp.statusCode == 200) {
         print('[backend] Health OK on attempt $i: $body');
+        if (!_backendReady.isCompleted) _backendReady.complete();
         return;
       }
       print('[backend] Health check $i: HTTP ${resp.statusCode} — $body');
@@ -71,6 +83,7 @@ Future<void> _startBackend() async {
     await Future.delayed(const Duration(seconds: 2));
   }
   print('[backend] ERROR: Backend did not become ready after 60s');
+  if (!_backendReady.isCompleted) _backendReady.complete();
 }
 
 String? _findBackendBinary() {
@@ -102,20 +115,25 @@ Future<void> main() async {
     DeviceOrientation.portraitDown,
   ]);
 
-  runApp(const FuegoApp());
+  runApp(FuegoApp(backendReady: _backendReady.future));
 
   _startBackend();
 }
 
 class FuegoApp extends StatelessWidget {
-  const FuegoApp({super.key});
+  final Future<void> backendReady;
+  const FuegoApp({super.key, required this.backendReady});
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(
-          create: (_) => WalletProvider(rpcService: rpcService),
+          create: (_) {
+            final wp = WalletProvider(rpcService: rpcService);
+            wp.waitForBackend(backendReady);
+            return wp;
+          },
         ),
       ],
       child: MultiRepositoryProvider(
@@ -129,7 +147,7 @@ class FuegoApp extends StatelessWidget {
               create: (_) => AuthCubit()..initialize(),
             ),
             BlocProvider<WalletCubit>(
-              create: (_) => WalletCubit(daemon),
+              create: (_) => WalletCubit(daemon, backendReady: backendReady),
             ),
             BlocProvider<CdCubit>(
               create: (_) => CdCubit(rpcService)..loadAll(),

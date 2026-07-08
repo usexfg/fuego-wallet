@@ -38,6 +38,11 @@ class WalletProvider extends ChangeNotifier {
     _initConnectivity();
   }
 
+  Future<void> waitForBackend(Future<void> backendReady) async {
+    await backendReady;
+    _checkConnection();
+  }
+
   // Getters
   Wallet? get wallet => _wallet;
   List<WalletTransaction> get transactions => _transactions;

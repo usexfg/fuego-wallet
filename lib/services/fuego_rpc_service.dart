@@ -25,7 +25,7 @@ class FuegoRPCService {
     int? port,
     String? password,
     NetworkConfig? networkConfig,
-  }) : _baseUrl = 'http://$host:${port ?? NetworkConfig.mainnet.daemonRpcPort}',
+  }) : _baseUrl = 'http://$host:${port ?? NetworkConfig.mainnet.walletRpcPort}',
        _password = password,
        _networkConfig = networkConfig ?? NetworkConfig.mainnet,
        _dio = Dio(BaseOptions(
@@ -74,18 +74,22 @@ class FuegoRPCService {
   // Wallet RPC Methods (requires wallet service running)
   Future<Wallet> getBalance() async {
     try {
-      final response = await _makeWalletRPCCall('getBalance', {});
+      final response = await _makeRPCCall('getBalance', {});
       final info = await getInfo();
       
+      final available = response['availableBalance'] ?? response['balance'] ?? response['available_balance'] ?? 0;
+      final locked = response['lockedAmount'] ?? response['locked_amount'] ?? 0;
+      final blockCount = response['blockCount'] ?? response['block_count'] ?? 0;
+      
       return Wallet(
-        address: '', // Will be filled by getAddress
+        address: '',
         viewKey: '',
         spendKey: '',
-        balance: response['availableBalance'] as int,
-        unlockedBalance: response['lockedAmount'] as int,
+        balance: available as int,
+        unlockedBalance: locked as int,
         blockchainHeight: info['height'] as int,
-        localHeight: response['blockCount'] as int,
-        synced: (info['height'] - response['blockCount']) <= 1,
+        localHeight: blockCount as int,
+        synced: (info['height'] - blockCount) <= 1,
       );
     } catch (e) {
       throw FuegoRPCException('Failed to get balance: $e');
@@ -94,9 +98,9 @@ class FuegoRPCService {
 
   Future<String> getAddress() async {
     try {
-      final response = await _makeWalletRPCCall('getAddresses', {});
-      final addresses = response['addresses'] as List;
-      return addresses.isNotEmpty ? addresses.first : '';
+      final response = await _makeRPCCall('getAddresses', {});
+      final addresses = response['addresses'] as List? ?? [];
+      return addresses.isNotEmpty ? addresses.first.toString() : '';
     } catch (e) {
       throw FuegoRPCException('Failed to get address: $e');
     }
@@ -107,27 +111,34 @@ class FuegoRPCService {
     int firstBlockIndex = 0,
   }) async {
     try {
-      final response = await _makeWalletRPCCall('getTransactions', {
+      final response = await _makeRPCCall('getTransactions', {
         'blockCount': blockCount,
         'firstBlockIndex': firstBlockIndex,
       });
 
-      final items = response['items'] as List;
+      final items = response['items'] as List? ?? [];
       return items.map((item) {
-        final transactions = item['transactions'] as List;
-        return transactions.map((tx) => WalletTransaction(
-          txid: tx['transactionHash'] as String,
-          amount: tx['amount'] as int,
-          fee: tx['fee'] as int,
-          paymentId: tx['paymentId'] as String? ?? '',
-          blockHeight: item['blockHash'] != null ? 
-              (item['blockIndex'] as int) : 0,
-          timestamp: tx['timestamp'] as int,
-          isSpending: (tx['amount'] as int) < 0,
-          address: tx['transfers']?.isNotEmpty == true ? 
-              tx['transfers'][0]['address'] as String? : null,
-          confirmations: tx['confirmations'] as int? ?? 0,
-        )).toList();
+        final transactions = item['transactions'] as List? ?? [];
+        return transactions.map((tx) {
+          final txMap = tx as Map<String, dynamic>;
+          return WalletTransaction(
+            txid: txMap['transactionHash'] ?? txMap['transaction_hash'] ?? '',
+            amount: (txMap['amount'] ?? 0) as int,
+            fee: (txMap['fee'] ?? 0) as int,
+            paymentId: txMap['paymentId'] ?? txMap['payment_id'] ?? '',
+            blockHeight: item['blockIndex'] ?? item['block_index'] ?? 0,
+            timestamp: (txMap['timestamp'] ?? 0) as int,
+            isSpending: ((txMap['amount'] ?? 0) as int) < 0,
+            address: (() {
+              final transfers = txMap['transfers'] as List?;
+              if (transfers != null && transfers.isNotEmpty) {
+                return transfers[0]['address'] as String?;
+              }
+              return null;
+            })(),
+            confirmations: (txMap['confirmations'] ?? 0) as int,
+          );
+        }).toList();
       }).expand((x) => x).toList();
     } catch (e) {
       throw FuegoRPCException('Failed to get transactions: $e');
@@ -136,7 +147,7 @@ class FuegoRPCService {
 
   Future<String> sendTransaction(SendTransactionRequest request) async {
     try {
-      final response = await _makeWalletRPCCall('sendTransaction', {
+      final response = await _makeRPCCall('sendTransaction', {
         'destinations': [{
           'amount': request.amount,
           'address': request.address,
@@ -162,7 +173,7 @@ Future<String> createIntegratedAddress(String paymentId) async {
     final address = await getAddress();
     
     // Call RPC method if available
-    final response = await _makeWalletRPCCall('create_integrated', {
+    final response = await _makeRPCCall('create_integrated', {
       'address': address,
       'payment_id': paymentId,
     });
@@ -304,36 +315,6 @@ Future<String> createIntegratedAddress(String paymentId) async {
       return data['result'] as Map<String, dynamic>;
     } on DioException catch (e) {
       throw FuegoRPCException('Network error: ${e.message}');
-    }
-  }
-
-  Future<Map<String, dynamic>> _makeWalletRPCCall(
-    String method, 
-    Map<String, dynamic> params,
-  ) async {
-    try {
-      // Use local walletd with network-specific port
-      final walletUrl = 'http://localhost:${_networkConfig.walletRpcPort}';
-      
-      final response = await _dio.post(
-        '$walletUrl/json_rpc',
-        data: json.encode({
-          'jsonrpc': '2.0',
-          'id': DateTime.now().millisecondsSinceEpoch,
-          'method': method,
-          'params': params,
-        }),
-      );
-
-      final data = response.data as Map<String, dynamic>;
-      
-      if (data.containsKey('error')) {
-        throw FuegoRPCException(data['error']['message'] as String);
-      }
-      
-      return data['result'] as Map<String, dynamic>;
-    } on DioException catch (e) {
-      throw FuegoRPCException('Wallet service error: ${e.message}');
     }
   }
 

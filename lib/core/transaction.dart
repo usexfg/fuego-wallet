@@ -31,8 +31,8 @@ class FuegoTransaction {
     final amountAtom = (json['amount'] ?? json['total_received'] ?? 0) as int;
     final feeAtom = (json['fee'] as int? ?? 0);
     return FuegoTransaction(
-      txHash: json['tx_hash']?.toString() ?? json['hash']?.toString() ?? '',
-      blockHeight: json['block_height'] as int? ?? 0,
+      txHash: json['transactionHash']?.toString() ?? json['tx_hash']?.toString() ?? json['hash']?.toString() ?? '',
+      blockHeight: json['blockIndex'] as int? ?? json['block_height'] as int? ?? 0,
       timestamp: json['timestamp'] as int? ?? 0,
       confirmations: json['confirmations'] as int? ?? 0,
       amount: amountAtom / atomicPerCoin,
@@ -41,7 +41,7 @@ class FuegoTransaction {
       feeAtomic: feeAtom,
       direction: json['direction']?.toString() ??
           (amountAtom > 0 ? 'in' : 'out'),
-      paymentId: json['payment_id']?.toString(),
+      paymentId: json['paymentId']?.toString() ?? json['payment_id']?.toString(),
       destinations: (json['destinations'] as List<dynamic>?)
               ?.map((d) => d.toString())
               .toList() ??
