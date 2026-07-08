@@ -116,10 +116,8 @@ pub fn validate_mnemonic(mnemonic: &str) -> bool {
     Mnemonic::parse_in_normalized(bip39::Language::English, mnemonic).is_ok()
 }
 
-pub fn generate_address(spend_pub: &[u8; 32], view_pub: &[u8; 32], prefix: &str) -> String {
-    let tag: u64 = if prefix == "fire" { 1753191 } else { 1075740 };
-
-    let mut buf = write_varint(tag);
+pub fn generate_address(spend_pub: &[u8; 32], view_pub: &[u8; 32], _prefix: &str) -> String {
+    let mut buf = Vec::with_capacity(68);
     buf.extend_from_slice(spend_pub);
     buf.extend_from_slice(view_pub);
 
@@ -127,32 +125,25 @@ pub fn generate_address(spend_pub: &[u8; 32], view_pub: &[u8; 32], prefix: &str)
     buf.extend_from_slice(&hash[..4]);
 
     let encoded = crate::base58::encode(&buf);
-    format!("{}{}", prefix, encoded)
+    format!("fire{}", encoded)
 }
 
-pub fn validate_address(address: &str, prefix: &str) -> bool {
-    if !address.starts_with(prefix) {
+pub fn validate_address(address: &str, _prefix: &str) -> bool {
+    if !address.starts_with("fire") {
         return false;
     }
-    let base58_part = &address[prefix.len()..];
+    let base58_part = &address[4..];
     let decoded = match crate::base58::decode(base58_part) {
         Some(v) => v,
         None => return false,
     };
-    if decoded.len() < 5 {
+    if decoded.len() != 68 {
         return false;
     }
 
-    let (data, received_cs) = decoded.split_at(decoded.len() - 4);
+    let (data, received_cs) = decoded.split_at(64);
     let hash = cn_fast_hash(data);
-    let valid = received_cs == &hash[..4];
-
-    let (_tag, _read) = match read_varint(data) {
-        Some(t) => t,
-        None => return false,
-    };
-
-    valid
+    received_cs == &hash[..4]
 }
 
 pub const KEY_SIZE: usize = 32;
