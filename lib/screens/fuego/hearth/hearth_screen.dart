@@ -315,7 +315,7 @@ class _HearthScreenState extends State<HearthScreen> {
                 controller: _priceController,
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
-                  labelText: 'Price (XFG/HEAT)',
+                  labelText: 'Limit Price (HEAT per XFG)',
                   hintText: state.pool?.spotPrice ?? '1.5800',
                   filled: true,
                   fillColor: AppTheme.surfaceColor,
