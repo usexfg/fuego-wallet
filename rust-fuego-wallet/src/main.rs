@@ -3,6 +3,7 @@
 mod base58;
 mod crypto;
 mod daemon;
+mod fuegod;
 mod keystore;
 mod server;
 mod wallet;
@@ -98,7 +99,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         Commands::Serve { daemon_host, daemon_port, testnet: _testnet } => {
-            let daemon_url = format!("http://{}:{}", daemon_host, daemon_port);
+            let mut fuegod_proc = fuegod::DaemonProcess::new(18180);
+            let data_dir = format!("{}/fuegod", wallet_dir.to_str().unwrap_or("."));
+            let actual_host = match fuegod_proc.start(false, &data_dir).await {
+                Ok(_) => {
+                    log::info!("Embedded fuegod started on 127.0.0.1:18180");
+                    "127.0.0.1".to_string()
+                }
+                Err(e) => {
+                    log::warn!("Embedded fuegod unavailable: {} — falling back to remote", e);
+                    daemon_host.clone()
+                }
+            };
+
+            let daemon_url = format!("http://{}:{}", actual_host, daemon_port);
             let daemon = DaemonClient::new(&daemon_url);
             let keystore = Keystore::new(keystore_path.clone());
             let mut wallet = WalletState::new(keystore, daemon);
@@ -114,7 +128,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
 
             let mut wp = WalletdProcess::new(8071);
-            let walletd_url = match wp.start(&daemon_host, daemon_port,
+            let walletd_url = match wp.start(&actual_host, daemon_port,
                 keystore_path.to_str().unwrap_or("fuego_wallet")).await
             {
                 Ok(url) => Some(url),
@@ -127,6 +141,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let bind = format!("{}:{}", cli.host, cli.port);
             server::run_server(wallet, walletd_url, &bind).await?;
             wp.stop();
+            fuegod_proc.stop();
         }
 
         Commands::Address => {
