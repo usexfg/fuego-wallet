@@ -95,6 +95,20 @@ class FuegoDaemonClient {
     });
   }
 
+  /// Place a limit order on the Hearth orderbook
+  Future<Map<String, dynamic>> placeLimitOrder({
+    required bool sellXfg,
+    required String amount,
+    required String price,
+  }) async {
+    return _jsonRpc('place_limit_order', {
+      'side': sellXfg ? 'sell' : 'buy',
+      'asset': 'XFG',
+      'amount': amount,
+      'price': price,
+    });
+  }
+
   // ── Mining ──
   // (Mining methods are in FuegoRPCService which already uses daemon RPC)
 

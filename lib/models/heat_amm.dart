@@ -81,3 +81,66 @@ class PoolInfo {
         volume24h: json['volume_24h'] as String? ?? '0',
       );
 }
+
+class OrderBookLevel {
+  final double price;
+  final double amount;
+  final double total;
+
+  const OrderBookLevel({
+    required this.price,
+    required this.amount,
+    required this.total,
+  });
+}
+
+class OrderBook {
+  final List<OrderBookLevel> asks;
+  final List<OrderBookLevel> bids;
+  final double lastPrice;
+  final double high24h;
+  final double low24h;
+  final double volume24h;
+
+  const OrderBook({
+    required this.asks,
+    required this.bids,
+    required this.lastPrice,
+    required this.high24h,
+    required this.low24h,
+    required this.volume24h,
+  });
+
+  factory OrderBook.fromPool(PoolInfo pool) {
+    final spot = double.tryParse(pool.spotPrice) ?? 1.58;
+    final vol = double.tryParse(pool.volume24h) ?? 0;
+    final asks = <OrderBookLevel>[];
+    final bids = <OrderBookLevel>[];
+    double cumulative = 0;
+    for (var i = 0; i < 8; i++) {
+      final spread = 0.001 * (i + 1);
+      final askPrice = spot * (1 + spread);
+      final bidPrice = spot * (1 - spread);
+      final askAmt = (vol * 0.12) / (i + 1);
+      final bidAmt = (vol * 0.12) / (i + 1);
+      cumulative += askAmt;
+      asks.add(OrderBookLevel(price: askPrice, amount: askAmt, total: cumulative));
+    }
+    cumulative = 0;
+    for (var i = 0; i < 8; i++) {
+      final spread = 0.001 * (i + 1);
+      final bidPrice = spot * (1 - spread);
+      final bidAmt = (vol * 0.12) / (i + 1);
+      cumulative += bidAmt;
+      bids.add(OrderBookLevel(price: bidPrice, amount: bidAmt, total: cumulative));
+    }
+    return OrderBook(
+      asks: asks.reversed.toList(),
+      bids: bids,
+      lastPrice: spot,
+      high24h: spot * 1.02,
+      low24h: spot * 0.98,
+      volume24h: vol,
+    );
+  }
+}
