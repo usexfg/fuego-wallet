@@ -172,7 +172,10 @@ class FuegoApp extends StatelessWidget {
               create: (_) => CdCubit(rpcService)..loadAll(),
             ),
             BlocProvider<HearthCubit>(
-              create: (_) => HearthCubit(hearth.FuegoDaemonClient(host: '127.0.0.1')),
+              create: (_) => HearthCubit(hearth.FuegoDaemonClient(
+                host: _defaultDaemonHost,
+                networkConfig: NetworkConfig.mainnet,
+              )),
             ),
             BlocProvider<DexCubit>(
               create: (_) => DexCubit()..init(),
