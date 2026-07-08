@@ -86,52 +86,58 @@ class WalletCubit extends Cubit<WalletState> {
 
   Future<void> refreshWallet() async {
     emit(state.copyWith(isLoading: true, isSyncing: true, error: null));
-    try {
-      // Node info — always available via /getinfo
-      NetworkInfo? info;
-      int peers = 0;
-      try {
-        info = await _daemon.getInfo();
-      } catch (_) {}
-      try {
-        peers = await _daemon.getPeerCount();
-      } catch (_) {}
 
-      // Wallet ops — only work if payment gate is running
-      String addr = '';
-      int bal = 0;
-      List<FuegoTransaction> txs = [];
+    for (var attempt = 0; attempt < 5; attempt++) {
       try {
-        addr = await _daemon.getAddress();
-      } catch (_) {}
-      try {
-        bal = await _daemon.getBalance();
-      } catch (_) {}
-      try {
-        txs = await _daemon.getTransactions(count: 50);
-      } catch (_) {}
+        NetworkInfo? info;
+        int peers = 0;
+        try {
+          info = await _daemon.getInfo();
+        } catch (_) {}
+        try {
+          peers = await _daemon.getPeerCount();
+        } catch (_) {}
 
-      emit(state.copyWith(
-        isLoading: false,
-        isSyncing: false,
-        isConnected: true,
-        blockHeight: info?.height ?? 0,
-        address: addr.isNotEmpty ? addr : state.address,
-        balance: bal,
-        unlockedBalance: bal,
-        peerCount: peers,
-        transactions: txs,
-        syncProgress: 1.0,
-        isSynced: true,
-      ));
-    } catch (e) {
-      emit(state.copyWith(
-        isLoading: false,
-        isSyncing: false,
-        isConnected: false,
-        error: 'Connection failed: $e',
-      ));
+        String addr = '';
+        int bal = 0;
+        List<FuegoTransaction> txs = [];
+        try {
+          addr = await _daemon.getAddress();
+        } catch (_) {}
+        try {
+          bal = await _daemon.getBalance();
+        } catch (_) {}
+        try {
+          txs = await _daemon.getTransactions(count: 50);
+        } catch (_) {}
+
+        emit(state.copyWith(
+          isLoading: false,
+          isSyncing: false,
+          isConnected: true,
+          blockHeight: info?.height ?? 0,
+          address: addr.isNotEmpty ? addr : state.address,
+          balance: bal,
+          unlockedBalance: bal,
+          peerCount: peers,
+          transactions: txs,
+          syncProgress: 1.0,
+          isSynced: true,
+        ));
+        return;
+      } catch (_) {
+        if (attempt < 4) {
+          await Future.delayed(const Duration(seconds: 3));
+        }
+      }
     }
+
+    emit(state.copyWith(
+      isLoading: false,
+      isSyncing: false,
+      isConnected: false,
+      error: 'Daemon not available',
+    ));
   }
 
   Future<String> getAddress() async {
