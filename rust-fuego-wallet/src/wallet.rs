@@ -211,7 +211,14 @@ impl WalletState {
         Ok(serde_json::json!({
             "wallet_unlocked": self.is_unlocked(),
             "address": self.address(),
-            "daemon_height": info.height,
+            "height": info.height,
+            "top_block_hash": info.top_block_hash,
+            "difficulty": info.difficulty,
+            "hashrate": 0,
+            "incoming_connections_count": info.incoming_connections_count,
+            "outgoing_connections_count": info.outgoing_connections_count,
+            "tx_count": info.tx_count,
+            "tx_pool_size": info.tx_pool_size,
             "daemon_status": info.status,
             "daemon_version": info.version,
         }))

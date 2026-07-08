@@ -55,14 +55,26 @@ class FuegoDaemonClient {
   }
 
   Future<NetworkInfo> getInfo() async {
-    final r = await _get('/getinfo');
-    return NetworkInfo.fromJson(r);
+    final r = await _post('/json_rpc', {
+      'jsonrpc': '2.0',
+      'id': 'fuego_core',
+      'method': 'getinfo',
+      'params': {},
+    }, useWallet: true);
+    final result = r['result'] as Map<String, dynamic>? ?? r;
+    return NetworkInfo.fromJson(result);
   }
 
   Future<int> getPeerCount() async {
-    final r = await _get('/getinfo');
-    final outgoing = r['outgoing_connections_count'] as int? ?? 0;
-    final incoming = r['incoming_connections_count'] as int? ?? 0;
+    final r = await _post('/json_rpc', {
+      'jsonrpc': '2.0',
+      'id': 'fuego_core',
+      'method': 'getinfo',
+      'params': {},
+    }, useWallet: true);
+    final result = r['result'] as Map<String, dynamic>? ?? r;
+    final outgoing = result['outgoing_connections_count'] as int? ?? 0;
+    final incoming = result['incoming_connections_count'] as int? ?? 0;
     return outgoing + incoming;
   }
 

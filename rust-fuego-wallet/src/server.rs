@@ -65,7 +65,7 @@ async fn json_rpc_handler(
             let wallet = state.wallet.lock().await;
             match wallet.wallet_status().await {
                 Ok(info) => {
-                    let h = info.get("daemon_height").and_then(|v| v.as_u64()).unwrap_or(0);
+                    let h = info.get("height").and_then(|v| v.as_u64()).unwrap_or(0);
                     Ok(serde_json::json!({"height": h}))
                 }
                 Err(e) => Err(e),
