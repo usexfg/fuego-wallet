@@ -87,7 +87,7 @@ class WalletCubit extends Cubit<WalletState> {
   Future<void> refreshWallet() async {
     emit(state.copyWith(isLoading: true, isSyncing: true, error: null));
 
-    for (var attempt = 0; attempt < 5; attempt++) {
+    for (var attempt = 0; attempt < 15; attempt++) {
       try {
         NetworkInfo? info;
         int peers = 0;

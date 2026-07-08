@@ -23,6 +23,18 @@ import 'utils/theme.dart';
 final _log = Logger('main');
 Process? _backend;
 
+final daemon = FuegoDaemonClient(
+  host: '127.0.0.1',
+  port: defaultRpcPort,
+  walletPort: 8070,
+);
+
+final rpcService = FuegoRPCService(
+  host: '127.0.0.1',
+  port: 18180,
+  networkConfig: NetworkConfig.mainnet,
+);
+
 Future<void> _startBackend() async {
   final binary = _findBackendBinary();
   if (binary == null) {
@@ -35,7 +47,7 @@ Future<void> _startBackend() async {
   _backend!.stderr.transform(utf8.decoder).listen((l) => _log.warning('[backend] $l'));
 
   // Wait for backend to be ready
-  for (var i = 0; i < 15; i++) {
+  for (var i = 0; i < 30; i++) {
     try {
       final resp = await HttpClient()
           .getUrl(Uri.parse('http://127.0.0.1:8070/health'))
@@ -86,18 +98,6 @@ class FuegoApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final daemon = FuegoDaemonClient(
-      host: '127.0.0.1',
-      port: defaultRpcPort,
-      walletPort: 8070,
-    );
-
-    final rpcService = FuegoRPCService(
-      host: '127.0.0.1',
-      port: 18180,
-      networkConfig: NetworkConfig.mainnet,
-    );
-
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(
