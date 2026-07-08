@@ -1,0 +1,32 @@
+2026-Jul-08 16:02:21.484806 ERROR [WalletGreen] Unsupported wallet version: 55
+2026-Jul-08 16:02:21.484981 ERROR [run] Failed to init walletService reason: Unsupported wallet version: Wrong version
+2026-Jul-08 16:03:22.323202 ERROR [WalletGreen] Failed to read wallet version
+2026-Jul-08 16:03:22.323340 ERROR [run] Failed to init walletService reason: Failed to read wallet version: Wrong version
+2026-Jul-08 16:04:02.516836 INFO [main] PaymentService  vWildfire || v1.10.03.1152(0.2)
+2026-Jul-08 16:04:02.518498 INFO [generateNewWallet] Generating new deterministic wallet
+2026-Jul-08 16:04:02.545035 INFO [WalletGreen/53a2d] Container initialized with view secret key, public view key 53a2db10890eb35e915669ced3fdfb18a54318b03958d92d447d6f115d7c6401
+2026-Jul-08 16:04:02.545610 INFO [WalletGreen/53a2d] New wallet added fireLatcLpwh9ut8LYbz1uTUfe9mhdnqF3n9TM79QdSx83VX1FDsP5z3TcfJRiFd4NjUw5QWBC6FaFrwY3LAGiHr5iQPKvTHmW, creation timestamp 1783541042
+2026-Jul-08 16:04:02.545698 INFO [generateNewWallet] New deterministic wallet is generated. Address: fireLatcLpwh9ut8LYbz1uTUfe9mhdnqF3n9TM79QdSx83VX1FDsP5z3TcfJRiFd4NjUw5QWBC6FaFrwY3LAGiHr5iQPKvTHmW
+2026-Jul-08 16:04:02.545739 INFO [generateNewWallet] New wallet generated.
+2026-Jul-08 16:04:02.545767 INFO [generateNewWallet] Address: fireLatcLpwh9ut8LYbz1uTUfe9mhdnqF3n9TM79QdSx83VX1FDsP5z3TcfJRiFd4NjUw5QWBC6FaFrwY3LAGiHr5iQPKvTHmW
+2026-Jul-08 16:04:02.545798 INFO [generateNewWallet] Secret spend key: <redacted>
+2026-Jul-08 16:04:02.545820 INFO [generateNewWallet] Secret view key: <redacted>
+2026-Jul-08 16:04:02.545841 INFO [WalletGreen/53a2d] Saving container...
+2026-Jul-08 16:04:02.545897 INFO [WalletGreen/53a2d] Saving cache...
+2026-Jul-08 16:04:02.548153 INFO [WalletGreen/53a2d] Container saving finished
+2026-Jul-08 16:04:02.548203 INFO [WalletGreen/53a2d] Container saved
+2026-Jul-08 16:04:02.548229 INFO [generateNewWallet] Wallet is saved
+2026-Jul-08 16:37:38.830314 INFO [main] PaymentService  vWildfire || v1.10.03.1152(0.2)
+2026-Jul-08 16:37:38.832818 INFO [generateNewWallet] Generating new deterministic wallet
+2026-Jul-08 16:37:38.860321 INFO [WalletGreen/fd6cd] Container initialized with view secret key, public view key fd6cd9d9a574111e0c3cbf6635655462aa57fb7a54d114a7274008607d782c95
+2026-Jul-08 16:37:38.861967 INFO [WalletGreen/fd6cd] New wallet added fireJV9rPx4GeZF9Jg26jHRCScK2DYPejV2qegwSej9SBF6DdWdGjcQLQzekHS2NrpHx2QuKhc6bubyLyktbCwwr5Z8s7eoBgY, creation timestamp 1783543058
+2026-Jul-08 16:37:38.862061 INFO [generateNewWallet] New deterministic wallet is generated. Address: fireJV9rPx4GeZF9Jg26jHRCScK2DYPejV2qegwSej9SBF6DdWdGjcQLQzekHS2NrpHx2QuKhc6bubyLyktbCwwr5Z8s7eoBgY
+2026-Jul-08 16:37:38.862105 INFO [generateNewWallet] New wallet generated.
+2026-Jul-08 16:37:38.862130 INFO [generateNewWallet] Address: fireJV9rPx4GeZF9Jg26jHRCScK2DYPejV2qegwSej9SBF6DdWdGjcQLQzekHS2NrpHx2QuKhc6bubyLyktbCwwr5Z8s7eoBgY
+2026-Jul-08 16:37:38.862163 INFO [generateNewWallet] Secret spend key: <redacted>
+2026-Jul-08 16:37:38.862185 INFO [generateNewWallet] Secret view key: <redacted>
+2026-Jul-08 16:37:38.862207 INFO [WalletGreen/fd6cd] Saving container...
+2026-Jul-08 16:37:38.862248 INFO [WalletGreen/fd6cd] Saving cache...
+2026-Jul-08 16:37:38.864013 INFO [WalletGreen/fd6cd] Container saving finished
+2026-Jul-08 16:37:38.864056 INFO [WalletGreen/fd6cd] Container saved
+2026-Jul-08 16:37:38.864080 INFO [generateNewWallet] Wallet is saved

@@ -44,7 +44,7 @@ Future<void> _startBackend() async {
   final binary = _findBackendBinary();
   if (binary == null) {
     print('[backend] ERROR: fuego-wallet binary not found — falling back to remote node');
-    _rpcService.updateNode(
+    rpcService.updateNode(
       NetworkConfig.mainnet.defaultSeedNode.split(':')[0],
       port: NetworkConfig.mainnet.daemonRpcPort,
     );
@@ -64,7 +64,7 @@ Future<void> _startBackend() async {
     _backend!.exitCode.then((code) => print('[backend] Exited with code $code'));
   } catch (e) {
     print('[backend] ERROR starting process: $e — falling back to remote node');
-    _rpcService.updateNode(
+    rpcService.updateNode(
       NetworkConfig.mainnet.defaultSeedNode.split(':')[0],
       port: NetworkConfig.mainnet.daemonRpcPort,
     );
@@ -91,7 +91,7 @@ Future<void> _startBackend() async {
     await Future.delayed(const Duration(seconds: 2));
   }
   print('[backend] ERROR: Backend did not become ready after 60s — falling back to remote');
-  _rpcService.updateNode(
+  rpcService.updateNode(
     NetworkConfig.mainnet.defaultSeedNode.split(':')[0],
     port: NetworkConfig.mainnet.daemonRpcPort,
   );
