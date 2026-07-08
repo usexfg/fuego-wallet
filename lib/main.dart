@@ -43,23 +43,31 @@ final rpcService = FuegoRPCService(
 Future<void> _startBackend() async {
   final binary = _findBackendBinary();
   if (binary == null) {
-    print('[backend] ERROR: fuego-wallet binary not found — running without backend');
+    print('[backend] ERROR: fuego-wallet binary not found — falling back to remote node');
+    _rpcService.updateNode(
+      NetworkConfig.mainnet.defaultSeedNode.split(':')[0],
+      port: NetworkConfig.mainnet.daemonRpcPort,
+    );
     if (!_backendReady.isCompleted) _backendReady.complete();
     return;
   }
   print('[backend] Starting: $binary');
   try {
     _backend = await Process.start(binary, [
+      '--port', _backendPort.toString(),
       'serve',
       '--daemon-host', _defaultDaemonHost,
-      '--port', _backendPort.toString(),
     ]);
     print('[backend] Process started (pid=${_backend!.pid})');
     _backend!.stdout.transform(utf8.decoder).listen((l) => print('[backend:stdout] $l'));
     _backend!.stderr.transform(utf8.decoder).listen((l) => print('[backend:stderr] $l'));
     _backend!.exitCode.then((code) => print('[backend] Exited with code $code'));
   } catch (e) {
-    print('[backend] ERROR starting process: $e');
+    print('[backend] ERROR starting process: $e — falling back to remote node');
+    _rpcService.updateNode(
+      NetworkConfig.mainnet.defaultSeedNode.split(':')[0],
+      port: NetworkConfig.mainnet.daemonRpcPort,
+    );
     if (!_backendReady.isCompleted) _backendReady.complete();
     return;
   }
@@ -82,7 +90,11 @@ Future<void> _startBackend() async {
     }
     await Future.delayed(const Duration(seconds: 2));
   }
-  print('[backend] ERROR: Backend did not become ready after 60s');
+  print('[backend] ERROR: Backend did not become ready after 60s — falling back to remote');
+  _rpcService.updateNode(
+    NetworkConfig.mainnet.defaultSeedNode.split(':')[0],
+    port: NetworkConfig.mainnet.daemonRpcPort,
+  );
   if (!_backendReady.isCompleted) _backendReady.complete();
 }
 
@@ -90,13 +102,20 @@ String? _findBackendBinary() {
   final exe = File(Platform.resolvedExecutable);
   print('[main] resolvedExecutable: ${Platform.resolvedExecutable}');
   print('[main] exe.parent.path: ${exe.parent.path}');
+
+  final projectRoot = Directory.current.path;
   final candidates = [
+    // Release bundle paths
     '${exe.parent.path}/fuego-wallet',
     if (Platform.isMacOS) '${exe.parent.parent.parent.path}/Resources/bin/fuego-wallet',
+    // Rust dev build outputs (relative to project root)
+    '$projectRoot/rust-fuego-wallet/target/debug/fuego-wallet',
+    '$projectRoot/rust-fuego-wallet/target/release/fuego-wallet',
   ];
   for (final c in candidates) {
-    print('[main] checking: $c exists=${File(c).existsSync()}');
-    if (File(c).existsSync()) return c;
+    final exists = File(c).existsSync();
+    print('[main] checking: $c exists=$exists');
+    if (exists) return c;
   }
   return null;
 }

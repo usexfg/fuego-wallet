@@ -16,6 +16,7 @@ class HearthScreen extends StatefulWidget {
 }
 
 class _HearthScreenState extends State<HearthScreen> {
+  static const double _heatUsd = 1.58;
   final _amountController = TextEditingController();
   final _priceController = TextEditingController();
   bool _sellXfg = true;
@@ -26,6 +27,24 @@ class _HearthScreenState extends State<HearthScreen> {
     super.initState();
     context.read<HearthCubit>().loadPool();
     _loadPriceData();
+    _amountController.addListener(_updateUsd);
+  }
+
+  String _amountUsd = '';
+  void _updateUsd() {
+    final text = _amountController.text.trim();
+    final val = double.tryParse(text);
+    if (val == null || val == 0) {
+      if (_amountUsd.isNotEmpty) setState(() => _amountUsd = '');
+      return;
+    }
+    if (_sellXfg) {
+      final price = double.tryParse(
+          context.read<HearthCubit>().state.pool?.spotPrice ?? '') ?? 1.58;
+      setState(() => _amountUsd = '\$${(val * price * _heatUsd).toStringAsFixed(2)}');
+    } else {
+      setState(() => _amountUsd = '\$${(val * _heatUsd).toStringAsFixed(2)}');
+    }
   }
 
   Future<void> _loadPriceData() async {
@@ -35,6 +54,7 @@ class _HearthScreenState extends State<HearthScreen> {
 
   @override
   void dispose() {
+    _amountController.removeListener(_updateUsd);
     _amountController.dispose();
     _priceController.dispose();
     super.dispose();
@@ -217,6 +237,8 @@ class _HearthScreenState extends State<HearthScreen> {
                   const SizedBox(width: 6),
                   Text('Spread ${spot.toStringAsFixed(4)}', style: const TextStyle(
                     fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
+                  Text('  ≈ \$${(spot * _heatUsd).toStringAsFixed(2)}', style: const TextStyle(
+                    fontSize: 11, color: AppTheme.textMuted)),
                 ],
               ),
             ),
@@ -284,6 +306,7 @@ class _HearthScreenState extends State<HearthScreen> {
                   child: _assetBtn('XFG', _sellXfg, () => setState(() {
                     _sellXfg = true;
                     _amountController.clear();
+                    _updateUsd();
                   })),
                 ),
                 const Padding(
@@ -294,6 +317,7 @@ class _HearthScreenState extends State<HearthScreen> {
                   child: _assetBtn('HEAT', !_sellXfg, () => setState(() {
                     _sellXfg = false;
                     _amountController.clear();
+                    _updateUsd();
                   })),
                 ),
               ],
@@ -309,6 +333,12 @@ class _HearthScreenState extends State<HearthScreen> {
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
               ),
             ),
+            if (_amountUsd.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4, left: 4),
+                child: Text(_amountUsd, style: const TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.accentColor)),
+              ),
             if (isLimit) ...[
               const SizedBox(height: 10),
               TextField(
@@ -409,6 +439,9 @@ class _HearthScreenState extends State<HearthScreen> {
   }
 
   Widget _buildQuoteDisplay(AmmQuote quote) {
+    final heatAmount = _sellXfg ? quote.outputAmount : quote.inputAmount;
+    final heatVal = double.tryParse(heatAmount) ?? 0;
+    final usd = heatVal * _heatUsd;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -429,6 +462,8 @@ class _HearthScreenState extends State<HearthScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
+              Text('≈ \$${usd.toStringAsFixed(2)}', style: const TextStyle(
+                fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.accentColor)),
               const Text('Fee', style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
               Text(quote.fee, style: const TextStyle(color: AppTheme.textSecondary)),
               Text('Impact: ${quote.priceImpact}%',

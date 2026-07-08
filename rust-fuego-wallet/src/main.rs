@@ -26,7 +26,7 @@ fn default_wallet_dir() -> PathBuf {
 #[derive(Parser)]
 #[command(name = "fuego-wallet", about = "Fuego-native wallet")]
 struct Cli {
-    #[arg(short, long, default_value = "127.0.0.1")]
+    #[arg(short = 'H', long, default_value = "127.0.0.1")]
     host: String,
 
     #[arg(short = 'P', long, default_value_t = 8070)]
