@@ -28,8 +28,10 @@ class FuegoDaemonClient {
       {Map<String, String>? query, bool useWallet = false}) async {
     final uri = _rest(path, useWallet: useWallet)
         .replace(queryParameters: query);
+    print('[daemon] GET $uri');
     final resp = await _http.get(uri).timeout(const Duration(seconds: 10));
     if (resp.statusCode != 200) {
+      print('[daemon] GET $uri → HTTP ${resp.statusCode}: ${resp.body}');
       throw FuegoRpcException('HTTP ${resp.statusCode}: ${resp.body}');
     }
     return jsonDecode(resp.body) as Map<String, dynamic>;
@@ -37,18 +39,22 @@ class FuegoDaemonClient {
 
   Future<Map<String, dynamic>> _post(String path, Map<String, dynamic> body,
       {bool useWallet = false}) async {
+    final uri = _rest(path, useWallet: useWallet);
+    print('[daemon] POST $uri');
     final resp = await _http
         .post(
-          _rest(path, useWallet: useWallet),
+          uri,
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode(body),
         )
         .timeout(const Duration(seconds: 10));
     if (resp.statusCode != 200) {
+      print('[daemon] POST $uri → HTTP ${resp.statusCode}: ${resp.body}');
       throw FuegoRpcException('HTTP ${resp.statusCode}: ${resp.body}');
     }
     final data = jsonDecode(resp.body) as Map<String, dynamic>;
     if (data.containsKey('error') && data['error'] != null) {
+      print('[daemon] POST $uri → RPC error: ${data['error']}');
       throw FuegoRpcException(data['error'].toString());
     }
     return data;

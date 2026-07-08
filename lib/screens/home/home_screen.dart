@@ -158,9 +158,9 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         _infoTile('Peers', '${state.peerCount}', Icons.people),
         const SizedBox(width: 8),
-        _infoTile('Fee', formatXfg(txFee), Icons.receipt),
+        _infoTile('Min Fee', formatXfg(txFee), Icons.receipt),
         const SizedBox(width: 8),
-        _infoTile('Block', '${avgBlockTime}s', Icons.timer),
+        _infoTile('Height', '${state.blockHeight}', Icons.tag),
       ],
     );
   }

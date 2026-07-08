@@ -38,13 +38,20 @@ final rpcService = FuegoRPCService(
 Future<void> _startBackend() async {
   final binary = _findBackendBinary();
   if (binary == null) {
-    _log.warning('fuego-wallet binary not found — running without backend');
+    print('[backend] ERROR: fuego-wallet binary not found — running without backend');
     return;
   }
-  _log.info('Starting backend: $binary');
-  _backend = await Process.start(binary, ['serve', '--daemon-host', '127.0.0.1']);
-  _backend!.stdout.transform(utf8.decoder).listen((l) => _log.fine('[backend] $l'));
-  _backend!.stderr.transform(utf8.decoder).listen((l) => _log.warning('[backend] $l'));
+  print('[backend] Starting: $binary');
+  try {
+    _backend = await Process.start(binary, ['serve', '--daemon-host', '127.0.0.1']);
+    print('[backend] Process started (pid=${_backend!.pid})');
+    _backend!.stdout.transform(utf8.decoder).listen((l) => print('[backend:stdout] $l'));
+    _backend!.stderr.transform(utf8.decoder).listen((l) => print('[backend:stderr] $l'));
+    _backend!.exitCode.then((code) => print('[backend] Exited with code $code'));
+  } catch (e) {
+    print('[backend] ERROR starting process: $e');
+    return;
+  }
 
   // Wait for backend to be ready
   for (var i = 0; i < 30; i++) {
@@ -52,23 +59,30 @@ Future<void> _startBackend() async {
       final resp = await HttpClient()
           .getUrl(Uri.parse('http://127.0.0.1:8070/health'))
           .then((r) => r.close());
+      final body = await resp.transform(utf8.decoder).join();
       if (resp.statusCode == 200) {
-        _log.info('Backend ready');
+        print('[backend] Health OK on attempt $i: $body');
         return;
       }
-    } catch (_) {}
+      print('[backend] Health check $i: HTTP ${resp.statusCode} — $body');
+    } catch (e) {
+      print('[backend] Health check $i failed: $e');
+    }
     await Future.delayed(const Duration(seconds: 2));
   }
-  _log.warning('Backend did not become ready');
+  print('[backend] ERROR: Backend did not become ready after 60s');
 }
 
 String? _findBackendBinary() {
   final exe = File(Platform.resolvedExecutable);
+  print('[main] resolvedExecutable: ${Platform.resolvedExecutable}');
+  print('[main] exe.parent.path: ${exe.parent.path}');
   final candidates = [
     '${exe.parent.path}/fuego-wallet',
     if (Platform.isMacOS) '${exe.parent.parent.parent.path}/Resources/bin/fuego-wallet',
   ];
   for (final c in candidates) {
+    print('[main] checking: $c exists=${File(c).existsSync()}');
     if (File(c).existsSync()) return c;
   }
   return null;

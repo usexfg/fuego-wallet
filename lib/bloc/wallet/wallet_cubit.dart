@@ -85,6 +85,7 @@ class WalletCubit extends Cubit<WalletState> {
   }
 
   Future<void> refreshWallet() async {
+    print('[wallet] refreshWallet starting');
     emit(state.copyWith(isLoading: true, isSyncing: true, error: null));
 
     for (var attempt = 0; attempt < 15; attempt++) {
@@ -93,23 +94,38 @@ class WalletCubit extends Cubit<WalletState> {
         int peers = 0;
         try {
           info = await _daemon.getInfo();
-        } catch (_) {}
+          print('[wallet] attempt $attempt: getInfo OK — height=${info.height}, peers=${info.peerCount}');
+        } catch (e) {
+          print('[wallet] attempt $attempt: getInfo FAILED — $e');
+        }
         try {
           peers = await _daemon.getPeerCount();
-        } catch (_) {}
+          print('[wallet] attempt $attempt: getPeerCount OK — $peers');
+        } catch (e) {
+          print('[wallet] attempt $attempt: getPeerCount FAILED — $e');
+        }
 
         String addr = '';
         int bal = 0;
         List<FuegoTransaction> txs = [];
         try {
           addr = await _daemon.getAddress();
-        } catch (_) {}
+          print('[wallet] attempt $attempt: getAddress OK — $addr');
+        } catch (e) {
+          print('[wallet] attempt $attempt: getAddress FAILED — $e');
+        }
         try {
           bal = await _daemon.getBalance();
-        } catch (_) {}
+          print('[wallet] attempt $attempt: getBalance OK — $bal');
+        } catch (e) {
+          print('[wallet] attempt $attempt: getBalance FAILED — $e');
+        }
         try {
           txs = await _daemon.getTransactions(count: 50);
-        } catch (_) {}
+          print('[wallet] attempt $attempt: getTransactions OK — ${txs.length} txs');
+        } catch (e) {
+          print('[wallet] attempt $attempt: getTransactions FAILED — $e');
+        }
 
         emit(state.copyWith(
           isLoading: false,
@@ -124,14 +140,17 @@ class WalletCubit extends Cubit<WalletState> {
           syncProgress: 1.0,
           isSynced: true,
         ));
+        print('[wallet] refreshWallet SUCCESS on attempt $attempt');
         return;
-      } catch (_) {
-        if (attempt < 4) {
+      } catch (e) {
+        print('[wallet] attempt $attempt: outer error — $e');
+        if (attempt < 14) {
           await Future.delayed(const Duration(seconds: 3));
         }
       }
     }
 
+    print('[wallet] refreshWallet FAILED after 15 attempts');
     emit(state.copyWith(
       isLoading: false,
       isSyncing: false,
