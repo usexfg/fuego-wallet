@@ -107,7 +107,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 wallet.open()?;
                 log::info!("Wallet unlocked. Address: {}", wallet.address().unwrap_or_default());
             } else {
-                log::warn!("Keystore not found. Create one first with 'fuego-wallet create'.");
+                log::info!("No wallet found — creating one.");
+                let (mnemonic, _) = wallet.create()?;
+                log::info!("Wallet created. Address: {}", wallet.address().unwrap_or_default());
+                log::info!("Mnemonic: {}", mnemonic);
             }
 
             let mut wp = WalletdProcess::new(8071);
