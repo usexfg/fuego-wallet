@@ -5,6 +5,7 @@ mod crypto;
 mod daemon;
 mod fuegod;
 mod keystore;
+mod release;
 mod server;
 mod wallet;
 mod walletd;
