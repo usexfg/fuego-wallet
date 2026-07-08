@@ -117,7 +117,9 @@ pub fn validate_mnemonic(mnemonic: &str) -> bool {
 }
 
 pub fn generate_address(spend_pub: &[u8; 32], view_pub: &[u8; 32], _prefix: &str) -> String {
-    let mut buf = Vec::with_capacity(68);
+    let tag: u64 = 1753191;
+
+    let mut buf = write_varint(tag);
     buf.extend_from_slice(spend_pub);
     buf.extend_from_slice(view_pub);
 
@@ -137,13 +139,20 @@ pub fn validate_address(address: &str, _prefix: &str) -> bool {
         Some(v) => v,
         None => return false,
     };
-    if decoded.len() != 68 {
+    if decoded.len() != 71 {
         return false;
     }
 
-    let (data, received_cs) = decoded.split_at(64);
+    let (data, received_cs) = decoded.split_at(67);
     let hash = cn_fast_hash(data);
-    received_cs == &hash[..4]
+    let valid = received_cs == &hash[..4];
+
+    // Verify the decoded data starts with varint(1753191)
+    let (tag, _) = match read_varint(data) {
+        Some(t) => t,
+        None => return false,
+    };
+    valid && tag == 1753191
 }
 
 pub const KEY_SIZE: usize = 32;
