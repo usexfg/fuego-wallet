@@ -76,9 +76,9 @@ Future<void> main() async {
     DeviceOrientation.portraitDown,
   ]);
 
-  await _startBackend();
-
   runApp(const FuegoApp());
+
+  _startBackend();
 }
 
 class FuegoApp extends StatelessWidget {
