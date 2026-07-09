@@ -7,13 +7,9 @@ mod fuegod;
 mod keystore;
 mod release;
 mod server;
-mod wallet;
 mod walletd;
 
 use clap::{Parser, Subcommand};
-use daemon::DaemonClient;
-use keystore::Keystore;
-use wallet::WalletState;
 use walletd::WalletdProcess;
 use std::path::PathBuf;
 
@@ -38,8 +34,6 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    Create,
-    Open,
     Serve {
         #[arg(long, default_value = "207.244.247.64")]
         daemon_host: String,
@@ -50,7 +44,6 @@ enum Commands {
         #[arg(long)]
         testnet: bool,
     },
-    Address,
     Status,
 }
 
@@ -61,45 +54,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
     let wallet_dir = default_wallet_dir();
     std::fs::create_dir_all(&wallet_dir)?;
-    let keystore_path = wallet_dir.join("fuego_wallet.keystore");
-    let has_keystore = keystore_path.exists();
 
     match cli.command.unwrap_or(Commands::Status) {
-        Commands::Create => {
-            if has_keystore {
-                println!("Wallet already exists at {:?}", keystore_path);
-                println!("Use 'open' to unlock or delete the keystore file to recreate.");
-                return Ok(());
-            }
-
-            let daemon = DaemonClient::new("http://127.0.0.1:18180");
-            let keystore = Keystore::new(keystore_path);
-            let mut wallet = WalletState::new(keystore, daemon);
-            let (mnemonic, _secrets) = wallet.create()?;
-            println!("Wallet created successfully.");
-            println!();
-            println!("Mnemonic (SAVE THIS SECURELY):");
-            println!("{}", mnemonic);
-            println!();
-            println!("Address: {}", wallet.address().unwrap());
-        }
-
-        Commands::Open => {
-            if !has_keystore {
-                println!("No wallet found at {:?}", keystore_path);
-                println!("Create one with 'fuego-wallet create'.");
-                return Ok(());
-            }
-
-            let daemon = DaemonClient::new("http://127.0.0.1:18180");
-            let keystore = Keystore::new(keystore_path);
-            let mut wallet = WalletState::new(keystore, daemon);
-            wallet.open()?;
-            println!("Wallet unlocked.");
-            println!("Address: {}", wallet.address().unwrap());
-        }
-
         Commands::Serve { daemon_host, daemon_port, testnet: _testnet } => {
+            // 1. Start fuegod (embedded or remote)
             let mut fuegod_proc = fuegod::DaemonProcess::new(18180);
             let data_dir = format!("{}/fuegod", wallet_dir.to_str().unwrap_or("."));
             let actual_host = match fuegod_proc.start(false, &data_dir).await {
@@ -114,58 +72,68 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
 
             let daemon_url = format!("http://{}:{}", actual_host, daemon_port);
-            let daemon = DaemonClient::new(&daemon_url);
-            let keystore = Keystore::new(keystore_path.clone());
-            let mut wallet = WalletState::new(keystore, daemon);
 
-            if has_keystore {
-                wallet.open()?;
-                log::info!("Wallet unlocked. Address: {}", wallet.address().unwrap_or_default());
-            } else {
-                log::info!("No wallet found — creating one.");
-                let (mnemonic, _) = wallet.create()?;
-                log::info!("Wallet created. Address: {}", wallet.address().unwrap_or_default());
-                log::info!("Mnemonic: {}", mnemonic);
-            }
-
+            // 2. Start walletd (optional — server works without it for network queries)
             let mut wp = WalletdProcess::new(8071);
             let container_path = wallet_dir.join("fuego_wallet.container");
             let walletd_url = match wp.start(&actual_host, daemon_port,
                 container_path.to_str().unwrap_or("fuego_wallet.container")).await
             {
-                Ok(url) => Some(url),
+                Ok(url) => {
+                    log::info!("walletd ready at {}", url);
+                    Some(url)
+                }
                 Err(e) => {
-                    log::warn!("walletd: {}", e);
+                    log::warn!("walletd failed: {} — running without walletd", e);
                     None
                 }
             };
 
+            if let Some(ref url) = walletd_url {
+                let addr = fetch_wallet_address(url).await;
+                log::info!("Wallet address: {}", addr);
+            } else {
+                log::warn!("No walletd — address/balance/sync unavailable");
+            }
+
+            // 3. Start Axum server (works with or without walletd)
             let bind = format!("{}:{}", cli.host, cli.port);
-            server::run_server(wallet, walletd_url, &daemon_url, &bind).await?;
+            server::run_server(walletd_url, &daemon_url, &bind).await?;
+
             wp.stop();
             fuegod_proc.stop();
         }
 
-        Commands::Address => {
-            if !has_keystore {
-                println!("No wallet found at {:?}", keystore_path);
-                println!("Create one with 'fuego-wallet create'.");
-                return Ok(());
-            }
-            println!("Keystore exists at {:?}", keystore_path);
-            println!("Use 'fuego-wallet open' or 'fuego-wallet serve' to unlock.");
-        }
-
         Commands::Status => {
-            println!("Keystore: {:?}", keystore_path);
-            println!("Exists: {}", has_keystore);
-            if !has_keystore {
-                println!("Create one with: fuego-wallet create");
-            } else {
-                println!("Use 'open' or 'serve' to unlock.");
-            }
+            println!("Wallet dir: {:?}", wallet_dir);
+            let container_path = wallet_dir.join("fuego_wallet.container");
+            println!("Container: {}", if container_path.exists() { "exists" } else { "not found" });
+            println!("Use 'fuego-wallet serve' to start.");
         }
     }
 
     Ok(())
+}
+
+async fn fetch_wallet_address(walletd_url: &str) -> String {
+    let client = reqwest::Client::new();
+    let body = serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "get_address",
+        "params": {}
+    });
+    match client.post(format!("{}/json_rpc", walletd_url))
+        .json(&body).send().await
+    {
+        Ok(resp) => {
+            let val: serde_json::Value = resp.json().await.unwrap_or_default();
+            val.get("result")
+                .and_then(|r| r.get("address"))
+                .and_then(|a| a.as_str())
+                .unwrap_or("unknown")
+                .to_string()
+        }
+        Err(e) => format!("error: {}", e),
+    }
 }

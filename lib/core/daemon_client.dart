@@ -60,6 +60,8 @@ class FuegoDaemonClient {
     return data;
   }
 
+  // ── Network info (remote daemon, no walletd needed) ──
+
   Future<NetworkInfo> getInfo() async {
     final r = await _post('/json_rpc', {
       'jsonrpc': '2.0',
@@ -69,17 +71,6 @@ class FuegoDaemonClient {
     }, useWallet: false);
     final result = r['result'] as Map<String, dynamic>? ?? r;
     return NetworkInfo.fromJson(result);
-  }
-
-  Future<String> getWalletAddress() async {
-    final r = await _post('/json_rpc', {
-      'jsonrpc': '2.0',
-      'id': 'fuego_core',
-      'method': 'getinfo',
-      'params': {},
-    }, useWallet: true);
-    final result = r['result'] as Map<String, dynamic>? ?? r;
-    return (result['address'] as String?) ?? '';
   }
 
   Future<int> getPeerCount() async {
@@ -95,15 +86,17 @@ class FuegoDaemonClient {
     return outgoing + incoming;
   }
 
-  Future<int> getBalance() async {
+  // ── Wallet operations (walletd, the real source of truth) ──
+
+  Future<String> getWalletAddress() async {
     final r = await _post('/json_rpc', {
       'jsonrpc': '2.0',
       'id': 'fuego_core',
-      'method': 'getBalance',
+      'method': 'getAddress',
       'params': {},
     }, useWallet: true);
     final result = r['result'] as Map<String, dynamic>? ?? r;
-    return (result['availableBalance'] ?? result['balance'] ?? 0) as int;
+    return (result['address'] as String?) ?? '';
   }
 
   Future<String> getAddress() async {
@@ -116,6 +109,17 @@ class FuegoDaemonClient {
     final result = r['result'] as Map<String, dynamic>? ?? r;
     final addresses = result['addresses'] as List<dynamic>? ?? [];
     return addresses.isNotEmpty ? addresses.first as String : '';
+  }
+
+  Future<int> getBalance() async {
+    final r = await _post('/json_rpc', {
+      'jsonrpc': '2.0',
+      'id': 'fuego_core',
+      'method': 'getBalance',
+      'params': {},
+    }, useWallet: true);
+    final result = r['result'] as Map<String, dynamic>? ?? r;
+    return (result['availableBalance'] ?? result['balance'] ?? 0) as int;
   }
 
   Future<String> sendTransaction(SendTransactionRequest req) async {
@@ -162,6 +166,8 @@ class FuegoDaemonClient {
     return txs.take(count).toList();
   }
 
+  // ── Mining (walletd) ──
+
   Future<void> startMining({int threads = 1, String? address}) async {
     try {
       await _post('/json_rpc', {
@@ -205,6 +211,12 @@ class FuegoDaemonClient {
     } catch (_) {
       return {};
     }
+  }
+
+  // ── Status (Axum health) ──
+
+  Future<Map<String, dynamic>> getStatus() async {
+    return await _get('/status');
   }
 
   void dispose() => _http.close();

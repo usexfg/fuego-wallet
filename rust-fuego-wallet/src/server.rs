@@ -7,22 +7,17 @@ use axum::{
 };
 use serde::Serialize;
 use std::sync::Arc;
-use tokio::sync::Mutex;
-use tower_http::cors::{Any, CorsLayer};
-
-use crate::wallet::WalletState;
 
 pub struct AppState {
-    pub wallet: Mutex<WalletState>,
     pub walletd_url: Option<String>,
     pub fuegod_url: String,
 }
 
 #[derive(Serialize)]
-struct JsonRpcSuccess<T: Serialize> {
+struct JsonRpcSuccess {
     jsonrpc: String,
     id: u64,
-    result: T,
+    result: serde_json::Value,
 }
 
 #[derive(Serialize)]
@@ -38,30 +33,28 @@ struct RpcErrorDetail {
     message: String,
 }
 
-fn remap_method(method: &str) -> String {
+fn remap_to_walletd(method: &str) -> String {
     match method {
-        "getBalance" => "getbalance".to_string(),
-        "getAddresses" => "get_address".to_string(),
-        "getTransactions" => "get_transfers".to_string(),
-        "sendTransaction" => "transfer".to_string(),
-        "getStatus" => "get_height".to_string(),
-        "cd::list" => "list_cds".to_string(),
-        "cd::create" => "create_cd".to_string(),
-        "cd::claim" => "withdraw_cd".to_string(),
-        "cd::market_list" => "getcdoffers".to_string(),
-        "cd::sell" => "submitcd".to_string(),
-        "cd::buy" => "submitcd".to_string(),
-        "cd::cancel_listing" => "cancelcd".to_string(),
-        "cd::apy" => "estimate_cd_yield".to_string(),
-        _ => method.to_string(),
-    }
+        "getBalance" => "getbalance",
+        "getAddresses" => "get_address",
+        "getAddress" => "get_address",
+        "getTransactions" => "get_transfers",
+        "sendTransaction" => "transfer",
+        "getStatus" => "get_height",
+        "start_mining" => "start_mining",
+        "stop_mining" => "stop_mining",
+        "list_cds" => "list_cds",
+        "cd::list" => "list_cds",
+        "cd::create" => "create_cd",
+        "cd::claim" => "withdraw_cd",
+        "create_integrated" => "create_integrated",
+        _ => method,
+    }.to_string()
 }
 
 fn remap_params(method: &str, params: &serde_json::Value) -> serde_json::Value {
     match method {
         "sendTransaction" => {
-            // Dart sends {destinations, fee, anonymity, paymentId}
-            // walletd expects {destinations, fee, mixin, unlock_time}
             let destinations = params.get("destinations").cloned()
                 .unwrap_or(serde_json::Value::Array(vec![]));
             let fee = params.get("fee").cloned()
@@ -84,89 +77,35 @@ fn remap_params(method: &str, params: &serde_json::Value) -> serde_json::Value {
             out
         }
         "cd::create" => {
-            // Dart sends {coin, amount, duration_blocks}
-            // walletd expects {amount, term}
             let amount = params.get("amount").cloned()
                 .unwrap_or(serde_json::json!("0"));
             let term = params.get("duration_blocks").cloned()
                 .unwrap_or(serde_json::json!(1440));
-            serde_json::json!({
-                "amount": amount,
-                "term": term,
-            })
+            serde_json::json!({"amount": amount, "term": term})
         }
         "cd::claim" => {
-            // Dart sends {cd_id}
-            // walletd expects {deposit_id}
             let deposit_id = params.get("cd_id").cloned()
                 .unwrap_or(serde_json::json!(""));
             serde_json::json!({"deposit_id": deposit_id})
-        }
-        "cd::sell" => {
-            // Dart sends {cd_id, price}
-            // fuegod expects {offerId, isSell, cdAmount, cdTerm, cdEpoch, cdKeyImage, askPrice, makerPubKey, signature, ttlBlocks}
-            // This is a simplified stub — real implementation needs wallet signing
-            let cd_id = params.get("cd_id").cloned()
-                .unwrap_or(serde_json::json!(""));
-            let price = params.get("price").cloned()
-                .unwrap_or(serde_json::json!("0"));
-            serde_json::json!({
-                "offerId": "",
-                "isSell": true,
-                "cdAmount": cd_id,
-                "cdTerm": 0,
-                "cdEpoch": 0,
-                "cdKeyImage": "",
-                "askPrice": price,
-                "makerPubKey": "",
-                "signature": "",
-                "ttlBlocks": 1440,
-            })
-        }
-        "cd::buy" => {
-            // Dart sends {listing_id}
-            // fuegod expects {offerId, amount, takerPubKey, proofOfFunds}
-            let listing_id = params.get("listing_id").cloned()
-                .unwrap_or(serde_json::json!(""));
-            serde_json::json!({
-                "offerId": listing_id,
-                "amount": 0,
-                "takerPubKey": "",
-                "proofOfFunds": "",
-            })
-        }
-        "cd::cancel_listing" => {
-            // Dart sends {listing_id}
-            // fuegod expects {offerId, makerPubKey, signature}
-            let listing_id = params.get("listing_id").cloned()
-                .unwrap_or(serde_json::json!(""));
-            serde_json::json!({
-                "offerId": listing_id,
-                "makerPubKey": "",
-                "signature": "",
-            })
         }
         _ => params.clone(),
     }
 }
 
-fn is_walletd_method(method: &str) -> bool {
+/// Methods that MUST go through walletd (wallet state operations)
+fn needs_walletd(method: &str) -> bool {
     matches!(method,
-        "getAddresses" | "getBalance" | "getTransactions" | "sendTransaction" |
-        "getAddress" | "getStatus" |
+        "getBalance" | "getAddresses" | "getAddress" | "getTransactions" |
+        "sendTransaction" | "getStatus" |
         "start_mining" | "stop_mining" |
-        "mint_heat" | "swap" | "add_liq" | "remove_liq" |
-        "create_integrated" | "store" | "get_messages" |
-        "get_payments" | "get_outputs" | "optimize" |
-        "estimate_fusion" | "send_fusion" |
-        "sign_offer" | "sign_cancel" |
-        "initiate_swap" | "complete_swap" | "refund_swap" |
-        "heat_mint" | "send_heat" | "amm_swap" | "amm_add_liquidity" | "heat_deposit" |
-        "list_cds" | "create_cd" | "withdraw_cd" | "rollover_cd" | "estimate_cd_yield"
+        "create_integrated" |
+        "list_cds" | "cd::list" | "cd::create" | "cd::claim"
     )
 }
 
+/// Everything else goes straight to fuegod
 fn is_fuegod_method(method: &str) -> bool {
+    // Network/blockchain queries
     matches!(method,
         "getinfo" | "getheight" | "getblockcount" | "on_getblockhash" | "getblock" |
         "getlastblockheader" | "getblockheaderbyhash" | "getblockheaderbyheight" |
@@ -174,15 +113,19 @@ fn is_fuegod_method(method: &str) -> bool {
         "gettransactions" | "sendrawtransaction" |
         "getrandom_outs_json" | "get_outputs_heights" |
         "check_tx_proof" | "check_reserve_proof" |
-        "getcdoffers" | "submitcd" | "cancelcd" |
+        // CD market operations (fuego RPC, not walletd)
+        "getcdoffers" | "submitcd" | "cancelcd" | "estimate_cd_yield" |
+        "cd::market_list" | "cd::sell" | "cd::buy" | "cd::cancel_listing" | "cd::apy" |
+        // AMM / HEAT
         "heat_metrics" | "amm_quote" | "amm_pool_info" |
         "get_orderbook_state" | "get_orderbook_info" | "get_orderbook_estimates" |
         "get_fuego_price" | "getswapoffers" | "getswapprice" | "getswaptrades" |
         "submitswap" | "cancelswap" | "requestswap" |
+        "getactiveswaps" | "initiate" | "accept" | "processswap" | "refundswap" |
+        // Deposits / treasury
         "getdeposits" | "get_block_range" | "get_maturing_deposits" |
         "rollover_deposit" | "get_fee_pool_info" | "get_epoch_history" |
-        "estimate_cd_yield" | "get_treasury_info" | "get_alias" | "get_alias_by_address" | "get_all_aliases" |
-        "getactiveswaps" | "initiate" | "accept" | "processswap" | "refundswap"
+        "get_treasury_info" | "get_alias" | "get_alias_by_address" | "get_all_aliases"
     )
 }
 
@@ -216,41 +159,22 @@ async fn json_rpc_handler(
     let method = body.get("method").and_then(|v| v.as_str()).unwrap_or("");
     let params = body.get("params").cloned().unwrap_or(serde_json::Value::Null);
 
-    let result: Result<serde_json::Value, String> = match method {
-        "getinfo" => {
-            let wallet = state.wallet.lock().await;
-            wallet.wallet_status().await
-        }
-
-        "getheight" => {
-            let wallet = state.wallet.lock().await;
-            match wallet.wallet_status().await {
-                Ok(info) => {
-                    let h = info.get("height").and_then(|v| v.as_u64()).unwrap_or(0);
-                    Ok(serde_json::json!({"height": h}))
-                }
-                Err(e) => Err(e),
+    let result: Result<serde_json::Value, String> = if needs_walletd(method) {
+        match &state.walletd_url {
+            Some(url) => {
+                let walletd_method = remap_to_walletd(method);
+                let remapped_params = remap_params(method, &params);
+                let mut forwarded = body.clone();
+                forwarded["method"] = serde_json::json!(walletd_method);
+                forwarded["params"] = remapped_params;
+                proxy_to_walletd(url, &forwarded).await
             }
+            None => Err("walletd not running".into()),
         }
-
-        _ if is_walletd_method(method) => {
-            let walletd_method = remap_method(method);
-            let remapped_params = remap_params(method, &params);
-            let mut forwarded = body.clone();
-            forwarded["method"] = serde_json::json!(walletd_method);
-            forwarded["params"] = remapped_params;
-
-            match &state.walletd_url {
-                Some(url) => proxy_to_walletd(url, &forwarded).await,
-                None => Err("walletd not running — start with fuego-wallet serve".into()),
-            }
-        }
-
-        _ if is_fuegod_method(method) => {
-            proxy_to_fuegod(&state.fuegod_url, &body).await
-        }
-
-        _ => Err(format!("unknown method: {}", method)),
+    } else if is_fuegod_method(method) {
+        proxy_to_fuegod(&state.fuegod_url, &body).await
+    } else {
+        Err(format!("unknown method: {}", method))
     };
 
     match result {
@@ -269,33 +193,50 @@ async fn json_rpc_handler(
 }
 
 async fn health_check(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    let client = reqwest::Client::new();
+
+    // Check fuegod (always available - embedded or remote)
+    let fuegod_ok = client.post(format!("{}/json_rpc", state.fuegod_url))
+        .json(&serde_json::json!({"jsonrpc":"2.0","id":1,"method":"getinfo","params":{}}))
+        .send().await
+        .map(|r| r.status().is_success())
+        .unwrap_or(false);
+
+    // Check walletd (optional - may not be running yet)
+    let walletd_ok = match &state.walletd_url {
+        Some(url) => client.post(format!("{}/json_rpc", url))
+            .json(&serde_json::json!({"jsonrpc":"2.0","id":1,"method":"getBalance","params":{}}))
+            .send().await
+            .map(|r| r.status().is_success())
+            .unwrap_or(false),
+        None => false,
+    };
+
     Json(serde_json::json!({
-        "status": "ok",
-        "service": "fuego-wallet",
-        "walletd": state.walletd_url.is_some(),
+        "status": if fuegod_ok { "ok" } else { "degraded" },
+        "fuego": fuegod_ok,
+        "walletd": walletd_ok,
     }))
 }
 
 pub async fn run_server(
-    wallet_state: WalletState,
     walletd_url: Option<String>,
     fuegod_url: &str,
     bind_addr: &str,
 ) -> Result<(), String> {
     let state = Arc::new(AppState {
-        wallet: Mutex::new(wallet_state),
         walletd_url,
         fuegod_url: fuegod_url.to_string(),
     });
 
-    let cors = CorsLayer::new()
+    let cors = tower_http::cors::CorsLayer::new()
         .allow_origin([
             "http://localhost:8070".parse().unwrap(),
             "http://127.0.0.1:8070".parse().unwrap(),
             "http://localhost:8080".parse().unwrap(),
         ])
-        .allow_methods(Any)
-        .allow_headers(Any);
+        .allow_methods(tower_http::cors::Any)
+        .allow_headers(tower_http::cors::Any);
 
     let app = Router::new()
         .route("/json_rpc", post(json_rpc_handler))

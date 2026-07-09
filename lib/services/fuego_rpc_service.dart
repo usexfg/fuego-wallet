@@ -48,7 +48,7 @@ class FuegoRPCService {
   // ── Daemon RPC (routed through Rust proxy → fuegod) ──
 
   Future<Map<String, dynamic>> getInfo() async {
-    return _makeRPCCall('getinfo', {});
+    return _makeDaemonRPCCall('getinfo', {});
   }
 
   Future<int> getHeight() async {
@@ -294,6 +294,34 @@ class FuegoRPCService {
   }
 
   // ── Private helpers ──
+
+  Future<Map<String, dynamic>> _makeDaemonRPCCall(
+    String method,
+    dynamic params,
+  ) async {
+    try {
+      // Get daemon host from current node URL
+      final uri = Uri.parse(_baseUrl);
+      final daemonUrl = 'http://${uri.host}:${_networkConfig.daemonRpcPort}';
+      final response = await _dio.post(
+        '$daemonUrl/json_rpc',
+        data: json.encode({
+          'jsonrpc': '2.0',
+          'id': DateTime.now().millisecondsSinceEpoch,
+          'method': method,
+          'params': params,
+        }),
+      );
+
+      final data = response.data as Map<String, dynamic>;
+      if (data.containsKey('error')) {
+        throw FuegoRPCException(data['error']['message'] as String);
+      }
+      return data['result'] as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw FuegoRPCException('Network error: ${e.message}');
+    }
+  }
 
   Future<Map<String, dynamic>> _makeRPCCall(
     String method,

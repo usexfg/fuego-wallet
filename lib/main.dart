@@ -73,8 +73,8 @@ Future<void> _startBackend() async {
     return;
   }
 
-  // Wait for backend to be ready (server + walletd)
-  for (var i = 0; i < 60; i++) {
+  // Wait for backend to be ready (fuego daemon + optional walletd)
+  for (var i = 0; i < 120; i++) {
     try {
       final resp = await HttpClient()
           .getUrl(Uri.parse('http://127.0.0.1:$_backendPort/health'))
@@ -87,9 +87,9 @@ Future<void> _startBackend() async {
       }
       print('[backend] Health check $i: HTTP ${resp.statusCode} — $body');
     } catch (e) {
-      print('[backend] Health check $i: $e');
+      if (i % 10 == 0) print('[backend] Health check $i: $e');
     }
-    await Future.delayed(const Duration(seconds: 2));
+    await Future.delayed(const Duration(seconds: 1));
   }
   print('[backend] ERROR: Backend did not become ready after 120s');
   if (!_backendReady.isCompleted) _backendReady.complete();
