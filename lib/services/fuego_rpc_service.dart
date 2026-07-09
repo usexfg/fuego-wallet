@@ -77,9 +77,15 @@ class FuegoRPCService {
       final response = await _makeRPCCall('getBalance', {});
       final info = await getInfo();
       
+      // Try to get local height from walletd getStatus
+      int localHeight = 0;
+      try {
+        final status = await _makeRPCCall('getStatus', {});
+        localHeight = status['blockCount'] as int? ?? status['block_count'] as int? ?? 0;
+      } catch (_) {}
+      
       final available = response['availableBalance'] ?? response['balance'] ?? response['available_balance'] ?? 0;
       final locked = response['lockedAmount'] ?? response['locked_amount'] ?? 0;
-      final blockCount = response['blockCount'] ?? response['block_count'] ?? 0;
       
       return Wallet(
         address: '',
@@ -88,8 +94,8 @@ class FuegoRPCService {
         balance: available as int,
         unlockedBalance: locked as int,
         blockchainHeight: info['height'] as int,
-        localHeight: blockCount as int,
-        synced: (info['height'] - blockCount) <= 1,
+        localHeight: localHeight,
+        synced: localHeight > 0 ? (info['height'] - localHeight) <= 1 : false,
       );
     } catch (e) {
       throw FuegoRPCException('Failed to get balance: $e');

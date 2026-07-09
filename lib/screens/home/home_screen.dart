@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/core.dart';
 import '../../bloc/wallet/wallet_cubit.dart';
@@ -81,11 +82,11 @@ class _HomeScreenState extends State<HomeScreen> {
             _showBalance ? '${state.unlockedBalanceXfg.toStringAsFixed(decimalPlaces)} available' : '••••••••',
             style: const TextStyle(color: Colors.white60, fontSize: 13),
           ),
-          if (state.blockHeight > 0)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text('Block $state.blockHeight', style: const TextStyle(color: Colors.white38, fontSize: 11)),
-            ),
+              if (state.blockHeight > 0)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text('Block ${state.blockHeight.toString()}', style: const TextStyle(color: Colors.white38, fontSize: 11)),
+                ),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -105,6 +106,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _addressCard(WalletState state) {
+    final addr = state.address ?? '';
+    if (addr.isEmpty) return const SizedBox.shrink();
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -116,15 +119,17 @@ class _HomeScreenState extends State<HomeScreen> {
           const Icon(Icons.wallet, color: AppTheme.primaryColor, size: 16),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              state.address!,
+            child: SelectableText(
+              addr,
               style: const TextStyle(color: AppTheme.textPrimary, fontSize: 11, fontFamily: 'monospace'),
-              overflow: TextOverflow.ellipsis,
             ),
           ),
           GestureDetector(
             onTap: () {
-              // copy to clipboard
+              Clipboard.setData(ClipboardData(text: addr));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Address copied'), duration: Duration(seconds: 2)),
+              );
             },
             child: const Icon(Icons.copy, color: AppTheme.textMuted, size: 14),
           ),

@@ -71,6 +71,17 @@ class FuegoDaemonClient {
     return NetworkInfo.fromJson(result);
   }
 
+  Future<String> getWalletAddress() async {
+    final r = await _post('/json_rpc', {
+      'jsonrpc': '2.0',
+      'id': 'fuego_core',
+      'method': 'getinfo',
+      'params': {},
+    }, useWallet: true);
+    final result = r['result'] as Map<String, dynamic>? ?? r;
+    return (result['address'] as String?) ?? '';
+  }
+
   Future<int> getPeerCount() async {
     final r = await _post('/json_rpc', {
       'jsonrpc': '2.0',

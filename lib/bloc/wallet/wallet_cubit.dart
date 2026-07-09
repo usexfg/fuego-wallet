@@ -119,10 +119,10 @@ class WalletCubit extends Cubit<WalletState> {
         int bal = 0;
         List<FuegoTransaction> txs = [];
         try {
-          addr = await _daemon.getAddress();
-          print('[wallet] attempt $attempt: getAddress OK — $addr');
+          addr = await _daemon.getWalletAddress();
+          print('[wallet] attempt $attempt: getWalletAddress OK — $addr');
         } catch (e) {
-          print('[wallet] attempt $attempt: getAddress FAILED — $e');
+          print('[wallet] attempt $attempt: getWalletAddress FAILED — $e');
         }
         try {
           bal = await _daemon.getBalance();
@@ -171,7 +171,7 @@ class WalletCubit extends Cubit<WalletState> {
 
   Future<String> getAddress() async {
     try {
-      return await _daemon.getAddress();
+      return await _daemon.getWalletAddress();
     } catch (_) {
       return state.address ?? '';
     }
@@ -233,7 +233,7 @@ class WalletCubit extends Cubit<WalletState> {
   }
 
   Future<String> createIntegratedAddress(String paymentId) async {
-    final addr = await _daemon.getAddress();
+    final addr = await _daemon.getWalletAddress();
     return '$addr?payment_id=$paymentId';
   }
 }
