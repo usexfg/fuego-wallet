@@ -1,46 +1,8 @@
-[package]
-name = "rust_fuego_wallet"
-version = "0.1.0"
-edition = "2021"
-description = "Fuego-native wallet — key management, balance, send, receive, swap"
-
 [workspace]
-
-[[bin]]
-name = "fuego-wallet"
-path = "src/main.rs"
-
-[dependencies]
-ed25519-dalek = { version = "2.1", features = ["rand_core"] }
-curve25519-dalek = { version = "4", features = ["digest"] }
-bip39 = { version = "2.1", features = ["rand_core", "zeroize", "std"], default-features = false }
-sha2 = "0.10"
-sha3 = "0.10"
-rand = "0.8"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-tokio = { version = "1", features = ["full"] }
-axum = { version = "0.7", features = ["macros"] }
-tower = "0.4"
-tower-http = { version = "0.5", features = ["cors"] }
-clap = { version = "4", features = ["derive"] }
-hex = "0.4"
-argon2 = "0.5"
-aes-gcm = "0.10"
-zeroize = { version = "1", features = ["zeroize_derive"] }
-keyring = "3"
-zip = "2"
-log = "0.4"
-env_logger = "0.11"
-directories = "5"
-thiserror = "1"
-url = "2"
-reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls"] }
-chrono = { version = "0.4", features = ["serde"] }
-num-bigint = "0.4"
-num-traits = "0.2"
-chacha20poly1305 = "0.11.0"
-
-[dev-dependencies]
-tokio-test = "0.4"
-tempfile = "3"
+members = [
+    "core",
+    "fuego-sdk/fuego-crypto",
+    "fuego-sdk/fuego-vault",
+    "fuego-sdk/fuego-ffi",
+]
+resolver = "2"

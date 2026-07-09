@@ -1,0 +1,282 @@
+import 'dart:ffi';
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:ffi/ffi.dart';
+
+/// Native Fuego library bindings via dart:ffi.
+class FuegoNative {
+  late final DynamicLibrary _lib;
+
+  FuegoNative() {
+    _lib = _openLibrary();
+  }
+
+  DynamicLibrary _openLibrary() {
+    if (Platform.isMacOS) return DynamicLibrary.open('libfuego_ffi.dylib');
+    if (Platform.isLinux) return DynamicLibrary.open('libfuego_ffi.so');
+    if (Platform.isWindows) return DynamicLibrary.open('fuego_ffi.dll');
+    throw UnsupportedError('Unsupported platform');
+  }
+
+  void _freeString(Pointer<Utf8> ptr) {
+    if (ptr != nullptr) {
+      _lib.lookupFunction<_FreeStringNative, _FreeStringDart>('fuego_string_free')(ptr);
+    }
+  }
+
+  void _freeBytes(Pointer<Uint8> ptr, int len) {
+    if (ptr != nullptr) {
+      _lib.lookupFunction<_FreeBytesNative, _FreeBytesDart>('fuego_bytes_free')(ptr, len);
+    }
+  }
+
+  String get version {
+    final fn = _lib.lookupFunction<_VersionNative, _VersionDart>('fuego_version');
+    final ptr = fn();
+    final s = ptr.toDartString();
+    _freeString(ptr);
+    return s;
+  }
+
+  /// Generate a random keypair.
+  Map<String, dynamic> keypairGenerate() {
+    final fn = _lib.lookupFunction<_KeypairGenNative, _KeypairGenDart>('fuego_keypair_generate');
+    final ptr = fn();
+    final json = ptr.toDartString();
+    _freeString(ptr);
+    return _parseJson(json);
+  }
+
+  /// Create keypair from 32-byte secret.
+  Map<String, dynamic> keypairFromSecret(List<int> secret) {
+    assert(secret.length == 32);
+    final ptr = _allocBytes(secret);
+    final fn = _lib.lookupFunction<_KeypairFromSecretNative, _KeypairFromSecretDart>('fuego_keypair_from_secret');
+    final result = fn(ptr);
+    final json = result.toDartString();
+    _freeString(result);
+    calloc.free(ptr);
+    return _parseJson(json);
+  }
+
+  /// Generate Fuego address from spend + view public keys.
+  String makeAddress(List<int> spendPub, List<int> viewPub) {
+    assert(spendPub.length == 32 && viewPub.length == 32);
+    final spendPtr = _allocBytes(spendPub);
+    final viewPtr = _allocBytes(viewPub);
+    final fn = _lib.lookupFunction<_MakeAddressNative, _MakeAddressDart>('fuego_make_address');
+    final result = fn(spendPtr, viewPtr);
+    final addr = result.toDartString();
+    _freeString(result);
+    calloc.free(spendPtr);
+    calloc.free(viewPtr);
+    return addr;
+  }
+
+  /// Generate a new vault.
+  Uint8List vaultGenerate() {
+    final fn = _lib.lookupFunction<_VaultGenNative, _VaultGenDart>('fuego_vault_generate');
+    final result = fn();
+    return _bytesToList(result);
+  }
+
+  /// Create vault from 32-byte seed.
+  Uint8List vaultFromSeed(List<int> seed) {
+    assert(seed.length == 32);
+    final ptr = _allocBytes(seed);
+    final fn = _lib.lookupFunction<_VaultFromSeedNative, _VaultFromSeedDart>('fuego_vault_from_seed');
+    final result = fn(ptr);
+    final bytes = _bytesToList(result);
+    calloc.free(ptr);
+    return bytes;
+  }
+
+  /// Get address from vault at index.
+  String vaultGetAddress(Uint8List vaultBytes, int index) {
+    final vaultPtr = _allocUint8List(vaultBytes);
+    final fn = _lib.lookupFunction<_VaultGetAddrNative, _VaultGetAddrDart>('fuego_vault_get_address');
+    final result = fn(vaultPtr, vaultBytes.length, index);
+    final addr = result.toDartString();
+    _freeString(result);
+    calloc.free(vaultPtr);
+    return addr;
+  }
+
+  /// Derive keypair from vault at index.
+  Map<String, dynamic> vaultDeriveKeypair(Uint8List vaultBytes, int index) {
+    final vaultPtr = _allocUint8List(vaultBytes);
+    final fn = _lib.lookupFunction<_VaultDeriveKPNative, _VaultDeriveKPDart>('fuego_vault_derive_keypair');
+    final result = fn(vaultPtr, vaultBytes.length, index);
+    final json = result.toDartString();
+    _freeString(result);
+    calloc.free(vaultPtr);
+    return _parseJson(json);
+  }
+
+  /// Save vault to file.
+  bool vaultSave(Uint8List vaultBytes, String path) {
+    final vaultPtr = _allocUint8List(vaultBytes);
+    final pathPtr = path.toNativeUtf8();
+    final fn = _lib.lookupFunction<_VaultSaveNative, _VaultSaveDart>('fuego_vault_save');
+    final result = fn(vaultPtr, vaultBytes.length, pathPtr);
+    final ok = result.field0;
+    if (result.field1 != nullptr) _freeString(result.field1);
+    calloc.free(vaultPtr);
+    calloc.free(pathPtr);
+    return ok;
+  }
+
+  /// Load vault from file.
+  Uint8List? vaultLoad(String path) {
+    final pathPtr = path.toNativeUtf8();
+    final fn = _lib.lookupFunction<_VaultLoadNative, _VaultLoadDart>('fuego_vault_load');
+    final result = fn(pathPtr);
+    calloc.free(pathPtr);
+    if (result.ptr == nullptr) return null;
+    return _bytesToList(result);
+  }
+
+  /// Generate key derivation.
+  String generateKeyDerivation(List<int> key1, List<int> secret2) {
+    assert(key1.length == 32 && secret2.length == 32);
+    final key1Ptr = _allocBytes(key1);
+    final secret2Ptr = _allocBytes(secret2);
+    final fn = _lib.lookupFunction<_GenKeyDerivNative, _GenKeyDerivDart>('fuego_generate_key_derivation');
+    final result = fn(key1Ptr, secret2Ptr);
+    final hex = result.toDartString();
+    _freeString(result);
+    calloc.free(key1Ptr);
+    calloc.free(secret2Ptr);
+    return hex;
+  }
+
+  /// Derive public key from derivation.
+  String derivePublicKey(List<int> derivation, int outputIndex) {
+    assert(derivation.length == 32);
+    final derivPtr = _allocBytes(derivation);
+    final fn = _lib.lookupFunction<_DerivePubKeyNative, _DerivePubKeyDart>('fuego_derive_public_key');
+    final result = fn(derivPtr, outputIndex);
+    final hex = result.toDartString();
+    _freeString(result);
+    calloc.free(derivPtr);
+    return hex;
+  }
+
+  /// Generate key image.
+  String generateKeyImage(List<int> pubkey, List<int> secret) {
+    assert(pubkey.length == 32 && secret.length == 32);
+    final pkPtr = _allocBytes(pubkey);
+    final skPtr = _allocBytes(secret);
+    final fn = _lib.lookupFunction<_GenKeyImageNative, _GenKeyImageDart>('fuego_generate_key_image');
+    final result = fn(pkPtr, skPtr);
+    final hex = result.toDartString();
+    _freeString(result);
+    calloc.free(pkPtr);
+    calloc.free(skPtr);
+    return hex;
+  }
+
+  // ── Helpers ──
+
+  Pointer<Uint8> _allocBytes(List<int> data) {
+    final ptr = calloc<Uint8>(data.length);
+    for (var i = 0; i < data.length; i++) {
+      ptr[i] = data[i];
+    }
+    return ptr;
+  }
+
+  Pointer<Uint8> _allocUint8List(Uint8List data) {
+    final ptr = calloc<Uint8>(data.length);
+    ptr.asTypedList(data.length).setAll(0, data);
+    return ptr;
+  }
+
+  Uint8List _bytesToList(FuegoBytes bytes) {
+    if (bytes.ptr == nullptr || bytes.len == 0) return Uint8List(0);
+    final list = Uint8List.fromList(bytes.ptr.asTypedList(bytes.len));
+    _freeBytes(bytes.ptr, bytes.len);
+    return list;
+  }
+
+  Map<String, dynamic> _parseJson(String json) {
+    try {
+      final trimmed = json.trim();
+      if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) return {};
+      final inner = trimmed.substring(1, trimmed.length - 1);
+      final map = <String, dynamic>{};
+      for (final part in inner.split(',')) {
+        final kv = part.split(':');
+        if (kv.length == 2) {
+          final key = kv[0].trim().replaceAll('"', '');
+          final value = kv[1].trim().replaceAll('"', '');
+          map[key] = value;
+        }
+      }
+      return map;
+    } catch (_) {
+      return {};
+    }
+  }
+}
+
+// ── FFI structs ──
+
+final class FuegoBytes extends Struct {
+  external Pointer<Uint8> ptr;
+  @Int32()
+  external int len;
+}
+
+final class FuegoResult extends Struct {
+  @Bool()
+  external bool field0;
+  external Pointer<Utf8> field1;
+}
+
+// ── Native/Dart function type pairs ──
+
+typedef _FreeStringNative = Void Function(Pointer<Utf8>);
+typedef _FreeStringDart = void Function(Pointer<Utf8>);
+
+typedef _FreeBytesNative = Void Function(Pointer<Uint8>, Int32);
+typedef _FreeBytesDart = void Function(Pointer<Uint8>, int);
+
+typedef _VersionNative = Pointer<Utf8> Function();
+typedef _VersionDart = Pointer<Utf8> Function();
+
+typedef _KeypairGenNative = Pointer<Utf8> Function();
+typedef _KeypairGenDart = Pointer<Utf8> Function();
+
+typedef _KeypairFromSecretNative = Pointer<Utf8> Function(Pointer<Uint8>);
+typedef _KeypairFromSecretDart = Pointer<Utf8> Function(Pointer<Uint8>);
+
+typedef _MakeAddressNative = Pointer<Utf8> Function(Pointer<Uint8>, Pointer<Uint8>);
+typedef _MakeAddressDart = Pointer<Utf8> Function(Pointer<Uint8>, Pointer<Uint8>);
+
+typedef _VaultGenNative = FuegoBytes Function();
+typedef _VaultGenDart = FuegoBytes Function();
+
+typedef _VaultFromSeedNative = FuegoBytes Function(Pointer<Uint8>);
+typedef _VaultFromSeedDart = FuegoBytes Function(Pointer<Uint8>);
+
+typedef _VaultGetAddrNative = Pointer<Utf8> Function(Pointer<Uint8>, Int32, Int32);
+typedef _VaultGetAddrDart = Pointer<Utf8> Function(Pointer<Uint8>, int, int);
+
+typedef _VaultDeriveKPNative = Pointer<Utf8> Function(Pointer<Uint8>, Int32, Int32);
+typedef _VaultDeriveKPDart = Pointer<Utf8> Function(Pointer<Uint8>, int, int);
+
+typedef _VaultSaveNative = FuegoResult Function(Pointer<Uint8>, Int32, Pointer<Utf8>);
+typedef _VaultSaveDart = FuegoResult Function(Pointer<Uint8>, int, Pointer<Utf8>);
+
+typedef _VaultLoadNative = FuegoBytes Function(Pointer<Utf8>);
+typedef _VaultLoadDart = FuegoBytes Function(Pointer<Utf8>);
+
+typedef _GenKeyDerivNative = Pointer<Utf8> Function(Pointer<Uint8>, Pointer<Uint8>);
+typedef _GenKeyDerivDart = Pointer<Utf8> Function(Pointer<Uint8>, Pointer<Uint8>);
+
+typedef _DerivePubKeyNative = Pointer<Utf8> Function(Pointer<Uint8>, Int64);
+typedef _DerivePubKeyDart = Pointer<Utf8> Function(Pointer<Uint8>, int);
+
+typedef _GenKeyImageNative = Pointer<Utf8> Function(Pointer<Uint8>, Pointer<Uint8>);
+typedef _GenKeyImageDart = Pointer<Utf8> Function(Pointer<Uint8>, Pointer<Uint8>);
