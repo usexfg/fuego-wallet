@@ -30,3 +30,17 @@
 2026-Jul-08 16:37:38.864013 INFO [WalletGreen/fd6cd] Container saving finished
 2026-Jul-08 16:37:38.864056 INFO [WalletGreen/fd6cd] Container saved
 2026-Jul-08 16:37:38.864080 INFO [generateNewWallet] Wallet is saved
+2026-Jul-08 21:04:53.685942 INFO [main] PaymentService  vWildfire || v1.10.03.1152(0.2)
+2026-Jul-08 21:04:53.688306 INFO [generateNewWallet] Generating new deterministic wallet
+2026-Jul-08 21:04:53.715041 INFO [WalletGreen/222b5] Container initialized with view secret key, public view key 222b54fde2db998e357e3d6dcb8bf8f5ea3dde2313a1ade0deabdc50f69377d6
+2026-Jul-08 21:04:53.715578 INFO [WalletGreen/222b5] New wallet added fire1vFSSuE9Ve7jNgdsBjRLTkfy6wNqgVZRW4gXxsM6ALqAakZhSx9djPpPGSkHq4QQuhZeAXPjQU3VUMHqUmqo6b8K5h4wHm, creation timestamp 1783559093
+2026-Jul-08 21:04:53.715689 INFO [generateNewWallet] New deterministic wallet is generated. Address: fire1vFSSuE9Ve7jNgdsBjRLTkfy6wNqgVZRW4gXxsM6ALqAakZhSx9djPpPGSkHq4QQuhZeAXPjQU3VUMHqUmqo6b8K5h4wHm
+2026-Jul-08 21:04:53.715766 INFO [generateNewWallet] New wallet generated.
+2026-Jul-08 21:04:53.715800 INFO [generateNewWallet] Address: fire1vFSSuE9Ve7jNgdsBjRLTkfy6wNqgVZRW4gXxsM6ALqAakZhSx9djPpPGSkHq4QQuhZeAXPjQU3VUMHqUmqo6b8K5h4wHm
+2026-Jul-08 21:04:53.715829 INFO [generateNewWallet] Secret spend key: <redacted>
+2026-Jul-08 21:04:53.715855 INFO [generateNewWallet] Secret view key: <redacted>
+2026-Jul-08 21:04:53.715877 INFO [WalletGreen/222b5] Saving container...
+2026-Jul-08 21:04:53.715945 INFO [WalletGreen/222b5] Saving cache...
+2026-Jul-08 21:04:53.719219 INFO [WalletGreen/222b5] Container saving finished
+2026-Jul-08 21:04:53.719270 INFO [WalletGreen/222b5] Container saved
+2026-Jul-08 21:04:53.719295 INFO [generateNewWallet] Wallet is saved

@@ -85,7 +85,7 @@ class _HomeScreenState extends State<HomeScreen> {
               if (state.blockHeight > 0)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
-                  child: Text('Block ${state.blockHeight.toString()}', style: const TextStyle(color: Colors.white38, fontSize: 11)),
+                  child: Text('Block ${state.blockHeight}', style: const TextStyle(color: Colors.white38, fontSize: 11)),
                 ),
           const SizedBox(height: 16),
           Row(
