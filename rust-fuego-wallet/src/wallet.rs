@@ -25,7 +25,7 @@ pub struct BalanceResult {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AddressResult {
-    pub addresses: Vec<String>,
+    pub address: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -186,7 +186,7 @@ impl WalletState {
 
     pub async fn get_addresses(&self) -> Result<AddressResult, String> {
         let addr = self.address().ok_or("wallet locked")?;
-        Ok(AddressResult { addresses: vec![addr] })
+        Ok(AddressResult { address: addr })
     }
 
     pub async fn get_transactions(&self, _block_count: u64, _first_block_index: u64) -> Result<TransactionsResult, String> {

@@ -44,3 +44,19 @@
 2026-Jul-08 21:04:53.719219 INFO [WalletGreen/222b5] Container saving finished
 2026-Jul-08 21:04:53.719270 INFO [WalletGreen/222b5] Container saved
 2026-Jul-08 21:04:53.719295 INFO [generateNewWallet] Wallet is saved
+2026-Jul-09 05:47:24.986269 ERROR [WalletGreen/222b5] Failed to save container: MemoryMappedFile::rename: No such file or directory
+2026-Jul-09 05:47:24.986700 WARNING [saveWallet] Couldn't save container: MemoryMappedFile::rename: No such file or directory
+2026-Jul-09 06:08:13.027847 INFO [main] PaymentService  vWildfire || v1.10.03.1152(0.2)
+2026-Jul-09 06:08:13.030642 INFO [generateNewWallet] Generating new deterministic wallet
+2026-Jul-09 06:08:13.066629 INFO [WalletGreen/10b63] Container initialized with view secret key, public view key 10b63ea720ec963db7656382bf218cdbd1ea974df6a84ddc8cd32ee8103236f2
+2026-Jul-09 06:08:13.067414 INFO [WalletGreen/10b63] New wallet added fireAhGx5YA3fS48DEquVkhj497aV3opoL9Hsm31hjCqeS3XaHpSn47gaBy6Zte3Yz6cUoCPrnVLZV9m9AdF2H9y2uNPUkD8Qh, creation timestamp 1783591693
+2026-Jul-09 06:08:13.067513 INFO [generateNewWallet] New deterministic wallet is generated. Address: fireAhGx5YA3fS48DEquVkhj497aV3opoL9Hsm31hjCqeS3XaHpSn47gaBy6Zte3Yz6cUoCPrnVLZV9m9AdF2H9y2uNPUkD8Qh
+2026-Jul-09 06:08:13.067559 INFO [generateNewWallet] New wallet generated.
+2026-Jul-09 06:08:13.067588 INFO [generateNewWallet] Address: fireAhGx5YA3fS48DEquVkhj497aV3opoL9Hsm31hjCqeS3XaHpSn47gaBy6Zte3Yz6cUoCPrnVLZV9m9AdF2H9y2uNPUkD8Qh
+2026-Jul-09 06:08:13.067623 INFO [generateNewWallet] Secret spend key: <redacted>
+2026-Jul-09 06:08:13.067648 INFO [generateNewWallet] Secret view key: <redacted>
+2026-Jul-09 06:08:13.067722 INFO [WalletGreen/10b63] Saving container...
+2026-Jul-09 06:08:13.067990 INFO [WalletGreen/10b63] Saving cache...
+2026-Jul-09 06:08:13.070505 INFO [WalletGreen/10b63] Container saving finished
+2026-Jul-09 06:08:13.070559 INFO [WalletGreen/10b63] Container saved
+2026-Jul-09 06:08:13.070586 INFO [generateNewWallet] Wallet is saved

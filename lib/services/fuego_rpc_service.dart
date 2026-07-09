@@ -2,7 +2,6 @@
 // Copyright (c) 2025 Elderfire Privacy Group
 
 import 'dart:convert';
-import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:crypto/crypto.dart';
 import '../models/wallet.dart';
@@ -15,7 +14,6 @@ class FuegoRPCService {
   final String? _password;
   NetworkConfig _networkConfig;
 
-  // Default remote Fuego nodes (public community nodes)
   static const List<String> defaultRemoteNodes = [
     '207.244.247.64:18180'
   ];
@@ -34,26 +32,21 @@ class FuegoRPCService {
          headers: {'Content-Type': 'application/json'},
        ));
 
-  // Update connection to a new node
   void updateNode(String host, {int? port}) {
     _baseUrl = 'http://$host:${port ?? _networkConfig.daemonRpcPort}';
   }
 
-  // Update network configuration
   void updateNetworkConfig(NetworkConfig config) {
     _networkConfig = config;
-    // Update base URL with new port if needed
     final uri = Uri.parse(_baseUrl);
     _baseUrl = 'http://${uri.host}:${config.daemonRpcPort}';
   }
 
-  // Get current network configuration
   NetworkConfig get networkConfig => _networkConfig;
-
-  // Get current node URL
   String get currentNodeUrl => _baseUrl;
 
-  // Daemon RPC Methods
+  // ── Daemon RPC (routed through Rust proxy → fuegod) ──
+
   Future<Map<String, dynamic>> getInfo() async {
     return _makeRPCCall('getinfo', {});
   }
@@ -71,22 +64,24 @@ class FuegoRPCService {
     return _makeRPCCall('getblock', {'hash': hash});
   }
 
-  // Wallet RPC Methods (requires wallet service running)
+  // ── Wallet RPC (routed through Rust proxy → walletd) ──
+
   Future<Wallet> getBalance() async {
     try {
+      // getBalance → proxy remaps to walletd's "getbalance"
       final response = await _makeRPCCall('getBalance', {});
       final info = await getInfo();
       final bchainHeight = info['height'] as int;
 
-      // Try to get local height from walletd getStatus
       int localHeight = 0;
       try {
+        // getStatus → proxy remaps to walletd's "get_height"
         final status = await _makeRPCCall('getStatus', {});
-        localHeight = status['blockCount'] as int? ?? status['block_count'] as int? ?? 0;
+        localHeight = status['height'] as int? ?? 0;
       } catch (_) {}
 
-      final available = response['availableBalance'] ?? response['balance'] ?? response['available_balance'] ?? 0;
-      final locked = response['lockedAmount'] ?? response['locked_amount'] ?? 0;
+      final available = response['available_balance'] ?? response['availableBalance'] ?? response['balance'] ?? 0;
+      final locked = response['locked_amount'] ?? response['lockedAmount'] ?? 0;
 
       final effectiveLocal = localHeight > 0 ? localHeight : bchainHeight;
 
@@ -107,9 +102,9 @@ class FuegoRPCService {
 
   Future<String> getAddress() async {
     try {
+      // getAddresses → proxy remaps to walletd's "get_address"
       final response = await _makeRPCCall('getAddresses', {});
-      final addresses = response['addresses'] as List? ?? [];
-      return addresses.isNotEmpty ? addresses.first.toString() : '';
+      return response['address'] as String? ?? '';
     } catch (e) {
       throw FuegoRPCException('Failed to get address: $e');
     }
@@ -120,35 +115,24 @@ class FuegoRPCService {
     int firstBlockIndex = 0,
   }) async {
     try {
-      final response = await _makeRPCCall('getTransactions', {
-        'blockCount': blockCount,
-        'firstBlockIndex': firstBlockIndex,
-      });
+      // getTransactions → proxy remaps to walletd's "get_transfers"
+      final response = await _makeRPCCall('getTransactions', {});
 
-      final items = response['items'] as List? ?? [];
-      return items.map((item) {
-        final transactions = item['transactions'] as List? ?? [];
-        return transactions.map((tx) {
-          final txMap = tx as Map<String, dynamic>;
-          return WalletTransaction(
-            txid: txMap['transactionHash'] ?? txMap['transaction_hash'] ?? '',
-            amount: (txMap['amount'] ?? 0) as int,
-            fee: (txMap['fee'] ?? 0) as int,
-            paymentId: txMap['paymentId'] ?? txMap['payment_id'] ?? '',
-            blockHeight: item['blockIndex'] ?? item['block_index'] ?? 0,
-            timestamp: (txMap['timestamp'] ?? 0) as int,
-            isSpending: ((txMap['amount'] ?? 0) as int) < 0,
-            address: (() {
-              final transfers = txMap['transfers'] as List?;
-              if (transfers != null && transfers.isNotEmpty) {
-                return transfers[0]['address'] as String?;
-              }
-              return null;
-            })(),
-            confirmations: (txMap['confirmations'] ?? 0) as int,
-          );
-        }).toList();
-      }).expand((x) => x).toList();
+      final transfers = response['transfers'] as List? ?? [];
+      return transfers.map((tx) {
+        final txMap = tx as Map<String, dynamic>;
+        return WalletTransaction(
+          txid: txMap['transactionHash'] ?? txMap['transaction_hash'] ?? '',
+          amount: (txMap['amount'] ?? 0) as int,
+          fee: (txMap['fee'] ?? 0) as int,
+          paymentId: txMap['paymentId'] ?? txMap['payment_id'] ?? '',
+          blockHeight: txMap['blockIndex'] ?? txMap['block_index'] ?? 0,
+          timestamp: (txMap['time'] ?? 0) as int,
+          isSpending: ((txMap['amount'] ?? 0) as int) < 0,
+          address: txMap['address'] as String?,
+          confirmations: 0,
+        );
+      }).toList();
     } catch (e) {
       throw FuegoRPCException('Failed to get transactions: $e');
     }
@@ -156,6 +140,8 @@ class FuegoRPCService {
 
   Future<String> sendTransaction(SendTransactionRequest request) async {
     try {
+      // sendTransaction → proxy remaps to walletd's "transfer"
+      // Proxy also converts anonymity → mixin, adds unlock_time
       final response = await _makeRPCCall('sendTransaction', {
         'destinations': [{
           'amount': request.amount,
@@ -165,41 +151,40 @@ class FuegoRPCService {
         'anonymity': request.mixins,
         'paymentId': request.paymentId.isNotEmpty ? request.paymentId : null,
       });
-      
-      return response['transactionHash'] as String;
+
+      return response['tx_hash'] as String? ?? response['transactionHash'] as String? ?? '';
     } catch (e) {
       throw FuegoRPCException('Failed to send transaction: $e');
     }
   }
 
-Future<String> createIntegratedAddress(String paymentId) async {
-  try {
-    // Validate payment ID (must be 64 hex characters)
-    if (paymentId.length != 64 || !RegExp(r'^[0-9a-fA-F]+$').hasMatch(paymentId)) {
-      throw FuegoRPCException('Invalid payment ID: must be 64 hex characters');
-    }
+  Future<String> createIntegratedAddress(String paymentId) async {
+    try {
+      if (paymentId.length != 64 || !RegExp(r'^[0-9a-fA-F]+$').hasMatch(paymentId)) {
+        throw FuegoRPCException('Invalid payment ID: must be 64 hex characters');
+      }
 
-    final address = await getAddress();
-    
-    // Call RPC method if available
-    final response = await _makeRPCCall('create_integrated', {
-      'address': address,
-      'payment_id': paymentId,
-    });
-    
-    return response['integrated_address'] as String;
-  } catch (e) {
-    throw FuegoRPCException('Failed to create integrated address: $e');
+      final address = await getAddress();
+
+      final response = await _makeRPCCall('create_integrated', {
+        'address': address,
+        'payment_id': paymentId,
+      });
+
+      return response['integrated_address'] as String;
+    } catch (e) {
+      throw FuegoRPCException('Failed to create integrated address: $e');
+    }
   }
-}
 
   Future<String> generatePaymentId() async {
-    final bytes = List<int>.generate(32, (i) => 
+    final bytes = List<int>.generate(32, (i) =>
         DateTime.now().millisecondsSinceEpoch + i);
     return sha256.convert(bytes).toString().substring(0, 64);
   }
 
-  // Mining Methods
+  // ── Mining (routed through proxy → fuegod) ──
+
   Future<bool> startMining({
     String? address,
     int threads = 1,
@@ -229,16 +214,25 @@ Future<String> createIntegratedAddress(String paymentId) async {
     try {
       final info = await getInfo();
       return {
-        'active': info['mining_speed'] as int > 0,
-        'speed': info['mining_speed'] as int,
-        'threads': info['threads_count'] as int? ?? 0,
+        'active': (info['mining_speed'] ?? 0) as int > 0,
+        'speed': (info['mining_speed'] ?? 0) as int,
+        'threads': (info['threads_count'] ?? 0) as int,
       };
     } catch (e) {
       throw FuegoRPCException('Failed to get mining status: $e');
     }
   }
 
-  // ── CD Methods (through mm2 v2 RPC) ──
+  // ── CD Methods ──
+  // cd::list → proxy remaps to walletd "list_cds"
+  // cd::create → proxy remaps to walletd "create_cd"
+  // cd::claim → proxy remaps to walletd "withdraw_cd"
+  // cd::market_list → proxy remaps to fuegod "getcdoffers"
+  // cd::sell → proxy remaps to fuegod "submitcd"
+  // cd::buy → proxy remaps to fuegod "submitcd"
+  // cd::cancel_listing → proxy remaps to fuegod "cancelcd"
+  // cd::apy → proxy remaps to fuegod/walletd "estimate_cd_yield"
+
   Future<CdListResult> cdList() async {
     final response = await _makeRPCCall('cd::list', {});
     return CdListResult.fromJson(response);
@@ -299,9 +293,10 @@ Future<String> createIntegratedAddress(String paymentId) async {
     return CdApyResult.fromJson(response);
   }
 
-  // Private helper methods
+  // ── Private helpers ──
+
   Future<Map<String, dynamic>> _makeRPCCall(
-    String method, 
+    String method,
     dynamic params,
   ) async {
     try {
@@ -316,18 +311,17 @@ Future<String> createIntegratedAddress(String paymentId) async {
       );
 
       final data = response.data as Map<String, dynamic>;
-      
+
       if (data.containsKey('error')) {
         throw FuegoRPCException(data['error']['message'] as String);
       }
-      
+
       return data['result'] as Map<String, dynamic>;
     } on DioException catch (e) {
       throw FuegoRPCException('Network error: ${e.message}');
     }
   }
 
-  // Test connection
   Future<bool> testConnection() async {
     try {
       await getInfo();
@@ -344,9 +338,9 @@ Future<String> createIntegratedAddress(String paymentId) async {
 
 class FuegoRPCException implements Exception {
   final String message;
-  
+
   FuegoRPCException(this.message);
-  
+
   @override
   String toString() => 'FuegoRPCException: $message';
 }

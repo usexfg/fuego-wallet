@@ -131,7 +131,7 @@ pub fn generate_address(spend_pub: &[u8; 32], view_pub: &[u8; 32], _prefix: &str
 }
 
 pub fn validate_address(address: &str, _prefix: &str) -> bool {
-    if !address.starts_with("fire") || address.len() != 102 {
+    if !address.starts_with("fire") || (address.len() != 98 && address.len() != 102) {
         return false;
     }
     let base58_part = &address[4..];
@@ -139,7 +139,7 @@ pub fn validate_address(address: &str, _prefix: &str) -> bool {
         Some(v) => v,
         None => return false,
     };
-    if decoded.len() != 71 {
+    if decoded.len() != 71 && decoded.len() != 67 {
         return false;
     }
 
