@@ -23,3 +23,9 @@ coverage/
 # Environment
 .env
 payment_gate.log
+
+# Native build artifacts
+*.dylib
+*.so
+*.dll
+*.a

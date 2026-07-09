@@ -18,6 +18,7 @@ import 'bloc/mining/mining_cubit.dart';
 import 'providers/wallet_provider.dart';
 import 'services/fuego_rpc_service.dart';
 import 'services/fuego_daemon_client.dart' as hearth;
+import 'services/fuego_vault_service.dart';
 import 'models/network_config.dart';
 import 'screens/splash_screen.dart';
 import 'utils/theme.dart';
@@ -25,6 +26,7 @@ import 'utils/theme.dart';
 final _log = Logger('main');
 Process? _backend;
 final Completer<void> _backendReady = Completer<void>();
+final FuegoVaultService _vaultService = FuegoVaultService();
 
 const String _defaultDaemonHost = '207.244.247.64';
 const int _backendPort = 8070;
@@ -131,14 +133,23 @@ Future<void> main() async {
     DeviceOrientation.portraitDown,
   ]);
 
-  runApp(FuegoApp(backendReady: _backendReady.future));
+  // Initialize native vault (local address generation without walletd)
+  try {
+    await _vaultService.init();
+    print('[main] vault initialized: ${_vaultService.address}');
+  } catch (e) {
+    print('[main] vault init failed (non-fatal): $e');
+  }
+
+  runApp(FuegoApp(backendReady: _backendReady.future, vaultService: _vaultService));
 
   _startBackend();
 }
 
 class FuegoApp extends StatelessWidget {
   final Future<void> backendReady;
-  const FuegoApp({super.key, required this.backendReady});
+  final FuegoVaultService vaultService;
+  const FuegoApp({super.key, required this.backendReady, required this.vaultService});
 
   @override
   Widget build(BuildContext context) {
@@ -163,7 +174,7 @@ class FuegoApp extends StatelessWidget {
               create: (_) => AuthCubit()..initialize(),
             ),
             BlocProvider<WalletCubit>(
-              create: (_) => WalletCubit(daemon, backendReady: backendReady),
+              create: (_) => WalletCubit(daemon, vault: vaultService, backendReady: backendReady),
             ),
             BlocProvider<CdCubit>(
               create: (_) => CdCubit(rpcService, backendReady: backendReady),

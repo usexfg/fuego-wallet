@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/core.dart';
+import '../../services/fuego_vault_service.dart';
 
 class WalletState {
   final bool isLoading;
@@ -79,10 +80,12 @@ class WalletState {
 
 class WalletCubit extends Cubit<WalletState> {
   final FuegoDaemonClient _daemon;
+  final FuegoVaultService? _vault;
   final Future<void>? _backendReady;
 
-  WalletCubit(this._daemon, {Future<void>? backendReady})
-      : _backendReady = backendReady,
+  WalletCubit(this._daemon, {FuegoVaultService? vault, Future<void>? backendReady})
+      : _vault = vault,
+        _backendReady = backendReady,
         super(const WalletState()) {
     _init();
   }
@@ -118,12 +121,20 @@ class WalletCubit extends Cubit<WalletState> {
         String addr = '';
         int bal = 0;
         List<FuegoTransaction> txs = [];
-        try {
-          addr = await _daemon.getWalletAddress();
-          print('[wallet] attempt $attempt: getWalletAddress OK — $addr');
-        } catch (e) {
-          print('[wallet] attempt $attempt: getWalletAddress FAILED — $e');
+
+        // Try vault for instant local address (no walletd needed)
+        if (_vault != null && _vault!.address.isNotEmpty) {
+          addr = _vault!.address;
+          print('[wallet] attempt $attempt: vault address OK — $addr');
+        } else {
+          try {
+            addr = await _daemon.getWalletAddress();
+            print('[wallet] attempt $attempt: getWalletAddress OK — $addr');
+          } catch (e) {
+            print('[wallet] attempt $attempt: getWalletAddress FAILED — $e');
+          }
         }
+
         try {
           bal = await _daemon.getBalance();
           print('[wallet] attempt $attempt: getBalance OK — $bal');
@@ -170,6 +181,9 @@ class WalletCubit extends Cubit<WalletState> {
   }
 
   Future<String> getAddress() async {
+    if (_vault != null && _vault!.address.isNotEmpty) {
+      return _vault!.address;
+    }
     try {
       return await _daemon.getWalletAddress();
     } catch (_) {
@@ -233,7 +247,9 @@ class WalletCubit extends Cubit<WalletState> {
   }
 
   Future<String> createIntegratedAddress(String paymentId) async {
-    final addr = await _daemon.getWalletAddress();
+    final addr = _vault != null && _vault!.address.isNotEmpty
+        ? _vault!.address
+        : await _daemon.getWalletAddress();
     return '$addr?payment_id=$paymentId';
   }
 }

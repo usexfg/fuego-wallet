@@ -12,7 +12,23 @@ class FuegoNative {
   }
 
   DynamicLibrary _openLibrary() {
-    if (Platform.isMacOS) return DynamicLibrary.open('libfuego_ffi.dylib');
+    if (Platform.isMacOS) {
+      // Search app bundle Frameworks, then Resources, then executable dir
+      final appDir = Directory(Platform.resolvedExecutable).parent.path;
+      final candidates = [
+        '$appDir/Frameworks/libfuego_ffi.dylib',
+        '$appDir/Resources/libfuego_ffi.dylib',
+        '$appDir/libfuego_ffi.dylib',
+        '${Directory.current.path}/libfuego_ffi.dylib',
+      ];
+      for (final path in candidates) {
+        if (File(path).existsSync()) {
+          return DynamicLibrary.open(path);
+        }
+      }
+      // Fallback: let dlopen search default paths
+      return DynamicLibrary.open('libfuego_ffi.dylib');
+    }
     if (Platform.isLinux) return DynamicLibrary.open('libfuego_ffi.so');
     if (Platform.isWindows) return DynamicLibrary.open('fuego_ffi.dll');
     throw UnsupportedError('Unsupported platform');
@@ -119,8 +135,8 @@ class FuegoNative {
     final pathPtr = path.toNativeUtf8();
     final fn = _lib.lookupFunction<_VaultSaveNative, _VaultSaveDart>('fuego_vault_save');
     final result = fn(vaultPtr, vaultBytes.length, pathPtr);
-    final ok = result.field0;
-    if (result.field1 != nullptr) _freeString(result.field1);
+    final ok = result.ok;
+    if (result.error != nullptr) _freeString(result.error);
     calloc.free(vaultPtr);
     calloc.free(pathPtr);
     return ok;
@@ -224,14 +240,14 @@ class FuegoNative {
 
 final class FuegoBytes extends Struct {
   external Pointer<Uint8> ptr;
-  @Int32()
+  @Size()
   external int len;
 }
 
 final class FuegoResult extends Struct {
   @Bool()
-  external bool field0;
-  external Pointer<Utf8> field1;
+  external bool ok;
+  external Pointer<Utf8> error;
 }
 
 // ── Native/Dart function type pairs ──
