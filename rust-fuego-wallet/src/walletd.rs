@@ -49,7 +49,7 @@ impl WalletdProcess {
             .spawn().map_err(|e| format!("spawn: {}", e))?;
 
         self.child = Some(child);
-        Self::wait_ready(self.rpc_url(), 10).await?;
+        Self::wait_ready(self.rpc_url(), 30).await?;
         log::info!("walletd ready on port {}", self.port);
         Ok(self.rpc_url())
     }
@@ -73,7 +73,7 @@ impl WalletdProcess {
                     }
                 }
             }
-            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
         }
         Err(format!("walletd not ready after {}s", max_secs))
     }
