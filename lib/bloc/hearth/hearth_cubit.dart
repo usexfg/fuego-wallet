@@ -9,6 +9,7 @@ class HearthState {
   final PoolInfo? pool;
   final AmmQuote? quote;
   final OrderBook? orderBook;
+  final FuegoPrice? fuegoPrice;
   final OrderType orderType;
   final String? error;
 
@@ -17,6 +18,7 @@ class HearthState {
     this.pool,
     this.quote,
     this.orderBook,
+    this.fuegoPrice,
     this.orderType = OrderType.market,
     this.error,
   });
@@ -26,6 +28,7 @@ class HearthState {
     PoolInfo? pool,
     AmmQuote? quote,
     OrderBook? orderBook,
+    FuegoPrice? fuegoPrice,
     OrderType? orderType,
     String? error,
   }) =>
@@ -34,6 +37,7 @@ class HearthState {
         pool: pool ?? this.pool,
         quote: quote,
         orderBook: orderBook ?? this.orderBook,
+        fuegoPrice: fuegoPrice ?? this.fuegoPrice,
         orderType: orderType ?? this.orderType,
         error: error,
       );
@@ -47,9 +51,23 @@ class HearthCubit extends Cubit<HearthState> {
   Future<void> loadPool() async {
     emit(state.copyWith(isLoading: true));
     try {
-      final pool = await _daemon.getPoolInfo();
-      final orderBook = OrderBook.fromPool(pool);
-      emit(state.copyWith(isLoading: false, pool: pool, orderBook: orderBook));
+      final results = await Future.wait([
+        _daemon.getPoolInfo(),
+        _daemon.getOrderbookState(),
+        _daemon.getFuegoPrice(),
+      ]);
+      final pool = results[0] as PoolInfo;
+      final orderbookState = results[1] as OrderBookState;
+      final fuegoPrice = results[2] as FuegoPrice;
+      final orderBook = orderbookState.isEmpty
+          ? null
+          : OrderBook.fromDaemon(orderbookState);
+      emit(state.copyWith(
+        isLoading: false,
+        pool: pool,
+        orderBook: orderBook,
+        fuegoPrice: fuegoPrice,
+      ));
     } catch (e) {
       emit(state.copyWith(isLoading: false, error: e.toString()));
     }

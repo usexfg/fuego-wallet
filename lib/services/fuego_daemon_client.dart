@@ -46,8 +46,8 @@ class FuegoDaemonClient {
     required String amount,
   }) async {
     final result = await _daemonGet('/amm_quote', queryParameters: {
-      'sell_xfg': sellXfg.toString(),
-      'amount': amount,
+      'input_amount': amount,
+      'direction': sellXfg ? '0' : '1',
     });
     return AmmQuote.fromJson(result);
   }
@@ -107,6 +107,20 @@ class FuegoDaemonClient {
       'amount': amount,
       'price': price,
     });
+  }
+
+  /// Get real orderbook depth from fuegod
+  Future<OrderBookState> getOrderbookState({int depth = 20}) async {
+    final result = await _daemonGet('/get_orderbook_state', queryParameters: {
+      'depth': depth.toString(),
+    });
+    return OrderBookState.fromJson(result);
+  }
+
+  /// Get live XFG/HEAT price, HEAT peg USD, reserves from fuegod
+  Future<FuegoPrice> getFuegoPrice() async {
+    final result = await _daemonGet('/get_fuego_price');
+    return FuegoPrice.fromJson(result);
   }
 
   // ── Mining ──

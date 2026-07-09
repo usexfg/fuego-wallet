@@ -94,53 +94,105 @@ class OrderBookLevel {
   });
 }
 
+class OrderBookState {
+  final double clearingPrice;
+  final List<double> bidPrices;
+  final List<double> bidDepths;
+  final List<double> askPrices;
+  final List<double> askDepths;
+
+  const OrderBookState({
+    required this.clearingPrice,
+    required this.bidPrices,
+    required this.bidDepths,
+    required this.askPrices,
+    required this.askDepths,
+  });
+
+  factory OrderBookState.fromJson(Map<String, dynamic> json) {
+    final bidPrices = (json['bid_prices'] as List<dynamic>? ?? [])
+        .map((e) => (e as num).toDouble()).toList();
+    final bidDepths = (json['bid_depths'] as List<dynamic>? ?? [])
+        .map((e) => (e as num).toDouble()).toList();
+    final askPrices = (json['ask_prices'] as List<dynamic>? ?? [])
+        .map((e) => (e as num).toDouble()).toList();
+    final askDepths = (json['ask_depths'] as List<dynamic>? ?? [])
+        .map((e) => (e as num).toDouble()).toList();
+    return OrderBookState(
+      clearingPrice: (json['clearing_price'] as num?)?.toDouble() ?? 0,
+      bidPrices: bidPrices,
+      bidDepths: bidDepths,
+      askPrices: askPrices,
+      askDepths: askDepths,
+    );
+  }
+
+  bool get isEmpty => bidPrices.isEmpty && askPrices.isEmpty;
+}
+
+class FuegoPrice {
+  final double reserveXfg;
+  final double reserveHeat;
+  final double spotPrice;
+  final String xfgHeatRatio;
+  final String xfgSpotUsd;
+  final double heatPegUsd;
+
+  const FuegoPrice({
+    required this.reserveXfg,
+    required this.reserveHeat,
+    required this.spotPrice,
+    required this.xfgHeatRatio,
+    required this.xfgSpotUsd,
+    required this.heatPegUsd,
+  });
+
+  factory FuegoPrice.fromJson(Map<String, dynamic> json) => FuegoPrice(
+        reserveXfg: (json['reserve_xfg'] as num?)?.toDouble() ?? 0,
+        reserveHeat: (json['reserve_heat'] as num?)?.toDouble() ?? 0,
+        spotPrice: (json['spot_price'] as num?)?.toDouble() ?? 0,
+        xfgHeatRatio: json['xfg_heat_ratio'] as String? ?? '0',
+        xfgSpotUsd: json['xfg_spot_usd'] as String? ?? '0',
+        heatPegUsd: (json['heat_peg_usd'] as num?)?.toDouble() ?? 0,
+      );
+}
+
 class OrderBook {
   final List<OrderBookLevel> asks;
   final List<OrderBookLevel> bids;
   final double lastPrice;
-  final double high24h;
-  final double low24h;
-  final double volume24h;
 
   const OrderBook({
     required this.asks,
     required this.bids,
     required this.lastPrice,
-    required this.high24h,
-    required this.low24h,
-    required this.volume24h,
   });
 
-  factory OrderBook.fromPool(PoolInfo pool) {
-    final spot = double.tryParse(pool.spotPrice) ?? 1.58;
-    final vol = double.tryParse(pool.volume24h) ?? 0;
-    final asks = <OrderBookLevel>[];
-    final bids = <OrderBookLevel>[];
+  factory OrderBook.fromDaemon(OrderBookState state) {
     double cumulative = 0;
-    for (var i = 0; i < 8; i++) {
-      final spread = 0.001 * (i + 1);
-      final askPrice = spot * (1 + spread);
-      final bidPrice = spot * (1 - spread);
-      final askAmt = (vol * 0.12) / (i + 1);
-      final bidAmt = (vol * 0.12) / (i + 1);
-      cumulative += askAmt;
-      asks.add(OrderBookLevel(price: askPrice, amount: askAmt, total: cumulative));
+    final asks = <OrderBookLevel>[];
+    for (var i = 0; i < state.askPrices.length; i++) {
+      cumulative += state.askDepths[i];
+      asks.add(OrderBookLevel(
+        price: state.askPrices[i],
+        amount: state.askDepths[i],
+        total: cumulative,
+      ));
     }
     cumulative = 0;
-    for (var i = 0; i < 8; i++) {
-      final spread = 0.001 * (i + 1);
-      final bidPrice = spot * (1 - spread);
-      final bidAmt = (vol * 0.12) / (i + 1);
-      cumulative += bidAmt;
-      bids.add(OrderBookLevel(price: bidPrice, amount: bidAmt, total: cumulative));
+    final bids = <OrderBookLevel>[];
+    for (var i = 0; i < state.bidPrices.length; i++) {
+      cumulative += state.bidDepths[i];
+      bids.add(OrderBookLevel(
+        price: state.bidPrices[i],
+        amount: state.bidDepths[i],
+        total: cumulative,
+      ));
     }
     return OrderBook(
       asks: asks.reversed.toList(),
       bids: bids,
-      lastPrice: spot,
-      high24h: spot * 1.02,
-      low24h: spot * 0.98,
-      volume24h: vol,
+      lastPrice: state.clearingPrice,
     );
   }
 }

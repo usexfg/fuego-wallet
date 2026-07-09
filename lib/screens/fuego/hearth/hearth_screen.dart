@@ -16,7 +16,6 @@ class HearthScreen extends StatefulWidget {
 }
 
 class _HearthScreenState extends State<HearthScreen> {
-  static const double _heatUsd = 1.58;
   final _amountController = TextEditingController();
   final _priceController = TextEditingController();
   bool _sellXfg = true;
@@ -34,16 +33,17 @@ class _HearthScreenState extends State<HearthScreen> {
   void _updateUsd() {
     final text = _amountController.text.trim();
     final val = double.tryParse(text);
-    if (val == null || val == 0) {
+    final heatPegUsd = context.read<HearthCubit>().state.fuegoPrice?.heatPegUsd;
+    if (val == null || val == 0 || heatPegUsd == null) {
       if (_amountUsd.isNotEmpty) setState(() => _amountUsd = '');
       return;
     }
     if (_sellXfg) {
-      final price = double.tryParse(
-          context.read<HearthCubit>().state.pool?.spotPrice ?? '') ?? 1.58;
-      setState(() => _amountUsd = '\$${(val * price * _heatUsd).toStringAsFixed(2)}');
+      final spot = double.tryParse(
+          context.read<HearthCubit>().state.pool?.spotPrice ?? '') ?? 0;
+      setState(() => _amountUsd = '\$${(val * spot * heatPegUsd).toStringAsFixed(2)}');
     } else {
-      setState(() => _amountUsd = '\$${(val * _heatUsd).toStringAsFixed(2)}');
+      setState(() => _amountUsd = '\$${(val * heatPegUsd).toStringAsFixed(2)}');
     }
   }
 
@@ -237,8 +237,9 @@ class _HearthScreenState extends State<HearthScreen> {
                   const SizedBox(width: 6),
                   Text('Spread ${spot.toStringAsFixed(4)}', style: const TextStyle(
                     fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
-                  Text('  ≈ \$${(spot * _heatUsd).toStringAsFixed(2)}', style: const TextStyle(
-                    fontSize: 11, color: AppTheme.textMuted)),
+                  if (state.fuegoPrice != null)
+                    Text('  ≈ \$${(spot * state.fuegoPrice!.heatPegUsd).toStringAsFixed(2)}', style: const TextStyle(
+                      fontSize: 11, color: AppTheme.textMuted)),
                 ],
               ),
             ),
@@ -346,7 +347,7 @@ class _HearthScreenState extends State<HearthScreen> {
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
                   labelText: 'Limit Price (HEAT per XFG)',
-                  hintText: state.pool?.spotPrice ?? '1.5800',
+                  hintText: state.pool?.spotPrice ?? '',
                   filled: true,
                   fillColor: AppTheme.surfaceColor,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
@@ -387,7 +388,7 @@ class _HearthScreenState extends State<HearthScreen> {
             ),
             if (!isLimit && state.quote != null) ...[
               const SizedBox(height: 12),
-              _buildQuoteDisplay(state.quote!),
+              _buildQuoteDisplay(state.quote!, state),
               const SizedBox(height: 8),
               SizedBox(
                 height: 44,
@@ -438,10 +439,11 @@ class _HearthScreenState extends State<HearthScreen> {
     );
   }
 
-  Widget _buildQuoteDisplay(AmmQuote quote) {
+  Widget _buildQuoteDisplay(AmmQuote quote, HearthState state) {
     final heatAmount = _sellXfg ? quote.outputAmount : quote.inputAmount;
     final heatVal = double.tryParse(heatAmount) ?? 0;
-    final usd = heatVal * _heatUsd;
+    final heatPegUsd = state.fuegoPrice?.heatPegUsd ?? 0;
+    final usd = heatVal * heatPegUsd;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
