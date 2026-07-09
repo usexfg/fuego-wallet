@@ -169,7 +169,7 @@ class FuegoApp extends StatelessWidget {
               create: (_) => WalletCubit(daemon, backendReady: backendReady),
             ),
             BlocProvider<CdCubit>(
-              create: (_) => CdCubit(rpcService)..loadAll(),
+              create: (_) => CdCubit(rpcService, backendReady: backendReady),
             ),
             BlocProvider<HearthCubit>(
               create: (_) => HearthCubit(hearth.FuegoDaemonClient(

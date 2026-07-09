@@ -41,8 +41,20 @@ class CdState {
 
 class CdCubit extends Cubit<CdState> {
   final FuegoRPCService _rpc;
+  final Future<void>? _backendReady;
 
-  CdCubit(this._rpc) : super(const CdState());
+  CdCubit(this._rpc, {Future<void>? backendReady})
+      : _backendReady = backendReady,
+        super(const CdState()) {
+    _init();
+  }
+
+  Future<void> _init() async {
+    if (_backendReady != null) {
+      await _backendReady;
+    }
+    await loadAll();
+  }
 
   Future<void> loadAll() async {
     emit(state.copyWith(status: CdLoadStatus.loading));

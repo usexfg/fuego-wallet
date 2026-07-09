@@ -15,6 +15,7 @@ use crate::wallet::WalletState;
 pub struct AppState {
     pub wallet: Mutex<WalletState>,
     pub walletd_url: Option<String>,
+    pub fuegod_url: String,
 }
 
 #[derive(Serialize)]
@@ -49,6 +50,17 @@ async fn proxy_to_walletd(walletd_url: &str, body: &serde_json::Value) -> Result
     Ok(result)
 }
 
+async fn proxy_to_fuegod(fuegod_url: &str, body: &serde_json::Value) -> Result<serde_json::Value, String> {
+    let client = reqwest::Client::new();
+    let url = format!("{}/json_rpc", fuegod_url);
+    let resp = client.post(&url).json(body).send().await
+        .map_err(|e| format!("fuego daemon request: {}", e))?;
+    let val: serde_json::Value = resp.json().await
+        .map_err(|e| format!("fuego daemon response: {}", e))?;
+    let result = val.get("result").cloned().unwrap_or(val);
+    Ok(result)
+}
+
 async fn json_rpc_handler(
     State(state): State<Arc<AppState>>,
     Json(body): Json<serde_json::Value>,
@@ -78,13 +90,18 @@ async fn json_rpc_handler(
         "getAddresses" | "getBalance" | "getTransactions" | "sendTransaction" |
         "start_mining" | "stop_mining" |
         "mint_heat" | "swap" | "add_liq" | "remove_liq" |
-        "cd::list" | "cd::create" | "cd::claim" |
-        "cd::market_list" | "cd::sell" | "cd::buy" |
-        "cd::cancel_listing" | "cd::apy" | "create_integrated" => {
+        "create_integrated" => {
             match &state.walletd_url {
                 Some(url) => proxy_to_walletd(url, &body).await,
                 None => Err("walletd not running — start with fuego-wallet serve".into()),
             }
+        }
+
+        // CD operations — proxy to fuegod daemon
+        "cd::list" | "cd::create" | "cd::claim" |
+        "cd::market_list" | "cd::sell" | "cd::buy" |
+        "cd::cancel_listing" | "cd::apy" => {
+            proxy_to_fuegod(&state.fuegod_url, &body).await
         }
 
         "getblockcount" | "on_getblockhash" | "getblock" => {
@@ -116,11 +133,13 @@ async fn health_check() -> impl IntoResponse {
 pub async fn run_server(
     wallet_state: WalletState,
     walletd_url: Option<String>,
+    fuegod_url: &str,
     bind_addr: &str,
 ) -> Result<(), String> {
     let state = Arc::new(AppState {
         wallet: Mutex::new(wallet_state),
         walletd_url,
+        fuegod_url: fuegod_url.to_string(),
     });
 
     let cors = CorsLayer::new()

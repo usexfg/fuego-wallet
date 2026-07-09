@@ -141,7 +141,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
 
             let bind = format!("{}:{}", cli.host, cli.port);
-            server::run_server(wallet, walletd_url, &bind).await?;
+            server::run_server(wallet, walletd_url, &daemon_url, &bind).await?;
             wp.stop();
             fuegod_proc.stop();
         }

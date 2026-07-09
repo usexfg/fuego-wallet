@@ -82,11 +82,6 @@ class _HomeScreenState extends State<HomeScreen> {
             _showBalance ? '${state.unlockedBalanceXfg.toStringAsFixed(decimalPlaces)} available' : '••••••••',
             style: const TextStyle(color: Colors.white60, fontSize: 13),
           ),
-              if (state.blockHeight > 0)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text('Block ${state.blockHeight}', style: const TextStyle(color: Colors.white38, fontSize: 11)),
-                ),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
