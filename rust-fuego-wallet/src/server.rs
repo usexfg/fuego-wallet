@@ -268,8 +268,12 @@ async fn json_rpc_handler(
     }
 }
 
-async fn health_check() -> impl IntoResponse {
-    Json(serde_json::json!({"status": "ok", "service": "fuego-wallet"}))
+async fn health_check(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    Json(serde_json::json!({
+        "status": "ok",
+        "service": "fuego-wallet",
+        "walletd": state.walletd_url.is_some(),
+    }))
 }
 
 pub async fn run_server(

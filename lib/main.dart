@@ -72,25 +72,30 @@ Future<void> _startBackend() async {
     return;
   }
 
-  // Wait for backend to be ready
-  for (var i = 0; i < 30; i++) {
+  // Wait for backend to be ready (server + walletd)
+  for (var i = 0; i < 60; i++) {
     try {
       final resp = await HttpClient()
           .getUrl(Uri.parse('http://127.0.0.1:$_backendPort/health'))
           .then((r) => r.close());
       final body = await resp.transform(utf8.decoder).join();
       if (resp.statusCode == 200) {
-        print('[backend] Health OK on attempt $i: $body');
-        if (!_backendReady.isCompleted) _backendReady.complete();
-        return;
+        final json = jsonDecode(body) as Map<String, dynamic>;
+        if (json['walletd'] == true) {
+          print('[backend] Ready on attempt $i (walletd OK): $body');
+          if (!_backendReady.isCompleted) _backendReady.complete();
+          return;
+        }
+        print('[backend] Health $i: server up, walletd not ready yet');
+      } else {
+        print('[backend] Health check $i: HTTP ${resp.statusCode} — $body');
       }
-      print('[backend] Health check $i: HTTP ${resp.statusCode} — $body');
     } catch (e) {
-      print('[backend] Health check $i failed: $e');
+      print('[backend] Health check $i: $e');
     }
     await Future.delayed(const Duration(seconds: 2));
   }
-  print('[backend] ERROR: Backend did not become ready after 60s — falling back to remote');
+  print('[backend] ERROR: Backend did not become ready after 120s — falling back to remote');
   rpcService.updateNode(
     NetworkConfig.mainnet.defaultSeedNode.split(':')[0],
     port: NetworkConfig.mainnet.daemonRpcPort,

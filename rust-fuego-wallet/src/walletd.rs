@@ -35,7 +35,7 @@ impl WalletdProcess {
             log::info!("Walletd container generated");
         }
 
-        let child = Command::new(&walletd_bin)
+        let mut child = Command::new(&walletd_bin)
             .args([
                 "--daemon-address", daemon_host,
                 "--daemon-port", &daemon_port.to_string(),
@@ -47,6 +47,28 @@ impl WalletdProcess {
             ])
             .stdout(Stdio::piped()).stderr(Stdio::piped())
             .spawn().map_err(|e| format!("spawn: {}", e))?;
+
+        // Drain stdout/stderr so child doesn't block on pipe buffer
+        if let Some(stdout) = child.stdout.take() {
+            std::thread::spawn(move || {
+                use std::io::Read;
+                let mut reader = std::io::BufReader::new(stdout);
+                let mut buf = [0u8; 1024];
+                loop {
+                    if reader.read(&mut buf).is_err() { break; }
+                }
+            });
+        }
+        if let Some(stderr) = child.stderr.take() {
+            std::thread::spawn(move || {
+                use std::io::Read;
+                let mut reader = std::io::BufReader::new(stderr);
+                let mut buf = [0u8; 1024];
+                loop {
+                    if reader.read(&mut buf).is_err() { break; }
+                }
+            });
+        }
 
         self.child = Some(child);
         Self::wait_ready(self.rpc_url(), 30).await?;
