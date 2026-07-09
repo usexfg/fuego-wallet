@@ -74,29 +74,13 @@ async fn json_rpc_handler(
             }
         }
 
-        "getAddresses" => {
-            let wallet = state.wallet.lock().await;
-            wallet.get_addresses().await
-                .map(|a| serde_json::to_value(a).unwrap_or_default())
-        }
-
-        "create_integrated" => {
-            let wallet = state.wallet.lock().await;
-            let pid = _params.get("payment_id").and_then(|v| v.as_str());
-            match pid {
-                Some(pid) => wallet.create_integrated(pid)
-                    .map(|r| serde_json::to_value(r).unwrap_or_default()),
-                None => Err("missing payment_id".to_string()),
-            }
-        }
-
         // Wallet operations — proxy to walletd
-        "getBalance" | "getTransactions" | "sendTransaction" |
+        "getAddresses" | "getBalance" | "getTransactions" | "sendTransaction" |
         "start_mining" | "stop_mining" |
         "mint_heat" | "swap" | "add_liq" | "remove_liq" |
         "cd::list" | "cd::create" | "cd::claim" |
         "cd::market_list" | "cd::sell" | "cd::buy" |
-        "cd::cancel_listing" | "cd::apy" => {
+        "cd::cancel_listing" | "cd::apy" | "create_integrated" => {
             match &state.walletd_url {
                 Some(url) => proxy_to_walletd(url, &body).await,
                 None => Err("walletd not running — start with fuego-wallet serve".into()),
