@@ -14,6 +14,7 @@ import 'bloc/wallet/wallet_cubit.dart';
 import 'bloc/dex/dex_cubit.dart';
 import 'bloc/cd/cd_cubit.dart';
 import 'bloc/hearth/hearth_cubit.dart';
+import 'bloc/mining/mining_cubit.dart';
 import 'providers/wallet_provider.dart';
 import 'services/fuego_rpc_service.dart';
 import 'services/fuego_daemon_client.dart' as hearth;
@@ -29,8 +30,8 @@ const String _defaultDaemonHost = '207.244.247.64';
 const int _backendPort = 8070;
 
 final daemon = FuegoDaemonClient(
-  host: '127.0.0.1',
-  port: defaultRpcPort,
+  host: NetworkConfig.mainnet.defaultSeedNode.split(':')[0],
+  port: NetworkConfig.mainnet.daemonRpcPort,
   walletPort: _backendPort,
 );
 
@@ -80,26 +81,17 @@ Future<void> _startBackend() async {
           .then((r) => r.close());
       final body = await resp.transform(utf8.decoder).join();
       if (resp.statusCode == 200) {
-        final json = jsonDecode(body) as Map<String, dynamic>;
-        if (json['walletd'] == true) {
-          print('[backend] Ready on attempt $i (walletd OK): $body');
-          if (!_backendReady.isCompleted) _backendReady.complete();
-          return;
-        }
-        print('[backend] Health $i: server up, walletd not ready yet');
-      } else {
-        print('[backend] Health check $i: HTTP ${resp.statusCode} — $body');
+        print('[backend] Ready on attempt $i: $body');
+        if (!_backendReady.isCompleted) _backendReady.complete();
+        return;
       }
+      print('[backend] Health check $i: HTTP ${resp.statusCode} — $body');
     } catch (e) {
       print('[backend] Health check $i: $e');
     }
     await Future.delayed(const Duration(seconds: 2));
   }
-  print('[backend] ERROR: Backend did not become ready after 120s — falling back to remote');
-  rpcService.updateNode(
-    NetworkConfig.mainnet.defaultSeedNode.split(':')[0],
-    port: NetworkConfig.mainnet.daemonRpcPort,
-  );
+  print('[backend] ERROR: Backend did not become ready after 120s');
   if (!_backendReady.isCompleted) _backendReady.complete();
 }
 
@@ -184,6 +176,9 @@ class FuegoApp extends StatelessWidget {
             ),
             BlocProvider<DexCubit>(
               create: (_) => DexCubit()..init(),
+            ),
+            BlocProvider<MiningCubit>(
+              create: (_) => MiningCubit(),
             ),
           ],
           child: MaterialApp(

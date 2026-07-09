@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/core.dart';
 import '../../bloc/wallet/wallet_cubit.dart';
+import '../../bloc/mining/mining_cubit.dart';
 import '../../utils/theme.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -186,31 +187,56 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _miningControls(WalletState state) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceColor,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.memory, color: state.isMining ? AppTheme.successColor : AppTheme.textMuted, size: 18),
-          const SizedBox(width: 8),
-          Text(state.isMining ? 'Mining - ${state.miningSpeed} H/s' : 'Miner idle', style: TextStyle(color: state.isMining ? AppTheme.successColor : AppTheme.textMuted, fontSize: 12)),
-          const Spacer(),
-          ElevatedButton(
-            onPressed: state.isMining
-                ? () => context.read<WalletCubit>().stopMining()
-                : () => context.read<WalletCubit>().startMining(threads: 1),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: state.isMining ? AppTheme.errorColor : AppTheme.successColor,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            ),
-            child: Text(state.isMining ? 'Stop' : 'Start'),
+    return BlocBuilder<MiningCubit, MiningState>(
+      builder: (context, mining) {
+        return Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceColor,
+            borderRadius: BorderRadius.circular(8),
           ),
-        ],
-      ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.memory, color: mining.isMining ? AppTheme.successColor : AppTheme.textMuted, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    mining.isMining
+                        ? 'Pool Mining - ${mining.hashrate} H/s'
+                        : 'Pool Miner (${mining.poolHost})',
+                    style: TextStyle(color: mining.isMining ? AppTheme.successColor : AppTheme.textMuted, fontSize: 12),
+                  ),
+                  const Spacer(),
+                  ElevatedButton(
+                    onPressed: () {
+                      final addr = state.address;
+                      if (addr == null || addr.isEmpty) return;
+                      if (mining.isMining) {
+                        context.read<MiningCubit>().stopMining();
+                      } else {
+                        context.read<MiningCubit>().startMining(walletAddress: addr);
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: mining.isMining ? AppTheme.errorColor : AppTheme.successColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    ),
+                    child: Text(mining.isMining ? 'Stop' : 'Start'),
+                  ),
+                ],
+              ),
+              if (mining.sharesAccepted > 0)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text('Shares: ${mining.sharesAccepted}/${mining.sharesSubmitted}',
+                      style: const TextStyle(color: AppTheme.textMuted, fontSize: 10)),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 
