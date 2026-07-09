@@ -117,8 +117,9 @@ pub fn validate_mnemonic(mnemonic: &str) -> bool {
 }
 
 pub fn generate_address(spend_pub: &[u8; 32], view_pub: &[u8; 32], _prefix: &str) -> String {
+    const CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX: u64 = 1753191;
     let mut buf = Vec::with_capacity(69);
-    buf.push(0x19); // CryptoNote mainnet tag
+    buf.extend_from_slice(&write_varint(CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX));
     buf.extend_from_slice(spend_pub);
     buf.extend_from_slice(view_pub);
 
@@ -130,7 +131,7 @@ pub fn generate_address(spend_pub: &[u8; 32], view_pub: &[u8; 32], _prefix: &str
 }
 
 pub fn validate_address(address: &str, _prefix: &str) -> bool {
-    if !address.starts_with("fire") || address.len() != 99 {
+    if !address.starts_with("fire") || address.len() != 102 {
         return false;
     }
     let base58_part = &address[4..];
@@ -138,11 +139,11 @@ pub fn validate_address(address: &str, _prefix: &str) -> bool {
         Some(v) => v,
         None => return false,
     };
-    if decoded.len() != 69 {
+    if decoded.len() != 71 {
         return false;
     }
 
-    let (data, received_cs) = decoded.split_at(65);
+    let (data, received_cs) = decoded.split_at(67);
     let hash = cn_fast_hash(data);
     received_cs == &hash[..4]
 }

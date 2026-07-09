@@ -28,17 +28,17 @@ class CdInfo {
   });
 
   factory CdInfo.fromJson(Map<String, dynamic> json) => CdInfo(
-        cdId: json['cd_id'] as String,
-        owner: json['owner'] as String,
-        coin: json['coin'] as String,
-        amount: json['amount'] as String,
-        interestRate: json['interest_rate'] as String,
-        maturityHeight: (json['maturity_height'] as num).toInt(),
-        depositHeight: (json['deposit_height'] as num).toInt(),
-        accruedInterest: json['accrued_interest'] as String,
-        totalValue: json['total_value'] as String,
-        blocksToMaturity: (json['blocks_to_maturity'] as num).toInt(),
-        matured: json['matured'] as bool,
+        cdId: json['cd_id'] as String? ?? '',
+        owner: json['owner'] as String? ?? '',
+        coin: json['coin'] as String? ?? '',
+        amount: json['amount'] as String? ?? '0',
+        interestRate: json['interest_rate'] as String? ?? '0',
+        maturityHeight: (json['maturity_height'] as num?)?.toInt() ?? 0,
+        depositHeight: (json['deposit_height'] as num?)?.toInt() ?? 0,
+        accruedInterest: json['accrued_interest'] as String? ?? '0',
+        totalValue: json['total_value'] as String? ?? '0',
+        blocksToMaturity: (json['blocks_to_maturity'] as num?)?.toInt() ?? 0,
+        matured: json['matured'] as bool? ?? false,
         forSale: json['for_sale'] as bool? ?? false,
       );
 }
@@ -48,9 +48,10 @@ class CdListResult {
   const CdListResult({required this.cds});
 
   factory CdListResult.fromJson(Map<String, dynamic> json) => CdListResult(
-        cds: (json['cds'] as List)
-            .map((e) => CdInfo.fromJson(e as Map<String, dynamic>))
-            .toList(),
+        cds: (json['cds'] as List<dynamic>?)
+                ?.map((e) => CdInfo.fromJson(e as Map<String, dynamic>))
+                .toList() ??
+            [],
       );
 }
 
@@ -145,9 +146,10 @@ class CdMarketListResult {
 
   factory CdMarketListResult.fromJson(Map<String, dynamic> json) =>
       CdMarketListResult(
-        listings: (json['listings'] as List)
-            .map((e) => CdMarketListing.fromJson(e as Map<String, dynamic>))
-            .toList(),
+        listings: (json['listings'] as List<dynamic>?)
+                ?.map((e) => CdMarketListing.fromJson(e as Map<String, dynamic>))
+                .toList() ??
+            [],
       );
 }
 
@@ -210,9 +212,9 @@ class CdApyResult {
   });
 
   factory CdApyResult.fromJson(Map<String, dynamic> json) => CdApyResult(
-        coin: json['coin'] as String,
-        currentApy: (json['current_apy'] as num).toDouble(),
-        averageApy: (json['average_apy'] as num).toDouble(),
+        coin: json['coin'] as String? ?? 'XFG',
+        currentApy: (json['current_apy'] as num?)?.toDouble() ?? 0.0,
+        averageApy: (json['average_apy'] as num?)?.toDouble() ?? 0.0,
         epoch: json['epoch'] as int?,
       );
 }

@@ -220,7 +220,6 @@ impl WalletState {
         let info = self.daemon.get_info().await?;
         Ok(serde_json::json!({
             "wallet_unlocked": self.is_unlocked(),
-            "address": self.address(),
             "height": info.height,
             "top_block_hash": info.top_block_hash,
             "difficulty": info.difficulty,
