@@ -1854,6 +1854,7 @@ dependencies = [
  "directories",
  "ed25519-dalek",
  "env_logger",
+ "fuego-crypto",
  "hex",
  "hmac",
  "keyring",

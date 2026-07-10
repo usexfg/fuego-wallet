@@ -5,7 +5,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 pub struct AppState {
@@ -239,6 +239,154 @@ async fn health_check(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     }))
 }
 
+// ── Output scanning ──
+
+#[derive(Deserialize)]
+struct ScanBalanceRequest {
+    view_secret: String,
+    spend_public: String,
+    #[serde(default)]
+    start_height: u64,
+    #[serde(default = "default_batch_size")]
+    batch_size: u64,
+}
+
+fn default_batch_size() -> u64 { 100 }
+
+/// Fetch a block hash from fuegod by height.
+async fn fetch_block_hash(fuegod_url: &str, height: u64) -> Result<String, String> {
+    let client = reqwest::Client::new();
+    let resp = client.post(format!("{}/json_rpc", fuegod_url))
+        .json(&serde_json::json!({
+            "jsonrpc": "2.0", "id": 1,
+            "method": "on_getblockhash",
+            "params": [height]
+        }))
+        .send().await.map_err(|e| format!("hash request: {}", e))?;
+    let val: serde_json::Value = resp.json().await.map_err(|e| format!("hash response: {}", e))?;
+    val.get("result").and_then(|r| r.as_str()).map(|s| s.to_string())
+        .ok_or_else(|| format!("no hash for height {}", height))
+}
+
+/// Fetch a block from fuegod by hash.
+async fn fetch_block(fuegod_url: &str, hash: &str) -> Result<serde_json::Value, String> {
+    let client = reqwest::Client::new();
+    let resp = client.post(format!("{}/json_rpc", fuegod_url))
+        .json(&serde_json::json!({
+            "jsonrpc": "2.0", "id": 1,
+            "method": "getblock",
+            "params": {"hash": hash}
+        }))
+        .send().await.map_err(|e| format!("block request: {}", e))?;
+    let val: serde_json::Value = resp.json().await.map_err(|e| format!("block response: {}", e))?;
+    val.get("result").cloned().ok_or_else(|| "no block result".into())
+}
+
+/// Fetch full transactions by hash from fuegod.
+async fn fetch_transactions(fuegod_url: &str, tx_hashes: &[String]) -> Result<Vec<serde_json::Value>, String> {
+    if tx_hashes.is_empty() { return Ok(vec![]); }
+    let client = reqwest::Client::new();
+    let resp = client.post(format!("{}/json_rpc", fuegod_url))
+        .json(&serde_json::json!({
+            "jsonrpc": "2.0", "id": 1,
+            "method": "gettransactions",
+            "params": {"txs_hashes": tx_hashes}
+        }))
+        .send().await.map_err(|e| format!("tx request: {}", e))?;
+    let val: serde_json::Value = resp.json().await.map_err(|e| format!("tx response: {}", e))?;
+    let result = val.get("result").cloned().unwrap_or(val);
+    Ok(result.get("txs").and_then(|t| t.as_array()).cloned().unwrap_or_default())
+}
+
+/// Get current blockchain height from fuegod.
+async fn fetch_height(fuegod_url: &str) -> Result<u64, String> {
+    let client = reqwest::Client::new();
+    let resp = client.post(format!("{}/json_rpc", fuegod_url))
+        .json(&serde_json::json!({
+            "jsonrpc": "2.0", "id": 1,
+            "method": "getblockcount",
+            "params": {}
+        }))
+        .send().await.map_err(|e| format!("height request: {}", e))?;
+    let val: serde_json::Value = resp.json().await.map_err(|e| format!("height response: {}", e))?;
+    val.get("result").and_then(|r| r.get("count")).and_then(|c| c.as_u64())
+        .ok_or_else(|| "no height".into())
+}
+
+async fn scan_balance_handler(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<ScanBalanceRequest>,
+) -> impl IntoResponse {
+    // Parse keys
+    let view_secret_bytes = match hex::decode(&req.view_secret) {
+        Ok(b) if b.len() == 32 => {
+            let mut k = [0u8; 32]; k.copy_from_slice(&b); k
+        }
+        _ => return (StatusCode::BAD_REQUEST, Json(serde_json::json!({"error": "invalid view_secret"}))).into_response(),
+    };
+    let spend_public_bytes = match hex::decode(&req.spend_public) {
+        Ok(b) if b.len() == 32 => {
+            let mut k = [0u8; 32]; k.copy_from_slice(&b); k
+        }
+        _ => return (StatusCode::BAD_REQUEST, Json(serde_json::json!({"error": "invalid spend_public"}))).into_response(),
+    };
+
+    // Get current height
+    let current_height = match fetch_height(&state.fuegod_url).await {
+        Ok(h) => h,
+        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": e}))).into_response(),
+    };
+
+    let end_height = std::cmp::min(req.start_height + req.batch_size, current_height);
+    let mut all_outputs = Vec::new();
+    let mut total_balance: u64 = 0;
+    let mut tx_count: u64 = 0;
+
+    // Scan blocks in batch
+    for height in req.start_height..=end_height {
+        let hash = match fetch_block_hash(&state.fuegod_url, height).await {
+            Ok(h) => h,
+            Err(_) => continue,
+        };
+        let block = match fetch_block(&state.fuegod_url, &hash).await {
+            Ok(b) => b,
+            Err(_) => continue,
+        };
+
+        // Extract tx hashes from block
+        let tx_hashes: Vec<String> = block.get("tx_hashes")
+            .and_then(|t| t.as_array())
+            .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
+            .unwrap_or_default();
+
+        // Fetch full transactions
+        let txs = match fetch_transactions(&state.fuegod_url, &tx_hashes).await {
+            Ok(t) => t,
+            Err(_) => continue,
+        };
+        tx_count += txs.len() as u64;
+
+        // Scan transactions
+        let outputs = crate::scanner::scan_transactions(
+            &view_secret_bytes, &spend_public_bytes, &txs, height,
+        );
+        for o in &outputs {
+            total_balance += o.amount;
+        }
+        all_outputs.extend(outputs);
+    }
+
+    Json(serde_json::json!({
+        "balance": total_balance,
+        "outputs": all_outputs,
+        "scanned_height": end_height,
+        "current_height": current_height,
+        "scanned_tx_count": tx_count,
+        "batch_start": req.start_height,
+        "batch_end": end_height,
+    })).into_response()
+}
+
 pub async fn run_server(
     walletd_url: Option<String>,
     fuegod_url: &str,
@@ -261,6 +409,7 @@ pub async fn run_server(
     let app = Router::new()
         .route("/json_rpc", post(json_rpc_handler))
         .route("/health", get(health_check))
+        .route("/scan_balance", post(scan_balance_handler))
         .layer(cors)
         .with_state(state);
 

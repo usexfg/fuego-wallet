@@ -9,6 +9,7 @@ name = "fuego-wallet"
 path = "src/main.rs"
 
 [dependencies]
+fuego-crypto = { path = "../fuego-sdk/fuego-crypto" }
 ed25519-dalek = { version = "2.1", features = ["rand_core"] }
 curve25519-dalek = { version = "4", features = ["digest"] }
 bip39 = { version = "2.1", features = ["rand_core", "zeroize", "std"], default-features = false }

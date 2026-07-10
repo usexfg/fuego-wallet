@@ -20,6 +20,7 @@ class WalletState {
   final List<FuegoTransaction> transactions;
   final int blockHeight;
   final int peerCount;
+  final int scannedHeight;
 
   const WalletState({
     this.isLoading = false,
@@ -37,6 +38,7 @@ class WalletState {
     this.transactions = const [],
     this.blockHeight = 0,
     this.peerCount = 0,
+    this.scannedHeight = 0,
   });
 
   WalletState copyWith({
@@ -55,6 +57,7 @@ class WalletState {
     List<FuegoTransaction>? transactions,
     int? blockHeight,
     int? peerCount,
+    int? scannedHeight,
   }) =>
       WalletState(
         isLoading: isLoading ?? this.isLoading,
@@ -72,6 +75,7 @@ class WalletState {
         transactions: transactions ?? this.transactions,
         blockHeight: blockHeight ?? this.blockHeight,
         peerCount: peerCount ?? this.peerCount,
+        scannedHeight: scannedHeight ?? this.scannedHeight,
       );
 
   double get balanceXfg => balance / atomicPerCoin;
@@ -135,12 +139,39 @@ class WalletCubit extends Cubit<WalletState> {
           }
         }
 
-        try {
-          bal = await _daemon.getBalance();
-          print('[wallet] attempt $attempt: getBalance OK — $bal');
-        } catch (e) {
-          print('[wallet] attempt $attempt: getBalance FAILED — $e');
+        // Scan blockchain for our outputs using FFI (bypasses walletd)
+        int scannedH = state.scannedHeight;
+        if (_vault != null && _vault!.viewSecretKey != null && _vault!.spendPublicKey != null) {
+          try {
+            final scan = await _daemon.scanBalance(
+              viewSecret: _vault!.viewSecretKey!,
+              spendPublic: _vault!.spendPublicKey!,
+              startHeight: scannedH,
+              batchSize: 500,
+            );
+            bal = scan['balance'] as int? ?? 0;
+            scannedH = scan['scanned_height'] as int? ?? scannedH;
+            print('[wallet] attempt $attempt: scanBalance OK — bal=$bal, scanned=$scannedH');
+          } catch (e) {
+            print('[wallet] attempt $attempt: scanBalance FAILED — $e');
+            // Fallback to walletd
+            try {
+              bal = await _daemon.getBalance();
+              print('[wallet] attempt $attempt: getBalance (walletd fallback) OK — $bal');
+            } catch (e2) {
+              print('[wallet] attempt $attempt: getBalance (walletd fallback) FAILED — $e2');
+            }
+          }
+        } else {
+          // No vault keys — try walletd
+          try {
+            bal = await _daemon.getBalance();
+            print('[wallet] attempt $attempt: getBalance OK — $bal');
+          } catch (e) {
+            print('[wallet] attempt $attempt: getBalance FAILED — $e');
+          }
         }
+
         try {
           txs = await _daemon.getTransactions(count: 50);
           print('[wallet] attempt $attempt: getTransactions OK — ${txs.length} txs');
@@ -160,6 +191,7 @@ class WalletCubit extends Cubit<WalletState> {
           transactions: txs,
           syncProgress: 1.0,
           isSynced: true,
+          scannedHeight: scannedH,
         ));
         print('[wallet] refreshWallet SUCCESS on attempt $attempt');
         return;

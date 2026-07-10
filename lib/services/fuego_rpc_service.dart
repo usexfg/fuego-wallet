@@ -11,7 +11,6 @@ import '../models/cd.dart';
 class FuegoRPCService {
   final Dio _dio;
   String _baseUrl;
-  final String? _password;
   NetworkConfig _networkConfig;
 
   static const List<String> defaultRemoteNodes = [
@@ -21,10 +20,8 @@ class FuegoRPCService {
   FuegoRPCService({
     String host = 'localhost',
     int? port,
-    String? password,
     NetworkConfig? networkConfig,
   }) : _baseUrl = 'http://$host:${port ?? NetworkConfig.mainnet.walletRpcPort}',
-       _password = password,
        _networkConfig = networkConfig ?? NetworkConfig.mainnet,
        _dio = Dio(BaseOptions(
          connectTimeout: const Duration(seconds: 30),

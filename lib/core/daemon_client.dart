@@ -219,6 +219,36 @@ class FuegoDaemonClient {
     return await _get('/status');
   }
 
+  // ── Output scanning (bypasses walletd) ──
+
+  /// Scan blockchain for outputs belonging to our keys.
+  /// Returns {balance, outputs, scanned_height, current_height, scanned_tx_count}
+  Future<Map<String, dynamic>> scanBalance({
+    required String viewSecret,
+    required String spendPublic,
+    int startHeight = 0,
+    int batchSize = 100,
+  }) async {
+    final uri = _rest('/scan_balance');
+    print('[daemon] POST $uri (scan_balance)');
+    final resp = await _http
+        .post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'view_secret': viewSecret,
+            'spend_public': spendPublic,
+            'start_height': startHeight,
+            'batch_size': batchSize,
+          }),
+        )
+        .timeout(const Duration(seconds: 60));
+    if (resp.statusCode != 200) {
+      throw FuegoRpcException('scan_balance HTTP ${resp.statusCode}');
+    }
+    return jsonDecode(resp.body) as Map<String, dynamic>;
+  }
+
   void dispose() => _http.close();
 }
 

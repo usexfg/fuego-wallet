@@ -10,6 +10,8 @@ class FuegoVaultService {
   FuegoNative? _native;
   Uint8List? _vaultBytes;
   String? _cachedAddress;
+  String? _spendPublicKey;
+  String? _viewSecretKey;
 
   FuegoNative get _ffi {
     _native ??= FuegoNative();
@@ -32,6 +34,15 @@ class FuegoVaultService {
 
     _cachedAddress = _ffi.vaultGetAddress(_vaultBytes!, 0);
     print('[vault] address: $_cachedAddress');
+
+    // Derive and cache keypair info for output scanning
+    // Index 0 = spend keypair, Index 1 = view keypair
+    final spendKp = _ffi.vaultDeriveKeypair(_vaultBytes!, 0);
+    _spendPublicKey = spendKp['public'] as String?;
+    final viewKp = _ffi.vaultDeriveKeypair(_vaultBytes!, 1);
+    _viewSecretKey = viewKp['secret'] as String?;
+    print('[vault] spend_pub: ${_spendPublicKey?.substring(0, 16)}...');
+    print('[vault] view_secret: ${_viewSecretKey?.substring(0, 16)}...');
   }
 
   /// Get wallet address (index 0).
@@ -39,6 +50,12 @@ class FuegoVaultService {
 
   /// Get raw vault bytes.
   Uint8List? get vaultBytes => _vaultBytes;
+
+  /// Hex-encoded spend public key (32 bytes).
+  String? get spendPublicKey => _spendPublicKey;
+
+  /// Hex-encoded view secret key (32 bytes).
+  String? get viewSecretKey => _viewSecretKey;
 
   /// Derive keypair at index.
   Map<String, dynamic> deriveKeypair(int index) {

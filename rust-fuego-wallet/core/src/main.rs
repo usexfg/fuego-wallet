@@ -6,6 +6,7 @@ mod daemon;
 mod fuegod;
 mod keystore;
 mod release;
+mod scanner;
 mod server;
 mod walletd;
 
