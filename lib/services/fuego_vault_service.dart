@@ -59,4 +59,27 @@ class FuegoVaultService {
   String generateKeyImage(List<int> pubkey, List<int> secret) {
     return _ffi.generateKeyImage(pubkey, secret);
   }
+
+  /// Reverse key derivation: recover spend public key from output key.
+  String underivePublicKey(List<int> derivation, int outputIndex, List<int> outputKey) {
+    return _ffi.underivePublicKey(derivation, outputIndex, outputKey);
+  }
+
+  /// Sign a message with a 32-byte secret key.
+  String sign(List<int> secret, List<int> message) {
+    return _ffi.sign(secret, message);
+  }
+
+  /// Verify an Ed25519 signature.
+  bool verify(List<int> pubkey, List<int> message, List<int> signature) {
+    return _ffi.verify(pubkey, message, signature);
+  }
+
+  /// Base58-encode data (CryptoNote block-based encoding).
+  String base58Encode(List<int> data) {
+    return _ffi.base58Encode(data);
+  }
+
+  /// Get FuegoNative instance for direct access.
+  FuegoNative get ffi => _ffi;
 }

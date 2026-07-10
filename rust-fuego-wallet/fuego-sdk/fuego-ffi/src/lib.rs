@@ -1,4 +1,4 @@
-use fuego_crypto::{Keypair, PublicKey, make_address, generate_key_derivation, derive_public_key, generate_key_image};
+use fuego_crypto::{Keypair, PublicKey, make_address, generate_key_derivation, derive_public_key, underive_public_key, generate_key_image, cn_base58_encode};
 use fuego_vault::Vault;
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
@@ -251,6 +251,83 @@ pub unsafe extern "C" fn fuego_generate_key_image(
     sk.copy_from_slice(sk_bytes);
     let ki = generate_key_image(&PublicKey(pk), &sk);
     CString::new(hex::encode(ki.0)).unwrap().into_raw()
+}
+
+/// Reverse key derivation: recover spend public key from output key.
+/// Returns 32-byte public key as hex string.
+#[no_mangle]
+pub unsafe extern "C" fn fuego_underive_public_key(
+    derivation_ptr: *const u8,
+    output_index: u64,
+    output_key_ptr: *const u8,
+) -> *mut c_char {
+    if derivation_ptr.is_null() || output_key_ptr.is_null() {
+        return CString::new("").unwrap().into_raw();
+    }
+    let deriv_bytes = slice::from_raw_parts(derivation_ptr, 32);
+    let ok_bytes = slice::from_raw_parts(output_key_ptr, 32);
+    let mut derivation = [0u8; 32];
+    let mut output_key = [0u8; 32];
+    derivation.copy_from_slice(deriv_bytes);
+    output_key.copy_from_slice(ok_bytes);
+    let pk = underive_public_key(&derivation, output_index, &PublicKey(output_key));
+    CString::new(hex::encode(pk.0)).unwrap().into_raw()
+}
+
+/// Sign a message with a secret key. Returns 64-byte Ed25519 signature as hex.
+#[no_mangle]
+pub unsafe extern "C" fn fuego_sign(
+    secret_ptr: *const u8,
+    message_ptr: *const u8,
+    message_len: usize,
+) -> *mut c_char {
+    if secret_ptr.is_null() || message_ptr.is_null() {
+        return CString::new("").unwrap().into_raw();
+    }
+    let sk_bytes = slice::from_raw_parts(secret_ptr, 32);
+    let message = slice::from_raw_parts(message_ptr, message_len);
+    let mut sk = [0u8; 32];
+    sk.copy_from_slice(sk_bytes);
+    let kp = Keypair::from_secret(sk);
+    let sig = kp.sign(message);
+    CString::new(hex::encode(sig.to_bytes())).unwrap().into_raw()
+}
+
+/// Verify an Ed25519 signature. Returns 1 if valid, 0 if invalid.
+#[no_mangle]
+pub unsafe extern "C" fn fuego_verify(
+    pubkey_ptr: *const u8,
+    message_ptr: *const u8,
+    message_len: usize,
+    signature_ptr: *const u8,
+) -> bool {
+    if pubkey_ptr.is_null() || message_ptr.is_null() || signature_ptr.is_null() {
+        return false;
+    }
+    let pk_bytes = slice::from_raw_parts(pubkey_ptr, 32);
+    let message = slice::from_raw_parts(message_ptr, message_len);
+    let sig_bytes = slice::from_raw_parts(signature_ptr, 64);
+    let mut pk = [0u8; 32];
+    let mut sig_arr = [0u8; 64];
+    pk.copy_from_slice(pk_bytes);
+    sig_arr.copy_from_slice(sig_bytes);
+    let pk = PublicKey(pk);
+    let sig = ed25519_dalek::Signature::from_bytes(&sig_arr);
+    pk.verify(message, &sig)
+}
+
+/// Base58-encode data (CryptoNote block-based encoding).
+#[no_mangle]
+pub unsafe extern "C" fn fuego_base58_encode(
+    data_ptr: *const u8,
+    data_len: usize,
+) -> *mut c_char {
+    if data_ptr.is_null() {
+        return CString::new("").unwrap().into_raw();
+    }
+    let data = slice::from_raw_parts(data_ptr, data_len);
+    let encoded = cn_base58_encode(data);
+    CString::new(encoded).unwrap().into_raw()
 }
 
 // ── FFI types ──

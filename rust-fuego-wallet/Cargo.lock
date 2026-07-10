@@ -845,6 +845,7 @@ name = "fuego-ffi"
 version = "0.1.0"
 dependencies = [
  "bincode",
+ "ed25519-dalek",
  "fuego-crypto",
  "fuego-vault",
  "hex",

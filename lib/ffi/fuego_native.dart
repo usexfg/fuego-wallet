@@ -192,6 +192,59 @@ class FuegoNative {
     return hex;
   }
 
+  /// Reverse key derivation: recover spend public key from output key.
+  String underivePublicKey(List<int> derivation, int outputIndex, List<int> outputKey) {
+    assert(derivation.length == 32 && outputKey.length == 32);
+    final derivPtr = _allocBytes(derivation);
+    final okPtr = _allocBytes(outputKey);
+    final fn = _lib.lookupFunction<_UnderivePubKeyNative, _UnderivePubKeyDart>('fuego_underive_public_key');
+    final result = fn(derivPtr, outputIndex, okPtr);
+    final hex = result.toDartString();
+    _freeString(result);
+    calloc.free(derivPtr);
+    calloc.free(okPtr);
+    return hex;
+  }
+
+  /// Sign a message with a 32-byte secret key. Returns 64-byte Ed25519 signature as hex.
+  String sign(List<int> secret, List<int> message) {
+    assert(secret.length == 32);
+    final skPtr = _allocBytes(secret);
+    final msgPtr = _allocBytes(message);
+    final fn = _lib.lookupFunction<_SignNative, _SignDart>('fuego_sign');
+    final result = fn(skPtr, msgPtr, message.length);
+    final hex = result.toDartString();
+    _freeString(result);
+    calloc.free(skPtr);
+    calloc.free(msgPtr);
+    return hex;
+  }
+
+  /// Verify an Ed25519 signature.
+  bool verify(List<int> pubkey, List<int> message, List<int> signature) {
+    assert(pubkey.length == 32 && signature.length == 64);
+    final pkPtr = _allocBytes(pubkey);
+    final msgPtr = _allocBytes(message);
+    final sigPtr = _allocBytes(signature);
+    final fn = _lib.lookupFunction<_VerifyNative, _VerifyDart>('fuego_verify');
+    final result = fn(pkPtr, msgPtr, message.length, sigPtr);
+    calloc.free(pkPtr);
+    calloc.free(msgPtr);
+    calloc.free(sigPtr);
+    return result;
+  }
+
+  /// Base58-encode data (CryptoNote block-based encoding).
+  String base58Encode(List<int> data) {
+    final dataPtr = _allocBytes(data);
+    final fn = _lib.lookupFunction<_Base58EncodeNative, _Base58EncodeDart>('fuego_base58_encode');
+    final result = fn(dataPtr, data.length);
+    final hex = result.toDartString();
+    _freeString(result);
+    calloc.free(dataPtr);
+    return hex;
+  }
+
   // ── Helpers ──
 
   Pointer<Uint8> _allocBytes(List<int> data) {
@@ -296,3 +349,15 @@ typedef _DerivePubKeyDart = Pointer<Utf8> Function(Pointer<Uint8>, int);
 
 typedef _GenKeyImageNative = Pointer<Utf8> Function(Pointer<Uint8>, Pointer<Uint8>);
 typedef _GenKeyImageDart = Pointer<Utf8> Function(Pointer<Uint8>, Pointer<Uint8>);
+
+typedef _UnderivePubKeyNative = Pointer<Utf8> Function(Pointer<Uint8>, Int64, Pointer<Uint8>);
+typedef _UnderivePubKeyDart = Pointer<Utf8> Function(Pointer<Uint8>, int, Pointer<Uint8>);
+
+typedef _SignNative = Pointer<Utf8> Function(Pointer<Uint8>, Pointer<Uint8>, Int32);
+typedef _SignDart = Pointer<Utf8> Function(Pointer<Uint8>, Pointer<Uint8>, int);
+
+typedef _VerifyNative = Bool Function(Pointer<Uint8>, Pointer<Uint8>, Int32, Pointer<Uint8>);
+typedef _VerifyDart = bool Function(Pointer<Uint8>, Pointer<Uint8>, int, Pointer<Uint8>);
+
+typedef _Base58EncodeNative = Pointer<Utf8> Function(Pointer<Uint8>, Int32);
+typedef _Base58EncodeDart = Pointer<Utf8> Function(Pointer<Uint8>, int);
