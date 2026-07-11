@@ -11,3 +11,5 @@ curve25519-dalek = "4.0"
 sha3 = "0.10"
 hex = "0.4"
 rand = "0.8"
+chacha20poly1305 = "0.10"
+zeroize = { version = "1", features = ["derive"] }

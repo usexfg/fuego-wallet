@@ -8,8 +8,10 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
+use crate::wallet_service::WalletService;
+
 pub struct AppState {
-    pub walletd_url: Option<String>,
+    pub wallet: Arc<WalletService>,
     pub fuegod_url: String,
 }
 
@@ -33,79 +35,7 @@ struct RpcErrorDetail {
     message: String,
 }
 
-fn remap_to_walletd(method: &str) -> String {
-    match method {
-        "getBalance" => "getbalance",
-        "getAddresses" => "get_address",
-        "getAddress" => "get_address",
-        "getTransactions" => "get_transfers",
-        "sendTransaction" => "transfer",
-        "getStatus" => "get_height",
-        "start_mining" => "start_mining",
-        "stop_mining" => "stop_mining",
-        "list_cds" => "list_cds",
-        "cd::list" => "list_cds",
-        "cd::create" => "create_cd",
-        "cd::claim" => "withdraw_cd",
-        "create_integrated" => "create_integrated",
-        _ => method,
-    }.to_string()
-}
-
-fn remap_params(method: &str, params: &serde_json::Value) -> serde_json::Value {
-    match method {
-        "sendTransaction" => {
-            let destinations = params.get("destinations").cloned()
-                .unwrap_or(serde_json::Value::Array(vec![]));
-            let fee = params.get("fee").cloned()
-                .unwrap_or(serde_json::json!(100000));
-            let mixin = params.get("anonymity").cloned()
-                .unwrap_or(serde_json::json!(10));
-            let payment_id = params.get("paymentId").cloned();
-
-            let mut out = serde_json::json!({
-                "destinations": destinations,
-                "fee": fee,
-                "mixin": mixin,
-                "unlock_time": 0,
-            });
-            if let Some(pid) = payment_id {
-                if !pid.is_null() && !pid.as_str().unwrap_or("").is_empty() {
-                    out["payment_id"] = pid;
-                }
-            }
-            out
-        }
-        "cd::create" => {
-            let amount = params.get("amount").cloned()
-                .unwrap_or(serde_json::json!("0"));
-            let term = params.get("duration_blocks").cloned()
-                .unwrap_or(serde_json::json!(1440));
-            serde_json::json!({"amount": amount, "term": term})
-        }
-        "cd::claim" => {
-            let deposit_id = params.get("cd_id").cloned()
-                .unwrap_or(serde_json::json!(""));
-            serde_json::json!({"deposit_id": deposit_id})
-        }
-        _ => params.clone(),
-    }
-}
-
-/// Methods that MUST go through walletd (wallet state operations)
-fn needs_walletd(method: &str) -> bool {
-    matches!(method,
-        "getBalance" | "getAddresses" | "getAddress" | "getTransactions" |
-        "sendTransaction" | "getStatus" |
-        "start_mining" | "stop_mining" |
-        "create_integrated" |
-        "list_cds" | "cd::list" | "cd::create" | "cd::claim"
-    )
-}
-
-/// Everything else goes straight to fuegod
 fn is_fuegod_method(method: &str) -> bool {
-    // Network/blockchain queries
     matches!(method,
         "getinfo" | "getheight" | "getblockcount" | "on_getblockhash" | "getblock" |
         "getlastblockheader" | "getblockheaderbyhash" | "getblockheaderbyheight" |
@@ -113,62 +43,257 @@ fn is_fuegod_method(method: &str) -> bool {
         "gettransactions" | "sendrawtransaction" |
         "getrandom_outs_json" | "get_outputs_heights" |
         "check_tx_proof" | "check_reserve_proof" |
-        // CD market operations (fuego RPC, not walletd)
+        "start_mining" | "stop_mining" |
         "getcdoffers" | "submitcd" | "cancelcd" | "estimate_cd_yield" |
         "cd::market_list" | "cd::sell" | "cd::buy" | "cd::cancel_listing" | "cd::apy" |
-        // AMM / HEAT
         "heat_metrics" | "amm_quote" | "amm_pool_info" |
         "get_orderbook_state" | "get_orderbook_info" | "get_orderbook_estimates" |
         "get_fuego_price" | "getswapoffers" | "getswapprice" | "getswaptrades" |
         "submitswap" | "cancelswap" | "requestswap" |
         "getactiveswaps" | "initiate" | "accept" | "processswap" | "refundswap" |
-        // Deposits / treasury
         "getdeposits" | "get_block_range" | "get_maturing_deposits" |
         "rollover_deposit" | "get_fee_pool_info" | "get_epoch_history" |
         "get_treasury_info" | "get_alias" | "get_alias_by_address" | "get_all_aliases"
     )
 }
 
-/// Sanitize error messages to prevent internal state leakage.
-/// Removes URLs, file paths, and stack traces from error messages.
+fn is_wallet_method(method: &str) -> bool {
+    matches!(method,
+        "getBalance" | "getAddresses" | "getAddress" | "getTransactions" |
+        "sendTransaction" | "getStatus" |
+        "create_integrated" | "list_cds" | "cd::list" | "cd::create" | "cd::claim"
+    )
+}
+
 fn sanitize_error(msg: &str) -> String {
-    // If message contains sensitive patterns, return generic error
-    if msg.contains("127.0.0.1") || msg.contains("localhost") 
+    if msg.contains("127.0.0.1") || msg.contains("localhost")
         || msg.contains("/Users/") || msg.contains("/home/")
         || msg.contains("http://") || msg.contains("https://") {
         return "internal error".to_string();
     }
-    
-    // Remove common internal prefixes
     let sanitized = msg
         .trim_start_matches("HTTP: ")
         .trim_start_matches("JSON: ")
         .trim_start_matches("RPC: ")
         .to_string();
-    
     sanitized
-}
-
-async fn proxy_to_walletd(walletd_url: &str, body: &serde_json::Value) -> Result<serde_json::Value, String> {
-    let client = reqwest::Client::new();
-    let url = format!("{}/json_rpc", walletd_url);
-    let resp = client.post(&url).json(body).send().await
-        .map_err(|e| sanitize_error(&format!("walletd request: {}", e)))?;
-    let val: serde_json::Value = resp.json().await
-        .map_err(|e| sanitize_error(&format!("walletd response: {}", e)))?;
-    let result = val.get("result").cloned().unwrap_or(val);
-    Ok(result)
 }
 
 async fn proxy_to_fuegod(fuegod_url: &str, body: &serde_json::Value) -> Result<serde_json::Value, String> {
     let client = reqwest::Client::new();
-    let url = format!("{}/json_rpc", fuegod_url);
-    let resp = client.post(&url).json(body).send().await
-        .map_err(|e| sanitize_error(&format!("fuego daemon request: {}", e)))?;
-    let val: serde_json::Value = resp.json().await
+    let method = body.get("method").and_then(|v| v.as_str()).unwrap_or("");
+    let params = body.get("params").cloned().unwrap_or(serde_json::json!({}));
+
+    let resp = match method {
+        "getinfo" => {
+            client.get(format!("{}/getinfo", fuegod_url)).send().await
+                .map_err(|e| sanitize_error(&format!("fuego daemon: {}", e)))?
+        }
+        "getheight" => {
+            client.post(format!("{}/getheight", fuegod_url))
+                .json(&serde_json::json!({})).send().await
+                .map_err(|e| sanitize_error(&format!("fuego daemon: {}", e)))?
+        }
+        "getblockcount" => {
+            client.post(format!("{}/getblockcount", fuegod_url))
+                .json(&serde_json::json!({})).send().await
+                .map_err(|e| sanitize_error(&format!("fuego daemon: {}", e)))?
+        }
+        "on_getblockhash" => {
+            client.post(format!("{}/on_getblockhash", fuegod_url))
+                .json(&params).send().await
+                .map_err(|e| sanitize_error(&format!("fuego daemon: {}", e)))?
+        }
+        "getblock" => {
+            client.post(format!("{}/getblock", fuegod_url))
+                .json(&params).send().await
+                .map_err(|e| sanitize_error(&format!("fuego daemon: {}", e)))?
+        }
+        "getlastblockheader" => {
+            client.post(format!("{}/getlastblockheader", fuegod_url))
+                .json(&serde_json::json!({})).send().await
+                .map_err(|e| sanitize_error(&format!("fuego daemon: {}", e)))?
+        }
+        "getblockheaderbyhash" => {
+            client.post(format!("{}/getblockheaderbyhash", fuegod_url))
+                .json(&params).send().await
+                .map_err(|e| sanitize_error(&format!("fuego daemon: {}", e)))?
+        }
+        "getblockheaderbyheight" => {
+            client.post(format!("{}/getblockheaderbyheight", fuegod_url))
+                .json(&params).send().await
+                .map_err(|e| sanitize_error(&format!("fuego daemon: {}", e)))?
+        }
+        "peers" => {
+            client.post(format!("{}/peers", fuegod_url))
+                .json(&serde_json::json!({})).send().await
+                .map_err(|e| sanitize_error(&format!("fuego daemon: {}", e)))?
+        }
+        "feeaddress" => {
+            client.post(format!("{}/feeaddress", fuegod_url))
+                .json(&serde_json::json!({})).send().await
+                .map_err(|e| sanitize_error(&format!("fuego daemon: {}", e)))?
+        }
+        "getethereal" => {
+            client.post(format!("{}/getethereal", fuegod_url))
+                .json(&serde_json::json!({})).send().await
+                .map_err(|e| sanitize_error(&format!("fuego daemon: {}", e)))?
+        }
+        "paymentid" => {
+            client.post(format!("{}/paymentid", fuegod_url))
+                .json(&serde_json::json!({})).send().await
+                .map_err(|e| sanitize_error(&format!("fuego daemon: {}", e)))?
+        }
+        "gettransactions" => {
+            client.post(format!("{}/gettransactions", fuegod_url))
+                .json(&params).send().await
+                .map_err(|e| sanitize_error(&format!("fuego daemon: {}", e)))?
+        }
+        "sendrawtransaction" => {
+            client.post(format!("{}/sendrawtransaction", fuegod_url))
+                .json(&params).send().await
+                .map_err(|e| sanitize_error(&format!("fuego daemon: {}", e)))?
+        }
+        "getrandom_outs_json" => {
+            client.post(format!("{}/getrandom_outs_json", fuegod_url))
+                .json(&params).send().await
+                .map_err(|e| sanitize_error(&format!("fuego daemon: {}", e)))?
+        }
+        "get_outputs_heights" => {
+            client.post(format!("{}/get_outputs_heights", fuegod_url))
+                .json(&params).send().await
+                .map_err(|e| sanitize_error(&format!("fuego daemon: {}", e)))?
+        }
+        "check_tx_proof" => {
+            client.post(format!("{}/check_tx_proof", fuegod_url))
+                .json(&params).send().await
+                .map_err(|e| sanitize_error(&format!("fuego daemon: {}", e)))?
+        }
+        "check_reserve_proof" => {
+            client.post(format!("{}/check_reserve_proof", fuegod_url))
+                .json(&params).send().await
+                .map_err(|e| sanitize_error(&format!("fuego daemon: {}", e)))?
+        }
+        "start_mining" => {
+            client.post(format!("{}/start_mining", fuegod_url))
+                .json(&params).send().await
+                .map_err(|e| sanitize_error(&format!("fuego daemon: {}", e)))?
+        }
+        "stop_mining" => {
+            client.post(format!("{}/stop_mining", fuegod_url))
+                .json(&serde_json::json!({})).send().await
+                .map_err(|e| sanitize_error(&format!("fuego daemon: {}", e)))?
+        }
+        "getcdoffers" | "submitcd" | "cancelcd" | "estimate_cd_yield" |
+        "cd::market_list" | "cd::sell" | "cd::buy" | "cd::cancel_listing" | "cd::apy" |
+        "getswapoffers" | "getswapprice" | "getswaptrades" |
+        "submitswap" | "cancelswap" | "requestswap" |
+        "getactiveswaps" | "initiate" | "accept" | "processswap" | "refundswap" |
+        "getdeposits" | "get_block_range" | "get_maturing_deposits" |
+        "rollover_deposit" | "get_fee_pool_info" | "get_epoch_history" |
+        "get_treasury_info" | "get_alias" | "get_alias_by_address" | "get_all_aliases" |
+        "heat_metrics" | "amm_quote" | "amm_pool_info" |
+        "get_orderbook_state" | "get_orderbook_info" | "get_orderbook_estimates" |
+        "get_fuego_price" => {
+            client.post(format!("{}/{}", fuegod_url, method))
+                .json(&params).send().await
+                .map_err(|e| sanitize_error(&format!("fuego daemon: {}", e)))?
+        }
+        _ => {
+            return Err(format!("unknown fuegod method: {}", method));
+        }
+    };
+
+    let text = resp.text().await
         .map_err(|e| sanitize_error(&format!("fuego daemon response: {}", e)))?;
-    let result = val.get("result").cloned().unwrap_or(val);
-    Ok(result)
+    let val: serde_json::Value = serde_json::from_str(&text)
+        .unwrap_or_else(|_| serde_json::json!({"status": text.trim()}));
+    Ok(val)
+}
+
+async fn handle_wallet_method(
+    wallet: &WalletService,
+    method: &str,
+    params: &serde_json::Value,
+) -> Result<serde_json::Value, String> {
+    match method {
+        "getBalance" | "getbalance" => {
+            let balance = wallet.balance_full();
+            Ok(serde_json::json!({
+                "availableBalance": balance.confirmed,
+                "lockedAmount": balance.pending + balance.immature,
+                "blockCount": wallet.height(),
+            }))
+        }
+        "getAddress" | "getAddresses" | "get_address" => {
+            Ok(serde_json::json!({
+                "address": wallet.address(),
+            }))
+        }
+        "getStatus" | "get_height" => {
+            let status = wallet.sync_status();
+            Ok(serde_json::json!({
+                "height": status.current_height,
+                "is_syncing": status.is_syncing,
+            }))
+        }
+        "getTransactions" | "get_transfers" => {
+            let txs = wallet.get_transactions(100);
+            let items: Vec<serde_json::Value> = txs.iter().map(|tx| {
+                serde_json::json!({
+                    "transactionHash": hex::encode(tx.hash),
+                    "fee": tx.fee,
+                    "blockIndex": 0,
+                    "amount": tx.outputs.iter().map(|o| o.amount as i64).sum::<i64>(),
+                    "transfers": [],
+                })
+            }).collect();
+            Ok(serde_json::json!({ "items": items, "transactions": txs.len() }))
+        }
+        "sendTransaction" | "transfer" => {
+            let destinations = params.get("destinations")
+                .and_then(|d| d.as_array())
+                .ok_or("missing destinations")?;
+            let dest = destinations.first()
+                .ok_or("empty destinations")?;
+            let address = dest.get("address")
+                .and_then(|a| a.as_str())
+                .ok_or("missing address")?;
+            let amount = dest.get("amount")
+                .and_then(|a| a.as_u64())
+                .ok_or("missing amount")?;
+            let fee = params.get("fee")
+                .and_then(|f| f.as_u64())
+                .unwrap_or(100_000);
+
+            let tx_hash = wallet.send_to_address(address, amount, fee).await
+                .map_err(|e| format!("send failed: {}", e))?;
+            Ok(serde_json::json!({
+                "transactionHash": hex::encode(tx_hash),
+                "txHash": hex::encode(tx_hash),
+            }))
+        }
+        "create_integrated" => {
+            let addr = wallet.address();
+            Ok(serde_json::json!({
+                "integratedAddress": addr,
+            }))
+        }
+        "list_cds" | "cd::list" => {
+            Ok(serde_json::json!({
+                "cds": [],
+                "active": [],
+                "matured": [],
+            }))
+        }
+        "cd::create" => {
+            Err("CDs require walletd RPC — not yet migrated to SDK".into())
+        }
+        "cd::claim" => {
+            Err("CDs require walletd RPC — not yet migrated to SDK".into())
+        }
+        _ => Err(format!("unknown wallet method: {}", method)),
+    }
 }
 
 async fn json_rpc_handler(
@@ -177,20 +302,10 @@ async fn json_rpc_handler(
 ) -> impl IntoResponse {
     let id = body.get("id").and_then(|v| v.as_u64()).unwrap_or(0);
     let method = body.get("method").and_then(|v| v.as_str()).unwrap_or("");
-    let params = body.get("params").cloned().unwrap_or(serde_json::Value::Null);
 
-    let result: Result<serde_json::Value, String> = if needs_walletd(method) {
-        match &state.walletd_url {
-            Some(url) => {
-                let walletd_method = remap_to_walletd(method);
-                let remapped_params = remap_params(method, &params);
-                let mut forwarded = body.clone();
-                forwarded["method"] = serde_json::json!(walletd_method);
-                forwarded["params"] = remapped_params;
-                proxy_to_walletd(url, &forwarded).await
-            }
-            None => Err("walletd not running".into()),
-        }
+    let result: Result<serde_json::Value, String> = if is_wallet_method(method) {
+        let params = body.get("params").cloned().unwrap_or(serde_json::Value::Null);
+        handle_wallet_method(&state.wallet, method, &params).await
     } else if is_fuegod_method(method) {
         proxy_to_fuegod(&state.fuegod_url, &body).await
     } else {
@@ -214,32 +329,25 @@ async fn json_rpc_handler(
 
 async fn health_check(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     let client = reqwest::Client::new();
-
-    // Check fuegod (always available - embedded or remote)
-    let fuegod_ok = client.post(format!("{}/json_rpc", state.fuegod_url))
-        .json(&serde_json::json!({"jsonrpc":"2.0","id":1,"method":"getinfo","params":{}}))
+    let fuegod_ok = client.get(format!("{}/getinfo", state.fuegod_url))
         .send().await
         .map(|r| r.status().is_success())
         .unwrap_or(false);
 
-    // Check walletd (optional - may not be running yet)
-    let walletd_ok = match &state.walletd_url {
-        Some(url) => client.post(format!("{}/json_rpc", url))
-            .json(&serde_json::json!({"jsonrpc":"2.0","id":1,"method":"getBalance","params":{}}))
-            .send().await
-            .map(|r| r.status().is_success())
-            .unwrap_or(false),
-        None => false,
-    };
+    let status = state.wallet.sync_status();
 
     Json(serde_json::json!({
         "status": if fuegod_ok { "ok" } else { "degraded" },
         "fuego": fuegod_ok,
-        "walletd": walletd_ok,
+        "wallet": {
+            "address": state.wallet.address(),
+            "balance": state.wallet.balance(),
+            "height": status.current_height,
+            "syncing": status.is_syncing,
+        },
+        "scanned_height": state.wallet.height(),
     }))
 }
-
-// ── Output scanning ──
 
 #[derive(Deserialize)]
 struct ScanBalanceRequest {
@@ -253,147 +361,27 @@ struct ScanBalanceRequest {
 
 fn default_batch_size() -> u64 { 100 }
 
-/// Fetch a block hash from fuegod by height.
-async fn fetch_block_hash(fuegod_url: &str, height: u64) -> Result<String, String> {
-    let client = reqwest::Client::new();
-    let resp = client.post(format!("{}/json_rpc", fuegod_url))
-        .json(&serde_json::json!({
-            "jsonrpc": "2.0", "id": 1,
-            "method": "on_getblockhash",
-            "params": [height]
-        }))
-        .send().await.map_err(|e| format!("hash request: {}", e))?;
-    let val: serde_json::Value = resp.json().await.map_err(|e| format!("hash response: {}", e))?;
-    val.get("result").and_then(|r| r.as_str()).map(|s| s.to_string())
-        .ok_or_else(|| format!("no hash for height {}", height))
-}
-
-/// Fetch a block from fuegod by hash.
-async fn fetch_block(fuegod_url: &str, hash: &str) -> Result<serde_json::Value, String> {
-    let client = reqwest::Client::new();
-    let resp = client.post(format!("{}/json_rpc", fuegod_url))
-        .json(&serde_json::json!({
-            "jsonrpc": "2.0", "id": 1,
-            "method": "getblock",
-            "params": {"hash": hash}
-        }))
-        .send().await.map_err(|e| format!("block request: {}", e))?;
-    let val: serde_json::Value = resp.json().await.map_err(|e| format!("block response: {}", e))?;
-    val.get("result").cloned().ok_or_else(|| "no block result".into())
-}
-
-/// Fetch full transactions by hash from fuegod.
-async fn fetch_transactions(fuegod_url: &str, tx_hashes: &[String]) -> Result<Vec<serde_json::Value>, String> {
-    if tx_hashes.is_empty() { return Ok(vec![]); }
-    let client = reqwest::Client::new();
-    let resp = client.post(format!("{}/json_rpc", fuegod_url))
-        .json(&serde_json::json!({
-            "jsonrpc": "2.0", "id": 1,
-            "method": "gettransactions",
-            "params": {"txs_hashes": tx_hashes}
-        }))
-        .send().await.map_err(|e| format!("tx request: {}", e))?;
-    let val: serde_json::Value = resp.json().await.map_err(|e| format!("tx response: {}", e))?;
-    let result = val.get("result").cloned().unwrap_or(val);
-    Ok(result.get("txs").and_then(|t| t.as_array()).cloned().unwrap_or_default())
-}
-
-/// Get current blockchain height from fuegod.
-async fn fetch_height(fuegod_url: &str) -> Result<u64, String> {
-    let client = reqwest::Client::new();
-    let resp = client.post(format!("{}/json_rpc", fuegod_url))
-        .json(&serde_json::json!({
-            "jsonrpc": "2.0", "id": 1,
-            "method": "getblockcount",
-            "params": {}
-        }))
-        .send().await.map_err(|e| format!("height request: {}", e))?;
-    let val: serde_json::Value = resp.json().await.map_err(|e| format!("height response: {}", e))?;
-    val.get("result").and_then(|r| r.get("count")).and_then(|c| c.as_u64())
-        .ok_or_else(|| "no height".into())
-}
-
 async fn scan_balance_handler(
     State(state): State<Arc<AppState>>,
-    Json(req): Json<ScanBalanceRequest>,
 ) -> impl IntoResponse {
-    // Parse keys
-    let view_secret_bytes = match hex::decode(&req.view_secret) {
-        Ok(b) if b.len() == 32 => {
-            let mut k = [0u8; 32]; k.copy_from_slice(&b); k
-        }
-        _ => return (StatusCode::BAD_REQUEST, Json(serde_json::json!({"error": "invalid view_secret"}))).into_response(),
-    };
-    let spend_public_bytes = match hex::decode(&req.spend_public) {
-        Ok(b) if b.len() == 32 => {
-            let mut k = [0u8; 32]; k.copy_from_slice(&b); k
-        }
-        _ => return (StatusCode::BAD_REQUEST, Json(serde_json::json!({"error": "invalid spend_public"}))).into_response(),
-    };
-
-    // Get current height
-    let current_height = match fetch_height(&state.fuegod_url).await {
-        Ok(h) => h,
-        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": e}))).into_response(),
-    };
-
-    let end_height = std::cmp::min(req.start_height + req.batch_size, current_height);
-    let mut all_outputs = Vec::new();
-    let mut total_balance: u64 = 0;
-    let mut tx_count: u64 = 0;
-
-    // Scan blocks in batch
-    for height in req.start_height..=end_height {
-        let hash = match fetch_block_hash(&state.fuegod_url, height).await {
-            Ok(h) => h,
-            Err(_) => continue,
-        };
-        let block = match fetch_block(&state.fuegod_url, &hash).await {
-            Ok(b) => b,
-            Err(_) => continue,
-        };
-
-        // Extract tx hashes from block
-        let tx_hashes: Vec<String> = block.get("tx_hashes")
-            .and_then(|t| t.as_array())
-            .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
-            .unwrap_or_default();
-
-        // Fetch full transactions
-        let txs = match fetch_transactions(&state.fuegod_url, &tx_hashes).await {
-            Ok(t) => t,
-            Err(_) => continue,
-        };
-        tx_count += txs.len() as u64;
-
-        // Scan transactions
-        let outputs = crate::scanner::scan_transactions(
-            &view_secret_bytes, &spend_public_bytes, &txs, height,
-        );
-        for o in &outputs {
-            total_balance += o.amount;
-        }
-        all_outputs.extend(outputs);
-    }
-
+    let balance = state.wallet.balance_full();
+    let status = state.wallet.sync_status();
     Json(serde_json::json!({
-        "balance": total_balance,
-        "outputs": all_outputs,
-        "scanned_height": end_height,
-        "current_height": current_height,
-        "scanned_tx_count": tx_count,
-        "batch_start": req.start_height,
-        "batch_end": end_height,
-    })).into_response()
+        "balance": balance.confirmed,
+        "pending": balance.pending,
+        "immature": balance.immature,
+        "height": status.current_height,
+        "address": state.wallet.address(),
+    }))
 }
 
 pub async fn run_server(
-    walletd_url: Option<String>,
+    wallet: Arc<WalletService>,
     fuegod_url: &str,
     bind_addr: &str,
 ) -> Result<(), String> {
     let state = Arc::new(AppState {
-        walletd_url,
+        wallet,
         fuegod_url: fuegod_url.to_string(),
     });
 

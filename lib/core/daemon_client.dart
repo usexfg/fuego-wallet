@@ -68,7 +68,7 @@ class FuegoDaemonClient {
       'id': 'fuego_core',
       'method': 'getinfo',
       'params': {},
-    }, useWallet: false);
+    }, useWallet: true);
     final result = r['result'] as Map<String, dynamic>? ?? r;
     return NetworkInfo.fromJson(result);
   }
@@ -79,7 +79,7 @@ class FuegoDaemonClient {
       'id': 'fuego_core',
       'method': 'getinfo',
       'params': {},
-    }, useWallet: false);
+    }, useWallet: true);
     final result = r['result'] as Map<String, dynamic>? ?? r;
     final outgoing = result['outgoing_connections_count'] as int? ?? 0;
     final incoming = result['incoming_connections_count'] as int? ?? 0;

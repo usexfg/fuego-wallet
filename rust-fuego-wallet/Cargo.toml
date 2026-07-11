@@ -4,5 +4,6 @@ members = [
     "fuego-sdk/fuego-crypto",
     "fuego-sdk/fuego-vault",
     "fuego-sdk/fuego-ffi",
+    "fuego-sdk/fuego-sdk",
 ]
 resolver = "2"

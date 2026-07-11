@@ -8,11 +8,12 @@ mod keystore;
 mod release;
 mod scanner;
 mod server;
+mod wallet_service;
 mod walletd;
 
 use clap::{Parser, Subcommand};
-use walletd::WalletdProcess;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 fn default_wallet_dir() -> PathBuf {
     directories::ProjectDirs::from("org", "usexfg", "fuego-wallet")
@@ -28,6 +29,9 @@ struct Cli {
 
     #[arg(short = 'P', long, default_value_t = 8070)]
     port: u16,
+
+    #[arg(long)]
+    seed: Option<String>,
 
     #[command(subcommand)]
     command: Option<Commands>,
@@ -46,6 +50,24 @@ enum Commands {
         testnet: bool,
     },
     Status,
+}
+
+fn load_or_create_seed(wallet_dir: &PathBuf) -> Result<[u8; 32], Box<dyn std::error::Error>> {
+    let seed_path = wallet_dir.join("master_seed.bin");
+    if seed_path.exists() {
+        let data = std::fs::read(&seed_path)?;
+        if data.len() == 32 {
+            let mut seed = [0u8; 32];
+            seed.copy_from_slice(&data);
+            return Ok(seed);
+        }
+    }
+    let mut seed = [0u8; 32];
+    use rand::RngCore;
+    rand::rngs::OsRng.fill_bytes(&mut seed);
+    std::fs::write(&seed_path, &seed)?;
+    log::info!("Created new wallet seed at {:?}", seed_path);
+    Ok(seed)
 }
 
 #[tokio::main]
@@ -74,67 +96,60 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let daemon_url = format!("http://{}:{}", actual_host, daemon_port);
 
-            // 2. Start walletd (optional — server works without it for network queries)
-            let mut wp = WalletdProcess::new(8071);
-            let container_path = wallet_dir.join("fuego_wallet.container");
-            let walletd_url = match wp.start(&actual_host, daemon_port,
-                container_path.to_str().unwrap_or("fuego_wallet.container")).await
-            {
-                Ok(url) => {
-                    log::info!("walletd ready at {}", url);
-                    Some(url)
+            // 2. Initialize SDK wallet
+            let seed = match &cli.seed {
+                Some(s) => {
+                    let bytes = hex::decode(s.trim_start_matches("0x"))
+                        .map_err(|e| format!("invalid seed hex: {}", e))?;
+                    if bytes.len() != 32 {
+                        return Err(format!("seed must be 32 bytes").into());
+                    }
+                    let mut seed = [0u8; 32];
+                    seed.copy_from_slice(&bytes);
+                    seed
+                }
+                None => load_or_create_seed(&wallet_dir)?,
+            };
+
+            let wallet = match wallet_service::WalletService::new(seed, &actual_host, daemon_port) {
+                Ok(w) => {
+                    log::info!("SDK wallet initialized — address: {}", w.address());
+                    Arc::new(w)
                 }
                 Err(e) => {
-                    log::warn!("walletd failed: {} — running without walletd", e);
-                    None
+                    log::error!("Failed to initialize SDK wallet: {}", e);
+                    return Err(e.to_string().into());
                 }
             };
 
-            if let Some(ref url) = walletd_url {
-                let addr = fetch_wallet_address(url).await;
-                log::info!("Wallet address: {}", addr);
-            } else {
-                log::warn!("No walletd — address/balance/sync unavailable");
-            }
+            let wallet_addr = wallet.address();
+            log::info!("Wallet address: {}", wallet_addr);
 
-            // 3. Start Axum server (works with or without walletd)
+            // 3. Start background sync
+            let sync_wallet = wallet.clone();
+            tokio::spawn(async move {
+                log::info!("Starting background wallet sync...");
+                match sync_wallet.start_sync().await {
+                    Ok(()) => log::info!("Wallet sync complete — balance: {}", sync_wallet.balance()),
+                    Err(e) => log::warn!("Wallet sync interrupted: {}", e),
+                }
+            });
+
+            // 4. Start Axum server
+            let wallet_state = wallet;
             let bind = format!("{}:{}", cli.host, cli.port);
-            server::run_server(walletd_url, &daemon_url, &bind).await?;
+            server::run_server(wallet_state, &daemon_url, &bind).await?;
 
-            wp.stop();
             fuegod_proc.stop();
         }
 
         Commands::Status => {
             println!("Wallet dir: {:?}", wallet_dir);
-            let container_path = wallet_dir.join("fuego_wallet.container");
-            println!("Container: {}", if container_path.exists() { "exists" } else { "not found" });
+            let seed_path = wallet_dir.join("master_seed.bin");
+            println!("Seed: {}", if seed_path.exists() { "exists" } else { "not found" });
             println!("Use 'fuego-wallet serve' to start.");
         }
     }
 
     Ok(())
-}
-
-async fn fetch_wallet_address(walletd_url: &str) -> String {
-    let client = reqwest::Client::new();
-    let body = serde_json::json!({
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "get_address",
-        "params": {}
-    });
-    match client.post(format!("{}/json_rpc", walletd_url))
-        .json(&body).send().await
-    {
-        Ok(resp) => {
-            let val: serde_json::Value = resp.json().await.unwrap_or_default();
-            val.get("result")
-                .and_then(|r| r.get("address"))
-                .and_then(|a| a.as_str())
-                .unwrap_or("unknown")
-                .to_string()
-        }
-        Err(e) => format!("error: {}", e),
-    }
 }

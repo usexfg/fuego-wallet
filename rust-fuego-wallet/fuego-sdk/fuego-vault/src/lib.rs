@@ -8,16 +8,24 @@ use sha3::{Digest, Keccak256};
 use rand::rngs::OsRng;
 use rand::RngCore;
 use std::ops::Mul;
+use chacha20poly1305::{AeadCore, AeadInPlace, ChaCha20Poly1305, KeyInit};
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 pub mod recovery;
-use recovery::RecoveryRequest;
+pub use recovery::RecoveryRequest;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+const VAULT_FILE_VERSION: u8 = 1;
+
+#[derive(Debug, Clone, Serialize, Deserialize, Zeroize, ZeroizeOnDrop)]
 pub struct Vault {
     pub master_seed: [u8; 32],
+    #[zeroize(skip)]
     pub encrypted_backup: Option<Vec<u8>>,
+    #[zeroize(skip)]
     pub display_name: Option<String>,
+    #[zeroize(skip)]
     pub guardians: Vec<Address>,
+    #[zeroize(skip)]
     pub recovery_threshold: u8,
 }
 
@@ -102,7 +110,13 @@ impl Vault {
 
     pub fn finalize_recovery(&mut self, request: RecoveryRequest) -> Result<(), String> {
         self.verify_recovery(&request)?;
-        println!("Identity successfully restored via Guardian recovery!");
+        let mut hasher = Keccak256::new();
+        hasher.update(self.master_seed);
+        hasher.update(request.new_public_key);
+        let new_seed: [u8; 32] = hasher.finalize().into();
+        self.master_seed = new_seed;
+        self.guardians.clear();
+        self.recovery_threshold = 0;
         Ok(())
     }
 
@@ -113,12 +127,86 @@ impl Vault {
         RecoveryRequest::new(old_root, new_public_key, self.recovery_threshold)
     }
 
-    pub fn save(&self, path: PathBuf) -> Result<(), std::io::Error> {
+    /// Save vault with ChaCha20Poly1305 encryption using passphrase.
+    pub fn save(&self, path: PathBuf, passphrase: &[u8]) -> Result<(), std::io::Error> {
+        let mut plaintext = bincode::serialize(self).map_err(std::io::Error::other)?;
+
+        let mut key = [0u8; 32];
+        let mut hasher = Keccak256::new();
+        hasher.update(passphrase);
+        hasher.update(b"fuego-vault-v1");
+        key.copy_from_slice(&hasher.finalize());
+
+        let cipher = ChaCha20Poly1305::new((&key).into());
+        let nonce = ChaCha20Poly1305::generate_nonce(&mut OsRng);
+        cipher
+            .encrypt_in_place(&nonce, b"", &mut plaintext)
+            .map_err(|e| std::io::Error::other(format!("Encryption failed: {}", e)))?;
+
+        let mut output = Vec::with_capacity(1 + 12 + plaintext.len());
+        output.push(VAULT_FILE_VERSION);
+        output.extend_from_slice(nonce.as_slice());
+        output.extend_from_slice(&plaintext);
+
+        key.zeroize();
+
+        fs::write(path, output)
+    }
+
+    /// Load vault with ChaCha20Poly1305 decryption using passphrase.
+    pub fn load(path: PathBuf, passphrase: &[u8]) -> Result<Self, std::io::Error> {
+        let data = fs::read(path)?;
+        if data.len() < 13 {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "Vault file too short",
+            ));
+        }
+
+        let version = data[0];
+        if version != VAULT_FILE_VERSION {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!("Unsupported vault version: {}", version),
+            ));
+        }
+
+        let nonce = &data[1..13];
+        let ciphertext = &data[13..];
+
+        let mut key = [0u8; 32];
+        let mut hasher = Keccak256::new();
+        hasher.update(passphrase);
+        hasher.update(b"fuego-vault-v1");
+        key.copy_from_slice(&hasher.finalize());
+
+        let cipher = ChaCha20Poly1305::new((&key).into());
+        let nonce_arr: [u8; 12] = nonce.try_into().map_err(|_| {
+            std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid nonce length")
+        })?;
+        let mut plaintext = ciphertext.to_vec();
+        cipher
+            .decrypt_in_place(nonce_arr.as_ref().into(), b"", &mut plaintext)
+            .map_err(|_| {
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "Decryption failed (wrong passphrase or corrupted vault)",
+                )
+            })?;
+
+        key.zeroize();
+
+        bincode::deserialize(&plaintext).map_err(std::io::Error::other)
+    }
+
+    /// Unencrypted save (for FFI backward compatibility).
+    pub fn save_unencrypted(&self, path: PathBuf) -> Result<(), std::io::Error> {
         let data = bincode::serialize(self).map_err(std::io::Error::other)?;
         fs::write(path, data)
     }
 
-    pub fn load(path: PathBuf) -> Result<Self, std::io::Error> {
+    /// Unencrypted load (for FFI backward compatibility).
+    pub fn load_unencrypted(path: PathBuf) -> Result<Self, std::io::Error> {
         let data = fs::read(path)?;
         bincode::deserialize(&data).map_err(std::io::Error::other)
     }

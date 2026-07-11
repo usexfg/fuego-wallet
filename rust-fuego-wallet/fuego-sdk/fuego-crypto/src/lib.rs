@@ -69,6 +69,65 @@ pub fn cn_base58_encode(data: &[u8]) -> String {
     String::from_utf8(res).unwrap()
 }
 
+/// CryptoNote block-based Base58 decode (matching C++ Base58::decode).
+pub fn cn_base58_decode(encoded: &str) -> Option<Vec<u8>> {
+    if encoded.is_empty() {
+        return Some(Vec::new());
+    }
+    let full_block_count = encoded.len() / FULL_ENCODED_BLOCK_SIZE;
+    let remainder_size = encoded.len() % FULL_ENCODED_BLOCK_SIZE;
+
+    let mut last_block_size = 0;
+    if remainder_size > 0 {
+        for (i, &size) in ENCODED_BLOCK_SIZES.iter().enumerate().skip(1) {
+            if size == remainder_size {
+                last_block_size = i;
+                break;
+            }
+        }
+        if last_block_size == 0 && remainder_size != 0 {
+            return None;
+        }
+    }
+
+    let total_bytes = full_block_count * FULL_BLOCK_SIZE + last_block_size;
+    let mut result = vec![0u8; total_bytes];
+    let mut pos = 0;
+
+    for i in 0..full_block_count {
+        let block_start = i * FULL_ENCODED_BLOCK_SIZE;
+        let block = &encoded[block_start..block_start + FULL_ENCODED_BLOCK_SIZE];
+        let decoded = decode_block(block, FULL_BLOCK_SIZE)?;
+        result[pos..pos + FULL_BLOCK_SIZE].copy_from_slice(&decoded);
+        pos += FULL_BLOCK_SIZE;
+    }
+
+    if last_block_size > 0 {
+        let block = &encoded[full_block_count * FULL_ENCODED_BLOCK_SIZE..];
+        let decoded = decode_block(block, last_block_size)?;
+        result[pos..pos + last_block_size].copy_from_slice(&decoded);
+    }
+
+    Some(result)
+}
+
+fn decode_block(encoded: &str, size: usize) -> Option<Vec<u8>> {
+    let mut num: u64 = 0;
+    for c in encoded.chars() {
+        let digit = ALPHABET.iter().position(|&b| b == c as u8)?;
+        num = num * ALPHABET_SIZE as u64 + digit as u64;
+    }
+    let mut block = vec![0u8; size];
+    for i in (0..size).rev() {
+        if num == 0 {
+            break;
+        }
+        block[i] = (num & 0xFF) as u8;
+        num >>= 8;
+    }
+    Some(block)
+}
+
 // ── Key types ──────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize, Zeroize)]
@@ -186,6 +245,42 @@ pub fn make_address(spend_pub: &[u8; 32], view_pub: &[u8; 32]) -> Address {
     buf.extend_from_slice(&hash[..ADDR_CHECKSUM_SIZE]);
     // Step 4: CryptoNote block-based base58 encode
     Address(cn_base58_encode(&buf))
+}
+
+/// Validate a Fuego address string.
+/// Returns true if the address is a valid CryptoNote Base58 encoded address
+/// with the correct prefix and checksum.
+pub fn is_valid_address(address: &str) -> bool {
+    let decoded = match cn_base58_decode(address) {
+        Some(d) => d,
+        None => return false,
+    };
+    if decoded.len() < 71 {
+        return false;
+    }
+    let payload = &decoded[..decoded.len() - ADDR_CHECKSUM_SIZE];
+    let checksum = &decoded[decoded.len() - ADDR_CHECKSUM_SIZE..];
+    let hash = Keccak256::digest(payload);
+    if &hash[..ADDR_CHECKSUM_SIZE] != checksum {
+        return false;
+    }
+    let (prefix, _) = varint_decode(&decoded);
+    prefix == ADDRESS_BASE58_PREFIX
+}
+
+fn varint_decode(data: &[u8]) -> (u64, usize) {
+    let mut result: u64 = 0;
+    let mut shift = 0;
+    let mut i = 0;
+    for &byte in data {
+        result |= ((byte & 0x7F) as u64) << shift;
+        i += 1;
+        if byte & 0x80 == 0 {
+            break;
+        }
+        shift += 7;
+    }
+    (result, i)
 }
 
 // ── Internal helpers ────────────────────────────────────────────────

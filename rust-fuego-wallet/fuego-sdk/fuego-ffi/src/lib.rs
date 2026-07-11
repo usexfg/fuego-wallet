@@ -166,7 +166,7 @@ pub unsafe extern "C" fn fuego_vault_save(
     let data = slice::from_raw_parts(vault_ptr, vault_len);
     let path = CStr::from_ptr(path_ptr).to_str().unwrap_or("");
     match bincode::deserialize::<Vault>(data) {
-        Ok(vault) => match vault.save(std::path::PathBuf::from(path)) {
+        Ok(vault) => match vault.save_unencrypted(std::path::PathBuf::from(path)) {
             Ok(()) => FuegoResult { ok: true, error: ptr::null_mut() },
             Err(e) => FuegoResult { ok: false, error: CString::new(e.to_string()).unwrap().into_raw() },
         },
@@ -181,7 +181,7 @@ pub unsafe extern "C" fn fuego_vault_load(path_ptr: *const c_char) -> FuegoBytes
         return FuegoBytes { ptr: ptr::null_mut(), len: 0 };
     }
     let path = CStr::from_ptr(path_ptr).to_str().unwrap_or("");
-    match Vault::load(std::path::PathBuf::from(path)) {
+    match Vault::load_unencrypted(std::path::PathBuf::from(path)) {
         Ok(vault) => {
             let data = bincode::serialize(&vault).unwrap_or_default();
             let len = data.len();
