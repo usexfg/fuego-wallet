@@ -189,6 +189,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _miningControls(WalletState state) {
     return BlocBuilder<MiningCubit, MiningState>(
       builder: (context, mining) {
+        final addr = state.address;
+        final canMine = addr != null && addr.isNotEmpty;
         return Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -201,17 +203,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   Icon(Icons.memory, color: mining.isMining ? AppTheme.successColor : AppTheme.textMuted, size: 18),
                   const SizedBox(width: 8),
-                  Text(
-                    mining.isMining
-                        ? 'Pool Mining - ${mining.hashrate} H/s'
-                        : 'Pool Miner (${mining.poolHost})',
-                    style: TextStyle(color: mining.isMining ? AppTheme.successColor : AppTheme.textMuted, fontSize: 12),
+                  Expanded(
+                    child: Text(
+                      mining.isMining
+                          ? 'Pool Mining - ${mining.hashrate} H/s'
+                          : 'Pool Miner (${mining.poolHost})',
+                      style: TextStyle(color: mining.isMining ? AppTheme.successColor : AppTheme.textMuted, fontSize: 12),
+                    ),
                   ),
-                  const Spacer(),
                   ElevatedButton(
-                    onPressed: () {
-                      final addr = state.address;
-                      if (addr == null || addr.isEmpty) return;
+                    onPressed: !canMine ? null : () {
                       if (mining.isMining) {
                         context.read<MiningCubit>().stopMining();
                       } else {
@@ -222,16 +223,28 @@ class _HomeScreenState extends State<HomeScreen> {
                       backgroundColor: mining.isMining ? AppTheme.errorColor : AppTheme.successColor,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      disabledBackgroundColor: AppTheme.textMuted.withOpacity(0.3),
                     ),
                     child: Text(mining.isMining ? 'Stop' : 'Start'),
                   ),
                 ],
               ),
+              if (mining.error != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(mining.error!, style: const TextStyle(color: AppTheme.errorColor, fontSize: 10)),
+                ),
               if (mining.sharesAccepted > 0)
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
                   child: Text('Shares: ${mining.sharesAccepted}/${mining.sharesSubmitted}',
                       style: const TextStyle(color: AppTheme.textMuted, fontSize: 10)),
+                ),
+              if (!canMine)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: const Text('Wallet address not available',
+                      style: TextStyle(color: AppTheme.textMuted, fontSize: 10)),
                 ),
             ],
           ),

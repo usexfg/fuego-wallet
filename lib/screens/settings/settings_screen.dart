@@ -532,7 +532,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _buildSettingsTile(
                 icon: Icons.account_balance_wallet,
                 title: 'Wallet Address',
-                subtitle: _truncateAddress(walletProvider.wallet?.address ?? 'Not available'),
+                subtitle: _truncateAddress(state.address ?? 'Not available'),
                 onTap: () {
                   // TODO: Show full address with QR code
                 },
@@ -577,14 +577,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _buildSettingsTile(
                 icon: Icons.cloud,
                 title: 'Node Connection',
-                subtitle: walletProvider.isConnected
-                    ? 'Connected to ${walletProvider.nodeUrl?.replaceAll('http://', '') ?? 'remote node'}'
+                subtitle: state.isConnected
+                    ? 'Connected — height ${state.blockHeight}'
                     : 'Disconnected',
                 trailing: Container(
                   width: 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: walletProvider.isConnected 
+                    color: state.isConnected 
                         ? AppTheme.successColor 
                         : AppTheme.errorColor,
                     shape: BoxShape.circle,
@@ -632,9 +632,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _buildSettingsTile(
                 icon: Icons.sync,
                 title: 'Sync Status',
-                subtitle: walletProvider.isWalletSynced 
-                    ? 'Synchronized' 
-                    : 'Syncing ${(walletProvider.syncProgress * 100).toStringAsFixed(1)}%',
+                subtitle: state.isSynced
+                    ? 'Synchronized (height ${state.blockHeight})'
+                    : 'Syncing (height ${state.blockHeight})',
                 onTap: () {
                   // TODO: Show sync details
                 },
