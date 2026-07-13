@@ -42,6 +42,7 @@ pub mod traits;
 pub mod types;
 pub mod vault;
 pub mod wallet;
+pub mod alias;
 
 pub use builder::{SdkBuilder, WalletBuilder};
 pub use error::{Result, SdkError};

@@ -126,6 +126,22 @@ pub unsafe extern "C" fn fuego_vault_get_address(
     }
 }
 
+/// Get hex-encoded 32-byte seed from vault. Returns 64-char hex string.
+#[no_mangle]
+pub unsafe extern "C" fn fuego_vault_get_seed(
+    vault_ptr: *const u8,
+    vault_len: usize,
+) -> *mut c_char {
+    if vault_ptr.is_null() {
+        return CString::new("").unwrap().into_raw();
+    }
+    let data = slice::from_raw_parts(vault_ptr, vault_len);
+    match bincode::deserialize::<Vault>(data) {
+        Ok(vault) => CString::new(hex::encode(vault.master_seed)).unwrap().into_raw(),
+        Err(_) => CString::new("").unwrap().into_raw(),
+    }
+}
+
 /// Derive keypair from vault at index. Returns JSON: {"secret":"hex","public":"hex"}
 #[no_mangle]
 pub unsafe extern "C" fn fuego_vault_derive_keypair(

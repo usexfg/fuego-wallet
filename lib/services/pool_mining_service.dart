@@ -32,7 +32,7 @@ class PoolMiningService {
 
   PoolMiningService({
     String poolHost = 'loudmining.com',
-    int poolPort = 3333,
+    int poolPort = 4200,
     String walletAddress = '',
   })  : _poolHost = poolHost,
         _poolPort = poolPort,

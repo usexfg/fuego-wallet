@@ -14,6 +14,8 @@ mod walletd;
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 use std::sync::Arc;
+use tokio::sync::Mutex;
+use crate::wallet_service::WalletService;
 
 fn default_wallet_dir() -> PathBuf {
     directories::ProjectDirs::from("org", "usexfg", "fuego-wallet")
@@ -111,34 +113,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 None => load_or_create_seed(&wallet_dir)?,
             };
 
-            let wallet = match wallet_service::WalletService::new(seed, &actual_host, daemon_port) {
-                Ok(w) => {
-                    log::info!("SDK wallet initialized — address: {}", w.address());
-                    Arc::new(w)
-                }
-                Err(e) => {
-                    log::error!("Failed to initialize SDK wallet: {}", e);
-                    return Err(e.to_string().into());
-                }
-            };
+            let wallet_service = WalletService::new(seed, &actual_host, daemon_port)
+                .map_err(|e| format!("Failed to initialize SDK wallet: {}", e))?;
+            let wallet = Arc::new(Mutex::new(wallet_service));
 
-            let wallet_addr = wallet.address();
-            log::info!("Wallet address: {}", wallet_addr);
+            log::info!("Wallet address: {}", wallet.lock().await.address().await);
 
             // 3. Start background sync
             let sync_wallet = wallet.clone();
             tokio::spawn(async move {
                 log::info!("Starting background wallet sync...");
-                match sync_wallet.start_sync().await {
-                    Ok(()) => log::info!("Wallet sync complete — balance: {}", sync_wallet.balance()),
-                    Err(e) => log::warn!("Wallet sync interrupted: {}", e),
+                loop {
+                    let wallet = sync_wallet.lock().await;
+                    if let Err(e) = wallet.start_sync().await {
+                        log::error!("Sync failed: {}", e);
+                    }
+                    drop(wallet);
+                    tokio::time::sleep(std::time::Duration::from_secs(120)).await;
                 }
             });
 
             // 4. Start Axum server
-            let wallet_state = wallet;
             let bind = format!("{}:{}", cli.host, cli.port);
-            server::run_server(wallet_state, &daemon_url, &bind).await?;
+            server::run_server(wallet, &daemon_url, &bind).await?;
 
             fuegod_proc.stop();
         }

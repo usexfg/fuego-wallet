@@ -57,6 +57,12 @@ class FuegoVaultService {
   /// Hex-encoded view secret key (32 bytes).
   String? get viewSecretKey => _viewSecretKey;
 
+  String? getSeed() {
+    if (_vaultBytes == null) return null;
+    return _ffi.vaultGetSeed(_vaultBytes!);
+  }
+
+
   /// Derive keypair at index.
   Map<String, dynamic> deriveKeypair(int index) {
     return _ffi.vaultDeriveKeypair(_vaultBytes!, index);

@@ -71,6 +71,11 @@ impl Wallet {
         self.scanner.build_transaction(to, amount, fee)
     }
 
+    pub fn build_alias_transaction(&mut self, alias: &str, fee: u64) -> Result<Transaction> {
+        self.scanner.build_alias_transaction(alias, fee)
+    }
+
+
     pub fn get_transactions(&self, limit: usize) -> Vec<Transaction> {
         self.scanner.transaction_history(limit)
     }

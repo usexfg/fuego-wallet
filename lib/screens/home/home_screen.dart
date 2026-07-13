@@ -3,8 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/core.dart';
 import '../../bloc/wallet/wallet_cubit.dart';
-import '../../bloc/mining/mining_cubit.dart';
 import '../../utils/theme.dart';
+import '../transactions/transaction_details_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -103,6 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _addressCard(WalletState state) {
     final addr = state.address ?? '';
+    final alias = state.alias; // Assuming alias is in WalletState
     if (addr.isEmpty) return const SizedBox.shrink();
     return Container(
       padding: const EdgeInsets.all(12),
@@ -115,9 +116,19 @@ class _HomeScreenState extends State<HomeScreen> {
           const Icon(Icons.wallet, color: AppTheme.primaryColor, size: 16),
           const SizedBox(width: 8),
           Expanded(
-            child: SelectableText(
-              addr,
-              style: const TextStyle(color: AppTheme.textPrimary, fontSize: 11, fontFamily: 'monospace'),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (alias != null)
+                  Text(
+                    '@$alias',
+                    style: const TextStyle(color: AppTheme.primaryColor, fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                SelectableText(
+                  addr,
+                  style: const TextStyle(color: AppTheme.textPrimary, fontSize: 11, fontFamily: 'monospace'),
+                ),
+              ],
             ),
           ),
           GestureDetector(
@@ -255,39 +266,48 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _txCard(FuegoTransaction tx) {
     final isIn = tx.isIncoming;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceColor,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            isIn ? Icons.arrow_downward : Icons.arrow_upward,
-            color: isIn ? AppTheme.successColor : AppTheme.errorColor,
-            size: 16,
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => TransactionDetailsScreen(transaction: tx),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(tx.txHash.substring(0, 16) + '...', style: const TextStyle(color: AppTheme.textPrimary, fontSize: 12, fontFamily: 'monospace')),
-                Text(tx.dateTime.toString().substring(0, 19), style: const TextStyle(color: AppTheme.textMuted, fontSize: 10)),
-              ],
-            ),
-          ),
-          Text(
-            '${isIn ? '+' : '-'}${tx.amount.toStringAsFixed(decimalPlaces)} XFG',
-            style: TextStyle(
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 6),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceColor,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              isIn ? Icons.arrow_downward : Icons.arrow_upward,
               color: isIn ? AppTheme.successColor : AppTheme.errorColor,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
+              size: 16,
             ),
-          ),
-        ],
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(tx.txHash.substring(0, 16) + '...', style: const TextStyle(color: AppTheme.textPrimary, fontSize: 12, fontFamily: 'monospace')),
+                  Text(tx.dateTime.toString().substring(0, 19), style: const TextStyle(color: AppTheme.textMuted, fontSize: 10)),
+                ],
+              ),
+            ),
+            Text(
+              '${isIn ? '+' : '-'}${tx.amount.toStringAsFixed(decimalPlaces)} XFG',
+              style: TextStyle(
+                color: isIn ? AppTheme.successColor : AppTheme.errorColor,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

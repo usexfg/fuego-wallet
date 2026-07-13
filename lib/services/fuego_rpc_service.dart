@@ -180,6 +180,18 @@ class FuegoRPCService {
     return sha256.convert(bytes).toString().substring(0, 64);
   }
 
+  Future<String> registerAlias(String alias) async {
+    try {
+      final response = await _makeRPCCall('register_alias', {
+        'alias': alias,
+      });
+      return response['tx_hash'] as String? ?? response['transactionHash'] as String? ?? '';
+    } catch (e) {
+      throw FuegoRPCException('Failed to register alias: $e');
+    }
+  }
+
+
   // ── Mining (routed through proxy → fuegod) ──
 
   Future<bool> startMining({

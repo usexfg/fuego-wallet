@@ -1,3 +1,4 @@
+use crate::alias::{add_alias_info_to_extra, AliasInfo};
 use crate::error::{Result, SdkError};
 use crate::types::*;
 use crate::vault::WalletVault;
@@ -165,6 +166,29 @@ impl UtxoScanner {
             extra: Vec::new(),
             fee,
         };
+
+        Ok(tx)
+    }
+
+    pub fn build_alias_transaction(
+        &mut self,
+        alias: &str,
+        fee: u64,
+    ) -> Result<Transaction> {
+        let subaddress = self.vault.new_subaddress();
+        let spend_index = 100 + self.vault.subaddress_count() * 2;
+        let view_keypair = self.vault.derive_keypair(spend_index + 1);
+
+        let sdk_address = Address(subaddress.0.clone());
+
+        let alias_info = AliasInfo {
+            alias: alias.to_string(),
+            address: sdk_address.clone(),
+            view_key: view_keypair.public_key(),
+        };
+
+        let mut tx = self.build_transaction(&sdk_address, 0, fee)?;
+        add_alias_info_to_extra(&mut tx.extra, &alias_info);
 
         Ok(tx)
     }

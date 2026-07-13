@@ -118,6 +118,17 @@ class FuegoNative {
     return addr;
   }
 
+  /// Get seed from vault.
+  String vaultGetSeed(Uint8List vaultBytes) {
+    final vaultPtr = _allocUint8List(vaultBytes);
+    final fn = _lib.lookupFunction<_VaultGetSeedNative, _VaultGetSeedDart>('fuego_vault_get_seed');
+    final result = fn(vaultPtr, vaultBytes.length);
+    final seed = result.toDartString();
+    _freeString(result);
+    calloc.free(vaultPtr);
+    return seed;
+  }
+
   /// Derive keypair from vault at index.
   Map<String, dynamic> vaultDeriveKeypair(Uint8List vaultBytes, int index) {
     final vaultPtr = _allocUint8List(vaultBytes);
@@ -331,6 +342,10 @@ typedef _VaultFromSeedDart = FuegoBytes Function(Pointer<Uint8>);
 
 typedef _VaultGetAddrNative = Pointer<Utf8> Function(Pointer<Uint8>, Int32, Int32);
 typedef _VaultGetAddrDart = Pointer<Utf8> Function(Pointer<Uint8>, int, int);
+
+typedef _VaultGetSeedNative = Pointer<Utf8> Function(Pointer<Uint8>, Int32);
+typedef _VaultGetSeedDart = Pointer<Utf8> Function(Pointer<Uint8>, int);
+
 
 typedef _VaultDeriveKPNative = Pointer<Utf8> Function(Pointer<Uint8>, Int32, Int32);
 typedef _VaultDeriveKPDart = Pointer<Utf8> Function(Pointer<Uint8>, int, int);

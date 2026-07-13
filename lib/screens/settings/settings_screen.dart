@@ -1,13 +1,17 @@
+import 'package:bip39/bip39.dart' as bip39;
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../../bloc/wallet/wallet_cubit.dart';
 import '../../providers/wallet_provider.dart';
 import '../../services/fuego_rpc_service.dart';
+import '../../services/fuego_vault_service.dart';
 import '../../services/security_service.dart';
 import '../../utils/theme.dart';
 import '../main/main_screen.dart';
 
+import 'alias_registration_screen.dart';
 import 'network_selection_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -311,6 +315,132 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  void _showAddressDialog(String? address) {
+    if (address == null || address.isEmpty) return;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: AppTheme.cardColor,
+          title: const Text('Wallet Address'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                color: Colors.white,
+                child: QrImageView(
+                  data: address,
+                  version: QrVersions.auto,
+                  size: 200.0,
+                ),
+              ),
+              const SizedBox(height: 16),
+              SelectableText(
+                address,
+                style: const TextStyle(color: AppTheme.textSecondary, fontFamily: 'monospace'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: address));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Address copied to clipboard')),
+                );
+              },
+              child: const Text('Copy'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showBackupPhraseDialog() {
+    final vault = context.read<FuegoVaultService>();
+    final spendKeys = vault.deriveKeypair(0);
+    final viewKeys = vault.deriveKeypair(1);
+    final seed = vault.getSeed();
+    final mnemonic = seed != null ? bip39.entropyToMnemonic(seed) : 'Could not generate mnemonic.';
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: AppTheme.cardColor,
+          title: const Text('Wallet Backup'),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Save these keys in a secure location. They are required to recover your wallet.',
+                  style: TextStyle(color: AppTheme.textSecondary),
+                ),
+                const SizedBox(height: 16),
+                _buildKeyTile('Mnemonic Phrase', mnemonic, isMnemonic: true),
+                _buildKeyTile('Address', vault.address),
+                _buildKeyTile('Spend Key (Public)', spendKeys['public'] ?? ''),
+                _buildKeyTile('Spend Key (Secret)', spendKeys['secret'] ?? ''),
+                _buildKeyTile('View Key (Public)', viewKeys['public'] ?? ''),
+                _buildKeyTile('View Key (Secret)', viewKeys['secret'] ?? ''),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildKeyTile(String title, String value, {bool isMnemonic = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontFamily: isMnemonic ? 'monospace' : null,
+                    fontSize: isMnemonic ? 16 : 14,
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.copy, size: 18, color: AppTheme.textSecondary),
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: value));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Copied to clipboard')),
+                  );
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showFuegodConfigDialog() {
     final hostController = TextEditingController(text: _fuegodHost);
     final portController = TextEditingController(text: _fuegodPort.toString());
@@ -533,9 +663,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 icon: Icons.account_balance_wallet,
                 title: 'Wallet Address',
                 subtitle: _truncateAddress(state.address ?? 'Not available'),
-                onTap: () {
-                  // TODO: Show full address with QR code
-                },
+                onTap: () => _showAddressDialog(state.address),
               ),
               _buildSettingsTile(
                 icon: Icons.key,
@@ -546,7 +674,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 },
                 trailing: const Icon(Icons.chevron_right),
               ),
+              _buildSettingsTile(
+                icon: Icons.key,
+                title: 'Backup Phrase',
+                subtitle: 'View your wallet backup phrase',
+                onTap: _showBackupPhraseDialog,
+                trailing: const Icon(Icons.chevron_right),
+              ),
               
+              const SizedBox(height: 24),
+              
+              // Alias Section
+              _buildSectionHeader('Alias'),
+              _buildSettingsTile(
+                icon: Icons.alternate_email,
+                title: 'Register Alias',
+                subtitle: 'Register a human-readable alias',
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const AliasRegistrationScreen(),
+                    ),
+                  );
+                },
+                trailing: const Icon(Icons.chevron_right),
+              ),
+
               const SizedBox(height: 24),
               
               // Security section

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:dns_client/dns_client.dart' hide DnsClient;
+import 'package:dns_client/src/dns_over_https.dart';
 import '../../bloc/wallet/wallet_cubit.dart';
 import '../../utils/theme.dart';
 
@@ -25,16 +27,89 @@ class _SendScreenState extends State<SendScreen> {
   String? _errorMessage;
   bool _showAdvanced = false;
 
+  bool _isResolvingAlias = false;
+  String? _resolvedAddress;
+
+  @override
+  void initState() {
+    super.initState();
+    _addressFocusNode.addListener(_onAddressFocusChange);
+  }
+
   @override
   void dispose() {
     _addressController.dispose();
     _amountController.dispose();
     _paymentIdController.dispose();
+    _addressFocusNode.removeListener(_onAddressFocusChange);
     _addressFocusNode.dispose();
     _amountFocusNode.dispose();
     _paymentIdFocusNode.dispose();
     super.dispose();
   }
+
+  void _onAddressFocusChange() {
+    if (!_addressFocusNode.hasFocus) {
+      _resolveOpenAlias();
+    }
+  }
+
+  Future<void> _resolveOpenAlias() async {
+    final address = _addressController.text.trim();
+    if (!address.contains('@')) return;
+
+    setState(() {
+      _isResolvingAlias = true;
+      _errorMessage = null;
+      _resolvedAddress = null;
+    });
+
+    try {
+      final parts = address.split('@');
+      if (parts.length != 2 || parts[0].isEmpty || parts[1].isEmpty) {
+        throw Exception('Invalid OpenAlias format. Use: user@domain.com');
+      }
+      final domain = parts[1];
+
+      final client = DnsOverHttps.cloudflare();
+      final records = await client.lookupDataByRRType(domain, RRType.TXT);
+
+      String? fuegoAddress;
+      for (final record in records) {
+        final oaPos = record.indexOf('oa1:xfg');
+        if (oaPos == -1) continue;
+
+        final addrStart = record.indexOf('recipient_address=', oaPos);
+        if (addrStart == -1) continue;
+
+        final valueStart = addrStart + 'recipient_address='.length;
+        final addrEnd = record.indexOf(';', valueStart);
+
+        if (addrEnd == -1 || (addrEnd - valueStart) != 98) continue;
+
+        fuegoAddress = record.substring(valueStart, addrEnd);
+        break;
+      }
+
+      if (fuegoAddress != null) {
+        setState(() {
+          _resolvedAddress = fuegoAddress;
+          _addressController.text = fuegoAddress!;
+        });
+      } else {
+        throw Exception('No valid Fuego address found for this OpenAlias');
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Failed to resolve OpenAlias: $e';
+      });
+    } finally {
+      setState(() {
+        _isResolvingAlias = false;
+      });
+    }
+  }
+
 
   Future<void> _sendTransaction() async {
     if (!_formKey.currentState!.validate()) return;
@@ -268,43 +343,62 @@ class _SendScreenState extends State<SendScreen> {
                     controller: _addressController,
                     focusNode: _addressFocusNode,
                     decoration: InputDecoration(
-                      hintText: 'fire... or integrated address',
-                      suffixIcon: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            onPressed: _pasteFromClipboard,
-                            icon: const Icon(Icons.paste),
-                            tooltip: 'Paste',
-                          ),
-                          IconButton(
-                            onPressed: () {
-                              // TODO: Implement QR scanner
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('QR scanner coming soon'),
+                      hintText: 'fire... or user@domain.com',
+                      suffixIcon: _isResolvingAlias
+                          ? const Padding(
+                              padding: EdgeInsets.all(12.0),
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            )
+                          : Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  onPressed: _pasteFromClipboard,
+                                  icon: const Icon(Icons.paste),
+                                  tooltip: 'Paste',
                                 ),
-                              );
-                            },
-                            icon: const Icon(Icons.qr_code_scanner),
-                            tooltip: 'Scan QR',
-                          ),
-                        ],
-                      ),
+                                IconButton(
+                                  onPressed: () {
+                                    // TODO: Implement QR scanner
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('QR scanner coming soon'),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.qr_code_scanner),
+                                  tooltip: 'Scan QR',
+                                ),
+                              ],
+                            ),
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
                         return 'Please enter recipient address';
                       }
-                      // Basic validation for Fuego address format
-                      if (!value.startsWith('fire') && value.length < 50) {
-                        return 'Invalid address format';
+                      if (value.contains('@')) {
+                        return null; // OpenAlias — resolved before send
+                      }
+                      if (!value.startsWith('fire') || value.length != 98) {
+                        return 'Invalid address (must be fire... and 98 chars)';
                       }
                       return null;
                     },
                     maxLines: 3,
                     minLines: 1,
                   ),
+                  if (_resolvedAddress != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Text(
+                        'Resolved to: $_resolvedAddress',
+                        style: const TextStyle(color: AppTheme.successColor),
+                      ),
+                    ),
                   const SizedBox(height: 24),
 
                   // Amount

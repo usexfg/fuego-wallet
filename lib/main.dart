@@ -167,6 +167,7 @@ class FuegoApp extends StatelessWidget {
         providers: [
           RepositoryProvider<FuegoDaemonClient>.value(value: daemon),
           RepositoryProvider<FuegoRPCService>.value(value: rpcService),
+          RepositoryProvider<FuegoVaultService>.value(value: vaultService),
         ],
         child: MultiBlocProvider(
           providers: [

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -12,6 +13,7 @@ class WalletState {
   final int balance;
   final int unlockedBalance;
   final String? address;
+  final String? alias;
   final double syncProgress;
   final bool isSynced;
   final List<FuegoTransaction> transactions;
@@ -27,6 +29,7 @@ class WalletState {
     this.balance = 0,
     this.unlockedBalance = 0,
     this.address,
+    this.alias,
     this.syncProgress = 0,
     this.isSynced = false,
     this.transactions = const [],
@@ -43,6 +46,7 @@ class WalletState {
     int? balance,
     int? unlockedBalance,
     String? address,
+    String? alias,
     double? syncProgress,
     bool? isSynced,
     List<FuegoTransaction>? transactions,
@@ -58,6 +62,7 @@ class WalletState {
         balance: balance ?? this.balance,
         unlockedBalance: unlockedBalance ?? this.unlockedBalance,
         address: address ?? this.address,
+        alias: alias ?? this.alias,
         syncProgress: syncProgress ?? this.syncProgress,
         isSynced: isSynced ?? this.isSynced,
         transactions: transactions ?? this.transactions,

@@ -586,6 +586,7 @@ class _ReceiveScreenState extends State<ReceiveScreen>
                           Text(
                             '• Share your address or QR code with the sender\n'
                             '• Use payment IDs to identify specific payments\n'
+                            '• Set up OpenAlias so others can send to yourname@domain.com\n'
                             '• Transactions are private and untraceable\n'
                             '• New transactions will appear automatically',
                             style: TextStyle(
