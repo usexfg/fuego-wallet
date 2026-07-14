@@ -14,11 +14,11 @@ class CdScreen extends StatelessWidget {
       ),
       body: BlocBuilder<CdCubit, CdState>(
         builder: (context, state) {
-          if (state.isLoading) {
+          if (state.status == CdLoadStatus.loading || state.status == CdLoadStatus.initial) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (state.error != null) {
+          if (state.status == CdLoadStatus.error) {
             return Center(child: Text('Error: ${state.error}', style: const TextStyle(color: AppTheme.errorColor)));
           }
 
@@ -32,15 +32,15 @@ class CdScreen extends StatelessWidget {
                 child: const Text('Create New CD'),
               ),
               const SizedBox(height: 16),
-              if (state.cds.isEmpty)
+              if (state.myCds.isEmpty)
                 const Center(child: Text('No CDs found.'))
               else
-                ...state.cds.map((cd) => Card(
+                ...state.myCds.map((cd) => Card(
                   child: ListTile(
-                    title: Text('Amount: ${cd.amount}'),
-                    subtitle: Text('Matures at block: ${cd.unlockHeight}'),
+                    title: Text('Amount: ${cd.amount} ${cd.coin}'),
+                    subtitle: Text('Matures at block: ${cd.maturityHeight}'),
                     trailing: ElevatedButton(
-                      onPressed: cd.isMatured ? () {
+                      onPressed: cd.matured ? () {
                         // TODO: Claim CD
                       } : null,
                       child: const Text('Claim'),

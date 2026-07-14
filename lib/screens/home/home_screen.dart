@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/core.dart';
 import '../../bloc/wallet/wallet_cubit.dart';
+import '../../bloc/mining/mining_cubit.dart';
 import '../../utils/theme.dart';
 import '../transactions/transaction_details_screen.dart';
 
