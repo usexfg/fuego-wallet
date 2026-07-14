@@ -4,7 +4,7 @@ use tokio::sync::Mutex;
 
 pub struct WalletService {
     pub wallet: Arc<Mutex<Wallet>>,
-    pub node: EmbeddedNode,
+    pub node: Arc<Mutex<EmbeddedNode>>,
 }
 
 struct WalletObserver {
@@ -31,6 +31,8 @@ impl WalletService {
         let observer = Arc::new(WalletObserver { wallet: wallet.clone() });
         node.add_observer(observer);
 
+        let node = Arc::new(Mutex::new(node));
+
         Ok(Self { wallet, node })
     }
 
@@ -51,12 +53,29 @@ impl WalletService {
     }
 
     pub fn sync_status(&self) -> SyncStatus {
-        self.node.sync_status()
+        match self.node.try_lock() {
+            Ok(node) => {
+                // sync_status() on the node should return current status
+                // We approximate from the node's internal state
+                let status = node.sync_status();
+                status
+            }
+            Err(_) => SyncStatus {
+                current_height: 0,
+                target_height: 0,
+                is_syncing: false,
+                last_sync_time: None,
+            }
+        }
     }
 
     pub async fn start_sync(&self) -> Result<()> {
-        let target = self.node.network().get_height().await?;
-        self.node.sync(Some(target)).await
+        let target = {
+            let node = self.node.lock().await;
+            node.network().get_height().await?
+        };
+        let node = self.node.lock().await;
+        node.sync(Some(target)).await
     }
 
     pub async fn get_transactions(&self, limit: usize) -> Vec<Transaction> {
@@ -70,15 +89,20 @@ impl WalletService {
     pub async fn send_to_address(&self, to: &str, amount: u64, fee: u64) -> Result<[u8; 32]> {
         let address = fuego_sdk::Address::new(to);
         let tx = self.wallet.lock().await.build_transaction(&address, amount, fee)?;
-        let network = self.node.network();
+        let network = {
+            let node = self.node.lock().await;
+            node.network().clone()
+        };
         let tx_hash = network.send_transaction(&tx).await?;
         Ok(tx_hash)
     }
 
     pub async fn register_alias(&self, alias: &str, fee: u64) -> Result<[u8; 32]> {
-        let mut wallet = self.wallet.lock().await;
-        let tx = wallet.build_alias_transaction(alias, fee)?;
-        let network = self.node.network();
+        let tx = self.wallet.lock().await.build_alias_transaction(alias, fee)?;
+        let network = {
+            let node = self.node.lock().await;
+            node.network().clone()
+        };
         let tx_hash = network.send_transaction(&tx).await?;
         Ok(tx_hash)
     }

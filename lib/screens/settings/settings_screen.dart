@@ -670,15 +670,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 icon: Icons.key,
                 title: 'Backup Phrase',
                 subtitle: 'View your wallet backup phrase',
-                onTap: () {
-                  // TODO: Show backup phrase with authentication
-                },
-                trailing: const Icon(Icons.chevron_right),
-              ),
-              _buildSettingsTile(
-                icon: Icons.key,
-                title: 'Backup Phrase',
-                subtitle: 'View your wallet backup phrase',
                 onTap: _showBackupPhraseDialog,
                 trailing: const Icon(Icons.chevron_right),
               ),

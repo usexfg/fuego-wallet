@@ -115,20 +115,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let wallet_service = WalletService::new(seed, &actual_host, daemon_port)
                 .map_err(|e| format!("Failed to initialize SDK wallet: {}", e))?;
+            let wallet_addr = wallet_service.address().await;
+            let sync_node = wallet_service.node.clone();
             let wallet = Arc::new(Mutex::new(wallet_service));
 
-            log::info!("Wallet address: {}", wallet.lock().await.address().await);
+            log::info!("Wallet address: {}", wallet_addr);
 
-            // 3. Start background sync
-            let sync_wallet = wallet.clone();
+            // 3. Start background sync (operates on node directly, no wallet lock needed)
             tokio::spawn(async move {
                 log::info!("Starting background wallet sync...");
                 loop {
-                    let wallet = sync_wallet.lock().await;
-                    if let Err(e) = wallet.start_sync().await {
-                        log::error!("Sync failed: {}", e);
+                    let target = {
+                        let node = sync_node.lock().await;
+                        match node.network().get_height().await {
+                            Ok(h) => h,
+                            Err(e) => {
+                                log::error!("Failed to get network height: {}", e);
+                                tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+                                continue;
+                            }
+                        }
+                    };
+                    {
+                        let node = sync_node.lock().await;
+                        if let Err(e) = node.sync(Some(target)).await {
+                            log::error!("Sync failed: {}", e);
+                        }
                     }
-                    drop(wallet);
                     tokio::time::sleep(std::time::Duration::from_secs(120)).await;
                 }
             });
