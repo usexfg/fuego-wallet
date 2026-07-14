@@ -13,20 +13,18 @@ class FuegoNative {
 
   DynamicLibrary _openLibrary() {
     if (Platform.isMacOS) {
-      // Search app bundle Frameworks, then Resources, then executable dir
       final appDir = Directory(Platform.resolvedExecutable).parent.path;
       final candidates = [
         '$appDir/Frameworks/libfuego_ffi.dylib',
         '$appDir/Resources/libfuego_ffi.dylib',
         '$appDir/libfuego_ffi.dylib',
-        '${Directory.current.path}/libfuego_ffi.dylib',
+        '${Directory.current.path}/macos/Runner/libfuego_ffi.dylib',
       ];
       for (final path in candidates) {
         if (File(path).existsSync()) {
           return DynamicLibrary.open(path);
         }
       }
-      // Fallback: let dlopen search default paths
       return DynamicLibrary.open('libfuego_ffi.dylib');
     }
     if (Platform.isLinux) return DynamicLibrary.open('libfuego_ffi.so');
