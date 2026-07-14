@@ -365,10 +365,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _showBackupPhraseDialog() {
     final vault = context.read<FuegoVaultService>();
-    final spendKeys = vault.deriveKeypair(0);
-    final viewKeys = vault.deriveKeypair(1);
-    final seed = vault.getSeed();
-    final mnemonic = seed != null ? bip39.entropyToMnemonic(seed) : 'Could not generate mnemonic.';
+    String mnemonic = 'Could not generate mnemonic.';
+    String spendPub = '';
+    String spendSec = '';
+    String viewPub = '';
+    String viewSec = '';
+
+    try {
+      final spendKeys = vault.deriveKeypair(0);
+      final viewKeys = vault.deriveKeypair(1);
+      final seed = vault.getSeed();
+      if (seed != null && seed.length == 64) {
+        mnemonic = bip39.entropyToMnemonic(seed);
+      }
+      spendPub = spendKeys['public'] ?? '';
+      spendSec = spendKeys['secret'] ?? '';
+      viewPub = viewKeys['public'] ?? '';
+      viewSec = viewKeys['secret'] ?? '';
+    } catch (e) {
+      mnemonic = 'Error: $e';
+    }
 
     showDialog(
       context: context,
@@ -388,10 +404,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(height: 16),
                 _buildKeyTile('Mnemonic Phrase', mnemonic, isMnemonic: true),
                 _buildKeyTile('Address', vault.address),
-                _buildKeyTile('Spend Key (Public)', spendKeys['public'] ?? ''),
-                _buildKeyTile('Spend Key (Secret)', spendKeys['secret'] ?? ''),
-                _buildKeyTile('View Key (Public)', viewKeys['public'] ?? ''),
-                _buildKeyTile('View Key (Secret)', viewKeys['secret'] ?? ''),
+                _buildKeyTile('Spend Key (Public)', spendPub),
+                _buildKeyTile('Spend Key (Secret)', spendSec),
+                _buildKeyTile('View Key (Public)', viewPub),
+                _buildKeyTile('View Key (Secret)', viewSec),
               ],
             ),
           ),
