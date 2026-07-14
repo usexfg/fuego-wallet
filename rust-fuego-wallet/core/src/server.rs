@@ -237,7 +237,8 @@ async fn handle_wallet_method(
             let wallet = wallet.lock().await;
             let status = wallet.sync_status();
             Ok(serde_json::json!({
-                "height": status.current_height,
+                "height": wallet.height().await,
+                "target_height": status.target_height,
                 "is_syncing": status.is_syncing,
             }))
         }

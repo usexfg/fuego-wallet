@@ -18,35 +18,39 @@ impl RpcProvider {
         }
     }
 
-    fn url(&self) -> String {
+    fn json_rpc_url(&self) -> String {
         format!("http://{}:{}/json_rpc", self.host, self.port)
+    }
+
+    fn rest_url(&self, path: &str) -> String {
+        format!("http://{}:{}/{}", self.host, self.port, path)
     }
 
     async fn call(
         &self,
         method: &str,
-        params: Option<serde_json::Value>,
+        params: serde_json::Value,
     ) -> Result<serde_json::Value> {
         let body = serde_json::json!({
             "jsonrpc": "2.0",
-            "id": "sdk",
+            "id": 1,
             "method": method,
             "params": params,
         });
 
         let resp = self
             .client
-            .post(self.url())
+            .post(self.json_rpc_url())
             .header("Content-Type", "application/json")
             .json(&body)
             .send()
             .await
-            .map_err(|e| SdkError::Network(format!("HTTP request failed: {}", e)))?;
+            .map_err(|e| SdkError::Network(format!("HTTP: {}", e)))?;
 
         let json: serde_json::Value = resp
             .json()
             .await
-            .map_err(|e| SdkError::Network(format!("Failed to parse response: {}", e)))?;
+            .map_err(|e| SdkError::Network(format!("JSON parse: {}", e)))?;
 
         if let Some(error) = json.get("error") {
             return Err(SdkError::Network(format!("RPC error: {}", error)));
@@ -57,17 +61,24 @@ impl RpcProvider {
             .cloned()
             .unwrap_or(serde_json::Value::Null))
     }
+
+    fn parse_hash(hex_str: &str) -> [u8; 32] {
+        let bytes = hex::decode(hex_str).unwrap_or_else(|_| vec![0u8; 32]);
+        let mut hash = [0u8; 32];
+        let len = bytes.len().min(32);
+        hash[..len].copy_from_slice(&bytes[..len]);
+        hash
+    }
 }
 
 #[async_trait]
 impl NetworkProvider for RpcProvider {
     async fn get_height(&self) -> Result<u64> {
-        let result = self.call("get_block_count", None).await?;
+        let result = self.call("getblockcount", serde_json::json!({})).await?;
         let count = result
             .get("count")
-            .or_else(|| result.get("block_count"))
             .and_then(|v| v.as_u64())
-            .ok_or_else(|| SdkError::Network("Invalid block count response".into()))?;
+            .ok_or_else(|| SdkError::Network("missing count".into()))?;
         Ok(count)
     }
 
@@ -78,56 +89,19 @@ impl NetworkProvider for RpcProvider {
 
     async fn get_block(&self, height: u64) -> Result<Block> {
         let params = serde_json::json!({ "height": height });
-        let result = self.call("get_block", Some(params)).await?;
+        let result = self.call("getblockheaderbyheight", params).await?;
 
-        let hash_str = result.get("hash").and_then(|v| v.as_str()).unwrap_or("");
-        let hash_bytes = hex::decode(hash_str).unwrap_or_else(|_| vec![0u8; 32]);
-        let mut hash = [0u8; 32];
-        let copy_len = hash_bytes.len().min(32);
-        hash[..copy_len].copy_from_slice(&hash_bytes[..copy_len]);
+        let header = result
+            .get("block_header")
+            .ok_or_else(|| SdkError::Network("missing block_header".into()))?;
 
-        let timestamp = result
-            .get("timestamp")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(0);
-        let tx_count = result.get("tx_count").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
+        let hash_str = header.get("hash").and_then(|v| v.as_str()).unwrap_or("");
+        let hash = Self::parse_hash(hash_str);
 
-        let prev_hash_str = result
-            .get("prev_hash")
-            .and_then(|v| v.as_str())
-            .unwrap_or("");
-        let prev_hash_bytes = hex::decode(prev_hash_str).unwrap_or_else(|_| vec![0u8; 32]);
-        let mut prev_hash = [0u8; 32];
-        let copy_len = prev_hash_bytes.len().min(32);
-        prev_hash[..copy_len].copy_from_slice(&prev_hash_bytes[..copy_len]);
+        let prev_hash_str = header.get("prev_hash").and_then(|v| v.as_str()).unwrap_or("");
+        let prev_hash = Self::parse_hash(prev_hash_str);
 
-        let transactions = if let Some(txs) = result.get("transactions").and_then(|v| v.as_array())
-        {
-            txs.iter()
-                .map(|tx| {
-                    let tx_hash_str = tx.get("hash").and_then(|v| v.as_str()).unwrap_or("");
-                    let tx_hash_bytes = hex::decode(tx_hash_str).unwrap_or_else(|_| vec![0u8; 32]);
-                    let mut tx_hash = [0u8; 32];
-                    let copy_len = tx_hash_bytes.len().min(32);
-                    tx_hash[..copy_len].copy_from_slice(&tx_hash_bytes[..copy_len]);
-
-                    let extra_str = tx.get("extra").and_then(|v| v.as_str()).unwrap_or("");
-                    let extra = hex::decode(extra_str).unwrap_or_else(|_| vec![]);
-
-                    let fee = tx.get("fee").and_then(|v| v.as_u64()).unwrap_or(0);
-
-                    Transaction {
-                        hash: tx_hash,
-                        inputs: Vec::new(),
-                        outputs: Vec::new(),
-                        extra,
-                        fee,
-                    }
-                })
-                .collect()
-        } else {
-            Vec::new()
-        };
+        let timestamp = header.get("timestamp").and_then(|v| v.as_u64()).unwrap_or(0);
 
         Ok(Block {
             header: BlockHeader {
@@ -135,74 +109,78 @@ impl NetworkProvider for RpcProvider {
                 hash,
                 prev_hash,
                 timestamp,
-                tx_count,
+                tx_count: 0,
             },
-            transactions,
+            transactions: Vec::new(),
         })
     }
 
     async fn send_transaction(&self, tx: &Transaction) -> Result<[u8; 32]> {
         let tx_hex = hex::encode(bincode::serialize(tx).unwrap_or_default());
-        let params = serde_json::json!({ "tx_as_hex": tx_hex });
-        let result = self.call("send_raw_transaction", Some(params)).await?;
-        let hash_str = result.get("tx_hash").and_then(|v| v.as_str()).unwrap_or("");
-        let hash_bytes = hex::decode(hash_str).unwrap_or_else(|_| vec![0u8; 32]);
-        let mut hash = [0u8; 32];
-        let copy_len = hash_bytes.len().min(32);
-        hash[..copy_len].copy_from_slice(&hash_bytes[..copy_len]);
-        Ok(hash)
+        let body = serde_json::json!({ "tx_as_hex": tx_hex });
+
+        let resp = self
+            .client
+            .post(self.rest_url("sendrawtransaction"))
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| SdkError::Network(format!("HTTP: {}", e)))?;
+
+        let json: serde_json::Value = resp
+            .json()
+            .await
+            .map_err(|e| SdkError::Network(format!("JSON parse: {}", e)))?;
+
+        let status = json
+            .get("status")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+
+        if status != "OK" && status != "Success" {
+            return Err(SdkError::Network(format!(
+                "sendrawtransaction: {}",
+                status
+            )));
+        }
+
+        Ok(tx.hash)
     }
 
     async fn get_peers(&self) -> Result<Vec<PeerInfo>> {
-        let result = self.call("get_peers", None).await?;
-        let peers = result
-            .as_array()
+        let resp = self
+            .client
+            .get(self.rest_url("getinfo"))
+            .send()
+            .await
+            .map_err(|e| SdkError::Network(format!("HTTP: {}", e)))?;
+
+        let json: serde_json::Value = resp
+            .json()
+            .await
+            .map_err(|e| SdkError::Network(format!("JSON parse: {}", e)))?;
+
+        let connections = json
+            .get("connections")
+            .and_then(|v| v.as_array())
             .map(|arr| {
                 arr.iter()
-                    .map(|p| PeerInfo {
-                        id: p
-                            .get("id")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("")
-                            .to_string(),
-                        address: p
-                            .get("address")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("")
-                            .to_string(),
-                        version: p.get("version").and_then(|v| v.as_u64()).unwrap_or(0) as u32,
-                        height: p.get("height").and_then(|v| v.as_u64()).unwrap_or(0),
-                        last_seen: p.get("last_seen").and_then(|v| v.as_u64()).unwrap_or(0),
+                    .enumerate()
+                    .map(|(i, addr)| PeerInfo {
+                        id: format!("peer_{}", i),
+                        address: addr.as_str().unwrap_or("").to_string(),
+                        version: 0,
+                        height: json.get("height").and_then(|v| v.as_u64()).unwrap_or(0),
+                        last_seen: 0,
                     })
-                    .collect()
+                    .collect::<Vec<PeerInfo>>()
             })
             .unwrap_or_default();
-        Ok(peers)
+
+        Ok(connections)
     }
 
-    async fn get_transaction(&self, hash: &[u8; 32]) -> Result<Option<Transaction>> {
-        let hash_hex = hex::encode(hash);
-        let params = serde_json::json!({ "tx_hash": hash_hex });
-        let result = self.call("get_transaction", Some(params)).await?;
-        if result.is_null() {
-            return Ok(None);
-        }
-        let tx_hash_str = result.get("hash").and_then(|v| v.as_str()).unwrap_or("");
-        let tx_hash_bytes = hex::decode(tx_hash_str).unwrap_or_else(|_| vec![0u8; 32]);
-        let mut tx_hash = [0u8; 32];
-        let copy_len = tx_hash_bytes.len().min(32);
-        tx_hash[..copy_len].copy_from_slice(&tx_hash_bytes[..copy_len]);
-
-        let extra_str = result.get("extra").and_then(|v| v.as_str()).unwrap_or("");
-        let extra = hex::decode(extra_str).unwrap_or_else(|_| vec![]);
-        let fee = result.get("fee").and_then(|v| v.as_u64()).unwrap_or(0);
-
-        Ok(Some(Transaction {
-            hash: tx_hash,
-            inputs: Vec::new(),
-            outputs: Vec::new(),
-            extra,
-            fee,
-        }))
+    async fn get_transaction(&self, _hash: &[u8; 32]) -> Result<Option<Transaction>> {
+        Ok(None)
     }
 }

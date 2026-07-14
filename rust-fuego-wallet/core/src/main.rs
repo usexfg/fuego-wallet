@@ -82,19 +82,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match cli.command.unwrap_or(Commands::Status) {
         Commands::Serve { daemon_host, daemon_port, testnet: _testnet } => {
-            // 1. Start fuegod (embedded or remote)
-            let mut fuegod_proc = fuegod::DaemonProcess::new(18180);
-            let data_dir = format!("{}/fuegod", wallet_dir.to_str().unwrap_or("."));
-            let actual_host = match fuegod_proc.start(false, &data_dir).await {
-                Ok(_) => {
-                    log::info!("Embedded fuegod started on 127.0.0.1:18180");
-                    "127.0.0.1".to_string()
-                }
-                Err(e) => {
-                    log::warn!("Embedded fuegod unavailable: {} — falling back to remote", e);
-                    daemon_host.clone()
-                }
-            };
+            // Use remote daemon directly — embedded fuegod is unreliable on macOS
+            let actual_host = daemon_host.clone();
 
             let daemon_url = format!("http://{}:{}", actual_host, daemon_port);
 
@@ -121,36 +110,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             log::info!("Wallet address: {}", wallet_addr);
 
-            // 3. Start background sync (operates on node directly, no wallet lock needed)
+            // 3. Start background sync (100 blocks per batch, releases lock between)
             tokio::spawn(async move {
                 log::info!("Starting background wallet sync...");
                 loop {
-                    let target = {
-                        let node = sync_node.lock().await;
-                        match node.network().get_height().await {
-                            Ok(h) => h,
-                            Err(e) => {
-                                log::error!("Failed to get network height: {}", e);
-                                tokio::time::sleep(std::time::Duration::from_secs(30)).await;
-                                continue;
-                            }
+                    match sync_node.lock().await.sync_batch(None, 100).await {
+                        Ok(0) => {
+                            tokio::time::sleep(std::time::Duration::from_secs(30)).await;
                         }
-                    };
-                    {
-                        let node = sync_node.lock().await;
-                        if let Err(e) = node.sync(Some(target)).await {
-                            log::error!("Sync failed: {}", e);
+                        Ok(n) => {
+                            log::info!("Synced {} blocks", n);
+                        }
+                        Err(e) => {
+                            log::error!("Sync error: {}", e);
+                            tokio::time::sleep(std::time::Duration::from_secs(30)).await;
                         }
                     }
-                    tokio::time::sleep(std::time::Duration::from_secs(120)).await;
                 }
             });
 
             // 4. Start Axum server
             let bind = format!("{}:{}", cli.host, cli.port);
             server::run_server(wallet, &daemon_url, &bind).await?;
-
-            fuegod_proc.stop();
         }
 
         Commands::Status => {

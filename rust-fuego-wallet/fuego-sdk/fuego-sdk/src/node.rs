@@ -86,41 +86,56 @@ impl EmbeddedNode {
         self.state.read().unwrap().peer_count
     }
 
-    pub async fn sync(&self, target_height: Option<u64>) -> Result<()> {
+    pub async fn sync_batch(&self, target_height: Option<u64>, max_blocks: u64) -> Result<u64> {
         let target = match target_height {
             Some(h) => h,
             None => self.network.get_height().await?,
         };
 
-        let current = self.height();
-        if current >= target {
-            return Ok(());
+        let start = self.height();
+        if start >= target {
+            return Ok(0);
+        }
+
+        let end = std::cmp::min(start + max_blocks, target);
+
+        {
+            let mut state = self.state.write().unwrap();
+            state.is_syncing = true;
         }
 
         for listener in &self.listeners {
-            listener.on_sync_start(target);
+            listener.on_sync_start(end);
         }
-        let _ = self.event_tx.send(NodeEvent::SyncStarted { target });
+        let _ = self.event_tx.send(NodeEvent::SyncStarted { target: end });
 
-        let mut current = current;
-        while current < target {
+        let mut current = start;
+        while current < end {
             match self.sync_block(current + 1).await {
-                Ok(header) => {
-                    current = header.height;
+                Ok(block) => {
+                    current = block.header.height;
 
-                    for listener in &self.listeners {
-                        listener.on_sync_progress(current, target);
-                    }
-                    let _ = self
-                        .event_tx
-                        .send(NodeEvent::SyncProgress { current, target });
-
-                    let block = self.network.get_block(header.height).await?;
                     for observer in &self.observers {
                         observer.on_block(&block)?;
                     }
+
+                    {
+                        let mut state = self.state.write().unwrap();
+                        state.height = current;
+                    }
+
+                    for listener in &self.listeners {
+                        listener.on_sync_progress(current, end);
+                    }
+                    let _ = self
+                        .event_tx
+                        .send(NodeEvent::SyncProgress { current, target: end });
                 }
                 Err(e) => {
+                    {
+                        let mut state = self.state.write().unwrap();
+                        state.is_syncing = false;
+                    }
                     let _ = self.event_tx.send(NodeEvent::Error(e.to_string()));
                     return Err(e);
                 }
@@ -140,16 +155,18 @@ impl EmbeddedNode {
         }
         let _ = self.event_tx.send(NodeEvent::SyncComplete);
 
+        Ok(current)
+    }
+
+    pub async fn sync(&self, target_height: Option<u64>) -> Result<()> {
+        self.sync_batch(target_height, u64::MAX).await?;
         Ok(())
     }
 
-    async fn sync_block(&self, height: u64) -> Result<BlockHeader> {
-        let header = self.network.get_header(height).await?;
-        self.storage.save_block(&Block {
-            header: header.clone(),
-            transactions: Vec::new(),
-        })?;
-        Ok(header)
+    async fn sync_block(&self, height: u64) -> Result<Block> {
+        let block = self.network.get_block(height).await?;
+        self.storage.save_block(&block)?;
+        Ok(block)
     }
 
     pub fn get_block(&self, height: u64) -> Result<Option<Block>> {
