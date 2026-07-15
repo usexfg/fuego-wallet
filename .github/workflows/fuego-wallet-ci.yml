@@ -82,6 +82,7 @@ jobs:
           APP="build/macos/Build/Products/Release/fuego_wallet.app"
           codesign --force --sign - "$APP/Contents/MacOS/fuego-wallet" 2>/dev/null || true
           find "$APP/Contents/Frameworks" -mindepth 1 -maxdepth 1 -type d -name "*.framework" -exec codesign --force --sign - {} \;
+          find "$APP/Contents/Frameworks" -mindepth 1 -maxdepth 1 -name "*.dylib" -exec codesign --force --sign - {} \;
           codesign --force --sign - "$APP"
 
       - name: Package app
