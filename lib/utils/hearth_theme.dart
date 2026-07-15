@@ -10,10 +10,10 @@ class HearthTheme {
   static const Color bgElevated = Color(0xFF1C1C1C);
   static const Color bgInput = Color(0xFF151515);
 
-  static const Color bidPrimary = Color(0xFF00BFA5);
-  static const Color bidLight = Color(0xFF64FFDA);
-  static const Color bidBg = Color(0x1800BFA5);
-  static const Color bidDepth = Color(0x3000BFA5);
+  static const Color bidPrimary = Color(0xFF00ACC1);
+  static const Color bidLight = Color(0xFF4DD0E1);
+  static const Color bidBg = Color(0x1800ACC1);
+  static const Color bidDepth = Color(0x3000ACC1);
 
   static const Color askPrimary = Color(0xFFFF6D00);
   static const Color askLight = Color(0xFFFF9E40);
