@@ -32,7 +32,7 @@ class _AddLiquidityDialogState extends State<AddLiquidityDialog> {
         children: [
           _dialogInput(_xfgController, 'XFG Amount'),
           const SizedBox(height: 12),
-          _dialogInput(_heatController, 'HEAT Amount'),
+          _dialogInput(_heatController, 'HΞ∆T Amount'),
           const SizedBox(height: 8),
           Text('Provide equal-value amounts of both tokens',
               style: HearthTheme.label(size: 10, color: HearthTheme.textMuted)),
@@ -126,7 +126,7 @@ class _RemoveLiquidityDialogState extends State<RemoveLiquidityDialog> {
           const SizedBox(height: 12),
           _dialogInput(_minXfgController, 'Min XFG'),
           const SizedBox(height: 12),
-          _dialogInput(_minHeatController, 'Min HEAT'),
+          _dialogInput(_minHeatController, 'Min HΞ∆T'),
         ],
       ),
       actions: [

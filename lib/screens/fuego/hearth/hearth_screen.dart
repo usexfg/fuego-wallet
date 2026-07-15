@@ -169,7 +169,7 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
         children: [
           _poolStat('XFG Res', pool.xfgReserve),
           _poolDivider(),
-          _poolStat('HEAT Res', pool.heatReserve),
+          _poolStat('HΞ∆T Res', pool.heatReserve),
           _poolDivider(),
           _poolStat('24h Vol', pool.volume24h),
           _poolDivider(),
@@ -286,7 +286,7 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: Row(
         children: [
-          Expanded(child: Text('Price (HEAT)', style: HearthTheme.label(size: 10, color: HearthTheme.textMuted))),
+          Expanded(child: Text('Price (HΞ∆T)', style: HearthTheme.label(size: 10, color: HearthTheme.textMuted))),
           Expanded(child: Text('Amount (XFG)', style: HearthTheme.label(size: 10, color: HearthTheme.textMuted), textAlign: TextAlign.right)),
           Expanded(child: Text('Total', style: HearthTheme.label(size: 10, color: HearthTheme.textMuted), textAlign: TextAlign.right)),
         ],
@@ -486,7 +486,7 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(_sellXfg ? 'Sell Amount (XFG)' : 'Sell Amount (HEAT)', style: HearthTheme.label(size: 10)),
+        Text(_sellXfg ? 'Sell Amount (XFG)' : 'Sell Amount (HΞ∆T)', style: HearthTheme.label(size: 10)),
         const SizedBox(height: 6),
         Container(
           decoration: BoxDecoration(
@@ -548,7 +548,7 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Limit Price (HEAT per XFG)', style: HearthTheme.label(size: 10)),
+        Text('Limit Price (HΞ∆T per XFG)', style: HearthTheme.label(size: 10)),
         const SizedBox(height: 6),
         Container(
           decoration: BoxDecoration(
@@ -603,7 +603,7 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
         child: Text(
           isLimit
               ? (isSell ? 'Place Sell Order' : 'Place Buy Order')
-              : (isSell ? 'Swap XFG → HEAT' : 'Swap HEAT → XFG'),
+              : (isSell ? 'Swap XFG → HΞ∆T' : 'Swap HΞ∆T → XFG'),
           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
         ),
       ),
@@ -695,7 +695,7 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
                 Text('PROVIDE LIQUIDITY', style: HearthTheme.label(size: 10, color: HearthTheme.askPrimary)),
                 const SizedBox(height: 8),
                 Text(
-                  'Earn fees by providing liquidity to the XFG/HEAT pool.',
+                  'Earn fees by providing liquidity to the XFG/HΞ∆T pool.',
                   style: HearthTheme.mono(size: 11, color: HearthTheme.textSecondary),
                 ),
               ],
