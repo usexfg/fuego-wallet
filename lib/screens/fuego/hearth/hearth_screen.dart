@@ -111,9 +111,14 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
   }
 
   Widget _buildHeader(HearthState state) {
-    final heatUsd = state.fuegoPrice?.heatPegUsd ?? 0;
-    final spot = state.pool?.spotPrice ?? '--';
-    final spotNum = double.tryParse(spot) ?? 0;
+    const heatPegUsd = 1.58;
+    const xfgHeatRatio = 0.1;
+    final apiHeatUsd = state.fuegoPrice?.heatPegUsd;
+    final heatUsd = (apiHeatUsd != null && apiHeatUsd > 0) ? apiHeatUsd : heatPegUsd;
+    final spot = state.pool?.spotPrice;
+    final spotNum = (spot != null && double.tryParse(spot) != null && double.parse(spot) > 0)
+        ? double.parse(spot)
+        : xfgHeatRatio;
     final xfgUsd = spotNum * heatUsd;
     return Container(
       color: HearthTheme.bgDeep,
@@ -130,7 +135,7 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
             children: [
               Text('HΞ∆T', style: HearthTheme.label(size: 10, color: HearthTheme.textMuted)),
               const SizedBox(height: 2),
-              Text('\$${heatUsd.toStringAsFixed(4)}', style: HearthTheme.mono(size: 16, weight: FontWeight.w700, color: HearthTheme.textWhite)),
+              Text('\$${heatUsd.toStringAsFixed(2)}', style: HearthTheme.mono(size: 16, weight: FontWeight.w700, color: HearthTheme.textWhite)),
             ],
           ),
           Container(
@@ -149,13 +154,13 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
                   children: [
                     Text('1 XFG', style: HearthTheme.mono(size: 12, weight: FontWeight.w600, color: HearthTheme.textPrimary)),
                     Text(' ≈ ', style: HearthTheme.mono(size: 12, color: HearthTheme.textMuted)),
-                    Text('${spotNum.toStringAsFixed(4)} HΞ∆T', style: HearthTheme.mono(size: 12, weight: FontWeight.w600, color: HearthTheme.askPrimary)),
+                    Text('${spotNum.toStringAsFixed(1)} HΞ∆T', style: HearthTheme.mono(size: 12, weight: FontWeight.w600, color: HearthTheme.askPrimary)),
                   ],
                 ),
               ],
             ),
           ),
-          Text('\$${xfgUsd.toStringAsFixed(4)}', style: HearthTheme.mono(size: 13, weight: FontWeight.w700, color: HearthTheme.askPrimary)),
+          Text('\$${xfgUsd.toStringAsFixed(2)}', style: HearthTheme.mono(size: 13, weight: FontWeight.w700, color: HearthTheme.askPrimary)),
         ],
       ),
     );
