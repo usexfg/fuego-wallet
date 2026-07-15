@@ -18,7 +18,7 @@ class MiningState {
     this.sharesAccepted = 0,
     this.sharesSubmitted = 0,
     this.poolHost = 'loudmining.com',
-    this.poolPort = 3333,
+    this.poolPort = 4200,
     this.error,
   });
 
