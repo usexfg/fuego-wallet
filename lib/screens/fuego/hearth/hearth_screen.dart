@@ -130,37 +130,11 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
       ),
       child: Row(
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('HΞ∆T', style: HearthTheme.label(size: 10, color: HearthTheme.textMuted)),
-              const SizedBox(height: 2),
-              Text('\$${heatUsd.toStringAsFixed(2)}', style: HearthTheme.mono(size: 16, weight: FontWeight.w700, color: HearthTheme.textWhite)),
-            ],
-          ),
-          Container(
-            width: 1,
-            height: 32,
-            color: HearthTheme.divider,
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-          ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('XFG', style: HearthTheme.label(size: 10, color: HearthTheme.textMuted)),
-                const SizedBox(height: 2),
-                Row(
-                  children: [
-                    Text('1 XFG', style: HearthTheme.mono(size: 12, weight: FontWeight.w600, color: HearthTheme.textPrimary)),
-                    Text(' ≈ ', style: HearthTheme.mono(size: 12, color: HearthTheme.textMuted)),
-                    Text('${spotNum.toStringAsFixed(1)} HΞ∆T', style: HearthTheme.mono(size: 12, weight: FontWeight.w600, color: HearthTheme.askPrimary)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Text('\$${xfgUsd.toStringAsFixed(2)}', style: HearthTheme.mono(size: 13, weight: FontWeight.w700, color: HearthTheme.askPrimary)),
+          Text('\$${heatUsd.toStringAsFixed(2)}', style: HearthTheme.mono(size: 13, weight: FontWeight.w700, color: HearthTheme.textWhite)),
+          const Spacer(),
+          Text('1 XFG ≈ ${spotNum.toStringAsFixed(1)} HΞ∆T', style: HearthTheme.mono(size: 13, weight: FontWeight.w700, color: HearthTheme.askPrimary)),
+          const Spacer(),
+          Text('\$${xfgUsd.toStringAsFixed(2)}', style: HearthTheme.mono(size: 13, weight: FontWeight.w700, color: HearthTheme.textWhite)),
         ],
       ),
     );
