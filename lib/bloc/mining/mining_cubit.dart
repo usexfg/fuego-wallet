@@ -10,6 +10,7 @@ class MiningState {
   final String poolHost;
   final int poolPort;
   final String? error;
+  final String status;
 
   const MiningState({
     this.isMining = false,
@@ -20,6 +21,7 @@ class MiningState {
     this.poolHost = 'loudmining.com',
     this.poolPort = 4200,
     this.error,
+    this.status = 'idle',
   });
 
   MiningState copyWith({
@@ -31,6 +33,7 @@ class MiningState {
     String? poolHost,
     int? poolPort,
     String? error,
+    String? status,
   }) =>
       MiningState(
         isMining: isMining ?? this.isMining,
@@ -41,6 +44,7 @@ class MiningState {
         poolHost: poolHost ?? this.poolHost,
         poolPort: poolPort ?? this.poolPort,
         error: error,
+        status: status ?? this.status,
       );
 }
 
@@ -54,33 +58,37 @@ class MiningCubit extends Cubit<MiningState> {
   Future<void> startMining({required String walletAddress, String? poolHost, int? poolPort}) async {
     if (state.isMining) return;
 
-    if (poolHost != null) emit(state.copyWith(poolHost: poolHost));
-    if (poolPort != null) emit(state.copyWith(poolPort: poolPort));
+    final host = poolHost ?? state.poolHost;
+    final port = poolPort ?? state.poolPort;
+    emit(state.copyWith(poolHost: host, poolPort: port, status: 'connecting', error: null));
 
     final ok = await _pool.start(
       walletAddress: walletAddress,
-      poolHost: poolHost ?? state.poolHost,
-      poolPort: poolPort ?? state.poolPort,
+      poolHost: host,
+      poolPort: port,
     );
 
     if (ok) {
-      emit(state.copyWith(isMining: true, error: null));
+      emit(state.copyWith(isMining: true, status: 'connected', error: null));
     } else {
-      emit(state.copyWith(error: 'Failed to connect to pool ${state.poolHost}:${state.poolPort}'));
+      emit(state.copyWith(status: 'error', error: 'Failed to connect to ${host}:${port}'));
     }
   }
 
   Future<void> stopMining() async {
     await _pool.stop();
-    emit(state.copyWith(isMining: false, hashrate: 0));
+    emit(state.copyWith(isMining: false, hashrate: 0, status: 'idle'));
   }
 
   void refreshStatus() {
     if (!state.isMining) return;
+    final h = _pool.hashrate;
+    final status = h > 0 ? 'mining' : 'connected';
     emit(state.copyWith(
-      hashrate: _pool.hashrate,
+      hashrate: h,
       sharesAccepted: _pool.sharesAccepted,
       sharesSubmitted: _pool.sharesAccepted,
+      status: status,
     ));
   }
 }

@@ -111,6 +111,65 @@ class _SendScreenState extends State<SendScreen> {
   }
 
 
+  void _showConfirmDialog() {
+    if (!_formKey.currentState!.validate()) return;
+
+    final address = _addressController.text.trim();
+    final amountStr = _amountController.text.trim();
+    final amount = double.tryParse(amountStr) ?? 0;
+    final fee = 0.008;
+    final total = amount + fee;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.cardColor,
+        title: const Text('Confirm Send', style: TextStyle(color: AppTheme.textPrimary)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _confirmRow('Recipient', address.length > 30 ? '${address.substring(0, 15)}...${address.substring(address.length - 10)}' : address),
+            const SizedBox(height: 8),
+            _confirmRow('Amount', '${amount.toStringAsFixed(6)} XFG'),
+            const SizedBox(height: 8),
+            _confirmRow('Fee', '${fee.toStringAsFixed(6)} XFG'),
+            const Divider(color: AppTheme.textMuted),
+            _confirmRow('Total', '${total.toStringAsFixed(6)} XFG', bold: true),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel', style: TextStyle(color: AppTheme.textMuted)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _sendTransaction();
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor),
+            child: const Text('Confirm & Send'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _confirmRow(String label, String value, {bool bold = false}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: TextStyle(color: AppTheme.textMuted, fontSize: 13)),
+        Text(value, style: TextStyle(
+          color: bold ? AppTheme.textPrimary : AppTheme.textSecondary,
+          fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+          fontSize: 13,
+        )),
+      ],
+    );
+  }
+
   Future<void> _sendTransaction() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -571,7 +630,7 @@ class _SendScreenState extends State<SendScreen> {
                     child: ElevatedButton(
                       onPressed: _isLoading || availableBalance <= 0 
                           ? null 
-                          : _sendTransaction,
+                          : _showConfirmDialog,
                       child: _isLoading
                           ? const SizedBox(
                               height: 20,

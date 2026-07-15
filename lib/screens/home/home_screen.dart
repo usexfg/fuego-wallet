@@ -6,6 +6,8 @@ import '../../bloc/wallet/wallet_cubit.dart';
 import '../../bloc/mining/mining_cubit.dart';
 import '../../utils/theme.dart';
 import '../transactions/transaction_details_screen.dart';
+import '../transactions/send_screen.dart';
+import '../transactions/receive_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -89,11 +91,15 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _actionBtn('Send', Icons.arrow_upward, () {
-                Navigator.of(context).pushNamed('/send');
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => const SendScreen()),
+                );
               }),
               const SizedBox(width: 24),
               _actionBtn('Receive', Icons.arrow_downward, () {
-                Navigator.of(context).pushNamed('/receive');
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => const ReceiveScreen()),
+                );
               }),
             ],
           ),
@@ -203,6 +209,27 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context, mining) {
         final addr = state.address;
         final canMine = addr != null && addr.isNotEmpty;
+
+        String statusText;
+        Color statusColor;
+        switch (mining.status) {
+          case 'connecting':
+            statusText = 'Connecting to ${mining.poolHost}:${mining.poolPort}...';
+            statusColor = Colors.orange;
+          case 'connected':
+            statusText = 'Connected — waiting for jobs';
+            statusColor = Colors.cyanAccent;
+          case 'mining':
+            statusText = 'Mining — ${mining.hashrate} H/s';
+            statusColor = AppTheme.successColor;
+          case 'error':
+            statusText = mining.error ?? 'Connection failed';
+            statusColor = AppTheme.errorColor;
+          default:
+            statusText = 'Pool Miner (${mining.poolHost}:${mining.poolPort})';
+            statusColor = AppTheme.textMuted;
+        }
+
         return Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -213,15 +240,13 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.memory, color: mining.isMining ? AppTheme.successColor : AppTheme.textMuted, size: 18),
+                  if (mining.status == 'connecting')
+                    const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  else
+                    Icon(Icons.memory, color: mining.isMining ? AppTheme.successColor : AppTheme.textMuted, size: 18),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      mining.isMining
-                          ? 'Pool Mining - ${mining.hashrate} H/s'
-                          : 'Pool Miner (${mining.poolHost})',
-                      style: TextStyle(color: mining.isMining ? AppTheme.successColor : AppTheme.textMuted, fontSize: 12),
-                    ),
+                    child: Text(statusText, style: TextStyle(color: statusColor, fontSize: 12)),
                   ),
                   ElevatedButton(
                     onPressed: !canMine ? null : () {
@@ -241,15 +266,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
-              if (mining.error != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(mining.error!, style: const TextStyle(color: AppTheme.errorColor, fontSize: 10)),
-                ),
               if (mining.sharesAccepted > 0)
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
-                  child: Text('Shares: ${mining.sharesAccepted}/${mining.sharesSubmitted}',
+                  child: Text('Shares: ${mining.sharesAccepted}',
                       style: const TextStyle(color: AppTheme.textMuted, fontSize: 10)),
                 ),
               if (!canMine)
