@@ -111,10 +111,10 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
   }
 
   Widget _buildHeader(HearthState state) {
+    final heatUsd = state.fuegoPrice?.heatPegUsd ?? 0;
     final spot = state.pool?.spotPrice ?? '--';
     final spotNum = double.tryParse(spot) ?? 0;
-    final heatUsd = state.fuegoPrice?.heatPegUsd ?? 0;
-    final usdVal = spotNum * heatUsd;
+    final xfgUsd = spotNum * heatUsd;
     return Container(
       color: HearthTheme.bgDeep,
       padding: EdgeInsets.only(
@@ -124,47 +124,38 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
         bottom: 10,
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  const Text('XFG', style: TextStyle(
-                    color: HearthTheme.textWhite,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  )),
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: HearthTheme.bgSurface,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: const Text('HEAT', style: TextStyle(
-                      color: HearthTheme.textSecondary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                    )),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(spot, style: HearthTheme.mono(size: 16, weight: FontWeight.w700, color: HearthTheme.textWhite)),
-            ],
-          ),
-          const Spacer(),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text('≈ \$${usdVal.toStringAsFixed(4)}', style: HearthTheme.mono(size: 12, color: HearthTheme.textSecondary)),
+              Text('HΞ∆T', style: HearthTheme.label(size: 10, color: HearthTheme.textMuted)),
               const SizedBox(height: 2),
-              if (state.pool != null)
-                Text('Vol ${state.pool!.volume24h}', style: HearthTheme.label(size: 10)),
+              Text('\$${heatUsd.toStringAsFixed(4)}', style: HearthTheme.mono(size: 16, weight: FontWeight.w700, color: HearthTheme.textWhite)),
             ],
           ),
+          Container(
+            width: 1,
+            height: 32,
+            color: HearthTheme.divider,
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('XFG', style: HearthTheme.label(size: 10, color: HearthTheme.textMuted)),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Text('1 XFG', style: HearthTheme.mono(size: 12, weight: FontWeight.w600, color: HearthTheme.textPrimary)),
+                    Text(' ≈ ', style: HearthTheme.mono(size: 12, color: HearthTheme.textMuted)),
+                    Text('${spotNum.toStringAsFixed(4)} HΞ∆T', style: HearthTheme.mono(size: 12, weight: FontWeight.w600, color: HearthTheme.askPrimary)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Text('\$${xfgUsd.toStringAsFixed(4)}', style: HearthTheme.mono(size: 13, weight: FontWeight.w700, color: HearthTheme.askPrimary)),
         ],
       ),
     );

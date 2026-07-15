@@ -18,17 +18,17 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _screens = const [
     HomeScreen(),
-    DexScreen(),
-    CdOverviewScreen(),
     HearthScreen(),
+    CdOverviewScreen(),
+    DexScreen(),
     SettingsScreen(),
   ];
 
   final List<_NavItem> _navItems = const [
     _NavItem(icon: Icons.account_balance_wallet, label: 'Wallet'),
-    _NavItem(icon: Icons.swap_calls, label: 'DEX'),
-    _NavItem(icon: Icons.savings, label: 'CDs'),
     _NavItem(icon: Icons.swap_horiz, label: 'Hearth'),
+    _NavItem(icon: Icons.savings, label: 'CDs'),
+    _NavItem(icon: Icons.swap_calls, label: 'DEX'),
     _NavItem(icon: Icons.settings, label: 'Settings'),
   ];
 
