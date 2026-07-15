@@ -5,11 +5,15 @@ import '../models/candlestick.dart';
 class FuegoChart extends StatelessWidget {
   final List<Candlestick> candles;
   final String pair;
+  final Color lineColor;
+  final Color bgColor;
 
   const FuegoChart({
     super.key,
     required this.candles,
     this.pair = '',
+    this.lineColor = const Color(0xFFFF5722),
+    this.bgColor = const Color(0xFF0A0E14),
   });
 
   @override
@@ -29,24 +33,17 @@ class FuegoChart extends StatelessWidget {
       return Container(
         height: constraints.maxHeight,
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF252B33),
-              Color(0xFF0A0E14),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(8),
+          color: bgColor,
+          borderRadius: BorderRadius.circular(0),
         ),
         clipBehavior: Clip.hardEdge,
         child: Stack(
           children: [
             ImpChart.trading(
               candles: impCandles,
-              lineColor: const Color(0xFFFF5722),
+              lineColor: lineColor,
               backgroundColor: Colors.transparent,
-              pulseColor: const Color(0xFFFF5722),
+              pulseColor: lineColor,
               enableGestures: true,
               showCrosshair: true,
               defaultVisibleCount: candles.length,
@@ -59,12 +56,12 @@ class FuegoChart extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF252B33).withAlpha(200),
+                    color: bgColor.withAlpha(200),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(pair,
-                      style: const TextStyle(
-                          color: Color(0xFFFF5722),
+                      style: TextStyle(
+                          color: lineColor,
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 1.2)),

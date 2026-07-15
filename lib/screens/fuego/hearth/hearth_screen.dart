@@ -4,7 +4,7 @@ import '../../../bloc/hearth/hearth_cubit.dart';
 import '../../../models/candlestick.dart';
 import '../../../models/heat_amm.dart';
 import '../../../services/price_history_service.dart';
-import '../../../utils/theme.dart';
+import '../../../utils/hearth_theme.dart';
 import '../../../widgets/fuego_chart.dart';
 import 'liquidity_dialogs.dart';
 
@@ -15,7 +15,8 @@ class HearthScreen extends StatefulWidget {
   State<HearthScreen> createState() => _HearthScreenState();
 }
 
-class _HearthScreenState extends State<HearthScreen> {
+class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   final _amountController = TextEditingController();
   final _priceController = TextEditingController();
   bool _sellXfg = true;
@@ -24,6 +25,7 @@ class _HearthScreenState extends State<HearthScreen> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 3, vsync: this);
     context.read<HearthCubit>().loadPool();
     _loadPriceData();
     _amountController.addListener(_updateUsd);
@@ -54,10 +56,697 @@ class _HearthScreenState extends State<HearthScreen> {
 
   @override
   void dispose() {
+    _tabController.dispose();
     _amountController.removeListener(_updateUsd);
     _amountController.dispose();
     _priceController.dispose();
     super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenH = MediaQuery.of(context).size.height;
+    return BlocBuilder<HearthCubit, HearthState>(
+      builder: (context, state) {
+        return Scaffold(
+          backgroundColor: HearthTheme.bgPure,
+          body: state.isLoading
+              ? const Center(child: CircularProgressIndicator(color: HearthTheme.askPrimary))
+              : Column(
+                  children: [
+                    _buildHeader(state),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: [
+                            if (_candles != null && _candles!.isNotEmpty)
+                              SizedBox(
+                                height: screenH * 0.30,
+                                child: FuegoChart(
+                                  candles: _candles!,
+                                  pair: 'XFG/HEAT',
+                                  lineColor: HearthTheme.chartLine,
+                                  bgColor: HearthTheme.bgPure,
+                                ),
+                              ),
+                            if (_candles == null || _candles!.isEmpty)
+                              Container(
+                                height: screenH * 0.30,
+                                color: HearthTheme.bgPure,
+                                child: const Center(
+                                  child: Text('No chart data', style: TextStyle(color: HearthTheme.textMuted)),
+                                ),
+                              ),
+                            if (state.pool != null) _buildPoolStats(state.pool!),
+                            _buildTabSection(state),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+        );
+      },
+    );
+  }
+
+  Widget _buildHeader(HearthState state) {
+    final spot = state.pool?.spotPrice ?? '--';
+    final spotNum = double.tryParse(spot) ?? 0;
+    final heatUsd = state.fuegoPrice?.heatPegUsd ?? 0;
+    final usdVal = spotNum * heatUsd;
+    return Container(
+      color: HearthTheme.bgDeep,
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top,
+        left: 16,
+        right: 16,
+        bottom: 10,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Text('XFG', style: TextStyle(
+                    color: HearthTheme.textWhite,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  )),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: HearthTheme.bgSurface,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Text('HEAT', style: TextStyle(
+                      color: HearthTheme.textSecondary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    )),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(spot, style: HearthTheme.mono(size: 16, weight: FontWeight.w700, color: HearthTheme.textWhite)),
+            ],
+          ),
+          const Spacer(),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text('≈ \$${usdVal.toStringAsFixed(4)}', style: HearthTheme.mono(size: 12, color: HearthTheme.textSecondary)),
+              const SizedBox(height: 2),
+              if (state.pool != null)
+                Text('Vol ${state.pool!.volume24h}', style: HearthTheme.label(size: 10)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPoolStats(PoolInfo pool) {
+    return Container(
+      color: HearthTheme.bgDeep,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          _poolStat('XFG Res', pool.xfgReserve),
+          _poolDivider(),
+          _poolStat('HEAT Res', pool.heatReserve),
+          _poolDivider(),
+          _poolStat('24h Vol', pool.volume24h),
+          _poolDivider(),
+          _poolStat('LP Fees', pool.lpFees24h),
+        ],
+      ),
+    );
+  }
+
+  Widget _poolStat(String label, String value) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(value, style: HearthTheme.mono(size: 11, weight: FontWeight.w600, color: HearthTheme.textPrimary)),
+          const SizedBox(height: 2),
+          Text(label, style: HearthTheme.label(size: 9)),
+        ],
+      ),
+    );
+  }
+
+  Widget _poolDivider() {
+    return Container(
+      width: 1,
+      height: 28,
+      color: HearthTheme.divider,
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+    );
+  }
+
+  Widget _buildTabSection(HearthState state) {
+    return Container(
+      color: HearthTheme.bgDeep,
+      child: Column(
+        children: [
+          Container(
+            decoration: const BoxDecoration(
+              border: Border(bottom: BorderSide(color: HearthTheme.divider, width: 0.5)),
+            ),
+            child: TabBar(
+              controller: _tabController,
+              labelColor: HearthTheme.askPrimary,
+              unselectedLabelColor: HearthTheme.textMuted,
+              indicatorColor: HearthTheme.askPrimary,
+              indicatorSize: TabBarIndicatorSize.label,
+              labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+              dividerColor: Colors.transparent,
+              tabs: const [
+                Tab(text: 'Order Book'),
+                Tab(text: 'Trade'),
+                Tab(text: 'Liquidity'),
+              ],
+            ),
+          ),
+          SizedBox(
+            height: 420,
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildOrderBookTab(state),
+                _buildTradeTab(state),
+                _buildLiquidityTab(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ───────────────────── ORDER BOOK ─────────────────────
+
+  Widget _buildOrderBookTab(HearthState state) {
+    if (state.orderBook == null) {
+      return const Center(
+        child: Text('No order book data', style: TextStyle(color: HearthTheme.textMuted, fontSize: 13)),
+      );
+    }
+    final book = state.orderBook!;
+    final maxTotal = book.asks.isNotEmpty
+        ? book.asks.map((e) => e.total).reduce((a, b) => a > b ? a : b)
+        : 1.0;
+    final maxBidTotal = book.bids.isNotEmpty
+        ? book.bids.map((e) => e.total).reduce((a, b) => a > b ? a : b)
+        : 1.0;
+    final globalMax = maxTotal > maxBidTotal ? maxTotal : maxBidTotal;
+
+    return Column(
+      children: [
+        _orderBookHeader(),
+        Expanded(
+          flex: 4,
+          child: ListView.builder(
+            itemCount: book.asks.length,
+            reverse: true,
+            itemBuilder: (context, i) => _depthRow(book.asks[i], false, globalMax),
+          ),
+        ),
+        _spreadBar(book, state),
+        Expanded(
+          flex: 4,
+          child: ListView.builder(
+            itemCount: book.bids.length,
+            itemBuilder: (context, i) => _depthRow(book.bids[i], true, globalMax),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _orderBookHeader() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: Row(
+        children: [
+          Expanded(child: Text('Price (HEAT)', style: HearthTheme.label(size: 10, color: HearthTheme.textMuted))),
+          Expanded(child: Text('Amount (XFG)', style: HearthTheme.label(size: 10, color: HearthTheme.textMuted), textAlign: TextAlign.right)),
+          Expanded(child: Text('Total', style: HearthTheme.label(size: 10, color: HearthTheme.textMuted), textAlign: TextAlign.right)),
+        ],
+      ),
+    );
+  }
+
+  Widget _depthRow(OrderBookLevel level, bool isBid, double globalMax) {
+    final pct = globalMax > 0 ? (level.total / globalMax).clamp(0.0, 1.0) : 0.0;
+    final color = isBid ? HearthTheme.bidPrimary : HearthTheme.askPrimary;
+    final depthColor = isBid ? HearthTheme.bidDepth : HearthTheme.askDepth;
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: FractionallySizedBox(
+              widthFactor: pct,
+              child: Container(color: depthColor),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3.5),
+          child: Row(
+            children: [
+              Expanded(child: Text(
+                level.price.toStringAsFixed(4),
+                style: HearthTheme.mono(size: 12, weight: FontWeight.w600, color: color),
+              )),
+              Expanded(child: Text(
+                level.amount.toStringAsFixed(2),
+                style: HearthTheme.mono(size: 11, color: HearthTheme.textSecondary),
+                textAlign: TextAlign.right,
+              )),
+              Expanded(child: Text(
+                level.total.toStringAsFixed(2),
+                style: HearthTheme.mono(size: 11, color: HearthTheme.textMuted),
+                textAlign: TextAlign.right,
+              )),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _spreadBar(OrderBook book, HearthState state) {
+    final spot = book.lastPrice;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: const BoxDecoration(
+        color: HearthTheme.bgCard,
+        border: Border(
+          top: BorderSide(color: HearthTheme.divider, width: 0.5),
+          bottom: BorderSide(color: HearthTheme.divider, width: 0.5),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(spot.toStringAsFixed(4), style: HearthTheme.mono(size: 14, weight: FontWeight.w700, color: HearthTheme.textWhite)),
+          const SizedBox(width: 8),
+          if (state.fuegoPrice != null)
+            Text('≈ \$${(spot * state.fuegoPrice!.heatPegUsd).toStringAsFixed(4)}',
+                style: HearthTheme.mono(size: 11, color: HearthTheme.textSecondary)),
+        ],
+      ),
+    );
+  }
+
+  // ───────────────────── TRADE FORM ─────────────────────
+
+  Widget _buildTradeTab(HearthState state) {
+    final isLimit = state.orderType == OrderType.limit;
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buySellToggle(state),
+          const SizedBox(height: 12),
+          _orderTypeRow(state),
+          const SizedBox(height: 12),
+          _amountInput(state),
+          if (isLimit) ...[
+            const SizedBox(height: 10),
+            _limitPriceInput(state),
+          ],
+          const SizedBox(height: 12),
+          _submitButton(state, isLimit),
+          if (!isLimit && state.quote != null) ...[
+            const SizedBox(height: 10),
+            _quoteDisplay(state.quote!, state),
+            const SizedBox(height: 8),
+            _confirmSwapButton(state),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buySellToggle(HearthState state) {
+    return Container(
+      decoration: BoxDecoration(
+        color: HearthTheme.bgInput,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      padding: const EdgeInsets.all(3),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() {
+                _sellXfg = true;
+                _amountController.clear();
+                _updateUsd();
+              }),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: _sellXfg ? HearthTheme.askPrimary : Colors.transparent,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text('Sell XFG', textAlign: TextAlign.center, style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: _sellXfg ? HearthTheme.textWhite : HearthTheme.textMuted,
+                )),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() {
+                _sellXfg = false;
+                _amountController.clear();
+                _updateUsd();
+              }),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: !_sellXfg ? HearthTheme.bidPrimary : Colors.transparent,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text('Buy XFG', textAlign: TextAlign.center, style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: !_sellXfg ? HearthTheme.textWhite : HearthTheme.textMuted,
+                )),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _orderTypeRow(HearthState state) {
+    return Row(
+      children: [
+        _typeChip('Market', state.orderType == OrderType.market, () {
+          context.read<HearthCubit>().setOrderType(OrderType.market);
+          _priceController.clear();
+        }),
+        const SizedBox(width: 8),
+        _typeChip('Limit', state.orderType == OrderType.limit, () {
+          context.read<HearthCubit>().setOrderType(OrderType.limit);
+        }),
+      ],
+    );
+  }
+
+  Widget _typeChip(String label, bool active, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: active ? HearthTheme.bgElevated : Colors.transparent,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(
+            color: active ? HearthTheme.textMuted : HearthTheme.border,
+            width: 0.5,
+          ),
+        ),
+        child: Text(label, style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: active ? HearthTheme.textWhite : HearthTheme.textMuted,
+        )),
+      ),
+    );
+  }
+
+  Widget _amountInput(HearthState state) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(_sellXfg ? 'Sell Amount (XFG)' : 'Sell Amount (HEAT)', style: HearthTheme.label(size: 10)),
+        const SizedBox(height: 6),
+        Container(
+          decoration: BoxDecoration(
+            color: HearthTheme.bgInput,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: HearthTheme.border, width: 0.5),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _amountController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  style: HearthTheme.mono(size: 15, weight: FontWeight.w600, color: HearthTheme.textWhite),
+                  decoration: InputDecoration(
+                    border: InputBorder.none,
+                    hintText: '0.00',
+                    hintStyle: HearthTheme.mono(size: 15, color: HearthTheme.textDim),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ),
+              if (_amountUsd.isNotEmpty)
+                Text(_amountUsd, style: HearthTheme.mono(size: 11, color: HearthTheme.textSecondary)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 6),
+        _percentShortcuts(),
+      ],
+    );
+  }
+
+  Widget _percentShortcuts() {
+    return Row(
+      children: [25, 50, 75, 100].map((pct) {
+        return Expanded(
+          child: GestureDetector(
+            onTap: () {
+              // percentage of available balance — placeholder for now
+            },
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 2),
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              decoration: BoxDecoration(
+                color: HearthTheme.bgSurface,
+                borderRadius: BorderRadius.circular(3),
+              ),
+              child: Text('$pct%', textAlign: TextAlign.center, style: HearthTheme.label(size: 10, color: HearthTheme.textSecondary)),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _limitPriceInput(HearthState state) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Limit Price (HEAT per XFG)', style: HearthTheme.label(size: 10)),
+        const SizedBox(height: 6),
+        Container(
+          decoration: BoxDecoration(
+            color: HearthTheme.bgInput,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: HearthTheme.border, width: 0.5),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: TextField(
+            controller: _priceController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            style: HearthTheme.mono(size: 15, weight: FontWeight.w600, color: HearthTheme.textWhite),
+            decoration: InputDecoration(
+              border: InputBorder.none,
+              hintText: state.pool?.spotPrice ?? '0.00',
+              hintStyle: HearthTheme.mono(size: 15, color: HearthTheme.textDim),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _submitButton(HearthState state, bool isLimit) {
+    final isSell = _sellXfg;
+    final color = isSell ? HearthTheme.askPrimary : HearthTheme.bidPrimary;
+    return SizedBox(
+      height: 44,
+      child: ElevatedButton(
+        onPressed: () {
+          final amount = _amountController.text.trim();
+          if (amount.isEmpty) return;
+          if (isLimit) {
+            final price = _priceController.text.trim();
+            if (price.isEmpty) return;
+            context.read<HearthCubit>().placeLimitOrder(
+              sellXfg: _sellXfg, amount: amount, price: price,
+            );
+          } else {
+            context.read<HearthCubit>().getQuote(
+              sellXfg: _sellXfg, amount: amount,
+            );
+          }
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: HearthTheme.textWhite,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+          elevation: 0,
+        ),
+        child: Text(
+          isLimit
+              ? (isSell ? 'Place Sell Order' : 'Place Buy Order')
+              : (isSell ? 'Swap XFG → HEAT' : 'Swap HEAT → XFG'),
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  Widget _confirmSwapButton(HearthState state) {
+    return SizedBox(
+      height: 42,
+      child: ElevatedButton(
+        onPressed: () {
+          final cubit = context.read<HearthCubit>();
+          final q = cubit.state.quote!;
+          cubit.executeSwap(
+            sellXfg: _sellXfg,
+            inputAmount: q.inputAmount,
+            minOutput: q.outputAmount,
+          );
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: HearthTheme.bidPrimary,
+          foregroundColor: HearthTheme.textWhite,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+          elevation: 0,
+        ),
+        child: const Text('Confirm Swap', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+      ),
+    );
+  }
+
+  Widget _quoteDisplay(AmmQuote quote, HearthState state) {
+    final heatAmount = _sellXfg ? quote.outputAmount : quote.inputAmount;
+    final heatVal = double.tryParse(heatAmount) ?? 0;
+    final heatPegUsd = state.fuegoPrice?.heatPegUsd ?? 0;
+    final usd = heatVal * heatPegUsd;
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: HearthTheme.bgCard,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('You receive', style: HearthTheme.label(size: 10)),
+              Text(quote.outputAmount, style: HearthTheme.mono(size: 14, weight: FontWeight.w700, color: HearthTheme.textWhite)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('≈ \$${usd.toStringAsFixed(2)}', style: HearthTheme.mono(size: 11, color: HearthTheme.textSecondary)),
+              Text('Fee: ${quote.fee}', style: HearthTheme.mono(size: 10, color: HearthTheme.textMuted)),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Price Impact', style: HearthTheme.label(size: 9)),
+              Text('${quote.priceImpact}%', style: HearthTheme.mono(size: 10, color: HearthTheme.textSecondary)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ───────────────────── LIQUIDITY ─────────────────────
+
+  Widget _buildLiquidityTab() {
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: HearthTheme.bgCard,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('PROVIDE LIQUIDITY', style: HearthTheme.label(size: 10, color: HearthTheme.askPrimary)),
+                const SizedBox(height: 8),
+                Text(
+                  'Earn fees by providing liquidity to the XFG/HEAT pool.',
+                  style: HearthTheme.mono(size: 11, color: HearthTheme.textSecondary),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 44,
+                  child: OutlinedButton(
+                    onPressed: () => _showAddLiquidity(context),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: HearthTheme.bidPrimary,
+                      side: const BorderSide(color: HearthTheme.bidPrimary, width: 1),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                    ),
+                    child: const Text('Add Liquidity', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: SizedBox(
+                  height: 44,
+                  child: OutlinedButton(
+                    onPressed: () => _showRemoveLiquidity(context),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: HearthTheme.textMuted,
+                      side: const BorderSide(color: HearthTheme.border, width: 1),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                    ),
+                    child: const Text('Remove', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   void _showAddLiquidity(BuildContext context) {
@@ -76,447 +765,6 @@ class _HearthScreenState extends State<HearthScreen> {
       builder: (_) => BlocProvider.value(
         value: context.read<HearthCubit>(),
         child: const RemoveLiquidityDialog(),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final screenH = MediaQuery.of(context).size.height;
-    return BlocBuilder<HearthCubit, HearthState>(
-      builder: (context, state) {
-        return Scaffold(
-          backgroundColor: AppTheme.backgroundColor,
-          appBar: AppBar(
-            title: const Text('Hearth Exchange'),
-            backgroundColor: AppTheme.surfaceColor,
-          ),
-          body: state.isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      if (_candles != null && _candles!.isNotEmpty)
-                        SizedBox(
-                          height: screenH * 0.30,
-                          child: FuegoChart(
-                            candles: _candles!,
-                            pair: 'XFG/HEAT',
-                          ),
-                        ),
-                      if (state.pool != null) _buildPoolStats(state.pool!),
-                      const SizedBox(height: 12),
-                      _buildOrderTypeToggle(state),
-                      const SizedBox(height: 12),
-                      if (state.orderBook != null)
-                        _buildOrderBook(state.orderBook!, state),
-                      const SizedBox(height: 12),
-                      _buildTradeForm(context, state),
-                      const SizedBox(height: 20),
-                      _buildLiquidityActions(context),
-                    ],
-                  ),
-                ),
-        );
-      },
-    );
-  }
-
-  Widget _buildPoolStats(PoolInfo pool) {
-    return Card(
-      color: AppTheme.cardColor,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            Expanded(child: _statItem('XFG', pool.xfgReserve)),
-            Container(width: 1, height: 36, color: AppTheme.textMuted.withOpacity(0.2)),
-            Expanded(child: _statItem('HEAT', pool.heatReserve)),
-            Container(width: 1, height: 36, color: AppTheme.textMuted.withOpacity(0.2)),
-            Expanded(child: _statItem('Vol 24h', pool.volume24h)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _statItem(String label, String value) {
-    return Column(
-      children: [
-        Text(value, style: const TextStyle(
-          fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
-        const SizedBox(height: 2),
-        Text(label, style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
-      ],
-    );
-  }
-
-  Widget _buildOrderTypeToggle(HearthState state) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceColor,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      padding: const EdgeInsets.all(3),
-      child: Row(
-        children: [
-          Expanded(
-            child: _tabBtn('Market', state.orderType == OrderType.market, () {
-              context.read<HearthCubit>().setOrderType(OrderType.market);
-              _priceController.clear();
-            }),
-          ),
-          Expanded(
-            child: _tabBtn('Limit', state.orderType == OrderType.limit, () {
-              context.read<HearthCubit>().setOrderType(OrderType.limit);
-            }),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _tabBtn(String label, bool active, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: active ? AppTheme.primaryColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Text(label, textAlign: TextAlign.center, style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: active ? Colors.white : AppTheme.textMuted,
-        )),
-      ),
-    );
-  }
-
-  Widget _buildOrderBook(OrderBook book, HearthState state) {
-    final spot = book.lastPrice;
-    return Card(
-      color: AppTheme.cardColor,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                const Text('Order Book', style: TextStyle(
-                  fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textMuted)),
-                const Spacer(),
-                Text('XFG/HEAT ${spot.toStringAsFixed(4)}', style: const TextStyle(
-                  fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Expanded(child: Text('Price', style: TextStyle(fontSize: 10, color: AppTheme.textMuted))),
-                const Expanded(child: Text('Amount', style: TextStyle(fontSize: 10, color: AppTheme.textMuted), textAlign: TextAlign.right)),
-                const Expanded(child: Text('Total', style: TextStyle(fontSize: 10, color: AppTheme.textMuted), textAlign: TextAlign.right)),
-              ],
-            ),
-            const SizedBox(height: 4),
-            ...book.asks.map((l) => _depthRow(l, false, book)),
-            Container(
-              margin: const EdgeInsets.symmetric(vertical: 4),
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              decoration: BoxDecoration(
-                color: AppTheme.surfaceColor,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.swap_vert, size: 14, color: AppTheme.primaryColor),
-                  const SizedBox(width: 6),
-                  Text('Spread ${spot.toStringAsFixed(4)}', style: const TextStyle(
-                    fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
-                  if (state.fuegoPrice != null)
-                    Text('  ≈ \$${(spot * state.fuegoPrice!.heatPegUsd).toStringAsFixed(2)}', style: const TextStyle(
-                      fontSize: 11, color: AppTheme.textMuted)),
-                ],
-              ),
-            ),
-            ...book.bids.map((l) => _depthRow(l, true, book)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _depthRow(OrderBookLevel level, bool isBid, OrderBook book) {
-    final maxTotal = book.asks.isNotEmpty
-        ? book.asks.map((e) => e.total).reduce((a, b) => a > b ? a : b)
-        : 1.0;
-    final pct = (level.total / maxTotal).clamp(0.0, 1.0);
-    final color = isBid ? AppTheme.successColor : AppTheme.errorColor;
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: Align(
-            alignment: Alignment.centerRight,
-            child: FractionallySizedBox(
-              widthFactor: pct,
-              child: Container(color: color.withOpacity(0.08)),
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 3),
-          child: Row(
-            children: [
-              Expanded(child: Text(
-                level.price.toStringAsFixed(4),
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: color),
-              )),
-              Expanded(child: Text(
-                level.amount.toStringAsFixed(2),
-                style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
-                textAlign: TextAlign.right,
-              )),
-              Expanded(child: Text(
-                level.total.toStringAsFixed(2),
-                style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
-                textAlign: TextAlign.right,
-              )),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTradeForm(BuildContext context, HearthState state) {
-    final isLimit = state.orderType == OrderType.limit;
-    return Card(
-      color: AppTheme.cardColor,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: _assetBtn('XFG', _sellXfg, () => setState(() {
-                    _sellXfg = true;
-                    _amountController.clear();
-                    _updateUsd();
-                  })),
-                ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8),
-                  child: Icon(Icons.arrow_forward, color: AppTheme.textMuted, size: 18),
-                ),
-                Expanded(
-                  child: _assetBtn('HEAT', !_sellXfg, () => setState(() {
-                    _sellXfg = false;
-                    _amountController.clear();
-                    _updateUsd();
-                  })),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: _amountController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: _sellXfg ? 'Sell XFG Amount' : 'Sell HEAT Amount',
-                filled: true,
-                fillColor: AppTheme.surfaceColor,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-            ),
-            if (_amountUsd.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 4, left: 4),
-                child: Text(_amountUsd, style: const TextStyle(
-                  fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.accentColor)),
-              ),
-            if (isLimit) ...[
-              const SizedBox(height: 10),
-              TextField(
-                controller: _priceController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: 'Limit Price (HEAT per XFG)',
-                  hintText: state.pool?.spotPrice ?? '',
-                  filled: true,
-                  fillColor: AppTheme.surfaceColor,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-              ),
-            ],
-            const SizedBox(height: 14),
-            SizedBox(
-              height: 46,
-              child: ElevatedButton(
-                onPressed: () {
-                  final amount = _amountController.text.trim();
-                  if (amount.isEmpty) return;
-                  if (isLimit) {
-                    final price = _priceController.text.trim();
-                    if (price.isEmpty) return;
-                    context.read<HearthCubit>().placeLimitOrder(
-                      sellXfg: _sellXfg, amount: amount, price: price,
-                    );
-                  } else {
-                    context.read<HearthCubit>().getQuote(
-                      sellXfg: _sellXfg, amount: amount,
-                    );
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _sellXfg ? AppTheme.errorColor : AppTheme.successColor,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                child: Text(
-                  isLimit
-                      ? (_sellXfg ? 'Place Sell Order' : 'Place Buy Order')
-                      : (_sellXfg ? 'Swap XFG → HEAT' : 'Swap HEAT → XFG'),
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-            if (!isLimit && state.quote != null) ...[
-              const SizedBox(height: 12),
-              _buildQuoteDisplay(state.quote!, state),
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 44,
-                child: ElevatedButton(
-                  onPressed: () {
-                    final cubit = context.read<HearthCubit>();
-                    final q = cubit.state.quote!;
-                    cubit.executeSwap(
-                      sellXfg: _sellXfg,
-                      inputAmount: q.inputAmount,
-                      minOutput: q.outputAmount,
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.successColor,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  child: const Text('Confirm Swap', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _assetBtn(String label, bool isSelected, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primaryColor : AppTheme.surfaceColor,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isSelected ? AppTheme.primaryColor : AppTheme.textMuted.withOpacity(0.3),
-            width: isSelected ? 2 : 1,
-          ),
-        ),
-        child: Text(label, textAlign: TextAlign.center, style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-          color: isSelected ? Colors.white : AppTheme.textMuted.withOpacity(0.5),
-        )),
-      ),
-    );
-  }
-
-  Widget _buildQuoteDisplay(AmmQuote quote, HearthState state) {
-    final heatAmount = _sellXfg ? quote.outputAmount : quote.inputAmount;
-    final heatVal = double.tryParse(heatAmount) ?? 0;
-    final heatPegUsd = state.fuegoPrice?.heatPegUsd ?? 0;
-    final usd = heatVal * heatPegUsd;
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceColor,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('You receive', style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
-              Text(quote.outputAmount, style: const TextStyle(
-                fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
-            ],
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text('≈ \$${usd.toStringAsFixed(2)}', style: const TextStyle(
-                fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.accentColor)),
-              const Text('Fee', style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
-              Text(quote.fee, style: const TextStyle(color: AppTheme.textSecondary)),
-              Text('Impact: ${quote.priceImpact}%',
-                style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLiquidityActions(BuildContext context) {
-    return Card(
-      color: AppTheme.cardColor,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text('Liquidity', style: TextStyle(
-              fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _showAddLiquidity(context),
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Add'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppTheme.primaryColor,
-                      side: const BorderSide(color: AppTheme.primaryColor),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _showRemoveLiquidity(context),
-                    icon: const Icon(Icons.remove, size: 18),
-                    label: const Text('Remove'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppTheme.textMuted,
-                      side: BorderSide(color: AppTheme.textMuted.withOpacity(0.3)),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
       ),
     );
   }

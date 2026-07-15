@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../bloc/hearth/hearth_cubit.dart';
-import '../../../utils/theme.dart';
+import '../../../utils/hearth_theme.dart';
 
 class AddLiquidityDialog extends StatefulWidget {
   const AddLiquidityDialog({super.key});
@@ -25,55 +25,57 @@ class _AddLiquidityDialogState extends State<AddLiquidityDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: AppTheme.cardColor,
-      title: const Text('Add Liquidity', style: TextStyle(color: AppTheme.textPrimary)),
+      backgroundColor: HearthTheme.bgCard,
+      title: Text('Add Liquidity', style: HearthTheme.mono(size: 16, weight: FontWeight.w700, color: HearthTheme.textWhite)),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          TextField(
-            controller: _xfgController,
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-              labelText: 'XFG Amount',
-              filled: true,
-              fillColor: AppTheme.surfaceColor,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            style: const TextStyle(color: AppTheme.textPrimary),
-          ),
+          _dialogInput(_xfgController, 'XFG Amount'),
           const SizedBox(height: 12),
-          TextField(
-            controller: _heatController,
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-              labelText: 'HEAT Amount',
-              filled: true,
-              fillColor: AppTheme.surfaceColor,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            style: const TextStyle(color: AppTheme.textPrimary),
-          ),
+          _dialogInput(_heatController, 'HEAT Amount'),
           const SizedBox(height: 8),
-          const Text('Provide equal-value amounts of both tokens',
-              style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+          Text('Provide equal-value amounts of both tokens',
+              style: HearthTheme.label(size: 10, color: HearthTheme.textMuted)),
         ],
       ),
       actions: [
         TextButton(
           onPressed: _submitting ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary)),
+          child: Text('Cancel', style: HearthTheme.mono(size: 12, color: HearthTheme.textSecondary)),
         ),
         ElevatedButton(
           onPressed: _submitting ? null : _submit,
           style: ElevatedButton.styleFrom(
-            backgroundColor: AppTheme.primaryColor,
-            foregroundColor: Colors.white,
+            backgroundColor: HearthTheme.bidPrimary,
+            foregroundColor: HearthTheme.textWhite,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
           ),
           child: _submitting
-              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: HearthTheme.textWhite))
               : const Text('Add'),
         ),
       ],
+    );
+  }
+
+  Widget _dialogInput(TextEditingController controller, String label) {
+    return Container(
+      decoration: BoxDecoration(
+        color: HearthTheme.bgInput,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: HearthTheme.border, width: 0.5),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: TextField(
+        controller: controller,
+        keyboardType: TextInputType.number,
+        style: HearthTheme.mono(size: 14, weight: FontWeight.w600, color: HearthTheme.textWhite),
+        decoration: InputDecoration(
+          border: InputBorder.none,
+          hintText: label,
+          hintStyle: HearthTheme.mono(size: 13, color: HearthTheme.textDim),
+        ),
+      ),
     );
   }
 
@@ -115,64 +117,56 @@ class _RemoveLiquidityDialogState extends State<RemoveLiquidityDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: AppTheme.cardColor,
-      title: const Text('Remove Liquidity', style: TextStyle(color: AppTheme.textPrimary)),
+      backgroundColor: HearthTheme.bgCard,
+      title: Text('Remove Liquidity', style: HearthTheme.mono(size: 16, weight: FontWeight.w700, color: HearthTheme.textWhite)),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          TextField(
-            controller: _sharesController,
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-              labelText: 'LP Shares',
-              filled: true,
-              fillColor: AppTheme.surfaceColor,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            style: const TextStyle(color: AppTheme.textPrimary),
-          ),
+          _dialogInput(_sharesController, 'LP Shares'),
           const SizedBox(height: 12),
-          TextField(
-            controller: _minXfgController,
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-              labelText: 'Min XFG',
-              filled: true,
-              fillColor: AppTheme.surfaceColor,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            style: const TextStyle(color: AppTheme.textPrimary),
-          ),
+          _dialogInput(_minXfgController, 'Min XFG'),
           const SizedBox(height: 12),
-          TextField(
-            controller: _minHeatController,
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-              labelText: 'Min HEAT',
-              filled: true,
-              fillColor: AppTheme.surfaceColor,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            style: const TextStyle(color: AppTheme.textPrimary),
-          ),
+          _dialogInput(_minHeatController, 'Min HEAT'),
         ],
       ),
       actions: [
         TextButton(
           onPressed: _submitting ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary)),
+          child: Text('Cancel', style: HearthTheme.mono(size: 12, color: HearthTheme.textSecondary)),
         ),
         ElevatedButton(
           onPressed: _submitting ? null : _submit,
           style: ElevatedButton.styleFrom(
-            backgroundColor: AppTheme.primaryColor,
-            foregroundColor: Colors.white,
+            backgroundColor: HearthTheme.askPrimary,
+            foregroundColor: HearthTheme.textWhite,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
           ),
           child: _submitting
-              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: HearthTheme.textWhite))
               : const Text('Remove'),
         ),
       ],
+    );
+  }
+
+  Widget _dialogInput(TextEditingController controller, String label) {
+    return Container(
+      decoration: BoxDecoration(
+        color: HearthTheme.bgInput,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: HearthTheme.border, width: 0.5),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: TextField(
+        controller: controller,
+        keyboardType: TextInputType.number,
+        style: HearthTheme.mono(size: 14, weight: FontWeight.w600, color: HearthTheme.textWhite),
+        decoration: InputDecoration(
+          border: InputBorder.none,
+          hintText: label,
+          hintStyle: HearthTheme.mono(size: 13, color: HearthTheme.textDim),
+        ),
+      ),
     );
   }
 
