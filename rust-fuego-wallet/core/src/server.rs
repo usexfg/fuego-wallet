@@ -309,11 +309,8 @@ async fn handle_wallet_method(
                 "cds": cds,
             }))
         }
-        "cd::create" => {
-            Err("CDs require walletd RPC — not yet migrated to SDK".into())
-        }
-        "cd::claim" => {
-            Err("CDs require walletd RPC — not yet migrated to SDK".into())
+        "cd::create" | "cd::claim" => {
+            Err("Use create_cd / claim_cd instead".into())
         }
         "create_cd" => {
             let amount = params.get("amount")

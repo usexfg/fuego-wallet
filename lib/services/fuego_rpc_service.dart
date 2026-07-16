@@ -259,12 +259,12 @@ class FuegoRPCService {
     if (durationBlocks != null) {
       params['duration_blocks'] = durationBlocks;
     }
-    final response = await _makeRPCCall('cd::create', params);
+    final response = await _makeRPCCall('create_cd', params);
     return CdCreateResult.fromJson(response);
   }
 
   Future<CdClaimResult> cdClaim(String cdId) async {
-    final response = await _makeRPCCall('cd::claim', {'cd_id': cdId});
+    final response = await _makeRPCCall('claim_cd', {'cd_id': cdId});
     return CdClaimResult.fromJson(response);
   }
 
