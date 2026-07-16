@@ -25,6 +25,7 @@ class PoolMiningService {
   String? _extranonce1;
   int _extranonce2 = 0;
   int _subscriptionId = 0;
+  int? _authorizeId;
   String _recvBuffer = '';
   VoidCallback? onAuthorized;
 
@@ -122,17 +123,18 @@ class PoolMiningService {
         _extranonce2 = 0;
         debugPrint('[pool] Subscribed. extranonce1=$_extranonce1');
         // Authorize
+        _authorizeId = ++_subscriptionId;
         _send({
-          'id': ++_subscriptionId,
+          'id': _authorizeId,
           'method': 'mining.authorize',
           'params': [_walletAddress, 'x'],
         });
-        debugPrint('[pool] Sent authorize for $_walletAddress');
-      } else if (result == true) {
+        debugPrint('[pool] Sent authorize (id=$_authorizeId) for $_walletAddress');
+      } else if (result == true && id == _authorizeId) {
         // Authorize response
         debugPrint('[pool] Authorized! Mining started.');
         onAuthorized?.call();
-      } else if (result == false) {
+      } else if (result == false && id == _authorizeId) {
         debugPrint('[pool] Authorization FAILED');
       }
     }
