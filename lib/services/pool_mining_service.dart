@@ -25,6 +25,8 @@ class PoolMiningService {
   String? _extranonce1;
   int _extranonce2 = 0;
   int _subscriptionId = 0;
+  String _recvBuffer = '';
+  VoidCallback? onAuthorized;
 
   bool get isMining => _mining;
   int get hashrate => _hashrate;
@@ -82,14 +84,19 @@ class PoolMiningService {
   }
 
   void _onData(Uint8List data) {
-    final text = utf8.decode(data);
-    for (final line in text.split('\n')) {
-      final trimmed = line.trim();
-      if (trimmed.isEmpty) continue;
+    _recvBuffer += utf8.decode(data);
+    while (_recvBuffer.contains('\n')) {
+      final idx = _recvBuffer.indexOf('\n');
+      final line = _recvBuffer.substring(0, idx).trim();
+      _recvBuffer = _recvBuffer.substring(idx + 1);
+      if (line.isEmpty) continue;
       try {
-        final msg = json.decode(trimmed) as Map<String, dynamic>;
+        final msg = json.decode(line) as Map<String, dynamic>;
+        debugPrint('[pool] MSG: $msg');
         _handleMessage(msg);
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('[pool] Parse error: $e  raw=$line');
+      }
     }
   }
 
@@ -98,20 +105,39 @@ class PoolMiningService {
     final result = msg['result'];
     final id = msg['id'];
     final params = msg['params'] as List?;
+    final error = msg['error'];
 
-    if (id != null && result != null) {
-      // Response to subscribe
+    debugPrint('[pool] id=$id method=$method result=$result error=$error');
+
+    if (id != null) {
+      // Response to our request (subscribe or authorize)
+      if (error != null) {
+        debugPrint('[pool] Error response: $error');
+        return;
+      }
+
       if (result is List && result.length >= 3) {
+        // Subscribe response: [extranonce2_size, extranonce1, extranonce2_count]
         _extranonce1 = result[1] as String?;
         _extranonce2 = 0;
+        debugPrint('[pool] Subscribed. extranonce1=$_extranonce1');
         // Authorize
         _send({
           'id': ++_subscriptionId,
           'method': 'mining.authorize',
           'params': [_walletAddress, 'x'],
         });
+        debugPrint('[pool] Sent authorize for $_walletAddress');
+      } else if (result == true) {
+        // Authorize response
+        debugPrint('[pool] Authorized! Mining started.');
+        onAuthorized?.call();
+      } else if (result == false) {
+        debugPrint('[pool] Authorization FAILED');
       }
-    } else if (method == 'mining.notify' && params != null && params.length >= 9) {
+    }
+
+    if (method == 'mining.notify' && params != null && params.length >= 9) {
       _jobId = params[0] as String?;
       _prevHash = params[1] as String?;
       _coinb1 = params[2] as String?;
@@ -120,21 +146,23 @@ class PoolMiningService {
       _version = params[5] as String?;
       _nbits = params[6] as String?;
       _ntime = params[7] as String?;
+      debugPrint('[pool] Got job: $_jobId  prev=$_prevHash  nbits=$_nbits');
 
       // Submit a share (simplified - just increment extranonce2)
       if (_jobId != null) {
         _extranonce2++;
         final extranonce2Hex = _extranonce2.toRadixString(16).padLeft(8, '0');
         _send({
-          'id': id,
+          'id': ++_subscriptionId,
           'method': 'mining.submit',
           'params': [_walletAddress, _jobId, extranonce2Hex, _ntime, _extranonce1],
         });
         _sharesSubmitted++;
         _hashrate += 10;
+        debugPrint('[pool] Submitted share #$_sharesSubmitted');
       }
     } else if (method == 'mining.set_difficulty') {
-      // Accept difficulty change
+      debugPrint('[pool] Set difficulty: ${params?[0]}');
     }
   }
 
@@ -148,6 +176,7 @@ class PoolMiningService {
   Future<void> stop() async {
     _mining = false;
     _hashrateTimer?.cancel();
+    _recvBuffer = '';
     _socket?.destroy();
     _socket = null;
     debugPrint('[pool] Stopped. Shares: $_sharesAccepted/$_sharesSubmitted');

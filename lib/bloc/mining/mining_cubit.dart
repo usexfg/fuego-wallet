@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../services/pool_mining_service.dart';
 
@@ -50,10 +51,15 @@ class MiningState {
 
 class MiningCubit extends Cubit<MiningState> {
   final PoolMiningService _pool;
+  Timer? _refreshTimer;
 
   MiningCubit()
       : _pool = PoolMiningService(),
-        super(const MiningState());
+        super(const MiningState()) {
+    _pool.onAuthorized = () {
+      if (!isClosed) emit(state.copyWith(status: 'mining'));
+    };
+  }
 
   Future<void> startMining({required String walletAddress, String? poolHost, int? poolPort}) async {
     if (state.isMining) return;
@@ -70,12 +76,16 @@ class MiningCubit extends Cubit<MiningState> {
 
     if (ok) {
       emit(state.copyWith(isMining: true, status: 'connected', error: null));
+      _refreshTimer?.cancel();
+      _refreshTimer = Timer.periodic(const Duration(seconds: 3), (_) => refreshStatus());
     } else {
       emit(state.copyWith(status: 'error', error: 'Failed to connect to ${host}:${port}'));
     }
   }
 
   Future<void> stopMining() async {
+    _refreshTimer?.cancel();
+    _refreshTimer = null;
     await _pool.stop();
     emit(state.copyWith(isMining: false, hashrate: 0, status: 'idle'));
   }
@@ -83,12 +93,19 @@ class MiningCubit extends Cubit<MiningState> {
   void refreshStatus() {
     if (!state.isMining) return;
     final h = _pool.hashrate;
-    final status = h > 0 ? 'mining' : 'connected';
+    final shares = _pool.sharesAccepted;
     emit(state.copyWith(
       hashrate: h,
-      sharesAccepted: _pool.sharesAccepted,
-      sharesSubmitted: _pool.sharesAccepted,
-      status: status,
+      sharesAccepted: shares,
+      sharesSubmitted: shares,
+      status: h > 0 ? 'mining' : 'connected',
     ));
+  }
+
+  @override
+  Future<void> close() {
+    _refreshTimer?.cancel();
+    _pool.stop();
+    return super.close();
   }
 }
