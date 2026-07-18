@@ -203,32 +203,46 @@ class _SplashScreenState extends State<SplashScreen>
                             totalRepeatCount: 1,
                           ),
                           const SizedBox(height: 16),
-                          // Subtitle
+                          // Brand
                           Text(
-                            'Fuego SwapXFG Wallet',
+                            'Ħ⋲⟑鲂₮Ħ￦⨂',
                             style: TextStyle(
-                              fontSize: 16,
-                              color: AppTheme.textSecondary,
-                              fontWeight: FontWeight.w300,
+                              fontSize: 20,
+                              color: AppTheme.primaryColor,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 2,
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 6),
                           Text(
-                            'On-chain orderbook-based swap pool',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: AppTheme.textMuted,
-                              fontWeight: FontWeight.w300,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'HΞ∆T ⇄ XFG',
+                            '𑫐r᱀≶≸𝕱𝔦𝖗𝒆',
                             style: TextStyle(
                               fontSize: 14,
-                              color: AppTheme.primaryColor,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 1.5,
+                              color: AppTheme.textSecondary,
+                              fontWeight: FontWeight.w300,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          // Swap pair
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppTheme.surfaceColor,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: AppTheme.primaryColor.withOpacity(0.3),
+                                width: 1,
+                              ),
+                            ),
+                            child: Text(
+                              'XFG ⇄ HΞ∆T',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: AppTheme.primaryColor,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 1.5,
+                              ),
                             ),
                           ),
                         ],
