@@ -23,7 +23,7 @@ class _SplashScreenState extends State<SplashScreen>
   late Animation<Offset> _slideAnimation;
 
   bool _isInitializing = true;
-  String _initMessage = 'Initializing XF₲ Wallet...';
+  String _initMessage = 'Initializing Fuego✺Wallet...';
 
   @override
   void initState() {
@@ -190,7 +190,7 @@ class _SplashScreenState extends State<SplashScreen>
                           AnimatedTextKit(
                             animatedTexts: [
                               TypewriterAnimatedText(
-                                'Fyrefly XF₲_wallet',
+                                'Fuego✺Wallet',
                                 textStyle: const TextStyle(
                                   fontSize: 28,
                                   fontWeight: FontWeight.bold,
