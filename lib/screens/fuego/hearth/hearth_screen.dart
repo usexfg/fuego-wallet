@@ -130,11 +130,11 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
       ),
       child: Row(
         children: [
-          Text('\$${heatUsd.toStringAsFixed(2)}', style: HearthTheme.mono(size: 13, weight: FontWeight.w700, color: HearthTheme.textWhite)),
+          Text('\$${xfgUsd.toStringAsFixed(2)}', style: HearthTheme.mono(size: 13, weight: FontWeight.w700, color: HearthTheme.textWhite)),
           const Spacer(),
           Text('1 XFG ≈ ${spotNum.toStringAsFixed(1)} HΞ∆T', style: HearthTheme.mono(size: 13, weight: FontWeight.w700, color: HearthTheme.askPrimary)),
           const Spacer(),
-          Text('\$${xfgUsd.toStringAsFixed(2)}', style: HearthTheme.mono(size: 13, weight: FontWeight.w700, color: HearthTheme.textWhite)),
+          Text('\$${heatUsd.toStringAsFixed(2)}', style: HearthTheme.mono(size: 13, weight: FontWeight.w700, color: HearthTheme.textWhite)),
         ],
       ),
     );

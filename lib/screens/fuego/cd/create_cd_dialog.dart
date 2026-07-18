@@ -40,13 +40,13 @@ class _CreateCdDialogState extends State<CreateCdDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Amount (HEAT)', style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+            const Text('Amount (HΞ∆T)', style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: _amountTiers.map((a) => ChoiceChip(
-                label: Text('${a.toInt()} HEAT'),
+                label: Text('${a.toInt()} HΞ∆T'),
                 selected: _selectedAmount == a,
                 selectedColor: AppTheme.primaryColor,
                 labelStyle: TextStyle(
@@ -77,9 +77,9 @@ class _CreateCdDialogState extends State<CreateCdDialog> {
             Text('≈ $days days — ${_selectedTerm * _epochBlocks} blocks at 8 min/block',
                 style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
             const SizedBox(height: 12),
-            _buildDetailRow('Deposit', '${_selectedAmount.toInt()} HEAT'),
-            _buildDetailRow('Interest (APY ~$apy)', '${interest.toStringAsFixed(2)} HEAT'),
-            _buildDetailRow('At maturity', '${(_selectedAmount + interest).toStringAsFixed(2)} HEAT'),
+            _buildDetailRow('Deposit', '${_selectedAmount.toInt()} HΞ∆T'),
+            _buildDetailRow('Interest (APY ~$apy)', '${interest.toStringAsFixed(2)} HΞ∆T'),
+            _buildDetailRow('At maturity', '${(_selectedAmount + interest).toStringAsFixed(2)} HΞ∆T'),
             const SizedBox(height: 8),
             if (_error != null)
               Padding(
