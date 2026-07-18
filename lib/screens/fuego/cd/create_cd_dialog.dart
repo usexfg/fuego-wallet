@@ -24,7 +24,7 @@ class _CreateCdDialogState extends State<CreateCdDialog> {
 
   String _fmtHeat(double value) {
     if (value < 1) {
-      return '❨${value.toStringAsFixed(1)}𐅪❩';
+      return '${value.toStringAsFixed(1)}𐅪';
     }
     if (value >= 100) return value.toStringAsFixed(0);
     return value.toStringAsFixed(2);
@@ -87,9 +87,9 @@ class _CreateCdDialogState extends State<CreateCdDialog> {
             Text('≈ $days days — ${_selectedTerm * _epochBlocks} blocks at 8 min/block',
                 style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
             const SizedBox(height: 12),
-            _buildDetailRow('Deposit', '${_fmtHeat(_selectedAmount)} HΞ∆T'),
-            _buildDetailRow('Interest (APY ~$apy)', '${_fmtHeat(interest)} HΞ∆T'),
-            _buildDetailRow('At maturity', '${_fmtHeat(_selectedAmount + interest)} HΞ∆T'),
+            _buildDetailRow('Deposit', _fmtHeat(_selectedAmount) + (_selectedAmount < 1 ? '' : ' HΞ∆T')),
+            _buildDetailRow('Interest (APY ~$apy)', _fmtHeat(interest) + (interest < 1 ? '' : ' HΞ∆T')),
+            _buildDetailRow('At maturity', _fmtHeat(_selectedAmount + interest) + ((_selectedAmount + interest) < 1 ? '' : ' HΞ∆T')),
             const SizedBox(height: 8),
             if (_error != null)
               Padding(
