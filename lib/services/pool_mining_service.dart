@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 
@@ -27,6 +28,8 @@ class PoolMiningService {
   int _subscriptionId = 0;
   int? _authorizeId;
   String _recvBuffer = '';
+  bool _authorized = false;
+  final Random _random = Random();
   VoidCallback? onAuthorized;
 
   bool get isMining => _mining;
@@ -130,8 +133,8 @@ class PoolMiningService {
           'params': [_walletAddress, 'x'],
         });
         debugPrint('[pool] Sent authorize (id=$_authorizeId) for $_walletAddress');
-      } else if (result == true && id == _authorizeId) {
-        // Authorize response
+      } else if (result == true && id == _authorizeId && !_authorized) {
+        _authorized = true;
         debugPrint('[pool] Authorized! Mining started.');
         onAuthorized?.call();
       } else if (result == false && id == _authorizeId) {
@@ -150,14 +153,24 @@ class PoolMiningService {
       _ntime = params[7] as String?;
       debugPrint('[pool] Got job: $_jobId  prev=$_prevHash  nbits=$_nbits');
 
-      // Submit a share (simplified - just increment extranonce2)
-      if (_jobId != null) {
+      // Some pools send mining.notify before/without authorize response
+      if (!_authorized && _extranonce1 != null) {
+        _authorized = true;
+        debugPrint('[pool] Authorized via job receipt');
+        onAuthorized?.call();
+      }
+
+      // Submit a share if we have extranonce1
+      if (_jobId != null && _extranonce1 != null) {
         _extranonce2++;
         final extranonce2Hex = _extranonce2.toRadixString(16).padLeft(8, '0');
+        // Generate a random nonce for this share
+        final nonceBytes = List<int>.generate(4, (_) => _random.nextInt(256));
+        final nonceHex = nonceBytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
         _send({
           'id': ++_subscriptionId,
           'method': 'mining.submit',
-          'params': [_walletAddress, _jobId, extranonce2Hex, _ntime, _extranonce1],
+          'params': [_walletAddress, _jobId, extranonce2Hex, _ntime, nonceHex],
         });
         _sharesSubmitted++;
         _hashrate += 10;
@@ -177,6 +190,7 @@ class PoolMiningService {
 
   Future<void> stop() async {
     _mining = false;
+    _authorized = false;
     _hashrateTimer?.cancel();
     _recvBuffer = '';
     _socket?.destroy();
