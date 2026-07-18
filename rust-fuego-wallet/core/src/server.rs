@@ -54,7 +54,9 @@ fn is_fuegod_method(method: &str) -> bool {
         "getactiveswaps" | "initiate" | "accept" | "processswap" | "refundswap" |
         "getdeposits" | "get_block_range" | "get_maturing_deposits" |
         "rollover_deposit" | "get_fee_pool_info" | "get_epoch_history" |
-        "get_treasury_info" | "get_alias" | "get_alias_by_address" | "get_all_aliases"
+        "get_treasury_info" | "get_alias" | "get_alias_by_address" | "get_all_aliases" |
+        "mint_heat" | "swap" | "add_liq" | "remove_liq" | "place_limit_order" |
+        "create_cd" | "withdraw_cd" | "create_deposit" | "withdraw_deposit"
     )
 }
 
@@ -195,7 +197,9 @@ async fn proxy_to_fuegod(fuegod_url: &str, body: &serde_json::Value) -> Result<s
         "get_treasury_info" | "get_alias" | "get_alias_by_address" | "get_all_aliases" |
         "heat_metrics" | "amm_quote" | "amm_pool_info" |
         "get_orderbook_state" | "get_orderbook_info" | "get_orderbook_estimates" |
-        "get_fuego_price" => {
+        "get_fuego_price" |
+        "mint_heat" | "swap" | "add_liq" | "remove_liq" | "place_limit_order" |
+        "create_cd" | "withdraw_cd" | "create_deposit" | "withdraw_deposit" => {
             client.post(format!("{}/{}", fuegod_url, method))
                 .json(&params).send().await
                 .map_err(|e| sanitize_error(&format!("fuego daemon: {}", e)))?
@@ -214,6 +218,7 @@ async fn proxy_to_fuegod(fuegod_url: &str, body: &serde_json::Value) -> Result<s
 
 async fn handle_wallet_method(
     wallet: &Mutex<WalletService>,
+    fuegod_url: &str,
     method: &str,
     params: &serde_json::Value,
 ) -> Result<serde_json::Value, String> {
@@ -316,31 +321,37 @@ async fn handle_wallet_method(
             let amount = params.get("amount")
                 .and_then(|a| a.as_str())
                 .ok_or("missing amount")?;
-            let amount_u64 = amount.parse::<u64>().map_err(|_| "invalid amount")?;
             let duration_blocks = params.get("duration_blocks")
                 .and_then(|d| d.as_u64())
                 .ok_or("missing duration_blocks")?;
             
-            let wallet = wallet.lock().await;
-            let tx_hash = wallet.create_cd(amount_u64, duration_blocks).await
-                .map_err(|e| format!("cd creation failed: {}", e))?;
-            Ok(serde_json::json!({
-                "transactionHash": hex::encode(tx_hash),
-                "txHash": hex::encode(tx_hash),
-            }))
+            let fuegod_body = serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "create_cd",
+                "params": {
+                    "amount": amount,
+                    "duration_blocks": duration_blocks,
+                }
+            });
+            let result = proxy_to_fuegod(fuegod_url, &fuegod_body).await?;
+            Ok(result)
         }
         "claim_cd" => {
             let cd_id = params.get("cd_id")
                 .and_then(|c| c.as_str())
                 .ok_or("missing cd_id")?;
             
-            let wallet = wallet.lock().await;
-            let tx_hash = wallet.claim_cd(cd_id).await
-                .map_err(|e| format!("cd claim failed: {}", e))?;
-            Ok(serde_json::json!({
-                "transactionHash": hex::encode(tx_hash),
-                "txHash": hex::encode(tx_hash),
-            }))
+            let fuegod_body = serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "withdraw_cd",
+                "params": {
+                    "deposit_id": cd_id,
+                }
+            });
+            let result = proxy_to_fuegod(fuegod_url, &fuegod_body).await?;
+            Ok(result)
         }
         _ => Err(format!("unknown wallet method: {}", method)),
     }
@@ -355,7 +366,7 @@ async fn json_rpc_handler(
 
     let result: Result<serde_json::Value, String> = if is_wallet_method(method) {
         let params = body.get("params").cloned().unwrap_or(serde_json::Value::Null);
-        handle_wallet_method(&state.wallet, method, &params).await
+        handle_wallet_method(&state.wallet, &state.fuegod_url, method, &params).await
     } else if is_fuegod_method(method) {
         proxy_to_fuegod(&state.fuegod_url, &body).await
     } else {
@@ -375,6 +386,84 @@ async fn json_rpc_handler(
             (StatusCode::OK, Json(serde_json::to_value(error).unwrap())).into_response()
         }
     }
+}
+
+// ── REST proxy: forward requests to fuegod ──
+
+async fn fuegod_get(
+    State(state): State<Arc<AppState>>,
+    req: axum::http::Request<axum::body::Body>,
+) -> impl IntoResponse {
+    let fuegod_path = req.uri().path();
+    let fuegod_query = req.uri().query().unwrap_or("");
+    let client = reqwest::Client::new();
+    let url = if fuegod_query.is_empty() {
+        format!("{}{}", state.fuegod_url, fuegod_path)
+    } else {
+        format!("{}{}?{}", state.fuegod_url, fuegod_path, fuegod_query)
+    };
+    
+    match client.get(&url).send().await {
+        Ok(r) => {
+            let status = StatusCode::from_u16(r.status().as_u16()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+            match r.text().await {
+                Ok(text) => {
+                    let val: serde_json::Value = serde_json::from_str(&text)
+                        .unwrap_or_else(|_| serde_json::json!({"raw": text}));
+                    (status, Json(val)).into_response()
+                }
+                Err(_) => (StatusCode::BAD_GATEWAY, Json(serde_json::json!({"error": "failed to read response"}))).into_response()
+            }
+        }
+        Err(e) => (StatusCode::BAD_GATEWAY, Json(serde_json::json!({"error": sanitize_error(&e.to_string())}))).into_response()
+    }
+}
+
+async fn fuegod_post(
+    State(state): State<Arc<AppState>>,
+    req: axum::http::Request<axum::body::Body>,
+) -> impl IntoResponse {
+    let fuegod_path = req.uri().path().to_string();
+    let (parts, body) = req.into_parts();
+    let _ = parts;
+    let body_bytes = axum::body::to_bytes(body, usize::MAX).await.unwrap_or_default();
+    let body: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap_or(serde_json::json!({}));
+    let client = reqwest::Client::new();
+    let url = format!("{}{}", state.fuegod_url, fuegod_path);
+    
+    match client.post(&url).json(&body).send().await {
+        Ok(r) => {
+            let status = StatusCode::from_u16(r.status().as_u16()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+            match r.text().await {
+                Ok(text) => {
+                    let val: serde_json::Value = serde_json::from_str(&text)
+                        .unwrap_or_else(|_| serde_json::json!({"raw": text}));
+                    (status, Json(val)).into_response()
+                }
+                Err(_) => (StatusCode::BAD_GATEWAY, Json(serde_json::json!({"error": "failed to read response"}))).into_response()
+            }
+        }
+        Err(e) => (StatusCode::BAD_GATEWAY, Json(serde_json::json!({"error": sanitize_error(&e.to_string())}))).into_response()
+    }
+}
+
+// ── Status endpoint (wallet state) ──
+
+async fn status_handler(
+    State(state): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    let wallet = state.wallet.lock().await;
+    let balance = wallet.balance_full().await;
+    let status = wallet.sync_status();
+    Json(serde_json::json!({
+        "address": wallet.address().await,
+        "balance": balance.confirmed,
+        "pending": balance.pending,
+        "immature": balance.immature,
+        "height": wallet.height().await,
+        "target_height": status.target_height,
+        "is_syncing": status.is_syncing,
+    }))
 }
 
 async fn health_check(State(state): State<Arc<AppState>>) -> impl IntoResponse {
@@ -449,7 +538,25 @@ pub async fn run_server(
     let app = Router::new()
         .route("/json_rpc", post(json_rpc_handler))
         .route("/health", get(health_check))
+        .route("/status", get(status_handler))
         .route("/scan_balance", post(scan_balance_handler))
+        // HEARTH AMM REST proxy
+        .route("/amm_pool_info", get(fuegod_get))
+        .route("/amm_quote", get(fuegod_get))
+        .route("/heat_metrics", get(fuegod_get))
+        .route("/get_fuego_price", get(fuegod_get))
+        // Orderbook REST proxy
+        .route("/get_orderbook_state", get(fuegod_get))
+        .route("/get_orderbook_info", get(fuegod_get))
+        .route("/get_orderbook_estimates", get(fuegod_get))
+        // DEX/swap REST proxy (GET)
+        .route("/getswapoffers", get(fuegod_get))
+        .route("/getswapprice", get(fuegod_get))
+        .route("/getswaptrades", get(fuegod_get))
+        // DEX/swap REST proxy (POST)
+        .route("/submitswap", post(fuegod_post))
+        .route("/cancelswap", post(fuegod_post))
+        .route("/requestswap", post(fuegod_post))
         .layer(cors)
         .with_state(state);
 
