@@ -52,11 +52,13 @@ class MiningState {
 class MiningCubit extends Cubit<MiningState> {
   final PoolMiningService _pool;
   Timer? _refreshTimer;
+  bool _poolAuthorized = false;
 
   MiningCubit()
       : _pool = PoolMiningService(),
         super(const MiningState()) {
     _pool.onAuthorized = () {
+      _poolAuthorized = true;
       if (!isClosed) emit(state.copyWith(status: 'mining'));
     };
   }
@@ -64,6 +66,7 @@ class MiningCubit extends Cubit<MiningState> {
   Future<void> startMining({required String walletAddress, String? poolHost, int? poolPort}) async {
     if (state.isMining) return;
 
+    _poolAuthorized = false;
     final host = poolHost ?? state.poolHost;
     final port = poolPort ?? state.poolPort;
     emit(state.copyWith(poolHost: host, poolPort: port, status: 'connecting', error: null));
@@ -86,6 +89,7 @@ class MiningCubit extends Cubit<MiningState> {
   Future<void> stopMining() async {
     _refreshTimer?.cancel();
     _refreshTimer = null;
+    _poolAuthorized = false;
     await _pool.stop();
     emit(state.copyWith(isMining: false, hashrate: 0, status: 'idle'));
   }
@@ -98,7 +102,7 @@ class MiningCubit extends Cubit<MiningState> {
       hashrate: h,
       sharesAccepted: shares,
       sharesSubmitted: shares,
-      status: h > 0 ? 'mining' : 'connected',
+      status: _poolAuthorized ? 'mining' : 'connected',
     ));
   }
 
