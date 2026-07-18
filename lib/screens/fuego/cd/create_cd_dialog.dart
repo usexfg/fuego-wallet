@@ -13,7 +13,7 @@ class CreateCdDialog extends StatefulWidget {
 class _CreateCdDialogState extends State<CreateCdDialog> {
   static const _termTiers = [6, 18, 36, 72];
   static const _amountTiers = [8.0, 80.0, 800.0, 8000.0];
-  static const _chipLabels = ['〖␉8〗', '〖␉80〗', '【 ␉800】', '【 ␉8,000】'];
+  static const _chipLabels = ['8', '80', '800', '8,000'];
 
   int _selectedTerm = 6;
   double _selectedAmount = 8.0;
@@ -23,10 +23,11 @@ class _CreateCdDialogState extends State<CreateCdDialog> {
   static const _epochBlocks = 900;
 
   String _fmtHeat(double value) {
-    const symbol = '𐅪';
-    if (value >= 100) return '$symbol${value.toStringAsFixed(0)}';
-    if (value >= 1) return '$symbol${value.toStringAsFixed(2)}';
-    return '$symbol${value.toStringAsFixed(1)}';
+    if (value < 1) {
+      return '❨${value.toStringAsFixed(1)}𐅪❩';
+    }
+    if (value >= 100) return value.toStringAsFixed(0);
+    return value.toStringAsFixed(2);
   }
 
   @override
@@ -54,7 +55,7 @@ class _CreateCdDialogState extends State<CreateCdDialog> {
               spacing: 8,
               runSpacing: 8,
               children: List.generate(_amountTiers.length, (i) => ChoiceChip(
-                label: Text(_chipLabels[i]),
+                label: Text('${_chipLabels[i]} HΞ∆T'),
                 selected: _selectedAmount == _amountTiers[i],
                 selectedColor: AppTheme.primaryColor,
                 labelStyle: TextStyle(
