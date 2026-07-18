@@ -13,6 +13,7 @@ class CreateCdDialog extends StatefulWidget {
 class _CreateCdDialogState extends State<CreateCdDialog> {
   static const _termTiers = [6, 18, 36, 72];
   static const _amountTiers = [8.0, 80.0, 800.0, 8000.0];
+  static const _chipLabels = ['〖␉8〗', '〖␉80〗', '【 ␉800】', '【 ␉8,000】'];
 
   int _selectedTerm = 6;
   double _selectedAmount = 8.0;
@@ -20,6 +21,14 @@ class _CreateCdDialogState extends State<CreateCdDialog> {
   String? _error;
 
   static const _epochBlocks = 900;
+
+  String _fmtHeat(double value) {
+    if (value < 1) {
+      return '❨${value.toStringAsFixed(1)}𐅪❩';
+    }
+    final s = value.toStringAsFixed(value >= 100 ? 0 : 2);
+    return '␉$s';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,16 +54,17 @@ class _CreateCdDialogState extends State<CreateCdDialog> {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: _amountTiers.map((a) => ChoiceChip(
-                label: Text('${a.toInt()} HΞ∆T'),
-                selected: _selectedAmount == a,
+              children: List.generate(_amountTiers.length, (i) => ChoiceChip(
+                label: Text(_chipLabels[i]),
+                selected: _selectedAmount == _amountTiers[i],
                 selectedColor: AppTheme.primaryColor,
                 labelStyle: TextStyle(
-                  color: _selectedAmount == a ? Colors.white : AppTheme.textPrimary,
+                  color: _selectedAmount == _amountTiers[i] ? Colors.white : AppTheme.textPrimary,
+                  fontSize: 13,
                 ),
                 backgroundColor: AppTheme.surfaceColor,
-                onSelected: (_) => setState(() => _selectedAmount = a),
-              )).toList(),
+                onSelected: (_) => setState(() => _selectedAmount = _amountTiers[i]),
+              )),
             ),
             const SizedBox(height: 20),
             const Text('Term (epochs)', style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
@@ -77,9 +87,9 @@ class _CreateCdDialogState extends State<CreateCdDialog> {
             Text('≈ $days days — ${_selectedTerm * _epochBlocks} blocks at 8 min/block',
                 style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
             const SizedBox(height: 12),
-            _buildDetailRow('Deposit', '${_selectedAmount.toInt()} HΞ∆T'),
-            _buildDetailRow('Interest (APY ~$apy)', '${interest.toStringAsFixed(2)} HΞ∆T'),
-            _buildDetailRow('At maturity', '${(_selectedAmount + interest).toStringAsFixed(2)} HΞ∆T'),
+            _buildDetailRow('Deposit', '${_fmtHeat(_selectedAmount)} HΞ∆T'),
+            _buildDetailRow('Interest (APY ~$apy)', '${_fmtHeat(interest)} HΞ∆T'),
+            _buildDetailRow('At maturity', '${_fmtHeat(_selectedAmount + interest)} HΞ∆T'),
             const SizedBox(height: 8),
             if (_error != null)
               Padding(
