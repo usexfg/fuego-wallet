@@ -26,7 +26,7 @@ class _CreateCdDialogState extends State<CreateCdDialog> {
     if (value < 1) {
       return '❨${value.toStringAsFixed(1)}𐅪❩';
     }
-    final s = value.toStringAsFixed(value >= 100 ? 0 : 2);
+    final s = value >= 100 ? value.toStringAsFixed(0) : value.toStringAsFixed(2);
     return '␉$s';
   }
 
