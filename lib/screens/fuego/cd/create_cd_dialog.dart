@@ -23,11 +23,10 @@ class _CreateCdDialogState extends State<CreateCdDialog> {
   static const _epochBlocks = 900;
 
   String _fmtHeat(double value) {
-    if (value < 1) {
-      return '❨${value.toStringAsFixed(1)}𐅪❩';
-    }
-    final s = value >= 100 ? value.toStringAsFixed(0) : value.toStringAsFixed(2);
-    return '␉$s';
+    const symbol = '𐅪';
+    if (value >= 100) return '$symbol${value.toStringAsFixed(0)}';
+    if (value >= 1) return '$symbol${value.toStringAsFixed(2)}';
+    return '$symbol${value.toStringAsFixed(1)}';
   }
 
   @override
