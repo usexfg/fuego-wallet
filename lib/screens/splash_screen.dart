@@ -205,11 +205,30 @@ class _SplashScreenState extends State<SplashScreen>
                           const SizedBox(height: 16),
                           // Subtitle
                           Text(
-                            'Privacy Blockchain Banking',
+                            'Fuego SwapXFG Wallet',
                             style: TextStyle(
                               fontSize: 16,
                               color: AppTheme.textSecondary,
                               fontWeight: FontWeight.w300,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'On-chain orderbook-based swap pool',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: AppTheme.textMuted,
+                              fontWeight: FontWeight.w300,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'HΞ∆T ⇄ XFG',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: AppTheme.primaryColor,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 1.5,
                             ),
                           ),
                         ],
