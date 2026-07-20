@@ -17,40 +17,53 @@ class _SendScreenState extends State<SendScreen> {
   final _formKey = GlobalKey<FormState>();
   final _addressController = TextEditingController();
   final _amountController = TextEditingController();
-  final _paymentIdController = TextEditingController();
   final _addressFocusNode = FocusNode();
   final _amountFocusNode = FocusNode();
-  final _paymentIdFocusNode = FocusNode();
 
   bool _isLoading = false;
-  int _mixins = 7; // Default privacy level
   String? _errorMessage;
-  bool _showAdvanced = false;
 
   bool _isResolvingAlias = false;
   String? _resolvedAddress;
+
+  // Subaddress state
+  List<Map<String, dynamic>> _subaddresses = [];
+  String? _newSubaddressLabel;
+  bool _isGeneratingSubaddress = false;
 
   @override
   void initState() {
     super.initState();
     _addressFocusNode.addListener(_onAddressFocusChange);
+    _loadSubaddresses();
   }
 
   @override
   void dispose() {
     _addressController.dispose();
     _amountController.dispose();
-    _paymentIdController.dispose();
     _addressFocusNode.removeListener(_onAddressFocusChange);
     _addressFocusNode.dispose();
     _amountFocusNode.dispose();
-    _paymentIdFocusNode.dispose();
     super.dispose();
   }
 
   void _onAddressFocusChange() {
     if (!_addressFocusNode.hasFocus) {
       _resolveOpenAlias();
+    }
+  }
+
+  Future<void> _loadSubaddresses() async {
+    final cubit = context.read<WalletCubit>();
+    final subs = await cubit.getSubaddresses();
+    if (mounted) {
+      setState(() {
+        _subaddresses = subs.where((a) {
+          final addr = a['address'] as String? ?? '';
+          return addr.isNotEmpty;
+        }).toList();
+      });
     }
   }
 
@@ -110,7 +123,6 @@ class _SendScreenState extends State<SendScreen> {
     }
   }
 
-
   void _showConfirmDialog() {
     if (!_formKey.currentState!.validate()) return;
 
@@ -129,13 +141,15 @@ class _SendScreenState extends State<SendScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _confirmRow('Recipient', address.length > 30 ? '${address.substring(0, 15)}...${address.substring(address.length - 10)}' : address),
+            _confirmRow('Recipient', address.length > 30
+                ? '${address.substring(0, 15)}...${address.substring(address.length - 10)}'
+                : address),
             const SizedBox(height: 8),
-            _confirmRow('Amount', '${amount.toStringAsFixed(6)} XFG'),
+            _confirmRow('Amount', '${amount.toStringAsFixed(7)} XFG'),
             const SizedBox(height: 8),
-            _confirmRow('Fee', '${fee.toStringAsFixed(6)} XFG'),
+            _confirmRow('Fee', '${fee.toStringAsFixed(7)} XFG'),
             const Divider(color: AppTheme.textMuted),
-            _confirmRow('Total', '${total.toStringAsFixed(6)} XFG', bold: true),
+            _confirmRow('Total', '${total.toStringAsFixed(7)} XFG', bold: true),
           ],
         ),
         actions: [
@@ -180,15 +194,12 @@ class _SendScreenState extends State<SendScreen> {
 
     try {
       final cubit = context.read<WalletCubit>();
-      
+
       final txHash = await cubit.sendTransaction(
         address: _addressController.text.trim(),
         amount: double.tryParse(_amountController.text.trim()) ?? 0,
         fee: 0.008,
-        paymentId: _paymentIdController.text.trim().isEmpty 
-            ? '' 
-            : _paymentIdController.text.trim(),
-        mixin: _mixins,
+        mixin: 7,
       );
 
       if (txHash != null && mounted) {
@@ -218,32 +229,23 @@ class _SendScreenState extends State<SendScreen> {
           backgroundColor: AppTheme.cardColor,
           title: const Row(
             children: [
-              Icon(
-                Icons.check_circle,
-                color: AppTheme.successColor,
-              ),
+              Icon(Icons.check_circle, color: AppTheme.successColor),
               SizedBox(width: 8),
-              Text(
-                'Transaction Sent',
-                style: TextStyle(color: AppTheme.textPrimary),
-              ),
+              Text('Transaction Sent', style: TextStyle(color: AppTheme.textPrimary)),
             ],
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              const Text(
                 'Your transaction has been broadcast to the network.',
                 style: TextStyle(color: AppTheme.textSecondary),
               ),
               const SizedBox(height: 16),
-              Text(
+              const Text(
                 'Transaction ID:',
-                style: TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 8),
               Container(
@@ -251,9 +253,7 @@ class _SendScreenState extends State<SendScreen> {
                 decoration: BoxDecoration(
                   color: AppTheme.surfaceColor,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: AppTheme.textMuted.withOpacity(0.3),
-                  ),
+                  border: Border.all(color: AppTheme.textMuted.withOpacity(0.3)),
                 ),
                 child: Row(
                   children: [
@@ -279,11 +279,7 @@ class _SendScreenState extends State<SendScreen> {
                           ),
                         );
                       },
-                      icon: const Icon(
-                        Icons.copy,
-                        size: 16,
-                        color: AppTheme.primaryColor,
-                      ),
+                      icon: const Icon(Icons.copy, size: 16, color: AppTheme.primaryColor),
                     ),
                   ],
                 ),
@@ -293,8 +289,8 @@ class _SendScreenState extends State<SendScreen> {
           actions: [
             ElevatedButton(
               onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-                Navigator.of(context).pop(); // Return to home
+                Navigator.of(context).pop();
+                Navigator.of(context).pop();
               },
               child: const Text('Done'),
             ),
@@ -311,18 +307,43 @@ class _SendScreenState extends State<SendScreen> {
     }
   }
 
-  void _generatePaymentId() {
-    final cubit = context.read<WalletCubit>();
-    _paymentIdController.text = cubit.generatePaymentId();
-  }
-
   void _setMaxAmount() {
     final state = context.read<WalletCubit>().state;
     final availableBalance = state.unlockedBalanceXfg;
-    
-    // Reserve some amount for fees (approximately 0.01 XFG)
     final maxAmount = (availableBalance - 0.01).clamp(0.0, availableBalance);
     _amountController.text = maxAmount.toStringAsFixed(7);
+  }
+
+  Future<void> _generateSubaddress() async {
+    if (_newSubaddressLabel == null || _newSubaddressLabel!.trim().isEmpty) return;
+
+    setState(() => _isGeneratingSubaddress = true);
+
+    try {
+      final cubit = context.read<WalletCubit>();
+      final addr = await cubit.createSubaddress(_newSubaddressLabel!.trim());
+      if (addr.isNotEmpty && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Subaddress created'),
+            backgroundColor: AppTheme.successColor,
+          ),
+        );
+        _newSubaddressLabel = null;
+        _loadSubaddresses();
+      }
+    } catch (e) {
+      setState(() => _errorMessage = 'Failed to create subaddress: $e');
+    } finally {
+      setState(() => _isGeneratingSubaddress = false);
+    }
+  }
+
+  void _copyAddress(String addr) {
+    Clipboard.setData(ClipboardData(text: addr));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Address copied')),
+    );
   }
 
   @override
@@ -336,7 +357,7 @@ class _SendScreenState extends State<SendScreen> {
       body: BlocBuilder<WalletCubit, WalletState>(
         builder: (context, state) {
           final availableBalance = state.unlockedBalanceXfg;
-          
+
           return SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: Form(
@@ -351,19 +372,14 @@ class _SendScreenState extends State<SendScreen> {
                     decoration: BoxDecoration(
                       color: AppTheme.cardColor,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: AppTheme.primaryColor.withOpacity(0.3),
-                      ),
+                      border: Border.all(color: AppTheme.primaryColor.withOpacity(0.3)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
                           'Available Balance',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: AppTheme.textSecondary,
-                          ),
+                          style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
                         ),
                         const SizedBox(height: 4),
                         Row(
@@ -388,9 +404,9 @@ class _SendScreenState extends State<SendScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Recipient address
+                  // Recipient address or alias
                   const Text(
-                    'Recipient Address',
+                    'Recipient Address or Alias',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -422,11 +438,8 @@ class _SendScreenState extends State<SendScreen> {
                                 ),
                                 IconButton(
                                   onPressed: () {
-                                    // TODO: Implement QR scanner
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('QR scanner coming soon'),
-                                      ),
+                                      const SnackBar(content: Text('QR scanner coming soon')),
                                     );
                                   },
                                   icon: const Icon(Icons.qr_code_scanner),
@@ -439,9 +452,7 @@ class _SendScreenState extends State<SendScreen> {
                       if (value == null || value.trim().isEmpty) {
                         return 'Please enter recipient address';
                       }
-                      if (value.contains('@')) {
-                        return null; // OpenAlias — resolved before send
-                      }
+                      if (value.contains('@')) return null;
                       if (!value.startsWith('fire') || value.length != 98) {
                         return 'Invalid address (must be fire... and 98 chars)';
                       }
@@ -475,7 +486,7 @@ class _SendScreenState extends State<SendScreen> {
                     focusNode: _amountFocusNode,
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(
-                      hintText: '0.00000000',
+                      hintText: '0.0000000',
                       suffixText: 'XFG',
                     ),
                     validator: (value) {
@@ -492,101 +503,140 @@ class _SendScreenState extends State<SendScreen> {
                       return null;
                     },
                     inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,8}')),
+                      FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,7}')),
                     ],
                   ),
                   const SizedBox(height: 24),
 
-                  // Advanced options toggle
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Advanced Options',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.textPrimary,
+                  // Subaddresses section
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppTheme.cardColor,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppTheme.textMuted.withOpacity(0.2)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Your Subaddresses',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.textPrimary,
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: _loadSubaddresses,
+                              icon: const Icon(Icons.refresh, size: 20),
+                              tooltip: 'Refresh',
+                            ),
+                          ],
                         ),
-                      ),
-                      Switch(
-                        value: _showAdvanced,
-                        onChanged: (value) {
-                          setState(() {
-                            _showAdvanced = value;
-                          });
-                        },
-                      ),
-                    ],
+                        const SizedBox(height: 8),
+                        // Generate new subaddress
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                decoration: const InputDecoration(
+                                  hintText: 'Label (e.g. "exchange", "tip-jar")',
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                ),
+                                onChanged: (v) => _newSubaddressLabel = v,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            ElevatedButton(
+                              onPressed: _isGeneratingSubaddress ? null : _generateSubaddress,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.primaryColor,
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              ),
+                              child: _isGeneratingSubaddress
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                    )
+                                  : const Text('Generate', style: TextStyle(fontSize: 13)),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        if (_subaddresses.isEmpty)
+                          const Text(
+                            'No subaddresses yet. Generate one to receive funds at a dedicated address.',
+                            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+                          )
+                        else
+                          ...List.generate(_subaddresses.length, (i) {
+                            final addr = _subaddresses[i]['address'] as String? ?? '';
+                            final label = _subaddresses[i]['label'] as String? ?? '';
+                            final addrDisplay = addr.length > 30
+                                ? '${addr.substring(0, 15)}...${addr.substring(addr.length - 10)}'
+                                : addr;
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: AppTheme.surfaceColor,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: AppTheme.textMuted.withOpacity(0.15)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        if (label.isNotEmpty)
+                                          Text(
+                                            label,
+                                            style: const TextStyle(
+                                              color: AppTheme.textPrimary,
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        Text(
+                                          addrDisplay,
+                                          style: const TextStyle(
+                                            color: AppTheme.textSecondary,
+                                            fontSize: 12,
+                                            fontFamily: 'monospace',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  IconButton(
+                                    onPressed: () => _copyAddress(addr),
+                                    icon: const Icon(Icons.copy, size: 16),
+                                    tooltip: 'Copy address',
+                                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                  ),
+                                  IconButton(
+                                    onPressed: () {
+                                      _addressController.text = addr;
+                                    },
+                                    icon: const Icon(Icons.arrow_upward, size: 16),
+                                    tooltip: 'Use as recipient',
+                                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }),
+                      ],
+                    ),
                   ),
-
-                  // Advanced options
-                  if (_showAdvanced) ...[
-                    const SizedBox(height: 16),
-                    
-                    // Payment ID
-                    const Text(
-                      'Payment ID (Optional)',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _paymentIdController,
-                      focusNode: _paymentIdFocusNode,
-                      decoration: InputDecoration(
-                        hintText: 'Leave empty for automatic generation',
-                        suffixIcon: IconButton(
-                          onPressed: _generatePaymentId,
-                          icon: const Icon(Icons.auto_fix_high),
-                          tooltip: 'Generate',
-                        ),
-                      ),
-                      maxLength: 64,
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Privacy level (mixins)
-                    Text(
-                      'Privacy Level: $_mixins mixins',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Slider(
-                      value: _mixins.toDouble(),
-                      min: 0,
-                      max: 15,
-                      divisions: 15,
-                      label: '$_mixins mixins',
-                      onChanged: (value) {
-                        setState(() {
-                          _mixins = value.round();
-                        });
-                      },
-                    ),
-                    Text(
-                      _mixins == 0 
-                          ? 'No privacy (not recommended)'
-                          : _mixins <= 3
-                              ? 'Low privacy'
-                              : _mixins <= 7
-                                  ? 'Normal privacy'
-                                  : 'High privacy',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: _mixins == 0 
-                            ? AppTheme.errorColor
-                            : AppTheme.textSecondary,
-                      ),
-                    ),
-                  ],
                   const SizedBox(height: 32),
 
                   // Error message
@@ -597,24 +647,16 @@ class _SendScreenState extends State<SendScreen> {
                       decoration: BoxDecoration(
                         color: AppTheme.errorColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: AppTheme.errorColor.withOpacity(0.3),
-                        ),
+                        border: Border.all(color: AppTheme.errorColor.withOpacity(0.3)),
                       ),
                       child: Row(
                         children: [
-                          const Icon(
-                            Icons.error_outline,
-                            color: AppTheme.errorColor,
-                          ),
+                          const Icon(Icons.error_outline, color: AppTheme.errorColor),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
                               _errorMessage!,
-                              style: const TextStyle(
-                                color: AppTheme.errorColor,
-                                fontSize: 14,
-                              ),
+                              style: const TextStyle(color: AppTheme.errorColor, fontSize: 14),
                             ),
                           ),
                         ],
@@ -628,26 +670,19 @@ class _SendScreenState extends State<SendScreen> {
                     width: double.infinity,
                     height: 56,
                     child: ElevatedButton(
-                      onPressed: _isLoading || availableBalance <= 0 
-                          ? null 
-                          : _showConfirmDialog,
+                      onPressed: _isLoading || availableBalance <= 0 ? null : _showConfirmDialog,
                       child: _isLoading
                           ? const SizedBox(
                               height: 20,
                               width: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  Colors.white,
-                                ),
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                               ),
                             )
                           : const Text(
                               'Send Transaction',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                             ),
                     ),
                   ),
@@ -659,18 +694,12 @@ class _SendScreenState extends State<SendScreen> {
                     decoration: BoxDecoration(
                       color: AppTheme.warningColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: AppTheme.warningColor.withOpacity(0.3),
-                      ),
+                      border: Border.all(color: AppTheme.warningColor.withOpacity(0.3)),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(
-                          Icons.info_outline,
-                          color: AppTheme.warningColor,
-                          size: 20,
-                        ),
+                        const Icon(Icons.info_outline, color: AppTheme.warningColor, size: 20),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(

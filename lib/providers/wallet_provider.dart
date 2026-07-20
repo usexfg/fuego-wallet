@@ -325,6 +325,14 @@ class WalletProvider extends ChangeNotifier {
     }
   }
 
+  Future<String> createSubaddress(String label) async {
+    return await _rpcService.createSubaddress(label);
+  }
+
+  Future<List<Map<String, dynamic>>> getSubaddresses() async {
+    return await _rpcService.getSubaddresses();
+  }
+
   Future<String> generatePaymentId() async {
     return await _rpcService.generatePaymentId();
   }

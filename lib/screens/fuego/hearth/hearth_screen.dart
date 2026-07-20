@@ -22,10 +22,22 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
   bool _sellXfg = true;
   List<Candlestick>? _candles;
 
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnim;
+  bool _priceUp = true;
+  double _lastXfgUsd = 0;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 1400),
+      vsync: this,
+    )..repeat(reverse: true);
+    _pulseAnim = Tween<double>(begin: 0.35, end: 1.0).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
     context.read<HearthCubit>().loadPool();
     _loadPriceData();
     _amountController.addListener(_updateUsd);
@@ -57,6 +69,7 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
   @override
   void dispose() {
     _tabController.dispose();
+    _pulseController.dispose();
     _amountController.removeListener(_updateUsd);
     _amountController.dispose();
     _priceController.dispose();
@@ -98,6 +111,8 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
                                 ),
                               ),
                             if (state.pool != null) _buildPoolStats(state.pool!),
+                            if (state.pool != null) _buildHeatPriceBar(state),
+                            const SizedBox(height: 16),
                             _buildTabSection(state),
                           ],
                         ),
@@ -120,24 +135,73 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
         ? double.parse(spot)
         : xfgHeatRatio;
     final xfgUsd = spotNum * heatUsd;
+
+    if (xfgUsd > _lastXfgUsd && _lastXfgUsd > 0) _priceUp = true;
+    if (xfgUsd < _lastXfgUsd && _lastXfgUsd > 0) _priceUp = false;
+    _lastXfgUsd = xfgUsd;
+
+    final xfgColor = _priceUp ? HearthTheme.bidPrimary : HearthTheme.askPrimary;
+
     return Container(
       color: HearthTheme.bgDeep,
       padding: EdgeInsets.only(
         top: MediaQuery.of(context).padding.top,
-        left: 16,
-        right: 16,
+        left: 12,
+        right: 12,
         bottom: 10,
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text('1 XFG = \$${xfgUsd.toStringAsFixed(2)}', style: HearthTheme.mono(size: 13, weight: FontWeight.w700, color: HearthTheme.textWhite)),
+          // XFG-denominated (left of center)
+          AnimatedBuilder(
+            animation: _pulseAnim,
+            builder: (context, _) {
+              return Text(
+                'XFG = \$${xfgUsd.toStringAsFixed(2)}',
+                style: HearthTheme.mono(
+                  size: 13,
+                  weight: FontWeight.w700,
+                  color: xfgColor.withOpacity(0.4 + _pulseAnim.value * 0.6),
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
+          _metricChip(
+            '24h ${_priceUp ? '+' : ''}0.00%',
+            _priceUp ? HearthTheme.bidPrimary : HearthTheme.askPrimary,
+          ),
           const Spacer(),
-          Text('1 XFG ≈ ${spotNum.toStringAsFixed(1)} HΞ∆T', style: HearthTheme.mono(size: 13, weight: FontWeight.w700, color: HearthTheme.askPrimary)),
+          // Center: XFG priced in HEAT
+          Text('1 XFG ≈ ${spotNum.toStringAsFixed(1)} HΞ∆T',
+              style: HearthTheme.mono(size: 13, weight: FontWeight.w700, color: HearthTheme.askPrimary)),
           const Spacer(),
-          Text('1 HEAT = \$${heatUsd.toStringAsFixed(2)}', style: HearthTheme.mono(size: 13, weight: FontWeight.w700, color: HearthTheme.textWhite)),
+          // HΞ∆T-denominated (right of center)
+          _metricChip(_formatVol(state.pool?.volume24h), HearthTheme.textSecondary),
+          const SizedBox(width: 8),
+          Text('HΞ∆T ≋ \$${heatUsd.toStringAsFixed(2)}',
+              style: HearthTheme.mono(size: 13, weight: FontWeight.w700, color: HearthTheme.textWhite)),
         ],
       ),
     );
+  }
+
+  Widget _metricChip(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(label, style: HearthTheme.mono(size: 11, weight: FontWeight.w600, color: color)),
+    );
+  }
+
+  String _formatVol(String? vol) {
+    final v = double.tryParse(vol ?? '') ?? 0;
+    if (v >= 1000) return '${(v / 1000).toStringAsFixed(1)}K HΞ∆T';
+    return '${v.toStringAsFixed(0)} HΞ∆T';
   }
 
   Widget _buildPoolStats(PoolInfo pool) {
@@ -165,6 +229,62 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
           Text(value, style: HearthTheme.mono(size: 11, weight: FontWeight.w600, color: HearthTheme.textPrimary)),
           const SizedBox(height: 2),
           Text(label, style: HearthTheme.label(size: 9)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeatPriceBar(HearthState state) {
+    const xfgHeatRatio = 0.1;
+    final spot = state.pool?.spotPrice;
+    final spotNum = (spot != null && double.tryParse(spot) != null && double.parse(spot) > 0)
+        ? double.parse(spot)
+        : xfgHeatRatio;
+
+    final heatPegUsd = state.fuegoPrice?.heatPegUsd ?? 1.58;
+
+    final mintRate = (spotNum > 0) ? 1 / spotNum : 10.0;
+    final leftLabel = mintRate >= 1
+        ? '␉${mintRate.toStringAsFixed(2)}'
+        : '${mintRate.toStringAsFixed(2)}𐅪';
+    final xfgUsd = spotNum * heatPegUsd;
+    final rightLabel = xfgUsd >= 1
+        ? '␉${xfgUsd.toStringAsFixed(2)}'
+        : '${xfgUsd.toStringAsFixed(2)}𐅪';
+
+    return Container(
+      color: HearthTheme.bgDeep,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Current Mint Rate', style: HearthTheme.label(size: 10, color: HearthTheme.textMuted)),
+                const SizedBox(height: 2),
+                Text('$leftLabel HΞ∆T / 1 XFG',
+                    style: HearthTheme.mono(size: 15, weight: FontWeight.w700, color: HearthTheme.textWhite)),
+              ],
+            ),
+          ),
+          Container(
+            width: 1,
+            height: 36,
+            color: HearthTheme.divider,
+            margin: const EdgeInsets.symmetric(horizontal: 12),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text('1 XFG Value', style: HearthTheme.label(size: 10, color: HearthTheme.textMuted)),
+                const SizedBox(height: 2),
+                Text('$rightLabel ≋',
+                    style: HearthTheme.mono(size: 15, weight: FontWeight.w700, color: HearthTheme.askPrimary)),
+              ],
+            ),
+          ),
         ],
       ),
     );

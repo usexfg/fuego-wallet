@@ -216,6 +216,22 @@ class WalletCubit extends Cubit<WalletState> {
     }
   }
 
+  Future<String> createSubaddress(String label) async {
+    try {
+      return await _daemon.createSubaddress(label);
+    } catch (_) {
+      return '';
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getSubaddresses() async {
+    try {
+      return await _daemon.getSubaddresses();
+    } catch (_) {
+      return [];
+    }
+  }
+
   Future<String> sendTransaction({
     required String address,
     required double amount,
