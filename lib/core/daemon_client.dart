@@ -111,33 +111,6 @@ class FuegoDaemonClient {
     return addresses.isNotEmpty ? addresses.first as String : '';
   }
 
-  /// CryptoNote subaddress creation via walletd `create_address`.
-  Future<String> createSubaddress(String label) async {
-    final r = await _post('/json_rpc', {
-      'jsonrpc': '2.0',
-      'id': 'fuego_core',
-      'method': 'create_address',
-      'params': {
-        if (label.isNotEmpty) 'label': label,
-      },
-    }, useWallet: true);
-    final result = r['result'] as Map<String, dynamic>? ?? r;
-    return (result['address'] as String?) ?? '';
-  }
-
-  /// List subaddresses (indices ≥ 1) via walletd `getAddresses`.
-  Future<List<Map<String, dynamic>>> getSubaddresses() async {
-    final r = await _post('/json_rpc', {
-      'jsonrpc': '2.0',
-      'id': 'fuego_core',
-      'method': 'getAddresses',
-      'params': {},
-    }, useWallet: true);
-    final result = r['result'] as Map<String, dynamic>? ?? r;
-    final addresses = result['addresses'] as List<dynamic>? ?? [];
-    return addresses.map((a) => a as Map<String, dynamic>).toList();
-  }
-
   Future<int> getBalance() async {
     final r = await _post('/json_rpc', {
       'jsonrpc': '2.0',

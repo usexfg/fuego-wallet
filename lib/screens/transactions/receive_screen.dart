@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../bloc/wallet/wallet_cubit.dart';
+import '../../models/subaddress.dart';
 import '../../utils/theme.dart';
 
 class ReceiveScreen extends StatefulWidget {
@@ -15,124 +16,85 @@ class ReceiveScreen extends StatefulWidget {
 class _ReceiveScreenState extends State<ReceiveScreen>
     with TickerProviderStateMixin {
   final _amountController = TextEditingController();
-  final _noteController = TextEditingController();
-  
+  final _labelController = TextEditingController();
+
   late AnimationController _fadeController;
-  late AnimationController _pulseController;
   late Animation<double> _fadeAnimation;
-  late Animation<double> _pulseAnimation;
-  
-  String? _walletAddress;
-  String? _paymentId;
-  String? _integratedAddress;
+
+  String? _selectedAddress;
   bool _isLoading = true;
-  bool _showAdvanced = false;
-  bool _useIntegratedAddress = false;
 
   @override
   void initState() {
     super.initState();
-    _setupAnimations();
-    _loadWalletAddress();
-  }
-
-  void _setupAnimations() {
     _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 600),
       vsync: this,
     );
-
-    _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
     );
-
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeInOut,
-    ));
-
-    _pulseAnimation = Tween<double>(
-      begin: 0.95,
-      end: 1.05,
-    ).animate(CurvedAnimation(
-      parent: _pulseController,
-      curve: Curves.easeInOut,
-    ));
-
     _fadeController.forward();
-    _pulseController.repeat(reverse: true);
+    _loadAddress();
   }
 
-  Future<void> _loadWalletAddress() async {
+  @override
+  void dispose() {
+    _amountController.dispose();
+    _labelController.dispose();
+    _fadeController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadAddress() async {
     try {
       final cubit = context.read<WalletCubit>();
       final address = cubit.state.address ?? await cubit.getAddress();
-      
       setState(() {
-        _walletAddress = address;
+        _selectedAddress = address;
         _isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to load address: $e'),
-            backgroundColor: AppTheme.errorColor,
-          ),
-        );
-      }
+      setState(() => _isLoading = false);
     }
   }
 
-  Future<String> _getAddressFromProvider() async {
-    // Placeholder - in real implementation, get address from wallet service
-    return 'fire7rp9y1XyaHBPNmBTSb2VyzuGhNPRrJT5HhTCzBzj39ztFSzTu2qQdeCQpPqr3VxWQK8kj5zk3BHPgCdEz5H8WZZD9ZyRZT2gvGcwHzrVhRJFQ8k';
+  void _selectAddress(String address) {
+    setState(() => _selectedAddress = address);
   }
 
-  Future<void> _generatePaymentId() async {
-    try {
-      final cubit = context.read<WalletCubit>();
-      final paymentId = cubit.generatePaymentId();
-      
-      setState(() {
-        _paymentId = paymentId;
-      });
-      
-      if (_useIntegratedAddress) {
-        _generateIntegratedAddress();
-      }
-    } catch (e) {
+  void _selectMasterAddress() {
+    final cubit = context.read<WalletCubit>();
+    setState(() => _selectedAddress = cubit.state.address);
+  }
+
+  Future<void> _generateSubaddress() async {
+    final label = _labelController.text.trim();
+    if (label.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to generate payment ID: $e'),
+        const SnackBar(
+          content: Text('Enter a label for this subaddress'),
           backgroundColor: AppTheme.errorColor,
         ),
       );
+      return;
     }
-  }
 
-  Future<void> _generateIntegratedAddress() async {
-    if (_paymentId == null || _walletAddress == null) return;
-
-    try {
-      final cubit = context.read<WalletCubit>();
-      final integrated = await cubit.createIntegratedAddress(_paymentId!);
-      
-      setState(() {
-        _integratedAddress = integrated;
-      });
-    } catch (e) {
+    final cubit = context.read<WalletCubit>();
+    final sub = await cubit.createSubaddress(label);
+    if (sub != null && mounted) {
+      _labelController.clear();
+      setState(() => _selectedAddress = sub.address);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to create integrated address: $e'),
+          content: Text('Subaddress "$label" created'),
+          backgroundColor: AppTheme.successColor,
+        ),
+      );
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to create subaddress'),
           backgroundColor: AppTheme.errorColor,
         ),
       );
@@ -143,55 +105,28 @@ class _ReceiveScreenState extends State<ReceiveScreen>
     Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('$label copied to clipboard'),
+        content: Text('$label copied'),
         backgroundColor: AppTheme.successColor,
         duration: const Duration(seconds: 2),
       ),
     );
   }
 
-  void _shareAddress() {
-    final address = _useIntegratedAddress && _integratedAddress != null
-        ? _integratedAddress!
-        : _walletAddress ?? '';
-    
-    if (address.isNotEmpty) {
-      // TODO: Implement native sharing
-      _copyToClipboard(address, 'Address');
-    }
-  }
-
   String _generateQRData() {
-    final address = _useIntegratedAddress && _integratedAddress != null
-        ? _integratedAddress!
-        : _walletAddress ?? '';
+    if (_selectedAddress == null || _selectedAddress!.isEmpty) return '';
 
-    if (address.isEmpty) return '';
-
-    // Create Fuego URI format
-    final uri = StringBuffer('fuego:$address');
-    
+    final uri = StringBuffer('fuego:$_selectedAddress');
     final amount = _amountController.text.trim();
-    final note = _noteController.text.trim();
-    
     final params = <String>[];
-    
+
     if (amount.isNotEmpty) {
       params.add('amount=$amount');
     }
-    
-    if (_paymentId != null && _paymentId!.isNotEmpty && !_useIntegratedAddress) {
-      params.add('payment_id=$_paymentId');
-    }
-    
-    if (note.isNotEmpty) {
-      params.add('label=${Uri.encodeComponent(note)}');
-    }
-    
+
     if (params.isNotEmpty) {
       uri.write('?${params.join('&')}');
     }
-    
+
     return uri.toString();
   }
 
@@ -202,13 +137,6 @@ class _ReceiveScreenState extends State<ReceiveScreen>
         title: const Text('Receive XFG'),
         elevation: 0,
         backgroundColor: Colors.transparent,
-        actions: [
-          IconButton(
-            onPressed: _shareAddress,
-            icon: const Icon(Icons.share),
-            tooltip: 'Share Address',
-          ),
-        ],
       ),
       body: _isLoading
           ? const Center(
@@ -224,380 +152,23 @@ class _ReceiveScreenState extends State<ReceiveScreen>
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     // QR Code
-                    AnimatedBuilder(
-                      animation: _pulseAnimation,
-                      builder: (context, child) {
-                        return Transform.scale(
-                          scale: _pulseAnimation.value,
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppTheme.primaryColor.withOpacity(0.2),
-                                  blurRadius: 15,
-                                  spreadRadius: 2,
-                                ),
-                              ],
-                            ),
-                            child: _walletAddress != null
-                                ? QrImageView(
-                                    data: _generateQRData(),
-                                    version: QrVersions.auto,
-                                    size: 200,
-                                    backgroundColor: Colors.white,
-                                    errorCorrectionLevel: QrErrorCorrectLevel.M,
-                                  )
-                                : Container(
-                                    width: 200,
-                                    height: 200,
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.surfaceColor,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: const Center(
-                                      child: Text(
-                                        'Unable to load QR code',
-                                        style: TextStyle(
-                                          color: AppTheme.textSecondary,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                  ),
-                          ),
-                        );
-                      },
-                    ),
+                    _buildQRCode(),
                     const SizedBox(height: 24),
 
-                    // Address display
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppTheme.cardColor,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: AppTheme.primaryColor.withOpacity(0.3),
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                _useIntegratedAddress && _integratedAddress != null
-                                    ? 'Integrated Address'
-                                    : 'Your Address',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppTheme.textPrimary,
-                                ),
-                              ),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    onPressed: () {
-                                      final address = _useIntegratedAddress && 
-                                              _integratedAddress != null
-                                          ? _integratedAddress!
-                                          : _walletAddress ?? '';
-                                      _copyToClipboard(address, 'Address');
-                                    },
-                                    icon: const Icon(
-                                      Icons.copy,
-                                      color: AppTheme.primaryColor,
-                                      size: 20,
-                                    ),
-                                    tooltip: 'Copy',
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: AppTheme.surfaceColor,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: SelectableText(
-                              _useIntegratedAddress && _integratedAddress != null
-                                  ? _integratedAddress!
-                                  : _walletAddress ?? 'Loading...',
-                              style: const TextStyle(
-                                color: AppTheme.textPrimary,
-                                fontSize: 14,
-                                fontFamily: 'monospace',
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    // Master Address
+                    _buildMasterAddress(),
+                    const SizedBox(height: 8),
+
+                    // Privacy note
+                    _buildPrivacyNote(),
                     const SizedBox(height: 24),
 
-                    // Request specific amount
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppTheme.cardColor,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: AppTheme.primaryColor.withOpacity(0.1),
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Request Specific Amount (Optional)',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: _amountController,
-                                  keyboardType: TextInputType.number,
-                                  decoration: const InputDecoration(
-                                    hintText: '0.00000000',
-                                    suffixText: 'XFG',
-                                    isDense: true,
-                                  ),
-                                  onChanged: (_) => setState(() {}),
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.allow(
-                                      RegExp(r'^\d*\.?\d{0,8}'),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Advanced options toggle
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Advanced Options',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: AppTheme.textPrimary,
-                          ),
-                        ),
-                        Switch(
-                          value: _showAdvanced,
-                          onChanged: (value) {
-                            setState(() {
-                              _showAdvanced = value;
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-
-                    if (_showAdvanced) ...[
-                      const SizedBox(height: 16),
-                      
-                      // Payment ID section
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppTheme.cardColor,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: AppTheme.primaryColor.withOpacity(0.1),
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text(
-                                  'Payment ID',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppTheme.textPrimary,
-                                  ),
-                                ),
-                                TextButton(
-                                  onPressed: _generatePaymentId,
-                                  child: const Text('Generate'),
-                                ),
-                              ],
-                            ),
-                            if (_paymentId != null) ...[
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.surfaceColor,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: SelectableText(
-                                        _paymentId!,
-                                        style: const TextStyle(
-                                          color: AppTheme.textPrimary,
-                                          fontSize: 12,
-                                          fontFamily: 'monospace',
-                                        ),
-                                      ),
-                                    ),
-                                    IconButton(
-                                      onPressed: () => _copyToClipboard(
-                                        _paymentId!,
-                                        'Payment ID',
-                                      ),
-                                      icon: const Icon(
-                                        Icons.copy,
-                                        size: 16,
-                                        color: AppTheme.primaryColor,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  Checkbox(
-                                    value: _useIntegratedAddress,
-                                    onChanged: (value) {
-                                      setState(() {
-                                        _useIntegratedAddress = value ?? false;
-                                      });
-                                      
-                                      if (_useIntegratedAddress && _paymentId != null) {
-                                        _generateIntegratedAddress();
-                                      }
-                                    },
-                                  ),
-                                  const Expanded(
-                                    child: Text(
-                                      'Use integrated address',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: AppTheme.textSecondary,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Note/Label
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppTheme.cardColor,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: AppTheme.primaryColor.withOpacity(0.1),
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Note/Label (Optional)',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: AppTheme.textPrimary,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            TextField(
-                              controller: _noteController,
-                              decoration: const InputDecoration(
-                                hintText: 'Payment for...',
-                                isDense: true,
-                              ),
-                              onChanged: (_) => setState(() {}),
-                              maxLength: 100,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                    // Subaddress section
+                    _buildSubaddressSection(),
                     const SizedBox(height: 24),
 
-                    // Information
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: AppTheme.primaryColor.withOpacity(0.3),
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Row(
-                            children: [
-                              Icon(
-                                Icons.info_outline,
-                                color: AppTheme.primaryColor,
-                                size: 20,
-                              ),
-                              SizedBox(width: 8),
-                              Text(
-                                'How to Receive',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.primaryColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            '• Share your address or QR code with the sender\n'
-                            '• Use payment IDs to identify specific payments\n'
-                            '• Set up OpenAlias so others can send to yourname@domain.com\n'
-                            '• Transactions are private and untraceable\n'
-                            '• New transactions will appear automatically',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: AppTheme.textSecondary,
-                              height: 1.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    // Request amount
+                    _buildAmountField(),
                   ],
                 ),
               ),
@@ -605,12 +176,381 @@ class _ReceiveScreenState extends State<ReceiveScreen>
     );
   }
 
-  @override
-  void dispose() {
-    _amountController.dispose();
-    _noteController.dispose();
-    _fadeController.dispose();
-    _pulseController.dispose();
-    super.dispose();
+  Widget _buildQRCode() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryColor.withOpacity(0.15),
+            blurRadius: 15,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: _selectedAddress != null && _selectedAddress!.isNotEmpty
+          ? QrImageView(
+              data: _generateQRData(),
+              version: QrVersions.auto,
+              size: 200,
+              backgroundColor: Colors.white,
+              errorCorrectionLevel: QrErrorCorrectLevel.M,
+            )
+          : Container(
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
+                color: AppTheme.surfaceColor,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Center(
+                child: Text(
+                  'No address available',
+                  style: TextStyle(color: AppTheme.textSecondary),
+                ),
+              ),
+            ),
+    );
+  }
+
+  Widget _buildMasterAddress() {
+    final cubit = context.read<WalletCubit>();
+    final masterAddress = cubit.state.address ?? '';
+    final isSelected = _selectedAddress == masterAddress;
+
+    return GestureDetector(
+      onTap: _selectMasterAddress,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppTheme.cardColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected
+                ? AppTheme.primaryColor
+                : AppTheme.primaryColor.withOpacity(0.3),
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Text(
+                      'Master Address',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    if (isSelected) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryColor.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          'SELECTED',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.primaryColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                IconButton(
+                  onPressed: () => _copyToClipboard(masterAddress, 'Master address'),
+                  icon: const Icon(Icons.copy, color: AppTheme.primaryColor, size: 20),
+                  tooltip: 'Copy master address',
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.surfaceColor,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: SelectableText(
+                masterAddress.isEmpty ? 'Loading...' : masterAddress,
+                style: const TextStyle(
+                  color: AppTheme.textPrimary,
+                  fontSize: 13,
+                  fontFamily: 'monospace',
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPrivacyNote() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppTheme.warningColor.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppTheme.warningColor.withOpacity(0.25)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.shield_outlined, color: AppTheme.warningColor, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'For maximum privacy, use a new subaddress for each payment. '
+              'Sending always uses your master address — recipients cannot link '
+              'subaddresses back to you or to each other.',
+              style: TextStyle(
+                color: AppTheme.textSecondary,
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSubaddressSection() {
+    return BlocBuilder<WalletCubit, WalletState>(
+      builder: (context, state) {
+        final subaddresses = state.subaddresses;
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppTheme.cardColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppTheme.textMuted.withOpacity(0.2)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Subaddresses',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Each subaddress can only be used once for best privacy.',
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+              ),
+              const SizedBox(height: 12),
+
+              // Generate new subaddress
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _labelController,
+                      decoration: const InputDecoration(
+                        hintText: 'Label (e.g. "exchange", "friend-alice")',
+                        isDense: true,
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                      onSubmitted: (_) => _generateSubaddress(),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: _generateSubaddress,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                    child: const Text('Generate', style: TextStyle(fontSize: 13)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              if (subaddresses.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Text(
+                    'No subaddresses yet. Generate one to receive funds privately.',
+                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+                  ),
+                )
+              else
+                ...subaddresses.map((sub) => _buildSubaddressTile(sub)),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSubaddressTile(Subaddress sub) {
+    final isSelected = _selectedAddress == sub.address;
+
+    return GestureDetector(
+      onTap: () => _selectAddress(sub.address),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.primaryColor.withOpacity(0.08) : AppTheme.surfaceColor,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? AppTheme.primaryColor : AppTheme.textMuted.withOpacity(0.15),
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        sub.label,
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 13,
+                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                        ),
+                      ),
+                      if (isSelected) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryColor.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                          child: const Text(
+                            'ACTIVE',
+                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: AppTheme.primaryColor),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    sub.addressShort,
+                    style: const TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 11,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              onPressed: () => _copyToClipboard(sub.address, 'Subaddress'),
+              icon: const Icon(Icons.copy, size: 16),
+              tooltip: 'Copy',
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            ),
+            IconButton(
+              onPressed: () => _showDeleteDialog(sub),
+              icon: const Icon(Icons.delete_outline, size: 16, color: AppTheme.errorColor),
+              tooltip: 'Delete',
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDeleteDialog(Subaddress sub) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.cardColor,
+        title: const Text('Delete Subaddress', style: TextStyle(color: AppTheme.textPrimary)),
+        content: Text(
+          'Delete "${sub.label}"? Any funds sent to this address will still be accessible from your wallet.',
+          style: const TextStyle(color: AppTheme.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel', style: TextStyle(color: AppTheme.textMuted)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              context.read<WalletCubit>().removeSubaddress(sub.index);
+              if (_selectedAddress == sub.address) {
+                _selectMasterAddress();
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.errorColor),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAmountField() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.primaryColor.withOpacity(0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Request Specific Amount (Optional)',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _amountController,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              hintText: '0.0000000',
+              suffixText: 'XFG',
+              isDense: true,
+            ),
+            onChanged: (_) => setState(() {}),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,7}')),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -1,8 +1,7 @@
 import 'dart:async';
-import 'dart:math';
-import 'package:crypto/crypto.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/core.dart';
+import '../../models/subaddress.dart';
 import '../../services/fuego_vault_service.dart';
 
 class WalletState {
@@ -20,6 +19,7 @@ class WalletState {
   final int blockHeight;
   final int peerCount;
   final int scannedHeight;
+  final List<Subaddress> subaddresses;
 
   const WalletState({
     this.isLoading = false,
@@ -36,6 +36,7 @@ class WalletState {
     this.blockHeight = 0,
     this.peerCount = 0,
     this.scannedHeight = 0,
+    this.subaddresses = const [],
   });
 
   WalletState copyWith({
@@ -53,6 +54,7 @@ class WalletState {
     int? blockHeight,
     int? peerCount,
     int? scannedHeight,
+    List<Subaddress>? subaddresses,
   }) =>
       WalletState(
         isLoading: isLoading ?? this.isLoading,
@@ -69,6 +71,7 @@ class WalletState {
         blockHeight: blockHeight ?? this.blockHeight,
         peerCount: peerCount ?? this.peerCount,
         scannedHeight: scannedHeight ?? this.scannedHeight,
+        subaddresses: subaddresses ?? this.subaddresses,
       );
 
   double get balanceXfg => balance / atomicPerCoin;
@@ -79,6 +82,7 @@ class WalletCubit extends Cubit<WalletState> {
   final FuegoDaemonClient _daemon;
   final FuegoVaultService? _vault;
   final Future<void>? _backendReady;
+  final SubaddressStore _subaddressStore = SubaddressStore();
 
   WalletCubit(this._daemon, {FuegoVaultService? vault, Future<void>? backendReady})
       : _vault = vault,
@@ -88,6 +92,8 @@ class WalletCubit extends Cubit<WalletState> {
   }
 
   Future<void> _init() async {
+    await _subaddressStore.load();
+    emit(state.copyWith(subaddresses: _subaddressStore.subaddresses));
     if (_backendReady != null) {
       await _backendReady;
     }
@@ -119,7 +125,6 @@ class WalletCubit extends Cubit<WalletState> {
         int bal = 0;
         List<FuegoTransaction> txs = [];
 
-        // Try vault for instant local address (no walletd needed)
         if (_vault != null && _vault!.address.isNotEmpty) {
           addr = _vault!.address;
           print('[wallet] attempt $attempt: vault address OK — $addr');
@@ -132,7 +137,6 @@ class WalletCubit extends Cubit<WalletState> {
           }
         }
 
-        // Scan blockchain for our outputs using FFI (bypasses walletd)
         int scannedH = state.scannedHeight;
         if (_vault != null && _vault!.viewSecretKey != null && _vault!.spendPublicKey != null) {
           try {
@@ -147,7 +151,6 @@ class WalletCubit extends Cubit<WalletState> {
             print('[wallet] attempt $attempt: scanBalance OK — bal=$bal, scanned=$scannedH');
           } catch (e) {
             print('[wallet] attempt $attempt: scanBalance FAILED — $e');
-            // Fallback to walletd
             try {
               bal = await _daemon.getBalance();
               print('[wallet] attempt $attempt: getBalance (walletd fallback) OK — $bal');
@@ -156,7 +159,6 @@ class WalletCubit extends Cubit<WalletState> {
             }
           }
         } else {
-          // No vault keys — try walletd
           try {
             bal = await _daemon.getBalance();
             print('[wallet] attempt $attempt: getBalance OK — $bal');
@@ -216,20 +218,32 @@ class WalletCubit extends Cubit<WalletState> {
     }
   }
 
-  Future<String> createSubaddress(String label) async {
+  /// Generate a new subaddress locally via FFI.
+  Future<Subaddress?> createSubaddress(String label) async {
+    if (_vault == null || _vault!.vaultBytes == null) return null;
+
     try {
-      return await _daemon.createSubaddress(label);
-    } catch (_) {
-      return '';
+      final index = _subaddressStore.nextIndex;
+      final address = _vault!.ffi.vaultGetAddress(_vault!.vaultBytes!, index);
+      if (address.isEmpty) return null;
+
+      final sub = await _subaddressStore.add(address: address, label: label);
+      emit(state.copyWith(subaddresses: _subaddressStore.subaddresses));
+      return sub;
+    } catch (e) {
+      print('[wallet] createSubaddress failed: $e');
+      return null;
     }
   }
 
-  Future<List<Map<String, dynamic>>> getSubaddresses() async {
-    try {
-      return await _daemon.getSubaddresses();
-    } catch (_) {
-      return [];
-    }
+  Future<void> removeSubaddress(int index) async {
+    await _subaddressStore.remove(index);
+    emit(state.copyWith(subaddresses: _subaddressStore.subaddresses));
+  }
+
+  Future<void> updateSubaddressLabel(int index, String label) async {
+    await _subaddressStore.updateLabel(index, label);
+    emit(state.copyWith(subaddresses: _subaddressStore.subaddresses));
   }
 
   Future<String> sendTransaction({
@@ -237,14 +251,12 @@ class WalletCubit extends Cubit<WalletState> {
     required double amount,
     required double fee,
     int mixin = 0,
-    String paymentId = '',
   }) async {
     final req = SendTransactionRequest(
       address: address,
       amount: amount,
       fee: fee,
       mixin: mixin,
-      paymentId: paymentId.isNotEmpty ? paymentId : null,
     );
     final txHash = await _daemon.sendTransaction(req);
     refreshWallet();
@@ -259,17 +271,4 @@ class WalletCubit extends Cubit<WalletState> {
   }
 
   void clearError() => emit(state.copyWith(error: null));
-
-  String generatePaymentId() {
-    final rand = Random().nextInt(1 << 30);
-    final bytes = '$rand${DateTime.now().millisecondsSinceEpoch}'.codeUnits;
-    return sha256.convert(bytes).toString().substring(0, 64);
-  }
-
-  Future<String> createIntegratedAddress(String paymentId) async {
-    final addr = _vault != null && _vault!.address.isNotEmpty
-        ? _vault!.address
-        : await _daemon.getWalletAddress();
-    return '$addr?payment_id=$paymentId';
-  }
 }

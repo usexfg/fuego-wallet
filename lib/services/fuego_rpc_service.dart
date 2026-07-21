@@ -107,32 +107,6 @@ class FuegoRPCService {
     }
   }
 
-  /// Generates a new subaddress under the master wallet with an optional label.
-  Future<String> createSubaddress(String label) async {
-    try {
-      final response = await _makeRPCCall('createAddress', {
-        if (label.isNotEmpty) 'label': label,
-      });
-      return response['address'] as String? ?? '';
-    } catch (e) {
-      throw FuegoRPCException('Failed to create subaddress: $e');
-    }
-  }
-
-  /// Lists subaddresses for the master wallet (index >= 1).
-  Future<List<Map<String, dynamic>>> getSubaddresses() async {
-    try {
-      final response = await _makeRPCCall('getAddress', {});
-      final addresses = response['addresses'] as List? ?? [];
-      return addresses
-          .map((a) => a as Map<String, dynamic>)
-          .where((a) => (a['address'] as String? ?? '').toString().isNotEmpty)
-          .toList();
-    } catch (e) {
-      throw FuegoRPCException('Failed to list subaddresses: $e');
-    }
-  }
-
   Future<List<WalletTransaction>> getTransactions({
     int blockCount = 1000000,
     int firstBlockIndex = 0,

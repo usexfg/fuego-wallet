@@ -26,16 +26,10 @@ class _SendScreenState extends State<SendScreen> {
   bool _isResolvingAlias = false;
   String? _resolvedAddress;
 
-  // Subaddress state
-  List<Map<String, dynamic>> _subaddresses = [];
-  String? _newSubaddressLabel;
-  bool _isGeneratingSubaddress = false;
-
   @override
   void initState() {
     super.initState();
     _addressFocusNode.addListener(_onAddressFocusChange);
-    _loadSubaddresses();
   }
 
   @override
@@ -51,19 +45,6 @@ class _SendScreenState extends State<SendScreen> {
   void _onAddressFocusChange() {
     if (!_addressFocusNode.hasFocus) {
       _resolveOpenAlias();
-    }
-  }
-
-  Future<void> _loadSubaddresses() async {
-    final cubit = context.read<WalletCubit>();
-    final subs = await cubit.getSubaddresses();
-    if (mounted) {
-      setState(() {
-        _subaddresses = subs.where((a) {
-          final addr = a['address'] as String? ?? '';
-          return addr.isNotEmpty;
-        }).toList();
-      });
     }
   }
 
@@ -314,38 +295,6 @@ class _SendScreenState extends State<SendScreen> {
     _amountController.text = maxAmount.toStringAsFixed(7);
   }
 
-  Future<void> _generateSubaddress() async {
-    if (_newSubaddressLabel == null || _newSubaddressLabel!.trim().isEmpty) return;
-
-    setState(() => _isGeneratingSubaddress = true);
-
-    try {
-      final cubit = context.read<WalletCubit>();
-      final addr = await cubit.createSubaddress(_newSubaddressLabel!.trim());
-      if (addr.isNotEmpty && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Subaddress created'),
-            backgroundColor: AppTheme.successColor,
-          ),
-        );
-        _newSubaddressLabel = null;
-        _loadSubaddresses();
-      }
-    } catch (e) {
-      setState(() => _errorMessage = 'Failed to create subaddress: $e');
-    } finally {
-      setState(() => _isGeneratingSubaddress = false);
-    }
-  }
-
-  void _copyAddress(String addr) {
-    Clipboard.setData(ClipboardData(text: addr));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Address copied')),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -505,137 +454,6 @@ class _SendScreenState extends State<SendScreen> {
                     inputFormatters: [
                       FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,7}')),
                     ],
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Subaddresses section
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppTheme.cardColor,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppTheme.textMuted.withOpacity(0.2)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Your Subaddresses',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: AppTheme.textPrimary,
-                              ),
-                            ),
-                            IconButton(
-                              onPressed: _loadSubaddresses,
-                              icon: const Icon(Icons.refresh, size: 20),
-                              tooltip: 'Refresh',
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        // Generate new subaddress
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                decoration: const InputDecoration(
-                                  hintText: 'Label (e.g. "exchange", "tip-jar")',
-                                  isDense: true,
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                ),
-                                onChanged: (v) => _newSubaddressLabel = v,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            ElevatedButton(
-                              onPressed: _isGeneratingSubaddress ? null : _generateSubaddress,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppTheme.primaryColor,
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              ),
-                              child: _isGeneratingSubaddress
-                                  ? const SizedBox(
-                                      width: 16,
-                                      height: 16,
-                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                    )
-                                  : const Text('Generate', style: TextStyle(fontSize: 13)),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        if (_subaddresses.isEmpty)
-                          const Text(
-                            'No subaddresses yet. Generate one to receive funds at a dedicated address.',
-                            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
-                          )
-                        else
-                          ...List.generate(_subaddresses.length, (i) {
-                            final addr = _subaddresses[i]['address'] as String? ?? '';
-                            final label = _subaddresses[i]['label'] as String? ?? '';
-                            final addrDisplay = addr.length > 30
-                                ? '${addr.substring(0, 15)}...${addr.substring(addr.length - 10)}'
-                                : addr;
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: AppTheme.surfaceColor,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: AppTheme.textMuted.withOpacity(0.15)),
-                              ),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        if (label.isNotEmpty)
-                                          Text(
-                                            label,
-                                            style: const TextStyle(
-                                              color: AppTheme.textPrimary,
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        Text(
-                                          addrDisplay,
-                                          style: const TextStyle(
-                                            color: AppTheme.textSecondary,
-                                            fontSize: 12,
-                                            fontFamily: 'monospace',
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  IconButton(
-                                    onPressed: () => _copyAddress(addr),
-                                    icon: const Icon(Icons.copy, size: 16),
-                                    tooltip: 'Copy address',
-                                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                                  ),
-                                  IconButton(
-                                    onPressed: () {
-                                      _addressController.text = addr;
-                                    },
-                                    icon: const Icon(Icons.arrow_upward, size: 16),
-                                    tooltip: 'Use as recipient',
-                                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }),
-                      ],
-                    ),
                   ),
                   const SizedBox(height: 32),
 
