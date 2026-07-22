@@ -3,130 +3,37 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:http/http.dart' as http;
+import '../../models/swap_models.dart';
 
-enum SwapPairVal {
-  sol(0, 'SOL'),
-  eth(1, 'ETH'),
-  xmr(2, 'XMR'),
-  bch(3, 'BCH'),
-  arb(4, 'ARB'),
-  base(5, 'BASE');
+export '../../models/swap_models.dart' show SwapPairSdk, ChainTypeSdk;
 
-  final int id;
-  final String ticker;
-  const SwapPairVal(this.id, this.ticker);
-
-  static SwapPairVal fromId(int id) =>
-      SwapPairVal.values.firstWhere((p) => p.id == id, orElse: () => sol);
-}
-
-class SwapOffer {
-  final String offerId;
-  final int xfgAmount;
-  final int rateNum;
-  final SwapPairVal pair;
-  final String makerPubKey;
-  final int timestamp;
-  final int ttlBlocks;
-  final int postedHeight;
-  final bool isSoftOrder;
-
-  const SwapOffer({
-    required this.offerId,
-    required this.xfgAmount,
-    required this.rateNum,
-    required this.pair,
-    required this.makerPubKey,
-    required this.timestamp,
-    required this.ttlBlocks,
-    required this.postedHeight,
-    this.isSoftOrder = false,
-  });
-
-  factory SwapOffer.fromJson(Map<String, dynamic> j) => SwapOffer(
-        offerId: j['offerId'] ?? '',
-        xfgAmount: _toInt(j['xfgAmount']),
-        rateNum: _toInt(j['rateNum']),
-        pair: SwapPairVal.fromId(j['pair'] ?? 0),
-        makerPubKey: j['makerPubKey'] ?? '',
-        timestamp: _toInt(j['timestamp']),
-        ttlBlocks: j['ttlBlocks'] ?? 0,
-        postedHeight: j['postedHeight'] ?? 0,
-        isSoftOrder: j['isSoftOrder'] ?? false,
-      );
-
-  double get rate => rateNum > 0 ? xfgAmount / rateNum : 0;
-  String get pairLabel => 'XFG/${pair.ticker}';
-}
-
-class TradeRecord {
-  final SwapPairVal pair;
-  final int xfgAmount;
-  final int ctrAmount;
-  final String rate;
-  final int blockHeight;
-  final int timestamp;
-
-  const TradeRecord({
-    required this.pair,
-    required this.xfgAmount,
-    required this.ctrAmount,
-    required this.rate,
-    required this.blockHeight,
-    required this.timestamp,
-  });
-
-  factory TradeRecord.fromJson(Map<String, dynamic> j) => TradeRecord(
-        pair: SwapPairVal.fromId(j['pair'] ?? 0),
-        xfgAmount: _toInt(j['xfgAmount']),
-        ctrAmount: _toInt(j['ctrAmount']),
-        rate: j['rate']?.toString() ?? '0',
-        blockHeight: j['blockHeight'] ?? 0,
-        timestamp: _toInt(j['timestamp']),
-      );
-}
-
-class SwapPrice {
-  final String twap;
-  final String compositeRate;
-  final String xfgUsdMid;
-  final String hearthRatio;
-  final String heatUsd;
-
-  const SwapPrice({
-    required this.twap,
-    required this.compositeRate,
-    required this.xfgUsdMid,
-    required this.hearthRatio,
-    required this.heatUsd,
-  });
-
-  factory SwapPrice.fromJson(Map<String, dynamic> j) => SwapPrice(
-        twap: j['twap']?.toString() ?? '0',
-        compositeRate: j['compositeRate']?.toString() ?? '0',
-        xfgUsdMid: j['xfgUsdMid']?.toString() ?? '0',
-        hearthRatio: j['hearthRatio']?.toString() ?? '0',
-        heatUsd: j['heatUsd']?.toString() ?? '0',
-      );
-}
+enum OrderType { market, limit }
 
 class DexState {
   final bool isLoading;
   final String? error;
-  final SwapPairVal selectedPair;
-  final List<SwapOffer> offers;
-  final List<TradeRecord> recentTrades;
-  final SwapPrice? price;
+  final SwapPairSdk selectedPair;
+  final ChainTypeSdk selectedChain;
+  final List<SwapOfferSdk> offers;
+  final List<SwapTradeSdk> recentTrades;
+  final SwapPriceSdk? price;
+  final OrderBookStateSdk? orderbook;
+  final List<SwapStatusSdk> activeSwaps;
+  final PaymentProofSdk? lastProof;
   final String? lastResult;
   final bool isConnected;
 
   const DexState({
     this.isLoading = false,
     this.error,
-    this.selectedPair = SwapPairVal.eth,
+    this.selectedPair = SwapPairSdk.eth,
+    this.selectedChain = ChainTypeSdk.ethereum,
     this.offers = const [],
     this.recentTrades = const [],
     this.price,
+    this.orderbook,
+    this.activeSwaps = const [],
+    this.lastProof,
     this.lastResult,
     this.isConnected = false,
   });
@@ -134,10 +41,14 @@ class DexState {
   DexState copyWith({
     bool? isLoading,
     String? error,
-    SwapPairVal? selectedPair,
-    List<SwapOffer>? offers,
-    List<TradeRecord>? recentTrades,
-    SwapPrice? price,
+    SwapPairSdk? selectedPair,
+    ChainTypeSdk? selectedChain,
+    List<SwapOfferSdk>? offers,
+    List<SwapTradeSdk>? recentTrades,
+    SwapPriceSdk? price,
+    OrderBookStateSdk? orderbook,
+    List<SwapStatusSdk>? activeSwaps,
+    PaymentProofSdk? lastProof,
     String? lastResult,
     bool? isConnected,
   }) =>
@@ -145,9 +56,13 @@ class DexState {
         isLoading: isLoading ?? this.isLoading,
         error: error,
         selectedPair: selectedPair ?? this.selectedPair,
+        selectedChain: selectedChain ?? this.selectedChain,
         offers: offers ?? this.offers,
         recentTrades: recentTrades ?? this.recentTrades,
         price: price ?? this.price,
+        orderbook: orderbook ?? this.orderbook,
+        activeSwaps: activeSwaps ?? this.activeSwaps,
+        lastProof: lastProof ?? this.lastProof,
         lastResult: lastResult,
         isConnected: isConnected ?? this.isConnected,
       );
@@ -178,6 +93,7 @@ class DexCubit extends Cubit<DexState> {
         emit(state.copyWith(isConnected: true, error: null));
         await loadOffers();
         await loadPrice();
+        await loadOrderbook();
       }
     } catch (e) {
       emit(state.copyWith(error: 'Cannot connect to fuegod: $e'));
@@ -211,6 +127,44 @@ class DexCubit extends Cubit<DexState> {
   Uri _rest(String path, {Map<String, String>? query}) =>
       Uri(scheme: 'http', host: Uri.parse(_baseUrl).host, port: Uri.parse(_baseUrl).port, path: path, queryParameters: query);
 
+  // ── Pair & Chain Selection ──────────────────────────────────────
+
+  void selectPair(SwapPairSdk pair) {
+    final chain = _chainForPair(pair);
+    emit(state.copyWith(
+        selectedPair: pair,
+        selectedChain: chain,
+        offers: [],
+        recentTrades: [],
+        isLoading: true));
+    loadOffers();
+    loadPrice();
+    loadTrades();
+  }
+
+  void selectChain(ChainTypeSdk chain) {
+    emit(state.copyWith(selectedChain: chain));
+  }
+
+  ChainTypeSdk _chainForPair(SwapPairSdk pair) {
+    switch (pair) {
+      case SwapPairSdk.sol:
+        return ChainTypeSdk.solana;
+      case SwapPairSdk.eth:
+        return ChainTypeSdk.ethereum;
+      case SwapPairSdk.xmr:
+        return ChainTypeSdk.monero;
+      case SwapPairSdk.bch:
+        return ChainTypeSdk.bitcoinCash;
+      case SwapPairSdk.arb:
+        return ChainTypeSdk.arbitrum;
+      case SwapPairSdk.base:
+        return ChainTypeSdk.base;
+    }
+  }
+
+  // ── Orderbook ───────────────────────────────────────────────────
+
   Future<void> loadOffers() async {
     if (_baseUrl.isEmpty) return;
     try {
@@ -218,7 +172,7 @@ class DexCubit extends Cubit<DexState> {
         'pair': state.selectedPair.id.toString()
       });
       final offersList = (r['offers'] as List<dynamic>? ?? [])
-          .map((o) => SwapOffer.fromJson(o as Map<String, dynamic>))
+          .map((o) => SwapOfferSdk.fromJson(o as Map<String, dynamic>))
           .toList();
       emit(state.copyWith(offers: offersList, error: null));
     } catch (e) {
@@ -232,7 +186,7 @@ class DexCubit extends Cubit<DexState> {
       final r = await _get('/getswapprice', query: {
         'pair': state.selectedPair.id.toString()
       });
-      emit(state.copyWith(price: SwapPrice.fromJson(r)));
+      emit(state.copyWith(price: SwapPriceSdk.fromJson(r)));
     } catch (e) {
       debugPrint('DexCubit: loadPrice failed: $e');
     }
@@ -246,7 +200,7 @@ class DexCubit extends Cubit<DexState> {
         'limit': '50',
       });
       final trades = (r['trades'] as List<dynamic>? ?? [])
-          .map((t) => TradeRecord.fromJson(t as Map<String, dynamic>))
+          .map((t) => SwapTradeSdk.fromJson(t as Map<String, dynamic>))
           .toList();
       emit(state.copyWith(recentTrades: trades));
     } catch (e) {
@@ -254,16 +208,32 @@ class DexCubit extends Cubit<DexState> {
     }
   }
 
-  void selectPair(SwapPairVal pair) {
-    emit(state.copyWith(
-        selectedPair: pair,
-        offers: [],
-        recentTrades: [],
-        isLoading: true));
-    loadOffers();
-    loadPrice();
-    loadTrades();
+  Future<void> loadOrderbook() async {
+    if (_baseUrl.isEmpty) return;
+    try {
+      final r = await _get('/get_orderbook_state', query: {'depth': '20'});
+      emit(state.copyWith(orderbook: OrderBookStateSdk.fromJson(r)));
+    } catch (e) {
+      debugPrint('DexCubit: loadOrderbook failed: $e');
+    }
   }
+
+  // ── Active Swaps ────────────────────────────────────────────────
+
+  Future<void> loadActiveSwaps() async {
+    if (_baseUrl.isEmpty) return;
+    try {
+      final r = await _post('/getactiveswaps', {});
+      final swaps = (r['swaps'] as List<dynamic>? ?? [])
+          .map((s) => SwapStatusSdk.fromJson(s as Map<String, dynamic>))
+          .toList();
+      emit(state.copyWith(activeSwaps: swaps));
+    } catch (e) {
+      debugPrint('DexCubit: loadActiveSwaps failed: $e');
+    }
+  }
+
+  // ── Swap Operations ─────────────────────────────────────────────
 
   Future<void> submitOffer({
     required int xfgAmount,
@@ -335,10 +305,78 @@ class DexCubit extends Cubit<DexState> {
     }
   }
 
+  // ── SPV Verification ────────────────────────────────────────────
+
+  Future<void> verifyPayment({
+    required String txHash,
+    required String fromAddress,
+    required String toAddress,
+    required int amount,
+    int minConfirmations = 6,
+  }) async {
+    emit(state.copyWith(isLoading: true, error: null));
+    try {
+      final r = await _post('/verify_payment', {
+        'chain': state.selectedChain.id,
+        'tx_hash': txHash,
+        'from_address': fromAddress,
+        'to_address': toAddress,
+        'amount': amount,
+        'min_confirmations': minConfirmations,
+      });
+      final proof = PaymentProofSdk.fromJson(r);
+      emit(state.copyWith(
+        isLoading: false,
+        lastProof: proof,
+        lastResult: proof.verified
+            ? 'Payment verified: ${proof.confirmations} confirmations'
+            : 'Payment NOT verified',
+      ));
+    } catch (e) {
+      emit(state.copyWith(isLoading: false, error: 'Verification failed: $e'));
+    }
+  }
+
+  // ── HTLC ────────────────────────────────────────────────────────
+
+  Future<HtlcHashLock?> createHtlcHashLock() async {
+    try {
+      final r = await _post('/htlc_create_hash_lock', {});
+      return HtlcHashLock.fromJson(r);
+    } catch (e) {
+      emit(state.copyWith(error: 'HTLC hash lock failed: $e'));
+      return null;
+    }
+  }
+
+  Future<HtlcScript?> buildHtlcScript({
+    required String hashLock,
+    required String recipientPubkey,
+    required String senderPubkey,
+    required int timelock,
+  }) async {
+    try {
+      final r = await _post('/htlc_build_script', {
+        'hash_lock': hashLock,
+        'recipient_pubkey': recipientPubkey,
+        'sender_pubkey': senderPubkey,
+        'timelock': timelock,
+      });
+      return HtlcScript.fromJson(r);
+    } catch (e) {
+      emit(state.copyWith(error: 'HTLC script build failed: $e'));
+      return null;
+    }
+  }
+
+  // ── Refresh ─────────────────────────────────────────────────────
+
   Future<void> refresh() async {
     await loadOffers();
     await loadPrice();
     await loadTrades();
+    await loadOrderbook();
+    await loadActiveSwaps();
   }
 
   @override
@@ -346,11 +384,4 @@ class DexCubit extends Cubit<DexState> {
     _http.close();
     return super.close();
   }
-}
-
-int _toInt(dynamic v) {
-  if (v is int) return v;
-  if (v is num) return v.toInt();
-  if (v is String) return int.tryParse(v) ?? 0;
-  return 0;
 }

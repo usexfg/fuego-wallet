@@ -537,3 +537,84 @@ mod tests {
         assert_eq!(result, 0);
     }
 }
+
+// ===== CryptoNight Slow Hash (from fuego-suite) =====
+
+extern "C" {
+    fn cn_slow_hash(
+        data: *const u8,
+        length: usize,
+        hash: *mut u8,
+        light: c_int,
+        variant: c_int,
+        prehashed: c_int,
+    );
+}
+
+/// CryptoNight slow hash for mining (variant=2, light=1 for Fuego UPX/2)
+/// Input: block blob (76+ bytes)
+/// Output: 32-byte hash
+#[no_mangle]
+pub extern "C" fn fuego_cn_slow_hash(
+    data: *const u8,
+    data_len: usize,
+    hash_out: *mut u8,
+    variant: c_int,
+    light: c_int,
+) -> c_int {
+    unsafe {
+        cn_slow_hash(data, data_len, hash_out, light, variant, 0);
+    }
+    0
+}
+
+/// Mine a share: try nonces from start_nonce, return first nonce where hash < target
+/// Returns: nonce value in out_nonce, 0 if found, -1 if not found
+#[no_mangle]
+pub extern "C" fn fuego_mine_share(
+    blob: *mut u8,
+    blob_len: usize,
+    target: *const u8,    // 4-byte LE target
+    start_nonce: u32,
+    max_nonces: u32,
+    out_nonce: *mut u32,
+    out_hash: *mut u8,    // 32-byte hash output
+) -> c_int {
+    unsafe {
+        let blob_slice = std::slice::from_raw_parts_mut(blob, blob_len);
+        let target_slice = std::slice::from_raw_parts(target, 4);
+
+        // Convert target bytes to u32 (little-endian) for comparison
+        let target_val = u32::from_le_bytes([
+            target_slice[0],
+            target_slice[1],
+            target_slice[2],
+            target_slice[3],
+        ]);
+
+        for i in 0..max_nonces {
+            let nonce = start_nonce.wrapping_add(i);
+            // Place nonce at offset 39 in blob (CryptoNote standard)
+            if blob_len >= 43 {
+                blob_slice[39..43].copy_from_slice(&nonce.to_le_bytes());
+            }
+
+            // Compute cn_slow_hash with variant=2, light=1 (Fuego UPX/2)
+            cn_slow_hash(blob_slice.as_ptr(), blob_len, out_hash, 1, 2, 0);
+
+            // Compare first 4 bytes of hash (LE) against target
+            let hash_prefix = u32::from_le_bytes([
+                *out_hash,
+                *out_hash.add(1),
+                *out_hash.add(2),
+                *out_hash.add(3),
+            ]);
+
+            if hash_prefix <= target_val {
+                *out_nonce = nonce;
+                return 0; // Found!
+            }
+        }
+    }
+    -1 // Not found
+}

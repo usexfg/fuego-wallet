@@ -17,7 +17,7 @@ use tempfile::tempdir;
 #[test]
 fn test_keypair_generation() {
     let kp = crypto::generate_keypair();
-    assert_ne!(kp.secret.0, [0u8; 32]);
+    assert_ne!(kp.secret.as_bytes(), &[0u8; 32]);
     assert_ne!(kp.public.0, [0u8; 32]);
 }
 
@@ -25,7 +25,7 @@ fn test_keypair_generation() {
 fn test_keypair_from_secret() {
     let secret = [42u8; 32];
     let kp = crypto::keypair_from_secret(secret);
-    assert_eq!(kp.secret.0, secret);
+    assert_eq!(kp.secret.as_bytes(), &secret);
 }
 
 #[test]

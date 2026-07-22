@@ -254,6 +254,33 @@ class FuegoNative {
     return hex;
   }
 
+  /// Mine CryptoNight shares: try nonces from startNonce, return first valid nonce.
+  /// Returns (found, nonce, hash) - found=true if share found within maxNonces tries.
+  (bool found, int nonce, Uint8List hash) mineShare(
+      Uint8List blob, Uint8List target, int startNonce, int maxNonces) {
+    final blobPtr = _allocBytes(blob);
+    final targetPtr = _allocBytes(target);
+    final noncePtr = calloc<Uint32>();
+    final hashPtr = calloc<Uint8>(32);
+
+    final fn = _lib.lookupFunction<_MineShareNative, _MineShareDart>('fuego_mine_share');
+    final result = fn(blobPtr, blob.length, targetPtr, startNonce, maxNonces, noncePtr, hashPtr);
+
+    final found = result == 0;
+    final nonce = noncePtr.value;
+    final hash = Uint8List(32);
+    for (int i = 0; i < 32; i++) {
+      hash[i] = hashPtr.elementAt(i).value;
+    }
+
+    calloc.free(blobPtr);
+    calloc.free(targetPtr);
+    calloc.free(noncePtr);
+    calloc.free(hashPtr);
+
+    return (found, nonce, hash);
+  }
+
   // ── Helpers ──
 
   Pointer<Uint8> _allocBytes(List<int> data) {
@@ -374,3 +401,13 @@ typedef _VerifyDart = bool Function(Pointer<Uint8>, Pointer<Uint8>, int, Pointer
 
 typedef _Base58EncodeNative = Pointer<Utf8> Function(Pointer<Uint8>, Int32);
 typedef _Base58EncodeDart = Pointer<Utf8> Function(Pointer<Uint8>, int);
+
+// CryptoNight mining FFI
+typedef _MineShareNative = Int32 Function(
+    Pointer<Uint8> blob, Int32 blobLen, Pointer<Uint8> target,
+    Int32 startNonce, Int32 maxNonces, Pointer<Uint32> outNonce,
+    Pointer<Uint8> outHash);
+typedef _MineShareDart = int Function(
+    Pointer<Uint8> blob, int blobLen, Pointer<Uint8> target,
+    int startNonce, int maxNonces, Pointer<Uint32> outNonce,
+    Pointer<Uint8> outHash);

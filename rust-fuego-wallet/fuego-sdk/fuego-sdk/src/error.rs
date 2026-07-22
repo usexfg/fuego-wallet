@@ -44,6 +44,9 @@ pub enum SdkError {
     #[error("Serialization error: {0}")]
     Serialization(String),
 
+    #[error("JSON error: {0}")]
+    Json(#[from] serde_json::Error),
+
     #[error("Feature not enabled: {0}")]
     FeatureDisabled(String),
 }

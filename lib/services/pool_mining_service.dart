@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
+import '../ffi/fuego_native.dart';
 
 class PoolMiningService {
   Socket? _socket;
@@ -14,26 +16,23 @@ class PoolMiningService {
   Timer? _hashrateTimer;
   int _sharesSubmitted = 0;
   int _sharesAccepted = 0;
+  String? _sessionId;
   String? _jobId;
-  String? _prevHash;
-  String? _coinb1;
-  String? _coinb2;
-  List<String>? _merkleBranches;
-  String? _version;
-  String? _nbits;
-  String? _ntime;
-  String? _extranonce1;
-  int _extranonce2Size = 0;
-  int _extranonce2 = 0;
-  int _subscriptionId = 0;
-  int? _authorizeId;
+  Uint8List? _blob;
+  Uint8List? _target;
+  String? _blobHex;
   String _recvBuffer = '';
+  int _subscriptionId = 0;
   bool _authorized = false;
-  bool _subscribed = false;
   final Random _random = Random();
   VoidCallback? onAuthorized;
   VoidCallback? onDisconnected;
   int _reconnectAttempts = 0;
+  Timer? _mineTimer;
+
+  // Mining stats
+  int _totalHashes = 0;
+  DateTime? _miningStartTime;
 
   bool get isMining => _mining;
   int get hashrate => _hashrate;
@@ -66,48 +65,38 @@ class PoolMiningService {
       _socket!.listen(_onData,
           onError: (e) => debugPrint('[pool] Socket error: $e'),
           onDone: () {
-            debugPrint('[pool] Connection closed by pool');
+            debugPrint('[pool] Connection closed');
             _handleDisconnect();
           });
 
       _mining = true;
       _authorized = false;
-      _subscribed = false;
       _recvBuffer = '';
-
-      // Reset subscription state
-      _subscriptionId = 0;
-      _authorizeId = null;
-      _extranonce1 = null;
-      _extranonce2 = 0;
       _jobId = null;
+      _blob = null;
+      _target = null;
 
-      // Subscribe
+      // CryptoNote login
       _subscriptionId++;
-      final subscribeId = _subscriptionId;
       _send({
-        'id': subscribeId,
-        'method': 'mining.subscribe',
-        'params': ['fuego-wallet/1.0', null, _poolHost],
+        'id': _subscriptionId,
+        'jsonrpc': '2.0',
+        'method': 'login',
+        'params': {
+          'login': _walletAddress,
+          'pass': 'x',
+          'agent': 'fuego-wallet/1.0',
+        },
       });
-      debugPrint('[pool] Sent mining.subscribe (id=$subscribeId)');
+      debugPrint('[pool] Sent login for $_walletAddress');
 
       _hashrateTimer?.cancel();
-      _hashrateTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-        _hashrate = (_hashrate ~/ 2).clamp(0, 1000000);
-      });
-
-      // Diagnostic timeout
-      Timer(const Duration(seconds: 20), () {
-        if (_mining && !_subscribed) {
-          debugPrint('[pool] WARNING: No subscribe response after 20s');
-        } else if (_mining && !_authorized) {
-          debugPrint('[pool] WARNING: No authorize response after 20s');
-        }
+      _hashrateTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+        _updateHashrate();
       });
 
       _reconnectAttempts = 0;
-      debugPrint('[pool] Connected and subscribed');
+      debugPrint('[pool] Connected');
       return true;
     } catch (e) {
       debugPrint('[pool] Failed to connect: $e');
@@ -121,8 +110,8 @@ class PoolMiningService {
   void _handleDisconnect() {
     _mining = false;
     _authorized = false;
-    _subscribed = false;
     _hashrateTimer?.cancel();
+    _mineTimer?.cancel();
     _socket?.destroy();
     _socket = null;
 
@@ -142,12 +131,7 @@ class PoolMiningService {
   }
 
   void _onData(Uint8List data) {
-    final decoded = utf8.decode(data, allowMalformed: true);
-    debugPrint('[pool] RX ${data.length} bytes');
-    if (decoded.length < 200) {
-      debugPrint('[pool] RX data: $decoded');
-    }
-    _recvBuffer += decoded;
+    _recvBuffer += utf8.decode(data, allowMalformed: true);
     while (_recvBuffer.contains('\n')) {
       final idx = _recvBuffer.indexOf('\n');
       final line = _recvBuffer.substring(0, idx).trim();
@@ -155,7 +139,7 @@ class PoolMiningService {
       if (line.isEmpty) continue;
       try {
         final msg = json.decode(line) as Map<String, dynamic>;
-        debugPrint('[pool] MSG: $line');
+        debugPrint('[pool] RECV: $line');
         _handleMessage(msg);
       } catch (e) {
         debugPrint('[pool] Parse error: $e  raw=$line');
@@ -164,169 +148,157 @@ class PoolMiningService {
   }
 
   void _handleMessage(Map<String, dynamic> msg) {
-    final method = msg['method'] as String?;
-    final result = msg['result'];
-    final id = msg['id'];
-    final params = msg['params'] as List?;
-    final error = msg['error'];
+    // Response to login
+    if (msg.containsKey('result')) {
+      final result = msg['result'] as Map<String, dynamic>?;
+      final error = msg['error'];
+      final id = msg['id'];
 
-    debugPrint('[pool] id=$id method=$method result=$result error=$error');
-
-    // Handle responses to our requests
-    if (id != null) {
       if (error != null) {
-        debugPrint('[pool] Error response for id=$id: $error');
-        if (id == _authorizeId) {
-          debugPrint('[pool] Authorization FAILED');
-        }
+        debugPrint('[pool] Error: $error');
         return;
       }
 
-      // Subscribe response
-      if (!_subscribed && result is List) {
-        _parseSubscribeResponse(result);
-        return;
-      }
+      if (result == null) return;
 
-      // Authorize response
-      if (result == true && id == _authorizeId && !_authorized) {
+      // Login response
+      final status = result['status'] as String?;
+      if (status == 'OK') {
+        _sessionId = result['id'] as String?;
+        debugPrint('[pool] Login OK. Session: $_sessionId');
         _authorized = true;
-        debugPrint('[pool] Authorized via response! Mining started.');
         onAuthorized?.call();
-        return;
-      }
 
-      if (result == false && id == _authorizeId) {
-        debugPrint('[pool] Authorization FAILED: pool returned false');
-        return;
-      }
-
-      // Submit response
-      if (id != _authorizeId && result is bool) {
-        if (result) {
-          _sharesAccepted++;
-          debugPrint('[pool] Share accepted! Total: $_sharesAccepted');
-        } else {
-          debugPrint('[pool] Share rejected');
+        // Process initial job
+        final job = result['job'] as Map<String, dynamic>?;
+        if (job != null) {
+          _processJob(job);
         }
-        return;
       }
+      return;
     }
 
-    // Handle notifications
-    if (method == 'mining.notify' && params != null && params.length >= 9) {
-      _handleJob(params);
-    } else if (method == 'mining.set_difficulty' && params != null && params.isNotEmpty) {
-      debugPrint('[pool] Set difficulty: ${params[0]}');
-    } else if (method == 'mining.extranonce.notify' && params != null && params.length >= 2) {
-      _extranonce1 = params[0] as String?;
-      _extranonce2Size = (params[1] as num?)?.toInt() ?? _extranonce2Size;
-      debugPrint('[pool] Extranonce changed: $_extranonce1 size=$_extranonce2Size');
+    // Submit response
+    if (msg.containsKey('result') && msg.containsKey('id')) {
+      final result = msg['result'];
+      if (result == true || result == 'OK') {
+        _sharesAccepted++;
+        debugPrint('[pool] Share ACCEPTED! Total: $_sharesAccepted');
+      } else {
+        debugPrint('[pool] Share REJECTED');
+      }
+      return;
+    }
+
+    // New job notification
+    if (msg.containsKey('method')) {
+      final method = msg['method'] as String?;
+      final params = msg['params'];
+
+      if (method == 'job' && params is Map<String, dynamic>) {
+        _processJob(params);
+      }
     }
   }
 
-  void _parseSubscribeResponse(List result) {
-    // Standard Stratum format: [[subscriptions], extranonce1, extranonce2_size]
-    // Alternative format: [[subscriptions], extranonce1, extranonce2_size] with extranonce1 at different index
-    // Some pools: result is just [extranonce1, extranonce2_size]
+  void _processJob(Map<String, dynamic> job) {
+    final jobId = job['job_id'] as String?;
+    final blobHex = job['blob'] as String?;
+    final targetHex = job['target'] as String?;
+    final id = job['id'] as String? ?? _sessionId;
 
-    String? en1;
-    int en2Size = 0;
+    if (jobId == null || blobHex == null || targetHex == null) {
+      debugPrint('[pool] Incomplete job: $job');
+      return;
+    }
 
-    if (result.length >= 3) {
-      // Standard: result[0] = subscriptions, result[1] = extranonce1, result[2] = extranonce2_size
-      en1 = result[1] as String?;
-      en2Size = (result[2] as num?)?.toInt() ?? 0;
-      debugPrint('[pool] Subscribe response (standard 3-elem): en1=$en1 en2size=$en2Size');
-    } else if (result.length == 2 && result[1] is String) {
-      // Some pools: [extranonce1, extranonce2_size]
-      en1 = result[1] as String;
-      en2Size = 0;
-      debugPrint('[pool] Subscribe response (2-elem): en1=$en1');
-    } else if (result.length == 2 && result[0] is List) {
-      // Some pools: [subscriptions, extranonce1]
-      en1 = result[1] as String?;
-      debugPrint('[pool] Subscribe response (list+string): en1=$en1');
-    } else {
-      debugPrint('[pool] Subscribe response (unknown format): $result');
-      // Try to find extranonce1 - look for a hex string
-      for (final elem in result) {
-        if (elem is String && elem.length >= 4 && elem.length <= 16) {
-          final isHex = int.tryParse(elem, radix: 16) != null;
-          if (isHex) {
-            en1 = elem;
-            debugPrint('[pool] Found potential extranonce1: $en1');
-            break;
-          }
+    _jobId = jobId;
+    _blobHex = blobHex;
+    _sessionId = id;
+
+    // Decode blob and target
+    _blob = _hexToBytes(blobHex);
+    _target = _hexToBytes(targetHex);
+
+    debugPrint('[pool] Job: $jobId  blob=${_blob!.length}B  target=$targetHex');
+
+    // Start mining this job
+    _mineJob();
+  }
+
+  void _mineJob() {
+    if (_blob == null || _target == null || _jobId == null) return;
+
+    _mineTimer?.cancel();
+    _miningStartTime = DateTime.now();
+    _totalHashes = 0;
+
+    // Mine in a timer-based loop to avoid blocking the UI
+    _mineTimer = Timer.periodic(const Duration(milliseconds: 50), (_) {
+      _mineBatch();
+    });
+
+    _mineBatch();
+  }
+
+  void _mineBatch() {
+    if (_blob == null || _target == null || _jobId == null || !_mining) return;
+
+    try {
+      final native = FuegoNative();
+      final blobBytes = Uint8List.fromList(_blob!);
+      final targetBytes = Uint8List.fromList(_target!);
+
+      // Try a batch of 1000 nonces
+      final startNonce = _totalHashes;
+      final result = native.mineShare(blobBytes, targetBytes, startNonce, 1000);
+      _totalHashes += 1000;
+
+      if (result.$1) {
+        // Found a valid share!
+        debugPrint('[pool] Found share! nonce=${result.$2} hash=${_bytesToHex(result.$3)}');
+        _submitShare(result.$2, result.$3);
+      }
+
+      // Update hashrate every second
+      if (_miningStartTime != null) {
+        final elapsed = DateTime.now().difference(_miningStartTime!).inSeconds;
+        if (elapsed > 0) {
+          _hashrate = (_totalHashes / elapsed).round();
         }
       }
+    } catch (e) {
+      debugPrint('[pool] Mining error: $e');
     }
+  }
 
-    // Also check top-level extranonce1 field (some pools put it here)
-    if (en1 == null) {
-      debugPrint('[pool] WARNING: Could not extract extranonce1 from subscribe response');
-    }
+  void _submitShare(int nonce, Uint8List hash) {
+    if (_jobId == null || _sessionId == null || _blobHex == null) return;
 
-    _extranonce1 = en1;
-    _extranonce2Size = en2Size;
-    _extranonce2 = 0;
-    _subscribed = true;
-
-    debugPrint('[pool] Subscribed. extranonce1=$_extranonce1 size=$_extranonce2Size');
-
-    // Send extranonce.subscribe (some pools need this)
     _subscriptionId++;
-    _send({
+    final msg = {
       'id': _subscriptionId,
-      'method': 'mining.extranonce.subscribe',
-      'params': [],
-    });
+      'jsonrpc': '2.0',
+      'method': 'submit',
+      'params': {
+        'id': _sessionId,
+        'job_id': _jobId,
+        'nonce': _bytesToHex(Uint8List(4)..buffer.asByteData().setInt32(0, nonce, Endian.little)),
+        'result': _bytesToHex(hash),
+      },
+    };
 
-    // Authorize
-    _subscriptionId++;
-    _authorizeId = _subscriptionId;
-    _send({
-      'id': _authorizeId,
-      'method': 'mining.authorize',
-      'params': [_walletAddress, 'x'],
-    });
-    debugPrint('[pool] Sent mining.authorize (id=$_authorizeId) for $_walletAddress');
+    _send(msg);
+    _sharesSubmitted++;
+    debugPrint('[pool] Submitted share #$_sharesSubmitted (nonce=$nonce)');
   }
 
-  void _handleJob(List params) {
-    _jobId = params[0] as String?;
-    _prevHash = params[1] as String?;
-    _coinb1 = params[2] as String?;
-    _coinb2 = params[3] as String?;
-    _merkleBranches = (params[4] as List?)?.cast<String>();
-    _version = params[5] as String?;
-    _nbits = params[6] as String?;
-    _ntime = params[7] as String?;
-    final cleanJobs = params.length > 8 ? params[8] as bool? : null;
-    debugPrint('[pool] Got job: $_jobId  prev=$_prevHash  nbits=$_nbits  clean=$cleanJobs');
-
-    // First job = pool is working
-    if (!_authorized && _extranonce1 != null) {
-      _authorized = true;
-      debugPrint('[pool] Authorized via job receipt!');
-      onAuthorized?.call();
-    }
-
-    // Submit a share
-    if (_jobId != null && _extranonce1 != null) {
-      _extranonce2++;
-      final extranonce2Hex = _extranonce2.toRadixString(16).padLeft(_extranonce2Size * 2, '0');
-      final nonceBytes = List<int>.generate(4, (_) => _random.nextInt(256));
-      final nonceHex = nonceBytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
-      _subscriptionId++;
-      _send({
-        'id': _subscriptionId,
-        'method': 'mining.submit',
-        'params': [_walletAddress, _jobId, extranonce2Hex, _ntime, nonceHex],
-      });
-      _sharesSubmitted++;
-      _hashrate += 10;
-      debugPrint('[pool] Submitted share #$_sharesSubmitted (nonce=$nonceHex)');
+  void _updateHashrate() {
+    if (_miningStartTime != null && _mining) {
+      final elapsed = DateTime.now().difference(_miningStartTime!).inSeconds;
+      if (elapsed > 0) {
+        _hashrate = (_totalHashes / elapsed).round();
+      }
     }
   }
 
@@ -334,20 +306,32 @@ class PoolMiningService {
     if (_socket == null) return;
     try {
       final encoded = '${json.encode(msg)}\n';
-      debugPrint('[pool] TX: ${encoded.trim()}');
       _socket!.write(encoded);
+      debugPrint('[pool] SEND: ${encoded.trim()}');
     } catch (e) {
       debugPrint('[pool] Send error: $e');
     }
   }
 
+  static Uint8List _hexToBytes(String hex) {
+    final bytes = Uint8List(hex.length ~/ 2);
+    for (int i = 0; i < hex.length; i += 2) {
+      bytes[i ~/ 2] = int.parse(hex.substring(i, i + 2), radix: 16);
+    }
+    return bytes;
+  }
+
+  static String _bytesToHex(Uint8List bytes) {
+    return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+  }
+
   Future<void> stop() async {
     _mining = false;
     _authorized = false;
-    _subscribed = false;
     _hashrateTimer?.cancel();
+    _mineTimer?.cancel();
     _recvBuffer = '';
-    _reconnectAttempts = 999; // prevent reconnect
+    _reconnectAttempts = 999;
     _socket?.destroy();
     _socket = null;
     debugPrint('[pool] Stopped. Shares: $_sharesAccepted/$_sharesSubmitted');

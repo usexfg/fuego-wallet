@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../bloc/dex/dex_cubit.dart';
+import '../../models/swap_models.dart';
 import '../../models/candlestick.dart';
 import '../../services/price_history_service.dart';
 import '../../utils/theme.dart';
@@ -129,7 +130,7 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
                   color: AppTheme.primaryColor, fontSize: 14, fontWeight: FontWeight.w600)),
           SizedBox(
             width: 90,
-            child: DropdownButtonFormField<SwapPairVal>(
+            child: DropdownButtonFormField<SwapPairSdk>(
               value: state.selectedPair,
               isExpanded: true,
               dropdownColor: AppTheme.cardColor,
@@ -139,12 +140,25 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
                 contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 border: OutlineInputBorder(),
               ),
-              items: SwapPairVal.values
+              items: SwapPairSdk.values
                   .map((p) => DropdownMenuItem(value: p, child: Text(p.ticker)))
                   .toList(),
               onChanged: (p) {
                 if (p != null) context.read<DexCubit>().selectPair(p);
               },
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              state.selectedChain.symbol,
+              style: const TextStyle(
+                  color: AppTheme.primaryColor, fontSize: 10, fontWeight: FontWeight.w600),
             ),
           ),
           const Spacer(),
@@ -522,7 +536,6 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
 
   void _requestSwap(DexState state) async {
     if (state.offers.isEmpty) {
-      emit(state.copyWith(error: 'No offers available'));
       return;
     }
     final offer = state.offers.first;
@@ -541,6 +554,4 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
           proofOfFunds: '',
         );
   }
-
-  void emit(DexState state) {}
 }

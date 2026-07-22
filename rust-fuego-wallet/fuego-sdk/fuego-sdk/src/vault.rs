@@ -23,14 +23,14 @@ impl WalletVault {
 
     pub fn load(path: PathBuf, passphrase: &[u8]) -> Result<Self> {
         let vault = Vault::load(path, passphrase)
-            .map_err(|e| SdkError::Vault(format!("Failed to load vault: {}", e)))?;
+            .map_err(|e| SdkError::Vault(format!("Failed to load vault: {e}")))?;
         Ok(Self { inner: vault })
     }
 
     pub fn save(&self, path: PathBuf, passphrase: &[u8]) -> Result<()> {
         self.inner
             .save(path, passphrase)
-            .map_err(|e| SdkError::Vault(format!("Failed to save vault: {}", e)))
+            .map_err(|e| SdkError::Vault(format!("Failed to save vault: {e}")))
     }
 
     pub fn master_seed(&self) -> [u8; 32] {

@@ -45,15 +45,15 @@ impl RpcProvider {
             .json(&body)
             .send()
             .await
-            .map_err(|e| SdkError::Network(format!("HTTP: {}", e)))?;
+            .map_err(|e| SdkError::Network(format!("HTTP: {e}")))?;
 
         let json: serde_json::Value = resp
             .json()
             .await
-            .map_err(|e| SdkError::Network(format!("JSON parse: {}", e)))?;
+            .map_err(|e| SdkError::Network(format!("JSON parse: {e}")))?;
 
         if let Some(error) = json.get("error") {
-            return Err(SdkError::Network(format!("RPC error: {}", error)));
+            return Err(SdkError::Network(format!("RPC error: {error}")));
         }
 
         Ok(json
@@ -125,12 +125,12 @@ impl NetworkProvider for RpcProvider {
             .json(&body)
             .send()
             .await
-            .map_err(|e| SdkError::Network(format!("HTTP: {}", e)))?;
+            .map_err(|e| SdkError::Network(format!("HTTP: {e}")))?;
 
         let json: serde_json::Value = resp
             .json()
             .await
-            .map_err(|e| SdkError::Network(format!("JSON parse: {}", e)))?;
+            .map_err(|e| SdkError::Network(format!("JSON parse: {e}")))?;
 
         let status = json
             .get("status")
@@ -139,8 +139,7 @@ impl NetworkProvider for RpcProvider {
 
         if status != "OK" && status != "Success" {
             return Err(SdkError::Network(format!(
-                "sendrawtransaction: {}",
-                status
+                "sendrawtransaction: {status}"
             )));
         }
 
@@ -153,12 +152,12 @@ impl NetworkProvider for RpcProvider {
             .get(self.rest_url("getinfo"))
             .send()
             .await
-            .map_err(|e| SdkError::Network(format!("HTTP: {}", e)))?;
+            .map_err(|e| SdkError::Network(format!("HTTP: {e}")))?;
 
         let json: serde_json::Value = resp
             .json()
             .await
-            .map_err(|e| SdkError::Network(format!("JSON parse: {}", e)))?;
+            .map_err(|e| SdkError::Network(format!("JSON parse: {e}")))?;
 
         let connections = json
             .get("connections")
@@ -167,7 +166,7 @@ impl NetworkProvider for RpcProvider {
                 arr.iter()
                     .enumerate()
                     .map(|(i, addr)| PeerInfo {
-                        id: format!("peer_{}", i),
+                        id: format!("peer_{i}"),
                         address: addr.as_str().unwrap_or("").to_string(),
                         version: 0,
                         height: json.get("height").and_then(|v| v.as_u64()).unwrap_or(0),

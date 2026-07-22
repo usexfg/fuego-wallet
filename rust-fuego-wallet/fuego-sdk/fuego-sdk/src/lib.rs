@@ -43,6 +43,9 @@ pub mod types;
 pub mod vault;
 pub mod wallet;
 pub mod alias;
+pub mod orderbook;
+pub mod cd_market;
+pub mod chain;
 
 pub use builder::{SdkBuilder, WalletBuilder};
 pub use error::{Result, SdkError};
@@ -54,3 +57,7 @@ pub use traits::*;
 pub use types::*;
 pub use vault::WalletVault;
 pub use wallet::Wallet;
+pub use orderbook::OrderbookClient;
+pub use cd_market::CdMarketClient;
+pub use chain::{ChainType, ChainHeader, MerkleProof, PaymentProof, BitcoinChain, EvmChain};
+pub use types::SwapPair;
