@@ -190,10 +190,10 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
                   color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
           const Spacer(),
           if (p != null) ...[
-            Text('TWAP: ${p.twap}',
+            Text('Last: ${p.last}',
                 style: const TextStyle(color: AppTheme.textMuted, fontSize: 10)),
             const SizedBox(width: 12),
-            Text('\$${p.xfgUsdMid}',
+            Text('\$${p.last}',
                 style: const TextStyle(
                     color: AppTheme.primaryColor, fontSize: 13, fontWeight: FontWeight.bold)),
           ] else
@@ -274,9 +274,9 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
     );
   }
 
-  Widget _offerRow(SwapOffer o) {
+  Widget _offerRow(SwapOfferSdk o) {
     final age = DateTime.now().difference(
-        DateTime.fromMillisecondsSinceEpoch(o.timestamp * 1000));
+        DateTime.fromMillisecondsSinceEpoch(o.createdAt * 1000));
     final ageStr = age.inHours > 0
         ? '${age.inHours}h'
         : age.inMinutes > 0
@@ -297,7 +297,7 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
           ),
           Expanded(
             flex: 2,
-            child: Text('${(o.xfgAmount / 1e7).toStringAsFixed(2)} XFG',
+            child: Text('${(o.amount / 1e7).toStringAsFixed(2)} XFG',
                 style: const TextStyle(color: AppTheme.textPrimary, fontSize: 11)),
           ),
           Expanded(
@@ -320,7 +320,7 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
     );
   }
 
-  void _fillOffer(SwapOffer offer) {
+  void _fillOffer(SwapOfferSdk offer) {
     _amountController.clear();
     _rateController.text = offer.rateNum > 0 ? offer.rate.toStringAsFixed(4) : '';
     _tabController.animateTo(1);
@@ -362,7 +362,7 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
             decoration: InputDecoration(
               labelText: 'Rate (${state.selectedPair.ticker} per XFG)',
               labelStyle: const TextStyle(color: AppTheme.textSecondary),
-              hintText: state.price?.compositeRate ?? '0.00',
+              hintText: state.price?.ask ?? '0.00',
               hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.5)),
               enabledBorder: OutlineInputBorder(
                 borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
@@ -421,11 +421,11 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
                   color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 4),
-            _infoRow('TWAP', state.price!.twap),
-            _infoRow('Composite', state.price!.compositeRate),
-            _infoRow('XFG USD', '\$${state.price!.xfgUsdMid}'),
-            _infoRow('HEAT/XFG', state.price!.hearthRatio),
-            _infoRow('HEAT USD', '\$${state.price!.heatUsd}'),
+            _infoRow('Bid', state.price!.bid),
+            _infoRow('Ask', state.price!.ask),
+            _infoRow('Last', '\$${state.price!.last}'),
+            _infoRow('24h Volume', state.price!.volume24h),
+            _infoRow('24h Change', state.price!.change24h),
           ],
         ],
       ),
@@ -486,7 +486,7 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
     );
   }
 
-  Widget _tradeRow(TradeRecord t) {
+  Widget _tradeRow(SwapTradeSdk t) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
@@ -496,17 +496,17 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
         children: [
           Expanded(
             flex: 2,
-            child: Text('${(t.xfgAmount / 1e7).toStringAsFixed(2)} XFG',
+            child: Text('${(t.amount / 1e7).toStringAsFixed(2)} XFG',
                 style: const TextStyle(color: AppTheme.textPrimary, fontSize: 11)),
           ),
           Expanded(
             flex: 2,
-            child: Text(t.rate,
+            child: Text(t.price > 0 ? (t.amount / t.price).toStringAsFixed(4) : '--',
                 style: const TextStyle(color: AppTheme.primaryColor, fontSize: 11)),
           ),
           Expanded(
             flex: 2,
-            child: Text('#${t.blockHeight}',
+            child: Text('#${t.timestamp}',
                 style: const TextStyle(color: AppTheme.textMuted, fontSize: 10)),
           ),
         ],
