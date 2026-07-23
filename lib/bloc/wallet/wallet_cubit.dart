@@ -1,13 +1,19 @@
 import 'dart:async';
+
+import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
 import '../../core/core.dart';
 import '../../models/subaddress.dart';
 import '../../services/fuego_vault_service.dart';
+import '../../services/security_service.dart';
 
-class WalletState {
+class WalletState extends Equatable {
   final bool isLoading;
   final bool isConnected;
   final bool isSyncing;
+  final bool isUnlocked;
   final String? error;
   final int balance;
   final int unlockedBalance;
@@ -25,6 +31,7 @@ class WalletState {
     this.isLoading = false,
     this.isConnected = false,
     this.isSyncing = false,
+    this.isUnlocked = false,
     this.error,
     this.balance = 0,
     this.unlockedBalance = 0,
@@ -43,7 +50,9 @@ class WalletState {
     bool? isLoading,
     bool? isConnected,
     bool? isSyncing,
+    bool? isUnlocked,
     String? error,
+    bool clearError = false,
     int? balance,
     int? unlockedBalance,
     String? address,
@@ -60,7 +69,8 @@ class WalletState {
         isLoading: isLoading ?? this.isLoading,
         isConnected: isConnected ?? this.isConnected,
         isSyncing: isSyncing ?? this.isSyncing,
-        error: error,
+        isUnlocked: isUnlocked ?? this.isUnlocked,
+        error: clearError ? null : (error ?? this.error),
         balance: balance ?? this.balance,
         unlockedBalance: unlockedBalance ?? this.unlockedBalance,
         address: address ?? this.address,
@@ -76,17 +86,43 @@ class WalletState {
 
   double get balanceXfg => balance / atomicPerCoin;
   double get unlockedBalanceXfg => unlockedBalance / atomicPerCoin;
+
+  @override
+  List<Object?> get props => [
+        isLoading,
+        isConnected,
+        isSyncing,
+        isUnlocked,
+        error,
+        balance,
+        unlockedBalance,
+        address,
+        alias,
+        syncProgress,
+        isSynced,
+        transactions,
+        blockHeight,
+        peerCount,
+        scannedHeight,
+        subaddresses,
+      ];
 }
 
 class WalletCubit extends Cubit<WalletState> {
   final FuegoDaemonClient _daemon;
   final FuegoVaultService? _vault;
   final Future<void>? _backendReady;
+  final SecurityService _security;
   final SubaddressStore _subaddressStore = SubaddressStore();
 
-  WalletCubit(this._daemon, {FuegoVaultService? vault, Future<void>? backendReady})
-      : _vault = vault,
+  WalletCubit(
+    this._daemon, {
+    FuegoVaultService? vault,
+    Future<void>? backendReady,
+    SecurityService? security,
+  })  : _vault = vault,
         _backendReady = backendReady,
+        _security = security ?? SecurityService(),
         super(const WalletState()) {
     _init();
   }
@@ -97,12 +133,47 @@ class WalletCubit extends Cubit<WalletState> {
     if (_backendReady != null) {
       await _backendReady;
     }
-    refreshWallet();
+    // Do not auto-refresh with secrets until unlocked
+    if (_vault?.isUnlocked == true) {
+      emit(state.copyWith(isUnlocked: true, address: _vault!.address));
+      await refreshWallet();
+    } else {
+      emit(state.copyWith(isUnlocked: false));
+    }
+  }
+
+  Future<void> onUnlocked() async {
+    if (_vault == null || !_vault!.isUnlocked) return;
+    emit(state.copyWith(
+      isUnlocked: true,
+      address: _vault!.address,
+      clearError: true,
+    ));
+    await refreshWallet();
+  }
+
+  Future<void> lock() async {
+    _vault?.lock();
+    emit(const WalletState());
+  }
+
+  void _log(String msg) {
+    if (kDebugMode) debugPrint(msg);
   }
 
   Future<void> refreshWallet() async {
-    print('[wallet] refreshWallet starting');
-    emit(state.copyWith(isLoading: true, isSyncing: true, error: null));
+    if (_vault != null && !_vault!.isUnlocked) {
+      emit(state.copyWith(
+        isLoading: false,
+        isSyncing: false,
+        isUnlocked: false,
+        error: 'Wallet locked',
+      ));
+      return;
+    }
+
+    _log('[wallet] refreshWallet starting');
+    emit(state.copyWith(isLoading: true, isSyncing: true, clearError: true));
 
     for (var attempt = 0; attempt < 15; attempt++) {
       try {
@@ -110,35 +181,31 @@ class WalletCubit extends Cubit<WalletState> {
         int peers = 0;
         try {
           info = await _daemon.getInfo();
-          print('[wallet] attempt $attempt: getInfo OK — height=${info.height}, peers=${info.peerCount}');
         } catch (e) {
-          print('[wallet] attempt $attempt: getInfo FAILED — $e');
+          _log('[wallet] getInfo failed attempt $attempt');
         }
         try {
           peers = await _daemon.getPeerCount();
-          print('[wallet] attempt $attempt: getPeerCount OK — $peers');
-        } catch (e) {
-          print('[wallet] attempt $attempt: getPeerCount FAILED — $e');
-        }
+        } catch (_) {}
 
         String addr = '';
         int bal = 0;
+        int unlocked = 0;
         List<FuegoTransaction> txs = [];
 
         if (_vault != null && _vault!.address.isNotEmpty) {
           addr = _vault!.address;
-          print('[wallet] attempt $attempt: vault address OK — $addr');
         } else {
           try {
             addr = await _daemon.getWalletAddress();
-            print('[wallet] attempt $attempt: getWalletAddress OK — $addr');
-          } catch (e) {
-            print('[wallet] attempt $attempt: getWalletAddress FAILED — $e');
-          }
+          } catch (_) {}
         }
 
         int scannedH = state.scannedHeight;
-        if (_vault != null && _vault!.viewSecretKey != null && _vault!.spendPublicKey != null) {
+        if (_vault != null &&
+            _vault!.isUnlocked &&
+            _vault!.viewSecretKey != null &&
+            _vault!.spendPublicKey != null) {
           try {
             final scan = await _daemon.scanBalance(
               viewSecret: _vault!.viewSecretKey!,
@@ -147,58 +214,59 @@ class WalletCubit extends Cubit<WalletState> {
               batchSize: 500,
             );
             bal = scan['balance'] as int? ?? 0;
+            unlocked = scan['unlocked_balance'] as int? ??
+                scan['unlockedBalance'] as int? ??
+                bal;
             scannedH = scan['scanned_height'] as int? ?? scannedH;
-            print('[wallet] attempt $attempt: scanBalance OK — bal=$bal, scanned=$scannedH');
           } catch (e) {
-            print('[wallet] attempt $attempt: scanBalance FAILED — $e');
+            _log('[wallet] scanBalance failed — local fallback');
             try {
-              bal = await _daemon.getBalance();
-              print('[wallet] attempt $attempt: getBalance (walletd fallback) OK — $bal');
-            } catch (e2) {
-              print('[wallet] attempt $attempt: getBalance (walletd fallback) FAILED — $e2');
-            }
+              final d = await _daemon.getBalanceDetailed();
+              bal = d.available + d.locked;
+              unlocked = d.available;
+            } catch (_) {}
           }
         } else {
           try {
-            bal = await _daemon.getBalance();
-            print('[wallet] attempt $attempt: getBalance OK — $bal');
-          } catch (e) {
-            print('[wallet] attempt $attempt: getBalance FAILED — $e');
+            final d = await _daemon.getBalanceDetailed();
+            bal = d.available + d.locked;
+            unlocked = d.available;
+          } catch (_) {
+            try {
+              bal = await _daemon.getBalance();
+              unlocked = bal;
+            } catch (_) {}
           }
         }
 
         try {
           txs = await _daemon.getTransactions(count: 50);
-          print('[wallet] attempt $attempt: getTransactions OK — ${txs.length} txs');
-        } catch (e) {
-          print('[wallet] attempt $attempt: getTransactions FAILED — $e');
-        }
+        } catch (_) {}
 
         emit(state.copyWith(
           isLoading: false,
           isSyncing: false,
           isConnected: true,
+          isUnlocked: _vault?.isUnlocked ?? true,
           blockHeight: info?.height ?? 0,
           address: addr.isNotEmpty ? addr : state.address,
           balance: bal,
-          unlockedBalance: bal,
+          unlockedBalance: unlocked,
           peerCount: peers,
           transactions: txs,
           syncProgress: 1.0,
           isSynced: true,
           scannedHeight: scannedH,
+          clearError: true,
         ));
-        print('[wallet] refreshWallet SUCCESS on attempt $attempt');
         return;
       } catch (e) {
-        print('[wallet] attempt $attempt: outer error — $e');
         if (attempt < 14) {
           await Future.delayed(const Duration(seconds: 3));
         }
       }
     }
 
-    print('[wallet] refreshWallet FAILED after 15 attempts');
     emit(state.copyWith(
       isLoading: false,
       isSyncing: false,
@@ -208,7 +276,7 @@ class WalletCubit extends Cubit<WalletState> {
   }
 
   Future<String> getAddress() async {
-    if (_vault != null && _vault!.address.isNotEmpty) {
+    if (_vault != null && _vault!.isUnlocked && _vault!.address.isNotEmpty) {
       return _vault!.address;
     }
     try {
@@ -218,20 +286,19 @@ class WalletCubit extends Cubit<WalletState> {
     }
   }
 
-  /// Generate a new subaddress locally via FFI.
   Future<Subaddress?> createSubaddress(String label) async {
-    if (_vault == null || _vault!.vaultBytes == null) return null;
-
+    if (_vault == null || !_vault!.isUnlocked || _vault!.vaultBytes == null) {
+      return null;
+    }
     try {
       final index = _subaddressStore.nextIndex;
       final address = _vault!.ffi.vaultGetAddress(_vault!.vaultBytes!, index);
       if (address.isEmpty) return null;
-
       final sub = await _subaddressStore.add(address: address, label: label);
       emit(state.copyWith(subaddresses: _subaddressStore.subaddresses));
       return sub;
     } catch (e) {
-      print('[wallet] createSubaddress failed: $e');
+      _log('[wallet] createSubaddress failed');
       return null;
     }
   }
@@ -246,12 +313,33 @@ class WalletCubit extends Cubit<WalletState> {
     emit(state.copyWith(subaddresses: _subaddressStore.subaddresses));
   }
 
+  /// Send requires a verified PIN. Default mixin is 7 (not 0).
   Future<String> sendTransaction({
     required String address,
     required double amount,
     required double fee,
-    int mixin = 0,
+    required String pin,
+    int mixin = 7,
   }) async {
+    if (!state.isUnlocked && !(_vault?.isUnlocked ?? false)) {
+      throw StateError('Wallet is locked');
+    }
+    final pinOk = await _security.verifyPIN(pin);
+    if (!pinOk) {
+      throw StateError('Invalid PIN');
+    }
+    if (amount <= 0) {
+      throw ArgumentError('Amount must be positive');
+    }
+    if (fee < 0) {
+      throw ArgumentError('Fee cannot be negative');
+    }
+    final totalAtomic =
+        ((amount + fee) * atomicPerCoin).round();
+    if (totalAtomic > state.unlockedBalance) {
+      throw StateError('Insufficient unlocked balance (including fee)');
+    }
+
     final req = SendTransactionRequest(
       address: address,
       amount: amount,
@@ -259,7 +347,10 @@ class WalletCubit extends Cubit<WalletState> {
       mixin: mixin,
     );
     final txHash = await _daemon.sendTransaction(req);
-    refreshWallet();
+    if (txHash.isEmpty) {
+      throw StateError('Empty transaction hash');
+    }
+    unawaited(refreshWallet());
     return txHash;
   }
 
@@ -270,5 +361,5 @@ class WalletCubit extends Cubit<WalletState> {
     } catch (_) {}
   }
 
-  void clearError() => emit(state.copyWith(error: null));
+  void clearError() => emit(state.copyWith(clearError: true));
 }

@@ -82,12 +82,15 @@ class FuegoRPCService {
 
       final effectiveLocal = localHeight > 0 ? localHeight : bchainHeight;
 
+      final availableBal = available as int;
+      final lockedBal = locked as int;
       return Wallet(
         address: '',
         viewKey: '',
         spendKey: '',
-        balance: available as int,
-        unlockedBalance: locked as int,
+        // total ≈ available (unlocked) + locked
+        balance: availableBal + lockedBal,
+        unlockedBalance: availableBal,
         blockchainHeight: bchainHeight,
         localHeight: effectiveLocal,
         synced: (bchainHeight - effectiveLocal) <= 1,

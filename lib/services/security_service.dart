@@ -1,116 +1,176 @@
 import 'dart:convert';
+import 'dart:math';
+import 'dart:typed_data';
+
+import 'package:bip39/bip39.dart' as bip39;
 import 'package:crypto/crypto.dart' as crypto;
+import 'package:cryptography/cryptography.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:cryptography/cryptography.dart';
 
+/// Secure storage + PIN / biometric auth. Secrets never fall back to plaintext prefs.
 class SecurityService {
+  static const _pinKey = 'wallet_pin_hash';
+  static const _seedKey = 'wallet_seed_enc';
+  static const _keysKey = 'wallet_keys_enc';
+  static const _biometricKey = 'biometric_enabled';
+  static const _vaultUnwrapKey = 'vault_unwrap_key';
+  static const _encSaltKey = 'wallet_enc_salt';
+  static const _failedAttemptsKey = 'pin_failed_attempts';
+  static const _lockUntilKey = 'pin_lock_until_ms';
+  static const _walletdPasswordKey = 'walletd_container_password';
+
+  /// Max consecutive failed PIN attempts before temporary lockout.
+  static const int maxFailedAttempts = 8;
+
+  /// Lockout duration after max failures.
+  static const Duration lockoutDuration = Duration(minutes: 15);
+
   static FlutterSecureStorage? _secureStorage;
-  static SharedPreferences? _prefs;
+  static bool _initFailed = false;
 
-  static Future<void> _init() async {
-    if (_secureStorage != null || _prefs != null) return;
-    try {
-      _secureStorage = const FlutterSecureStorage(
-        aOptions: AndroidOptions(encryptedSharedPreferences: true),
-        iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock_this_device),
-      );
-      await _secureStorage!.read(key: 'test');
-    } catch (e) {
-      debugPrint('SecurityService: Keychain unavailable, using SharedPreferences');
-      _secureStorage = null;
-      _prefs = await SharedPreferences.getInstance();
-    }
-  }
-
-  static Future<String?> _read({required String key}) async {
-    await _init();
-    if (_secureStorage != null) {
-      try {
-        return await _secureStorage!.read(key: key);
-      } catch (_) {}
-    }
-    return _prefs?.getString(key);
-  }
-
-  static Future<void> _write({required String key, required String value}) async {
-    await _init();
-    if (_secureStorage != null) {
-      try {
-        await _secureStorage!.write(key: key, value: value);
-        return;
-      } catch (_) {}
-    }
-    await _prefs?.setString(key, value);
-  }
-
-  static Future<void> _delete({required String key}) async {
-    await _init();
-    if (_secureStorage != null) {
-      try { await _secureStorage!.delete(key: key); } catch (_) {}
-    }
-    await _prefs?.remove(key);
-  }
-  
   final LocalAuthentication _localAuth = LocalAuthentication();
-  static const String _pinKey = 'wallet_pin_hash';
-  static const String _seedKey = 'wallet_seed';
-  static const String _keysKey = 'wallet_keys';
-  static const String _biometricKey = 'biometric_enabled';
 
-  // PIN Management
-  Future<bool> setPIN(String pin) async {
-    try {
-      final salt = _generateSalt();
-      final hashedPin = await _hashPIN(pin, salt);
-      await _write(key: _pinKey, value: '$salt:$hashedPin');
-      return true;
-    } catch (e) {
-      return false;
+  static Future<FlutterSecureStorage> _storage() async {
+    if (_initFailed) {
+      throw StateError(
+        'Secure storage unavailable. Wallet secrets cannot be stored or read.',
+      );
     }
+    if (_secureStorage != null) return _secureStorage!;
+    try {
+      const storage = FlutterSecureStorage(
+        aOptions: AndroidOptions(encryptedSharedPreferences: true),
+        iOptions: IOSOptions(
+          accessibility: KeychainAccessibility.first_unlock_this_device,
+        ),
+      );
+      await storage.read(key: '__probe__');
+      _secureStorage = storage;
+      return storage;
+    } catch (e) {
+      _initFailed = true;
+      debugPrint('SecurityService: secure storage unavailable (fail-closed)');
+      throw StateError(
+        'Secure storage unavailable. Wallet secrets cannot be stored or read.',
+      );
+    }
+  }
+
+  static Future<String?> _read(String key) async {
+    final s = await _storage();
+    return s.read(key: key);
+  }
+
+  static Future<void> _write(String key, String value) async {
+    final s = await _storage();
+    await s.write(key: key, value: value);
+  }
+
+  static Future<void> _delete(String key) async {
+    final s = await _storage();
+    await s.delete(key: key);
+  }
+
+  // ── PIN ──────────────────────────────────────────────────────────────
+
+  Future<bool> setPIN(String pin) async {
+    _assertValidPin(pin);
+    final salt = _secureRandomBytes(32);
+    final hashedPin = await _hashPIN(pin, salt);
+    await _write(_pinKey, '${base64Encode(salt)}:$hashedPin');
+    await _write(_failedAttemptsKey, '0');
+    await _delete(_lockUntilKey);
+    if (await _read(_encSaltKey) == null) {
+      await _write(_encSaltKey, base64Encode(_secureRandomBytes(16)));
+    }
+    return true;
   }
 
   Future<bool> verifyPIN(String pin) async {
+    if (await isLockedOut()) return false;
     try {
-      final stored = await _read(key: _pinKey);
+      final stored = await _read(_pinKey);
       if (stored == null) return false;
-      
+
       final parts = stored.split(':');
       if (parts.length != 2) return false;
-      
-      final salt = parts[0];
+
+      final salt = base64Decode(parts[0]);
       final storedHash = parts[1];
       final inputHash = await _hashPIN(pin, salt);
-      
-      return storedHash == inputHash;
-    } catch (e) {
+
+      final ok = _constantTimeEquals(storedHash, inputHash);
+      if (ok) {
+        await _write(_failedAttemptsKey, '0');
+        await _delete(_lockUntilKey);
+      } else {
+        await _registerFailedAttempt();
+      }
+      return ok;
+    } catch (_) {
       return false;
     }
   }
 
   Future<bool> hasPIN() async {
-    final pin = await _read(key: _pinKey);
-    return pin != null && pin.isNotEmpty;
-  }
-
-  Future<bool> removePIN() async {
     try {
-      await _delete(key: _pinKey);
-      return true;
-    } catch (e) {
+      final pin = await _read(_pinKey);
+      return pin != null && pin.isNotEmpty;
+    } catch (_) {
       return false;
     }
   }
 
-  // Biometric Authentication
+  Future<bool> removePIN() async {
+    await _delete(_pinKey);
+    return true;
+  }
+
+  Future<int> failedAttempts() async {
+    final v = await _read(_failedAttemptsKey);
+    return int.tryParse(v ?? '0') ?? 0;
+  }
+
+  Future<bool> isLockedOut() async {
+    final until = await _read(_lockUntilKey);
+    if (until == null) return false;
+    final ms = int.tryParse(until) ?? 0;
+    if (DateTime.now().millisecondsSinceEpoch >= ms) {
+      await _delete(_lockUntilKey);
+      return false;
+    }
+    return true;
+  }
+
+  Future<Duration?> lockoutRemaining() async {
+    final until = await _read(_lockUntilKey);
+    if (until == null) return null;
+    final rem = (int.tryParse(until) ?? 0) - DateTime.now().millisecondsSinceEpoch;
+    if (rem <= 0) return null;
+    return Duration(milliseconds: rem);
+  }
+
+  Future<void> _registerFailedAttempt() async {
+    final n = (await failedAttempts()) + 1;
+    await _write(_failedAttemptsKey, n.toString());
+    if (n >= maxFailedAttempts) {
+      final until =
+          DateTime.now().add(lockoutDuration).millisecondsSinceEpoch;
+      await _write(_lockUntilKey, until.toString());
+      await _write(_failedAttemptsKey, '0');
+    }
+  }
+
+  // ── Biometrics ───────────────────────────────────────────────────────
+
   Future<bool> isBiometricAvailable() async {
     try {
       final isAvailable = await _localAuth.canCheckBiometrics;
       final isDeviceSupported = await _localAuth.isDeviceSupported();
       return isAvailable && isDeviceSupported;
-    } catch (e) {
+    } catch (_) {
       return false;
     }
   }
@@ -118,7 +178,7 @@ class SecurityService {
   Future<List<BiometricType>> getAvailableBiometrics() async {
     try {
       return await _localAuth.getAvailableBiometrics();
-    } catch (e) {
+    } catch (_) {
       return [];
     }
   }
@@ -127,49 +187,60 @@ class SecurityService {
     String reason = 'Please authenticate to access your wallet',
   }) async {
     try {
-      final isAuthenticated = await _localAuth.authenticate(
+      return await _localAuth.authenticate(
         localizedReason: reason,
         options: const AuthenticationOptions(
           biometricOnly: false,
           stickyAuth: true,
         ),
       );
-      
-      return isAuthenticated;
-    } catch (e) {
+    } catch (_) {
       return false;
     }
   }
 
   Future<void> setBiometricEnabled(bool enabled) async {
-    await _write(key: _biometricKey, value: enabled.toString());
+    await _write(_biometricKey, enabled.toString());
+    if (!enabled) {
+      await _delete(_vaultUnwrapKey);
+    }
   }
 
   Future<bool> isBiometricEnabled() async {
-    final enabled = await _read(key: _biometricKey);
+    final enabled = await _read(_biometricKey);
     return enabled == 'true';
   }
 
-  // Wallet Data Security
+  /// After PIN unlock, store vault unwrap material for biometric re-entry.
+  Future<void> storeVaultUnwrapKey(List<int> keyBytes) async {
+    await _write(_vaultUnwrapKey, base64Encode(keyBytes));
+  }
+
+  Future<List<int>?> getVaultUnwrapKey() async {
+    final v = await _read(_vaultUnwrapKey);
+    if (v == null || v.isEmpty) return null;
+    return base64Decode(v);
+  }
+
+  Future<void> clearVaultUnwrapKey() async {
+    await _delete(_vaultUnwrapKey);
+  }
+
+  // ── Wallet seed / keys (PIN-encrypted) ───────────────────────────────
+
   Future<bool> storeWalletSeed(String mnemonic, String pin) async {
-    try {
-      final encrypted = await _encryptData(mnemonic, pin);
-      await _write(key: _seedKey, value: encrypted);
-      return true;
-    } catch (e) {
-      return false;
+    if (!validateMnemonic(mnemonic)) {
+      throw ArgumentError('Invalid BIP39 mnemonic');
     }
+    final encrypted = await encryptString(mnemonic.trim(), pin);
+    await _write(_seedKey, encrypted);
+    return true;
   }
 
   Future<String?> getWalletSeed(String pin) async {
-    try {
-      final encrypted = await _read(key: _seedKey);
-      if (encrypted == null) return null;
-      
-      return await _decryptData(encrypted, pin);
-    } catch (e) {
-      return null;
-    }
+    final encrypted = await _read(_seedKey);
+    if (encrypted == null) return null;
+    return decryptString(encrypted, pin);
   }
 
   Future<bool> storeWalletKeys({
@@ -177,152 +248,267 @@ class SecurityService {
     required String spendKey,
     required String pin,
   }) async {
+    if (_looksLikePlaceholder(viewKey) || _looksLikePlaceholder(spendKey)) {
+      throw StateError('Refusing to store placeholder keys');
+    }
+    if (viewKey.isEmpty || spendKey.isEmpty) {
+      throw ArgumentError('Keys must be non-empty');
+    }
+    final keysJson = json.encode({
+      'viewKey': viewKey,
+      'spendKey': spendKey,
+      'timestamp': DateTime.now().millisecondsSinceEpoch,
+    });
+    final encrypted = await encryptString(keysJson, pin);
+    await _write(_keysKey, encrypted);
+    return true;
+  }
+
+  Future<Map<String, String>?> getWalletKeys(String pin) async {
+    final encrypted = await _read(_keysKey);
+    if (encrypted == null) return null;
+    final decrypted = await decryptString(encrypted, pin);
+    final keysData = json.decode(decrypted) as Map<String, dynamic>;
+    final viewKey = keysData['viewKey'] as String? ?? '';
+    final spendKey = keysData['spendKey'] as String? ?? '';
+    if (_looksLikePlaceholder(viewKey) || _looksLikePlaceholder(spendKey)) {
+      throw StateError('Stored keys are placeholders; re-create the wallet');
+    }
+    return {'viewKey': viewKey, 'spendKey': spendKey};
+  }
+
+  Future<bool> hasWalletData() async {
     try {
-      final keysJson = json.encode({
-        'viewKey': viewKey,
-        'spendKey': spendKey,
-        'timestamp': DateTime.now().millisecondsSinceEpoch,
-      });
-      
-      final encrypted = await _encryptData(keysJson, pin);
-      await _write(key: _keysKey, value: encrypted);
-      return true;
-    } catch (e) {
+      final seed = await _read(_seedKey);
+      final keys = await _read(_keysKey);
+      return (seed != null && seed.isNotEmpty) ||
+          (keys != null && keys.isNotEmpty);
+    } catch (_) {
       return false;
     }
   }
 
-  Future<Map<String, String>?> getWalletKeys(String pin) async {
-    try {
-      final encrypted = await _read(key: _keysKey);
-      if (encrypted == null) return null;
-      
-      final decrypted = await _decryptData(encrypted, pin);
-      final keysData = json.decode(decrypted) as Map<String, dynamic>;
-      
-      return {
-        'viewKey': keysData['viewKey'] as String,
-        'spendKey': keysData['spendKey'] as String,
-      };
-    } catch (e) {
-      return null;
-    }
-  }
-
-  Future<bool> hasWalletData() async {
-    final seed = await _read(key: _seedKey);
-    final keys = await _read(key: _keysKey);
-    return (seed != null && seed.isNotEmpty) || (keys != null && keys.isNotEmpty);
-  }
-
   Future<void> clearWalletData() async {
-    await _delete(key: _seedKey);
-    await _delete(key: _keysKey);
-    await _delete(key: _pinKey);
-    await _delete(key: _biometricKey);
+    await _delete(_seedKey);
+    await _delete(_keysKey);
+    await _delete(_pinKey);
+    await _delete(_biometricKey);
+    await _delete(_vaultUnwrapKey);
+    await _delete(_encSaltKey);
+    await _delete(_failedAttemptsKey);
+    await _delete(_lockUntilKey);
+    await _delete(_walletdPasswordKey);
   }
 
-  // Private helper methods
-  String _generateSalt() {
-    final bytes = List<int>.generate(32, (i) => 
-        DateTime.now().microsecondsSinceEpoch + i);
-    return base64Encode(bytes);
+  // ── Walletd container password (random, stored securely) ─────────────
+
+  Future<String> getOrCreateWalletdPassword() async {
+    final existing = await _read(_walletdPasswordKey);
+    if (existing != null && existing.isNotEmpty) return existing;
+    final password = base64UrlEncode(_secureRandomBytes(32));
+    await _write(_walletdPasswordKey, password);
+    return password;
   }
 
-  Future<String> _hashPIN(String pin, String salt) async {
-    final saltBytes = base64Decode(salt);
-    final pinBytes = utf8.encode(pin);
-    final combined = [...pinBytes, ...saltBytes];
-    
-    // Use PBKDF2 for key derivation
-    final algorithm = Pbkdf2(
-      macAlgorithm: Hmac(Sha256()),
-      iterations: 100000,
-      bits: 256,
-    );
-    
-    final secretKey = await algorithm.deriveKey(
-      secretKey: SecretKey(combined),
-      nonce: saltBytes.take(12).toList(),
-    );
-    
-    final keyBytes = await secretKey.extractBytes();
-    return base64Encode(keyBytes);
+  // ── Encrypt / decrypt helpers ────────────────────────────────────────
+
+  Future<String> encryptString(String data, String pin) async {
+    return _encryptBytes(utf8.encode(data), pin);
   }
 
-  Future<String> _encryptData(String data, String pin) async {
-    final algorithm = AesCbc.with256bits(macAlgorithm: Hmac(Sha256()));
-    final secretKey = await _deriveKeyFromPIN(pin);
-    
-    final encrypted = await algorithm.encrypt(
-      utf8.encode(data),
-      secretKey: secretKey,
-    );
-    
+  Future<String> decryptString(String encryptedData, String pin) async {
+    final plain = await _decryptBytes(encryptedData, pin);
+    return utf8.decode(plain);
+  }
+
+  Future<String> encryptBytesWithPin(List<int> data, String pin) async {
+    return _encryptBytes(data, pin);
+  }
+
+  Future<Uint8List> decryptBytesWithPin(
+    String encryptedData,
+    String pin,
+  ) async {
+    return _decryptBytes(encryptedData, pin);
+  }
+
+  Future<String> encryptBytesWithKey(List<int> data, List<int> keyBytes) async {
+    final algorithm = AesCbc.with256bits(macAlgorithm: Hmac.sha256());
+    final secretKey = SecretKey(keyBytes);
+    final encrypted = await algorithm.encrypt(data, secretKey: secretKey);
     final result = {
+      'v': 1,
       'iv': base64Encode(encrypted.nonce),
       'data': base64Encode(encrypted.cipherText),
       'mac': base64Encode(encrypted.mac.bytes),
+      'mode': 'rawkey',
     };
-    
     return base64Encode(utf8.encode(json.encode(result)));
   }
 
-  Future<String> _decryptData(String encryptedData, String pin) async {
-    final algorithm = AesCbc.with256bits(macAlgorithm: Hmac(Sha256()));
-    final secretKey = await _deriveKeyFromPIN(pin);
-    
-    final decoded = json.decode(utf8.decode(base64Decode(encryptedData))) 
+  Future<Uint8List> decryptBytesWithKey(
+    String encryptedData,
+    List<int> keyBytes,
+  ) async {
+    final algorithm = AesCbc.with256bits(macAlgorithm: Hmac.sha256());
+    final secretKey = SecretKey(keyBytes);
+    final decoded = json.decode(utf8.decode(base64Decode(encryptedData)))
         as Map<String, dynamic>;
-    
     final secretBox = SecretBox(
       base64Decode(decoded['data'] as String),
       nonce: base64Decode(decoded['iv'] as String),
       mac: Mac(base64Decode(decoded['mac'] as String)),
     );
-    
     final decrypted = await algorithm.decrypt(secretBox, secretKey: secretKey);
-    return utf8.decode(decrypted);
+    return Uint8List.fromList(decrypted);
   }
 
-  Future<SecretKey> _deriveKeyFromPIN(String pin) async {
+  Future<SecretKey> deriveDataKeyFromPIN(String pin) async {
+    final saltB64 = await _read(_encSaltKey);
+    if (saltB64 == null) {
+      throw StateError('Encryption salt missing — set PIN before encrypting');
+    }
+    final salt = base64Decode(saltB64);
     final algorithm = Pbkdf2(
-      macAlgorithm: Hmac(Sha256()),
+      macAlgorithm: Hmac.sha256(),
       iterations: 100000,
       bits: 256,
     );
-    
-    final salt = List<int>.filled(16, 42); // Static salt for key derivation
-    
-    return await algorithm.deriveKey(
+    return algorithm.deriveKey(
       secretKey: SecretKey(utf8.encode(pin)),
       nonce: salt,
     );
   }
 
-  // Utility methods for mnemonic generation
-  static String generateMnemonic() {
-    // This would integrate with the bip39 package for proper mnemonic generation
-    // For now, returning a placeholder
-    final words = [
-      'abandon', 'ability', 'able', 'about', 'above', 'absent', 'absorb', 'abstract',
-      'absurd', 'abuse', 'access', 'accident', 'account', 'accuse', 'achieve', 'acid',
-      'acoustic', 'acquire', 'across', 'act', 'action', 'actor', 'actress', 'actual'
-    ];
-    
-    final random = DateTime.now().millisecondsSinceEpoch;
-    final selected = <String>[];
-    
-    for (int i = 0; i < 25; i++) {
-      selected.add(words[(random + i) % words.length]);
+  Future<List<int>> extractDataKeyBytes(String pin) async {
+    final key = await deriveDataKeyFromPIN(pin);
+    return key.extractBytes();
+  }
+
+  Future<String> _encryptBytes(List<int> data, String pin) async {
+    if (await _read(_encSaltKey) == null) {
+      await _write(_encSaltKey, base64Encode(_secureRandomBytes(16)));
     }
-    
-    return selected.join(' ');
+    final algorithm = AesCbc.with256bits(macAlgorithm: Hmac.sha256());
+    final secretKey = await deriveDataKeyFromPIN(pin);
+    final encrypted = await algorithm.encrypt(data, secretKey: secretKey);
+    final saltB64 = await _read(_encSaltKey);
+    final result = {
+      'v': 1,
+      'salt': saltB64,
+      'iv': base64Encode(encrypted.nonce),
+      'data': base64Encode(encrypted.cipherText),
+      'mac': base64Encode(encrypted.mac.bytes),
+      'mode': 'pin',
+    };
+    return base64Encode(utf8.encode(json.encode(result)));
+  }
+
+  Future<Uint8List> _decryptBytes(String encryptedData, String pin) async {
+    final decoded = json.decode(utf8.decode(base64Decode(encryptedData)))
+        as Map<String, dynamic>;
+    final saltB64 = decoded['salt'] as String?;
+    if (saltB64 != null) {
+      await _write(_encSaltKey, saltB64);
+    }
+    final algorithm = AesCbc.with256bits(macAlgorithm: Hmac.sha256());
+    final secretKey = await deriveDataKeyFromPIN(pin);
+    final secretBox = SecretBox(
+      base64Decode(decoded['data'] as String),
+      nonce: base64Decode(decoded['iv'] as String),
+      mac: Mac(base64Decode(decoded['mac'] as String)),
+    );
+    final decrypted = await algorithm.decrypt(secretBox, secretKey: secretKey);
+    return Uint8List.fromList(decrypted);
+  }
+
+  Future<String> _hashPIN(String pin, List<int> salt) async {
+    final algorithm = Pbkdf2(
+      macAlgorithm: Hmac.sha256(),
+      iterations: 100000,
+      bits: 256,
+    );
+    final secretKey = await algorithm.deriveKey(
+      secretKey: SecretKey(utf8.encode(pin)),
+      nonce: salt,
+    );
+    final keyBytes = await secretKey.extractBytes();
+    return base64Encode(keyBytes);
+  }
+
+  // ── Mnemonic (real BIP39) ────────────────────────────────────────────
+
+  /// 24-word BIP39 mnemonic (256-bit entropy) via `Random.secure()`.
+  static String generateMnemonic({int strength = 256}) {
+    if (strength != 128 &&
+        strength != 160 &&
+        strength != 192 &&
+        strength != 224 &&
+        strength != 256) {
+      throw ArgumentError('strength must be 128/160/192/224/256');
+    }
+    return bip39.generateMnemonic(strength: strength);
   }
 
   static bool validateMnemonic(String mnemonic) {
-    final words = mnemonic.trim().split(' ');
-    return words.length >= 12 && words.length <= 25;
+    final trimmed = mnemonic.trim().replaceAll(RegExp(r'\s+'), ' ');
+    if (trimmed.isEmpty) return false;
+    try {
+      return bip39.validateMnemonic(trimmed);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// BIP39 seed (64 bytes) → 32-byte vault seed (SHA-256 of full seed).
+  static Uint8List mnemonicToVaultSeed(
+    String mnemonic, {
+    String passphrase = '',
+  }) {
+    if (!validateMnemonic(mnemonic)) {
+      throw ArgumentError('Invalid BIP39 mnemonic');
+    }
+    final seed = bip39.mnemonicToSeed(mnemonic.trim(), passphrase: passphrase);
+    return Uint8List.fromList(crypto.sha256.convert(seed).bytes);
+  }
+
+  static Uint8List secureRandomBytes(int length) => _secureRandomBytes(length);
+
+  static Uint8List _secureRandomBytes(int length) {
+    final rng = Random.secure();
+    return Uint8List.fromList(
+      List<int>.generate(length, (_) => rng.nextInt(256)),
+    );
+  }
+
+  static bool _constantTimeEquals(String a, String b) {
+    final aBytes = utf8.encode(a);
+    final bBytes = utf8.encode(b);
+    if (aBytes.length != bBytes.length) return false;
+    var diff = 0;
+    for (var i = 0; i < aBytes.length; i++) {
+      diff |= aBytes[i] ^ bBytes[i];
+    }
+    return diff == 0;
+  }
+
+  static bool _looksLikePlaceholder(String value) {
+    final lower = value.toLowerCase();
+    return lower.contains('placeholder') ||
+        lower.contains('todo') ||
+        lower.startsWith('view_key_') ||
+        lower.startsWith('spend_key_') ||
+        lower.startsWith('restored_view_key') ||
+        lower.startsWith('restored_spend_key');
+  }
+
+  static void _assertValidPin(String pin) {
+    if (pin.length < 4 || pin.length > 12) {
+      throw ArgumentError('PIN must be 4–12 digits');
+    }
+    if (!RegExp(r'^\d+$').hasMatch(pin)) {
+      throw ArgumentError('PIN must be numeric');
+    }
   }
 }
 

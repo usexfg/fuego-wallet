@@ -87,7 +87,7 @@ class WalletDaemonService {
       // Prepare command arguments
       final List<String> args = [
         '--daemon-address', '$_daemonAddress',
-        '--daemon-port', '$_daemonPort.toString()',
+        '--daemon-port', '${_daemonPort ?? _networkConfig.daemonRpcPort}',
         '--rpc-bind-port', '${_networkConfig.walletRpcPort}',
         '--log-level', '1', // Info level
         '--non-interactive',
@@ -98,12 +98,16 @@ class WalletDaemonService {
         args.addAll(['--wallet-file', walletPath]);
       }
 
-      // Add password if provided
-      if (password != null) {
+      // Password required for real wallets — never default to a shared secret
+      if (password != null && password.isNotEmpty) {
         args.addAll(['--password', password]);
+      } else {
+        throw Exception('Walletd password required');
       }
 
-      debugPrint('Starting walletd with args: $args');
+      if (kDebugMode) {
+        debugPrint('Starting walletd (password redacted)');
+      }
 
       // Start the process
       _walletdProcess = await Process.start(_walletdPath!, args);

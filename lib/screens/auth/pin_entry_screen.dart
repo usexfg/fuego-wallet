@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
+import '../../bloc/wallet/wallet_cubit.dart';
 import '../../providers/wallet_provider.dart';
 import '../../services/security_service.dart';
 import '../../utils/theme.dart';
@@ -24,7 +26,7 @@ class _PinEntryScreenState extends State<PinEntryScreen>
   String? _errorMessage;
   bool _canUseBiometric = false;
   int _failedAttempts = 0;
-  static const int maxFailedAttempts = 69;
+  static const int maxFailedAttempts = SecurityService.maxFailedAttempts;
 
   @override
   void initState() {
@@ -73,15 +75,35 @@ class _PinEntryScreenState extends State<PinEntryScreen>
 
   Future<void> _authenticateWithBiometric() async {
     try {
-      final authenticated = await _securityService.authenticateWithBiometrics(
-        reason: 'Authenticate to access your XF₲ wallet',
-      );
-
-      if (authenticated && mounted) {
-        await _unlockWallet('biometric');
+      if (await _securityService.isLockedOut()) {
+        if (mounted) {
+          setState(() {
+            _errorMessage = 'Too many failed attempts. Try again later.';
+          });
+        }
+        return;
+      }
+      final walletProvider = Provider.of<WalletProvider>(context, listen: false);
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+      final success = await walletProvider.unlockWithBiometrics();
+      if (success && mounted) {
+        await _onUnlockedSuccess();
+      } else if (mounted) {
+        setState(() {
+          _errorMessage =
+              walletProvider.error ?? 'Biometric unlock failed — use PIN';
+          _isLoading = false;
+        });
       }
     } catch (e) {
-      // Biometric auth failed or cancelled, user can still use PIN
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -92,14 +114,24 @@ class _PinEntryScreenState extends State<PinEntryScreen>
     });
 
     try {
+      if (await _securityService.isLockedOut()) {
+        final rem = await _securityService.lockoutRemaining();
+        final mins = rem?.inMinutes ?? 15;
+        setState(() {
+          _errorMessage = 'Locked out. Try again in ~$mins min.';
+          _isLoading = false;
+        });
+        return;
+      }
+
       final isValid = await _securityService.verifyPIN(pin);
-      
       if (isValid) {
         await _unlockWallet(pin);
       } else {
-        _handleFailedAttempt();
+        await _handleFailedAttempt();
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = 'Authentication failed. Please try again.';
         _isLoading = false;
@@ -107,41 +139,53 @@ class _PinEntryScreenState extends State<PinEntryScreen>
     }
   }
 
-  Future<void> _unlockWallet(String credentials) async {
+  Future<void> _unlockWallet(String pin) async {
     try {
       final walletProvider = Provider.of<WalletProvider>(context, listen: false);
-      final success = await walletProvider.unlockWallet(
-        credentials == 'biometric' ? '' : credentials,
-      );
+      final success = await walletProvider.unlockWallet(pin);
 
       if (success && mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const MainScreen()),
-        );
-      } else {
+        await _onUnlockedSuccess();
+      } else if (mounted) {
         setState(() {
           _errorMessage = walletProvider.error ?? 'Failed to unlock wallet';
           _isLoading = false;
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
-        _errorMessage = e.toString();
+        _errorMessage = 'Failed to unlock wallet';
         _isLoading = false;
       });
     }
   }
 
-  void _handleFailedAttempt() {
+  Future<void> _onUnlockedSuccess() async {
+    if (!mounted) return;
+    try {
+      await context.read<WalletCubit>().onUnlocked();
+    } catch (_) {}
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (context) => const MainScreen()),
+    );
+  }
+
+  Future<void> _handleFailedAttempt() async {
+    final attempts = await _securityService.failedAttempts();
+    if (!mounted) return;
     setState(() {
-      _failedAttempts++;
+      _failedAttempts = attempts;
       _isLoading = false;
-      
-      if (_failedAttempts >= maxFailedAttempts) {
-        _errorMessage = 'Too many failed attempts. Please restore your wallet.';
+      if (attempts == 0) {
+        // Reset after lockout threshold
+        _errorMessage =
+            'Too many failed attempts. Wallet locked for ${SecurityService.lockoutDuration.inMinutes} minutes.';
       } else {
-        final remainingAttempts = maxFailedAttempts - _failedAttempts;
-        _errorMessage = 'Incorrect PIN. $remainingAttempts attempts remaining.';
+        final remaining = maxFailedAttempts - attempts;
+        _errorMessage =
+            'Incorrect PIN. $remaining attempt${remaining == 1 ? '' : 's'} remaining.';
       }
     });
   }

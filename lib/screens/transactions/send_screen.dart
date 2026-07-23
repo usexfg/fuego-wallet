@@ -86,6 +86,7 @@ class _SendScreenState extends State<SendScreen> {
       }
 
       if (fuegoAddress != null) {
+        if (!mounted) return;
         setState(() {
           _resolvedAddress = fuegoAddress;
           _addressController.text = fuegoAddress!;
@@ -94,24 +95,37 @@ class _SendScreenState extends State<SendScreen> {
         throw Exception('No valid Fuego address found for this OpenAlias');
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
-        _errorMessage = 'Failed to resolve OpenAlias: $e';
+        _errorMessage = 'Failed to resolve OpenAlias';
       });
     } finally {
-      setState(() {
-        _isResolvingAlias = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isResolvingAlias = false;
+        });
+      }
     }
   }
 
   void _showConfirmDialog() {
     if (!_formKey.currentState!.validate()) return;
 
+    final wallet = context.read<WalletCubit>().state;
     final address = _addressController.text.trim();
     final amountStr = _amountController.text.trim();
     final amount = double.tryParse(amountStr) ?? 0;
-    final fee = 0.008;
+    const fee = 0.008;
     final total = amount + fee;
+    final totalAtomic = (total * 1e7).round();
+
+    if (totalAtomic > wallet.unlockedBalance) {
+      setState(() {
+        _errorMessage =
+            'Insufficient unlocked balance (need ${total.toStringAsFixed(7)} XFG including fee)';
+      });
+      return;
+    }
 
     showDialog(
       context: context,
@@ -141,7 +155,7 @@ class _SendScreenState extends State<SendScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.of(ctx).pop();
-              _sendTransaction();
+              _promptPinAndSend();
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor),
             child: const Text('Confirm & Send'),
@@ -149,6 +163,47 @@ class _SendScreenState extends State<SendScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _promptPinAndSend() async {
+    final pinController = TextEditingController();
+    final pin = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: AppTheme.cardColor,
+          title: const Text(
+            'Enter PIN to send',
+            style: TextStyle(color: AppTheme.textPrimary),
+          ),
+          content: TextField(
+            controller: pinController,
+            obscureText: true,
+            keyboardType: TextInputType.number,
+            maxLength: 12,
+            decoration: const InputDecoration(
+              labelText: 'PIN',
+              counterText: '',
+            ),
+            onSubmitted: (v) => Navigator.of(ctx).pop(v),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(ctx).pop(pinController.text),
+              child: const Text('Authorize'),
+            ),
+          ],
+        );
+      },
+    );
+    pinController.dispose();
+    if (pin == null || pin.isEmpty) return;
+    await _sendTransaction(pin);
   }
 
   Widget _confirmRow(String label, String value, {bool bold = false}) {
@@ -165,7 +220,7 @@ class _SendScreenState extends State<SendScreen> {
     );
   }
 
-  Future<void> _sendTransaction() async {
+  Future<void> _sendTransaction(String pin) async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
@@ -180,24 +235,28 @@ class _SendScreenState extends State<SendScreen> {
         address: _addressController.text.trim(),
         amount: double.tryParse(_amountController.text.trim()) ?? 0,
         fee: 0.008,
+        pin: pin,
         mixin: 7,
       );
 
-      if (txHash != null && mounted) {
+      if (txHash.isNotEmpty && mounted) {
         _showSuccessDialog(txHash);
-      } else {
+      } else if (mounted) {
         setState(() {
           _errorMessage = cubit.state.error ?? 'Transaction failed';
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = e.toString();
       });
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 

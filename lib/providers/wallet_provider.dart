@@ -1,40 +1,46 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
+
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
-import '../models/wallet.dart';
+
 import '../models/network_config.dart';
+import '../models/wallet.dart';
 import '../services/fuego_rpc_service.dart';
+import '../services/fuego_vault_service.dart';
 import '../services/security_service.dart';
 
+/// Wallet UI/session facade. Secrets live in [FuegoVaultService] + [SecurityService].
+/// Never stores placeholder keys. Spend key is never exposed without PIN.
 class WalletProvider extends ChangeNotifier {
   static final Logger _logger = Logger('WalletProvider');
   final FuegoRPCService _rpcService;
   final SecurityService _securityService;
-  
+  final FuegoVaultService? _vault;
+
   Wallet? _wallet;
   List<WalletTransaction> _transactions = [];
   bool _isLoading = false;
   bool _isConnected = false;
   bool _isSyncing = false;
   bool _isMining = false;
+  bool _isUnlocked = false;
   String? _error;
   String? _nodeUrl;
   Timer? _syncTimer;
   NetworkConfig _networkConfig = NetworkConfig.mainnet;
 
-  // Mining status
   int _miningSpeed = 0;
   int _miningThreads = 1;
-
-  // Network status
   ConnectivityResult _connectivityResult = ConnectivityResult.none;
 
   WalletProvider({
     FuegoRPCService? rpcService,
     SecurityService? securityService,
-  }) : _rpcService = rpcService ?? FuegoRPCService(),
-       _securityService = securityService ?? SecurityService() {
+    FuegoVaultService? vault,
+  })  : _rpcService = rpcService ?? FuegoRPCService(),
+        _securityService = securityService ?? SecurityService(),
+        _vault = vault {
     _initConnectivity();
   }
 
@@ -43,13 +49,13 @@ class WalletProvider extends ChangeNotifier {
     _checkConnection();
   }
 
-  // Getters
   Wallet? get wallet => _wallet;
   List<WalletTransaction> get transactions => _transactions;
   bool get isLoading => _isLoading;
   bool get isConnected => _isConnected;
   bool get isSyncing => _isSyncing;
   bool get isMining => _isMining;
+  bool get isUnlocked => _isUnlocked;
   String? get error => _error;
   String? get nodeUrl => _nodeUrl;
   int get miningSpeed => _miningSpeed;
@@ -57,73 +63,52 @@ class WalletProvider extends ChangeNotifier {
   ConnectivityResult get connectivityResult => _connectivityResult;
   NetworkConfig get networkConfig => _networkConfig;
 
-  bool get hasWallet => _wallet != null;
+  bool get hasWallet => _wallet != null || (_vault?.existsOnDisk ?? false);
   bool get isWalletSynced => _wallet?.synced ?? false;
   double get syncProgress => _wallet?.syncProgress ?? 0.0;
 
-  // Get private key for burn transactions (requires PIN verification)
+  /// Spend key for burn / advanced ops — always requires PIN verification.
   Future<String?> getPrivateKeyForBurn(String pin) async {
     try {
-      _logger.info('Attempting to get private key for burn transaction');
-      
       final isValidPin = await _securityService.verifyPIN(pin);
       if (!isValidPin) {
-        _logger.warning('Invalid PIN provided for private key access');
         throw Exception('Invalid PIN');
       }
-
       final keys = await _securityService.getWalletKeys(pin);
-      if (keys == null || _wallet == null) {
-        _logger.severe('Wallet keys not found');
+      if (keys == null) {
         throw Exception('Wallet keys not found');
       }
-
-      _logger.info('Private key accessed successfully for burn transaction');
-      // Return the spend key as the private key for burn transactions
       return keys['spendKey'];
     } catch (e) {
-      _logger.severe('Failed to get private key: $e');
-      _setError('Failed to get private key: $e');
+      _logger.severe('Failed to get private key (auth)');
+      _setError('Failed to get private key');
       return null;
     }
   }
 
-  // Get private key without PIN verification (for internal use when wallet is unlocked)
+  /// Removed insecure unauthenticated access — use [getPrivateKeyForBurn].
+  @Deprecated('Use getPrivateKeyForBurn(pin) — unauthenticated access removed')
   String? getPrivateKey() {
-    if (_wallet == null) {
-      _setError('Wallet not loaded');
-      return null;
-    }
-    
-    // Only return private key if wallet is synced and unlocked
-    if (!isWalletSynced) {
-      _setError('Wallet must be synced to access private key');
-      return null;
-    }
-    
-    return _wallet?.spendKey;
+    _setError('PIN required to access private keys');
+    return null;
   }
 
-  // Validate private key format (basic validation)
   bool isValidPrivateKey(String privateKey) {
-    // Basic validation - in real implementation, this would validate against Fuego key format
-    return privateKey.isNotEmpty && privateKey.length >= 32;
+    final hex = RegExp(r'^[0-9a-fA-F]{64}$');
+    return hex.hasMatch(privateKey);
   }
 
-  // Clear sensitive data from memory
   void clearSensitiveData() {
-    // In a real implementation, this would securely clear memory
-    // For now, we'll just clear the wallet reference
     _wallet = null;
+    _isUnlocked = false;
+    _vault?.lock();
     notifyListeners();
   }
 
-  // Initialize connectivity monitoring
   void _initConnectivity() {
     Connectivity().onConnectivityChanged.listen((ConnectivityResult result) {
       _connectivityResult = result;
       notifyListeners();
-      
       if (result != ConnectivityResult.none) {
         _checkConnection();
       } else {
@@ -133,36 +118,25 @@ class WalletProvider extends ChangeNotifier {
     });
   }
 
-  // Wallet Management
   Future<bool> createWallet({
     required String pin,
     String? mnemonic,
+    FuegoVaultService? vault,
   }) async {
     _setLoading(true);
     _clearError();
-
     try {
-      final seed = mnemonic ?? SecurityService.generateMnemonic();
-      
-      if (!SecurityService.validateMnemonic(seed)) {
+      final v = vault ?? _vault;
+      if (v == null) {
+        throw StateError('Vault service required to create wallet');
+      }
+      final phrase = mnemonic ?? SecurityService.generateMnemonic();
+      if (!SecurityService.validateMnemonic(phrase)) {
         throw Exception('Invalid mnemonic phrase');
       }
-
-      // Store mnemonic securely
-      await _securityService.storeWalletSeed(seed, pin);
-      await _securityService.setPIN(pin);
-
-      // TODO: Derive keys from the mnemonic
-      // For now, we'll simulate this process
-      final viewKey = 'view_key_placeholder_${DateTime.now().millisecondsSinceEpoch}';
-      final spendKey = 'spend_key_placeholder_${DateTime.now().millisecondsSinceEpoch}';
-      
-      await _securityService.storeWalletKeys(
-        viewKey: viewKey,
-        spendKey: spendKey,
-        pin: pin,
-      );
-
+      await v.createNew(pin: pin, mnemonic: phrase);
+      _isUnlocked = true;
+      await refreshWallet();
       _setLoading(false);
       return true;
     } catch (e) {
@@ -175,29 +149,21 @@ class WalletProvider extends ChangeNotifier {
   Future<bool> restoreWallet({
     required String mnemonic,
     required String pin,
+    FuegoVaultService? vault,
   }) async {
     _setLoading(true);
     _clearError();
-
     try {
+      final v = vault ?? _vault;
+      if (v == null) {
+        throw StateError('Vault service required to restore wallet');
+      }
       if (!SecurityService.validateMnemonic(mnemonic)) {
         throw Exception('Invalid mnemonic phrase');
       }
-
-      // Store mnemonic and create PIN
-      await _securityService.storeWalletSeed(mnemonic, pin);
-      await _securityService.setPIN(pin);
-
-      // TODO Derive keys from mnemonic (placeholder implementation)
-      final viewKey = 'restored_view_key_${DateTime.now().millisecondsSinceEpoch}';
-      final spendKey = 'restored_spend_key_${DateTime.now().millisecondsSinceEpoch}';
-      
-      await _securityService.storeWalletKeys(
-        viewKey: viewKey,
-        spendKey: spendKey,
-        pin: pin,
-      );
-
+      await v.restoreFromMnemonic(mnemonic: mnemonic, pin: pin);
+      _isUnlocked = true;
+      await refreshWallet();
       _setLoading(false);
       return true;
     } catch (e) {
@@ -207,25 +173,49 @@ class WalletProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> unlockWallet(String pin) async {
+  Future<bool> unlockWallet(String pin, {FuegoVaultService? vault}) async {
     _setLoading(true);
     _clearError();
-
     try {
-      final isValidPin = await _securityService.verifyPIN(pin);
-      if (!isValidPin) {
+      final v = vault ?? _vault;
+      if (v == null) {
+        throw StateError('Vault service required to unlock wallet');
+      }
+      final ok = await v.unlockWithPin(pin);
+      if (!ok) {
         throw Exception('Invalid PIN');
       }
-
-      final keys = await _securityService.getWalletKeys(pin);
-      if (keys == null) {
-        throw Exception('Wallet keys not found');
-      }
-
-      // Initialize wallet with placeholder data
-      // TODO: Open wallet with the keys
+      _isUnlocked = true;
       await refreshWallet();
-      
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      return false;
+    }
+  }
+
+  Future<bool> unlockWithBiometrics({FuegoVaultService? vault}) async {
+    _setLoading(true);
+    _clearError();
+    try {
+      final v = vault ?? _vault;
+      if (v == null) throw StateError('Vault service required');
+      final bioOk = await _securityService.authenticateWithBiometrics(
+        reason: 'Unlock your Fuego wallet',
+      );
+      if (!bioOk) {
+        throw Exception('Biometric authentication failed');
+      }
+      final unlocked = await v.unlockWithBiometricKey();
+      if (!unlocked) {
+        throw Exception(
+          'Biometric unlock key missing — enter PIN once to re-enable',
+        );
+      }
+      _isUnlocked = true;
+      await refreshWallet();
       _setLoading(false);
       return true;
     } catch (e) {
@@ -238,20 +228,38 @@ class WalletProvider extends ChangeNotifier {
   Future<void> lockWallet() async {
     _wallet = null;
     _transactions.clear();
+    _isUnlocked = false;
+    _vault?.lock();
     _stopSyncTimer();
     notifyListeners();
   }
 
   Future<bool> hasWalletData() async {
-    return await _securityService.hasWalletData();
+    if (_vault != null) {
+      await _vault!.init();
+      if (_vault!.existsOnDisk) return true;
+    }
+    return _securityService.hasWalletData();
   }
 
-  // Wallet Operations
   Future<void> refreshWallet() async {
     if (!_isConnected) {
       await _checkConnection();
       if (!_isConnected) {
-        _setError('Not connected to Fuego node');
+        // Still allow local address from vault when offline
+        if (_vault != null && _vault!.isUnlocked && _vault!.address.isNotEmpty) {
+          _wallet = Wallet(
+            address: _vault!.address,
+            viewKey: '',
+            spendKey: '',
+            balance: 0,
+            unlockedBalance: 0,
+            blockchainHeight: 0,
+            localHeight: 0,
+            synced: false,
+          );
+          notifyListeners();
+        }
         return;
       }
     }
@@ -260,17 +268,24 @@ class WalletProvider extends ChangeNotifier {
       _setLoading(true);
       _clearError();
 
-      // Get wallet balance and info
       final balance = await _rpcService.getBalance();
-      final address = await _rpcService.getAddress();
-      
-      _wallet = balance.copyWith(address: address);
-      
-      // Start sync timer if not already running
+      var address = '';
+      if (_vault != null && _vault!.isUnlocked && _vault!.address.isNotEmpty) {
+        address = _vault!.address;
+      } else {
+        address = await _rpcService.getAddress();
+      }
+
+      // Never put secret keys into the Wallet model
+      _wallet = balance.copyWith(
+        address: address,
+        viewKey: '',
+        spendKey: '',
+      );
+
       if (!isWalletSynced) {
         _startSyncTimer();
       }
-
       notifyListeners();
     } catch (e) {
       _setError(e.toString());
@@ -285,23 +300,35 @@ class WalletProvider extends ChangeNotifier {
       _transactions = txs;
       notifyListeners();
     } catch (e) {
-      _setError('Failed to refresh transactions: $e');
+      _setError('Failed to refresh transactions');
     }
   }
 
   Future<String?> sendTransaction({
     required String address,
     required double amount,
+    required String pin,
     String? paymentId,
     int mixins = 7,
+    double feeXfg = 0.008,
   }) async {
     _setLoading(true);
     _clearError();
-
     try {
+      final valid = await _securityService.verifyPIN(pin);
+      if (!valid) {
+        throw Exception('Invalid PIN');
+      }
+      if (!_isUnlocked) {
+        throw Exception('Wallet is locked');
+      }
       final atomicAmount = (amount * 10000000).round();
-      final fee = 10000000; // Default fee in atomic units
-      
+      final fee = (feeXfg * 10000000).round();
+      final unlocked = _wallet?.unlockedBalance ?? 0;
+      if (atomicAmount + fee > unlocked) {
+        throw Exception('Insufficient unlocked balance (including fee)');
+      }
+
       final request = SendTransactionRequest(
         address: address,
         amount: atomicAmount,
@@ -311,11 +338,11 @@ class WalletProvider extends ChangeNotifier {
       );
 
       final txHash = await _rpcService.sendTransaction(request);
-      
-      // Refresh wallet after sending
+      if (txHash.isEmpty) {
+        throw Exception('Empty transaction hash');
+      }
       await refreshWallet();
       await refreshTransactions();
-      
       _setLoading(false);
       return txHash;
     } catch (e) {
@@ -326,27 +353,24 @@ class WalletProvider extends ChangeNotifier {
   }
 
   Future<String> generatePaymentId() async {
-    return await _rpcService.generatePaymentId();
+    return _rpcService.generatePaymentId();
   }
 
   Future<String> createIntegratedAddress(String paymentId) async {
-    return await _rpcService.createIntegratedAddress(paymentId);
+    return _rpcService.createIntegratedAddress(paymentId);
   }
 
-  // Mining Operations
   Future<void> startMining({int threads = 1}) async {
     try {
       _miningThreads = threads;
       final success = await _rpcService.startMining(threads: threads);
-      
       if (success) {
         _isMining = true;
         _startMiningStatusTimer();
       }
-      
       notifyListeners();
     } catch (e) {
-      _setError('Failed to start mining: $e');
+      _setError('Failed to start mining');
     }
   }
 
@@ -357,7 +381,7 @@ class WalletProvider extends ChangeNotifier {
       _miningSpeed = 0;
       notifyListeners();
     } catch (e) {
-      _setError('Failed to stop mining: $e');
+      _setError('Failed to stop mining');
     }
   }
 
@@ -368,65 +392,50 @@ class WalletProvider extends ChangeNotifier {
       _miningSpeed = status['speed'] as int;
       _miningThreads = status['threads'] as int;
       notifyListeners();
-    } catch (e) {
-      // Mining might not be supported, ignore errors
-    }
+    } catch (_) {}
   }
 
-  // Connection Management
   Future<void> connectToNode(String url) async {
     _setLoading(true);
-
     try {
-      // Parse the URL to extract host and port
       final uri = Uri.parse(url);
       final host = uri.host;
-      final port = uri.port == 80 || uri.port == 443 ? _networkConfig.daemonRpcPort : uri.port;
-
-      // Update the RPC service with new node
+      final port = uri.port == 80 || uri.port == 443
+          ? _networkConfig.daemonRpcPort
+          : uri.port;
       _rpcService.updateNode(host, port: port);
       _nodeUrl = url;
-
       await _checkConnection();
-
-      if (_isConnected && hasWallet) {
+      if (_isConnected && _isUnlocked) {
         await refreshWallet();
       }
     } catch (e) {
-      _setError('Invalid node URL: $e');
+      _setError('Invalid node URL');
     }
-
     _setLoading(false);
   }
 
-  /// Update network configuration
   Future<void> updateNetworkConfig(NetworkConfig config) async {
     _networkConfig = config;
     _rpcService.updateNetworkConfig(config);
-    
-    // Update node URL if it's using the old port
     if (_nodeUrl != null) {
       final uri = Uri.parse(_nodeUrl!);
-      final newUrl = '${uri.scheme}://${uri.host}:${config.daemonRpcPort}';
-      _nodeUrl = newUrl;
+      _nodeUrl = '${uri.scheme}://${uri.host}:${config.daemonRpcPort}';
     }
-    
     notifyListeners();
   }
 
   Future<void> _checkConnection() async {
     try {
       _isConnected = await _rpcService.testConnection();
-    } catch (e) {
+    } catch (_) {
       _isConnected = false;
     }
     notifyListeners();
   }
 
-  // Timer Management
   void _startSyncTimer() {
     if (_syncTimer?.isActive == true) return;
-    
     _syncTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
       if (_wallet != null && !isWalletSynced) {
         _refreshSyncStatus();
@@ -458,24 +467,24 @@ class WalletProvider extends ChangeNotifier {
       _isSyncing = true;
       final info = await _rpcService.getInfo();
       final balance = await _rpcService.getBalance();
-      
       if (_wallet != null) {
+        final height = (info['height'] as num?)?.toInt() ?? 0;
         _wallet = _wallet!.copyWith(
-          blockchainHeight: info['height'] as int,
+          blockchainHeight: height,
           localHeight: balance.localHeight,
-          synced: (info['height'] - balance.localHeight) <= 1,
+          balance: balance.balance,
+          unlockedBalance: balance.unlockedBalance,
+          synced: (height - balance.localHeight) <= 1,
         );
       }
-      
       _isSyncing = false;
       notifyListeners();
-    } catch (e) {
+    } catch (_) {
       _isSyncing = false;
       notifyListeners();
     }
   }
 
-  // Helper methods
   void _setLoading(bool loading) {
     _isLoading = loading;
     notifyListeners();

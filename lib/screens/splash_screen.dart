@@ -68,9 +68,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _initializeApp() async {
     try {
-      // Simulate initialization delay for smooth animation
-      await Future.delayed(const Duration(milliseconds: 2000));
-
+      await Future.delayed(const Duration(milliseconds: 1200));
       if (!mounted) return;
 
       setState(() {
@@ -80,40 +78,34 @@ class _SplashScreenState extends State<SplashScreen>
       final securityService = SecurityService();
       final walletProvider = Provider.of<WalletProvider>(context, listen: false);
 
-      // Check if wallet exists
       bool hasWallet = false;
       bool hasPIN = false;
       try {
         hasWallet = await walletProvider.hasWalletData();
         hasPIN = await securityService.hasPIN();
       } catch (e) {
-        debugPrint('Keychain unavailable, skipping wallet check: $e');
+        // Fail closed: require PIN/setup rather than opening Main unlocked
+        debugPrint('Secure storage check failed — requiring setup/unlock');
       }
 
-      await Future.delayed(const Duration(milliseconds: 1000));
-
+      await Future.delayed(const Duration(milliseconds: 600));
       if (!mounted) return;
 
-      // Navigation logic
-      if (hasWallet && hasPIN) {
-        // Wallet exists, go to PIN entry
+      // Never open Main with secrets unlocked. Require PIN when wallet exists;
+      // otherwise land on Main only as locked/empty (user must create/restore).
+      if (hasWallet || hasPIN) {
         _navigateToScreen(const PinEntryScreen());
-      } else if (!hasPIN) {
-        // No PIN set yet (fresh install), skip to main
-        _navigateToScreen(const MainScreen());
       } else {
-        // Wallet exists but no PIN, go to main
         _navigateToScreen(const MainScreen());
       }
     } catch (e) {
       if (!mounted) return;
-      
+
       setState(() {
-        _initMessage = 'Error: ${e.toString()}';
+        _initMessage = 'Unable to initialize securely. Please unlock or set up.';
       });
 
-      // Show error and navigate after delay
-      await Future.delayed(const Duration(milliseconds: 2000));
+      await Future.delayed(const Duration(milliseconds: 1500));
       if (mounted) {
         _navigateToScreen(const PinEntryScreen());
       }

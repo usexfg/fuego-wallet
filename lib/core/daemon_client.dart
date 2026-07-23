@@ -1,5 +1,8 @@
 import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+
 import 'constants.dart';
 import 'network_info.dart';
 import 'transaction.dart';
@@ -17,6 +20,15 @@ class FuegoDaemonClient {
     http.Client? client,
   }) : _http = client ?? http.Client();
 
+  /// True when [host] is a loopback address suitable for key-bearing APIs.
+  static bool isLocalHost(String host) {
+    final h = host.trim().toLowerCase();
+    return h == '127.0.0.1' ||
+        h == 'localhost' ||
+        h == '::1' ||
+        h == '0.0.0.0';
+  }
+
   Uri _rest(String path, {bool useWallet = false}) => Uri(
         scheme: 'http',
         host: useWallet ? '127.0.0.1' : host,
@@ -24,23 +36,33 @@ class FuegoDaemonClient {
         path: path,
       );
 
-  Future<Map<String, dynamic>> _get(String path,
-      {Map<String, String>? query, bool useWallet = false}) async {
-    final uri = _rest(path, useWallet: useWallet)
-        .replace(queryParameters: query);
-    print('[daemon] GET $uri');
+  void _log(String message) {
+    if (kDebugMode) {
+      debugPrint(message);
+    }
+  }
+
+  Future<Map<String, dynamic>> _get(
+    String path, {
+    Map<String, String>? query,
+    bool useWallet = false,
+  }) async {
+    final uri = _rest(path, useWallet: useWallet).replace(queryParameters: query);
+    _log('[daemon] GET $uri');
     final resp = await _http.get(uri).timeout(const Duration(seconds: 10));
     if (resp.statusCode != 200) {
-      print('[daemon] GET $uri → HTTP ${resp.statusCode}: ${resp.body}');
-      throw FuegoRpcException('HTTP ${resp.statusCode}: ${resp.body}');
+      throw FuegoRpcException('HTTP ${resp.statusCode}');
     }
     return jsonDecode(resp.body) as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> _post(String path, Map<String, dynamic> body,
-      {bool useWallet = false}) async {
+  Future<Map<String, dynamic>> _post(
+    String path,
+    Map<String, dynamic> body, {
+    bool useWallet = false,
+  }) async {
     final uri = _rest(path, useWallet: useWallet);
-    print('[daemon] POST $uri');
+    _log('[daemon] POST $uri');
     final resp = await _http
         .post(
           uri,
@@ -49,18 +71,16 @@ class FuegoDaemonClient {
         )
         .timeout(const Duration(seconds: 10));
     if (resp.statusCode != 200) {
-      print('[daemon] POST $uri → HTTP ${resp.statusCode}: ${resp.body}');
-      throw FuegoRpcException('HTTP ${resp.statusCode}: ${resp.body}');
+      throw FuegoRpcException('HTTP ${resp.statusCode}');
     }
     final data = jsonDecode(resp.body) as Map<String, dynamic>;
     if (data.containsKey('error') && data['error'] != null) {
-      print('[daemon] POST $uri → RPC error: ${data['error']}');
       throw FuegoRpcException(data['error'].toString());
     }
     return data;
   }
 
-  // ── Network info (remote daemon, no walletd needed) ──
+  // ── Network info ──
 
   Future<NetworkInfo> getInfo() async {
     final r = await _post('/json_rpc', {
@@ -86,7 +106,7 @@ class FuegoDaemonClient {
     return outgoing + incoming;
   }
 
-  // ── Wallet operations (walletd, the real source of truth) ──
+  // ── Wallet operations (local walletd / backend only) ──
 
   Future<String> getWalletAddress() async {
     final r = await _post('/json_rpc', {
@@ -122,6 +142,22 @@ class FuegoDaemonClient {
     return (result['availableBalance'] ?? result['balance'] ?? 0) as int;
   }
 
+  Future<({int available, int locked})> getBalanceDetailed() async {
+    final r = await _post('/json_rpc', {
+      'jsonrpc': '2.0',
+      'id': 'fuego_core',
+      'method': 'getBalance',
+      'params': {},
+    }, useWallet: true);
+    final result = r['result'] as Map<String, dynamic>? ?? r;
+    final available =
+        (result['availableBalance'] ?? result['available_balance'] ?? result['balance'] ?? 0)
+            as int;
+    final locked =
+        (result['lockedAmount'] ?? result['locked_amount'] ?? 0) as int;
+    return (available: available, locked: locked);
+  }
+
   Future<String> sendTransaction(SendTransactionRequest req) async {
     final r = await _post('/json_rpc', {
       'jsonrpc': '2.0',
@@ -137,7 +173,11 @@ class FuegoDaemonClient {
       },
     }, useWallet: true);
     final result = r['result'] as Map<String, dynamic>? ?? r;
-    return result['transactionHash'] as String? ?? '';
+    final hash = result['transactionHash'] as String? ?? '';
+    if (hash.isEmpty) {
+      throw FuegoRpcException('Empty transaction hash from daemon');
+    }
+    return hash;
   }
 
   Future<List<FuegoTransaction>> getTransactions({int count = 20}) async {
@@ -156,17 +196,18 @@ class FuegoDaemonClient {
     for (final item in items) {
       final txList = item['transactions'] as List<dynamic>? ?? [];
       for (final t in txList) {
-        txs.add(FuegoTransaction.fromJson({
-          ...(t as Map<String, dynamic>),
-          'direction': (t['amount'] ?? 0) < 0 ? 'out' : 'in',
-        }));
+        final map = Map<String, dynamic>.from(t as Map);
+        final amountVal = map['amount'];
+        final amountNum = amountVal is num ? amountVal.toInt() : 0;
+        map['direction'] = amountNum < 0 ? 'out' : 'in';
+        txs.add(FuegoTransaction.fromJson(map));
       }
     }
     txs.sort((a, b) => b.timestamp.compareTo(a.timestamp));
     return txs.take(count).toList();
   }
 
-  // ── Mining (walletd) ──
+  // ── Mining ──
 
   Future<void> startMining({int threads = 1, String? address}) async {
     try {
@@ -213,24 +254,31 @@ class FuegoDaemonClient {
     }
   }
 
-  // ── Status (Axum health) ──
-
   Future<Map<String, dynamic>> getStatus() async {
     return await _get('/status');
   }
 
-  // ── Output scanning (bypasses walletd) ──
-
   /// Scan blockchain for outputs belonging to our keys.
-  /// Returns {balance, outputs, scanned_height, current_height, scanned_tx_count}
+  ///
+  /// **Security:** always targets the local backend (`127.0.0.1:walletPort`).
+  /// Never sends view secrets to remote seed nodes.
   Future<Map<String, dynamic>> scanBalance({
     required String viewSecret,
     required String spendPublic,
     int startHeight = 0,
     int batchSize = 100,
   }) async {
-    final uri = _rest('/scan_balance');
-    print('[daemon] POST $uri (scan_balance)');
+    if (viewSecret.isEmpty || spendPublic.isEmpty) {
+      throw FuegoRpcException('Missing keys for scan_balance');
+    }
+    // Force loopback — ignore configured remote host for key-bearing calls
+    final uri = Uri(
+      scheme: 'http',
+      host: '127.0.0.1',
+      port: walletPort,
+      path: '/scan_balance',
+    );
+    _log('[daemon] POST $uri (scan_balance, local-only)');
     final resp = await _http
         .post(
           uri,

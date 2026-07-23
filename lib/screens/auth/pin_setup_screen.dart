@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
+import '../../bloc/wallet/wallet_cubit.dart';
 import '../../providers/wallet_provider.dart';
+import '../../services/fuego_vault_service.dart';
 import '../../services/security_service.dart';
 import '../../utils/theme.dart';
 import '../main/main_screen.dart';
@@ -36,11 +39,12 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
   }
 
   Future<void> _checkBiometricAvailability() async {
+    // Do not auto-enable biometrics — user must opt in on security page.
     final securityService = SecurityService();
     final available = await securityService.isBiometricAvailable();
-    if (mounted) {
+    if (mounted && !available) {
       setState(() {
-        _biometricEnabled = available;
+        _biometricEnabled = false;
       });
     }
   }
@@ -98,39 +102,46 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
     try {
       final walletProvider = Provider.of<WalletProvider>(context, listen: false);
       final securityService = SecurityService();
+      final vault = context.read<FuegoVaultService>();
+
+      // Opt-in biometrics must be set before vault stores unwrap key
+      await securityService.setBiometricEnabled(_biometricEnabled);
 
       bool success;
       if (widget.isRestore) {
         success = await walletProvider.restoreWallet(
           mnemonic: widget.mnemonic,
           pin: _firstPin,
+          vault: vault,
         );
       } else {
         success = await walletProvider.createWallet(
           pin: _firstPin,
           mnemonic: widget.mnemonic,
+          vault: vault,
         );
       }
 
       if (success) {
-        // Set up biometric authentication if enabled
-        if (_biometricEnabled) {
-          await securityService.setBiometricEnabled(true);
+        if (mounted) {
+          try {
+            await context.read<WalletCubit>().onUnlocked();
+          } catch (_) {}
         }
-
-        // Navigate to main screen
         if (mounted) {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const MainScreen()),
           );
         }
       } else {
+        if (!mounted) return;
         setState(() {
           _errorMessage = walletProvider.error ?? 'Failed to create wallet';
           _isLoading = false;
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = e.toString();
         _isLoading = false;

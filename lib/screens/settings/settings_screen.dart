@@ -363,29 +363,97 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _showBackupPhraseDialog() {
+  Future<void> _showBackupPhraseDialog() async {
+    final pinController = TextEditingController();
+    final pin = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.cardColor,
+        title: const Text(
+          'Confirm PIN',
+          style: TextStyle(color: AppTheme.textPrimary),
+        ),
+        content: TextField(
+          controller: pinController,
+          obscureText: true,
+          keyboardType: TextInputType.number,
+          maxLength: 12,
+          decoration: const InputDecoration(
+            labelText: 'Enter PIN to view backup secrets',
+            counterText: '',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(pinController.text),
+            child: const Text('Unlock'),
+          ),
+        ],
+      ),
+    );
+    pinController.dispose();
+    if (pin == null || pin.isEmpty || !mounted) return;
+
+    final ok = await _securityService.verifyPIN(pin);
+    if (!ok) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Invalid PIN'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      return;
+    }
+
     final vault = context.read<FuegoVaultService>();
-    String mnemonic = 'Could not generate mnemonic.';
+    if (!vault.isUnlocked) {
+      final unlocked = await vault.unlockWithPin(pin);
+      if (!unlocked) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not unlock vault'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+        return;
+      }
+    }
+
+    String mnemonic = 'Unavailable';
     String spendPub = '';
     String spendSec = '';
     String viewPub = '';
     String viewSec = '';
 
     try {
+      // Prefer PIN-encrypted mnemonic from secure storage
+      final storedSeed = await _securityService.getWalletSeed(pin);
+      if (storedSeed != null && SecurityService.validateMnemonic(storedSeed)) {
+        mnemonic = storedSeed;
+      } else {
+        final seed = vault.getSeed();
+        if (seed != null && seed.length == 64) {
+          mnemonic = bip39.entropyToMnemonic(seed);
+        }
+      }
       final spendKeys = vault.deriveKeypair(0);
       final viewKeys = vault.deriveKeypair(1);
-      final seed = vault.getSeed();
-      if (seed != null && seed.length == 64) {
-        mnemonic = bip39.entropyToMnemonic(seed);
-      }
-      spendPub = spendKeys['public'] ?? '';
-      spendSec = spendKeys['secret'] ?? '';
-      viewPub = viewKeys['public'] ?? '';
-      viewSec = viewKeys['secret'] ?? '';
+      spendPub = spendKeys['public'] as String? ?? '';
+      spendSec = spendKeys['secret'] as String? ?? '';
+      viewPub = viewKeys['public'] as String? ?? '';
+      viewSec = viewKeys['secret'] as String? ?? '';
     } catch (e) {
-      mnemonic = 'Error: $e';
+      mnemonic = 'Could not load backup material';
     }
 
+    if (!mounted) return;
     showDialog(
       context: context,
       builder: (context) {
@@ -398,7 +466,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Text(
-                  'Save these keys in a secure location. They are required to recover your wallet.',
+                  'Save these keys offline. Anyone with the secret keys can spend your funds.',
                   style: TextStyle(color: AppTheme.textSecondary),
                 ),
                 const SizedBox(height: 16),

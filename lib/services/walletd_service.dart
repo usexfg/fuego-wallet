@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
+import 'security_service.dart';
 
 class WalletdService {
   Process? _process;
@@ -11,6 +12,7 @@ class WalletdService {
   String? _walletFile;
   bool _running = false;
   int _walletdPid = 0;
+  final SecurityService _security = SecurityService();
 
   bool get isRunning => _running;
   int get rpcPort => 8070;
@@ -27,19 +29,20 @@ class WalletdService {
 
       // Copy binary to writable location if needed
       final binary = await _prepareBinary();
+      final containerPassword = await _security.getOrCreateWalletdPassword();
 
       // Generate wallet if it doesn't exist
       if (!await File(_walletFile!).exists()) {
-        await _generateWallet(binary);
+        await _generateWallet(binary, containerPassword);
       }
 
       // Start walletd
-      debugPrint('WalletdService: starting $binary');
+      if (kDebugMode) debugPrint('WalletdService: starting');
       _process = await Process.start(binary, [
         '--daemon-address', daemonHost,
         '--daemon-port', daemonPort.toString(),
         '--container-file', _walletFile!,
-        '--container-password', 'fuego',
+        '--container-password', containerPassword,
         '--bind-port', rpcPort.toString(),
         '--bind-address', '127.0.0.1',
         '--log-level', '2',
@@ -139,20 +142,19 @@ class WalletdService {
     return null;
   }
 
-  Future<void> _generateWallet(String binary) async {
-    debugPrint('WalletdService: generating wallet at $_walletFile');
+  Future<void> _generateWallet(String binary, String password) async {
+    if (kDebugMode) debugPrint('WalletdService: generating wallet container');
     final result = await Process.run(binary, [
       '--generate-container',
       '--container-file', _walletFile!,
-      '--container-password', 'fuego',
+      '--container-password', password,
       '--daemon-address', '127.0.0.1',
       '--daemon-port', '18180',
     ]);
 
     if (result.exitCode != 0) {
-      throw Exception('Failed to generate wallet: ${result.stderr}');
+      throw Exception('Failed to generate wallet container');
     }
-    debugPrint('WalletdService: wallet generated successfully');
   }
 
   Future<String> _getWalletDir() async {
@@ -166,18 +168,17 @@ class WalletdService {
     for (var i = 0; i < maxAttempts; i++) {
       try {
         final client = HttpClient();
-        client.badCertificateCallback = (_, __, ___) => true;
-        final req = await client.getUrl(Uri.parse('http://127.0.0.1:$rpcPort/json_rpc'));
+        // Local HTTP only — no TLS cert bypass needed
+        final req = await client.getUrl(
+          Uri.parse('http://127.0.0.1:$rpcPort/json_rpc'),
+        );
         final resp = await req.close().timeout(const Duration(seconds: 2));
         final body = await resp.transform(utf8.decoder).join();
-        client.close();
+        client.close(force: true);
         if (resp.statusCode == 200 && body.contains('result')) {
-          debugPrint('WalletdService: RPC confirmed ready');
           return;
         }
-      } catch (e) {
-        debugPrint('WalletdService: waiting... ($e)');
-      }
+      } catch (_) {}
       await Future.delayed(const Duration(seconds: 1));
     }
     throw Exception('walletd failed to start within ${maxAttempts}s');

@@ -1,9 +1,10 @@
+import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 enum AuthStatus { initial, initializing, authenticated, unauthenticated, error }
 
-class AuthState {
+class AuthState extends Equatable {
   final AuthStatus status;
   final String? error;
   final String? address;
@@ -14,17 +15,26 @@ class AuthState {
     this.address,
   });
 
-  AuthState copyWith({AuthStatus? status, String? error, String? address}) =>
+  AuthState copyWith({
+    AuthStatus? status,
+    String? error,
+    bool clearError = false,
+    String? address,
+  }) =>
       AuthState(
         status: status ?? this.status,
-        error: error,
+        error: clearError ? null : (error ?? this.error),
         address: address ?? this.address,
       );
+
+  @override
+  List<Object?> get props => [status, error, address];
 
   @override
   String toString() => 'AuthState($status)';
 }
 
+/// Session auth for UI address only — vault unlock is handled by SecurityService.
 class AuthCubit extends Cubit<AuthState> {
   static const _kAddress = 'fuego_address';
   static const _storage = FlutterSecureStorage();
@@ -36,7 +46,11 @@ class AuthCubit extends Cubit<AuthState> {
     try {
       final address = await _storage.read(key: _kAddress);
       if (address != null && address.isNotEmpty) {
-        emit(AuthState(status: AuthStatus.authenticated, address: address));
+        // Address known does NOT mean vault is unlocked
+        emit(AuthState(
+          status: AuthStatus.unauthenticated,
+          address: address,
+        ));
       } else {
         emit(const AuthState(status: AuthStatus.unauthenticated));
       }
@@ -51,7 +65,7 @@ class AuthCubit extends Cubit<AuthState> {
       await _storage.write(key: _kAddress, value: address);
       emit(AuthState(status: AuthStatus.authenticated, address: address));
     } catch (e) {
-      emit(AuthState(status: AuthStatus.error, error: e.toString()));
+      emit(AuthState(status: AuthStatus.error, error: 'Failed to persist session'));
     }
   }
 
