@@ -102,3 +102,70 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: build/macos/Build/Products/Release/Fuego-Wallet-macOS.zip
+
+  # Parallel with build-macos (both depend only on analyze)
+  build-linux:
+    name: Build Linux (Ubuntu)
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    needs: analyze
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.0'
+          channel: 'stable'
+
+      - name: Install Linux desktop dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang cmake ninja-build pkg-config \
+            libgtk-3-dev liblzma-dev libsecret-1-dev \
+            libstdc++-12-dev
+
+      - name: Enable Linux desktop
+        run: flutter config --enable-linux-desktop
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@v1
+        with: { toolchain: stable }
+
+      - name: Build Rust backend
+        working-directory: rust-fuego-wallet
+        run: cargo build --release
+
+      - name: Build Linux app
+        run: flutter build linux --release
+
+      - name: Bundle Rust backend into app
+        run: |
+          BUNDLE="build/linux/x64/release/bundle"
+          # main.dart resolves backend as sibling of the Flutter binary
+          cp rust-fuego-wallet/target/release/fuego-wallet "$BUNDLE/fuego-wallet"
+          chmod +x "$BUNDLE/fuego-wallet"
+
+      - name: Package app
+        run: |
+          cd build/linux/x64/release/bundle
+          tar -czf "$GITHUB_WORKSPACE/Fuego-Wallet-Linux-x64.tar.gz" .
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuego-wallet-linux-ubuntu
+          path: Fuego-Wallet-Linux-x64.tar.gz
+          retention-days: 30
+
+      - name: Upload to Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Fuego-Wallet-Linux-x64.tar.gz
