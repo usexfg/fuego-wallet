@@ -105,8 +105,8 @@ jobs:
 
   # Parallel with build-macos (both depend only on analyze)
   build-linux:
-    name: Build Linux (Ubuntu)
-    runs-on: ubuntu-latest
+    name: Build Linux (Ubuntu 22.04)
+    runs-on: ubuntu-22.04
     timeout-minutes: 35
     needs: analyze
 
