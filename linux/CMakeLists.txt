@@ -4,7 +4,8 @@ project(runner LANGUAGES CXX)
 
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application.
-set(BINARY_NAME "Fuego Wallet")
+set(BINARY_NAME "fuegowallet")
+set(APP_DISPLAY_NAME "Fuego Wallet")
 # The unique GTK application identifier for this application. See:
 # https://wiki.gnome.org/HowDoI/ChooseApplicationID
 set(APPLICATION_ID "com.fuego.fuegowallet")
@@ -70,6 +71,7 @@ add_executable(${BINARY_NAME}
 # Apply the standard set of build settings. This can be removed for applications
 # that need different build settings.
 apply_standard_settings(${BINARY_NAME})
+set_target_properties(${BINARY_NAME} PROPERTIES OUTPUT_NAME "${APP_DISPLAY_NAME}")
 
 # Add dependency libraries. Add any application-specific dependencies here.
 target_link_libraries(${BINARY_NAME} PRIVATE flutter)
