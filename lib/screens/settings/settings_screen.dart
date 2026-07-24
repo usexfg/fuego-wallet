@@ -364,6 +364,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _showBackupPhraseDialog() async {
+    final hasPIN = await _securityService.hasPIN();
+    if (!hasPIN) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No PIN set — please set a PIN in Security first'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      return;
+    }
+
     final pinController = TextEditingController();
     final pin = await showDialog<String>(
       context: context,

@@ -2,7 +2,7 @@ name: fuego
 description: "Fuego Wallet & DEX — Privacy banking, CDs, and cross-chain trading"
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 5.11.0+1
 
 environment:
   sdk: '>=3.9.0 <4.0.0'
@@ -60,6 +60,7 @@ dependencies:
   url_launcher: ^6.2.4
   device_info_plus: ^10.1.0
   connectivity_plus: ^5.0.2
+  package_info_plus: ^8.1.3
 
   # ── Charts ──
   imp_trading_chart: ^0.1.2

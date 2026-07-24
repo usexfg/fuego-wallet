@@ -85,7 +85,7 @@ class PoolMiningService {
         'params': {
           'login': _walletAddress,
           'pass': 'x',
-          'agent': 'fuego-wallet/1.0',
+          'agent': 'fuego-walletd/1.0',
         },
       });
       debugPrint('[pool] Sent login for $_walletAddress');

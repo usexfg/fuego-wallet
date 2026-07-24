@@ -5,7 +5,7 @@ edition = "2021"
 description = "Fuego-native wallet — key management, balance, send, receive, swap"
 
 [[bin]]
-name = "fuego-wallet"
+name = "fuego-walletd"
 path = "src/main.rs"
 
 [dependencies]

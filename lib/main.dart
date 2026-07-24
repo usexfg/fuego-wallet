@@ -33,19 +33,33 @@ final SecurityService _securityService = SecurityService();
 final FuegoVaultService _vaultService =
     FuegoVaultService(security: _securityService);
 
-const String _defaultDaemonHost = '207.244.247.64';
+bool get _useTestnet =>
+    Platform.environment['FUEGO_TESTNET'] == '1' ||
+    Platform.environment['FUEGO_TESTNET'] == 'true';
+
+NetworkConfig get _activeConfig =>
+    _useTestnet ? NetworkConfig.testnet : NetworkConfig.mainnet;
+
+String get _defaultDaemonHost =>
+    Platform.environment['FUEGO_DAEMON_HOST'] ??
+    _activeConfig.defaultSeedNode.split(':')[0];
+
+int get _defaultDaemonPort =>
+    int.tryParse(Platform.environment['FUEGO_DAEMON_PORT'] ?? '') ??
+    _activeConfig.daemonRpcPort;
+
 const int _backendPort = 8070;
 
-final daemon = FuegoDaemonClient(
-  host: NetworkConfig.mainnet.defaultSeedNode.split(':')[0],
-  port: NetworkConfig.mainnet.daemonRpcPort,
+late final FuegoDaemonClient daemon = FuegoDaemonClient(
+  host: _defaultDaemonHost,
+  port: _defaultDaemonPort,
   walletPort: _backendPort,
 );
 
-final rpcService = FuegoRPCService(
+late final FuegoRPCService rpcService = FuegoRPCService(
   host: '127.0.0.1',
   port: _backendPort,
-  networkConfig: NetworkConfig.mainnet,
+  networkConfig: _activeConfig,
 );
 
 void _logDebug(String message) {
@@ -57,23 +71,27 @@ void _logDebug(String message) {
 Future<void> _startBackend() async {
   final binary = _findBackendBinary();
   if (binary == null) {
-    _log.warning('fuego-wallet binary not found — using remote node for public RPC only');
+    _log.warning('fuego-walletd binary not found — using remote node for public RPC only');
     rpcService.updateNode(
-      NetworkConfig.mainnet.defaultSeedNode.split(':')[0],
-      port: NetworkConfig.mainnet.daemonRpcPort,
+      _defaultDaemonHost,
+      port: _defaultDaemonPort,
     );
     if (!_backendReady.isCompleted) _backendReady.complete();
     return;
   }
   _logDebug('[backend] Starting local backend');
   try {
-    _backend = await Process.start(binary, [
+    final args = [
       '--port',
       _backendPort.toString(),
       'serve',
       '--daemon-host',
       _defaultDaemonHost,
-    ]);
+      '--daemon-port',
+      _defaultDaemonPort.toString(),
+    ];
+    if (_useTestnet) args.add('--testnet');
+    _backend = await Process.start(binary, args);
     if (kDebugMode) {
       _backend!.stdout
           .transform(utf8.decoder)
@@ -92,8 +110,8 @@ Future<void> _startBackend() async {
   } catch (e) {
     _log.warning('Failed to start backend process');
     rpcService.updateNode(
-      NetworkConfig.mainnet.defaultSeedNode.split(':')[0],
-      port: NetworkConfig.mainnet.daemonRpcPort,
+      _defaultDaemonHost,
+      port: _defaultDaemonPort,
     );
     if (!_backendReady.isCompleted) _backendReady.complete();
     return;
@@ -139,11 +157,11 @@ String? _findBackendBinary() {
   final exe = File(Platform.resolvedExecutable);
   final projectRoot = Directory.current.path;
   final candidates = [
-    '${exe.parent.path}/fuego-wallet',
+    '${exe.parent.path}/fuego-walletd',
     if (Platform.isMacOS)
-      '${exe.parent.parent.parent.path}/Resources/bin/fuego-wallet',
-    '$projectRoot/rust-fuego-wallet/target/debug/fuego-wallet',
-    '$projectRoot/rust-fuego-wallet/target/release/fuego-wallet',
+      '${exe.parent.parent.parent.path}/Resources/bin/fuego-walletd',
+    '$projectRoot/rust-fuego-wallet/target/debug/fuego-walletd',
+    '$projectRoot/rust-fuego-wallet/target/release/fuego-walletd',
   ];
   for (final c in candidates) {
     if (File(c).existsSync()) return c;
@@ -267,7 +285,7 @@ class _FuegoAppState extends State<FuegoApp> with WidgetsBindingObserver {
             BlocProvider<HearthCubit>(
               create: (_) => HearthCubit(hearth.FuegoDaemonClient(
                 host: _defaultDaemonHost,
-                networkConfig: NetworkConfig.mainnet,
+                networkConfig: _activeConfig,
               )),
             ),
             BlocProvider<DexCubit>(

@@ -74,11 +74,11 @@ class DexCubit extends Cubit<DexState> {
 
   DexCubit() : _http = http.Client(), super(const DexState());
 
-  void configure(String host, {int port = 18180}) {
+  void configure(String host, {int port = 8070}) {
     _baseUrl = 'http://$host:$port';
   }
 
-  Future<void> init({String host = '207.244.247.64', int port = 18180}) async {
+  Future<void> init({String host = '127.0.0.1', int port = 8070}) async {
     configure(host, port: port);
     await _checkConnection();
   }

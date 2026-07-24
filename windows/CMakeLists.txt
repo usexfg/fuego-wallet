@@ -4,7 +4,7 @@ project(fuego_wallet LANGUAGES CXX)
 
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application.
-set(BINARY_NAME "fuego_wallet")
+set(BINARY_NAME "Fuego Wallet")
 
 # Explicitly opt in to modern CMake behaviors to avoid warnings with recent
 # versions of CMake.

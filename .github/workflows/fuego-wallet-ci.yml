@@ -73,14 +73,14 @@ jobs:
 
       - name: Bundle Rust backend into app
         run: |
-          APP="build/macos/Build/Products/Release/fuego_wallet.app"
-          cp rust-fuego-wallet/target/release/fuego-wallet "$APP/Contents/MacOS/"
-          chmod +x "$APP/Contents/MacOS/fuego-wallet"
+          APP="build/macos/Build/Products/Release/fuegowallet.app"
+          cp rust-fuego-wallet/target/release/fuego-walletd "$APP/Contents/MacOS/"
+          chmod +x "$APP/Contents/MacOS/fuego-walletd"
 
       - name: Re-sign
         run: |
-          APP="build/macos/Build/Products/Release/fuego_wallet.app"
-          codesign --force --sign - "$APP/Contents/MacOS/fuego-wallet" 2>/dev/null || true
+          APP="build/macos/Build/Products/Release/fuegowallet.app"
+          codesign --force --sign - "$APP/Contents/MacOS/fuego-walletd" 2>/dev/null || true
           find "$APP/Contents/Frameworks" -mindepth 1 -maxdepth 1 -type d -name "*.framework" -exec codesign --force --sign - {} \;
           find "$APP/Contents/Frameworks" -mindepth 1 -maxdepth 1 -name "*.dylib" -exec codesign --force --sign - {} \;
           codesign --force --sign - "$APP"
@@ -88,7 +88,7 @@ jobs:
       - name: Package app
         run: |
           cd build/macos/Build/Products/Release
-          zip -r Fuego-Wallet-macOS.zip "fuego_wallet.app"
+          zip -r Fuego-Wallet-macOS.zip "Fuego Wallet.app"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
@@ -148,14 +148,18 @@ jobs:
       - name: Bundle Rust backend into app
         run: |
           BUNDLE="build/linux/x64/release/bundle"
-          # main.dart resolves backend as sibling of the Flutter binary
-          cp rust-fuego-wallet/target/release/fuego-wallet "$BUNDLE/fuego-wallet"
-          chmod +x "$BUNDLE/fuego-wallet"
+          cp rust-fuego-wallet/target/release/fuego-walletd "$BUNDLE/fuego-walletd"
+          chmod +x "$BUNDLE/fuego-walletd"
+          cp linux/xfg-wallet.desktop "$BUNDLE/"
+          cp assets/logo/fuegologo.png "$BUNDLE/fuego.png" 2>/dev/null || true
 
       - name: Package app
         run: |
           cd build/linux/x64/release/bundle
-          tar -czf "$GITHUB_WORKSPACE/Fuego-Wallet-Linux-x64.tar.gz" .
+          mkdir -p "$GITHUB_WORKSPACE/Fuego-Wallet"
+          cp -r . "$GITHUB_WORKSPACE/Fuego-Wallet/"
+          cd "$GITHUB_WORKSPACE"
+          tar -czf Fuego-Wallet-Linux-x64.tar.gz Fuego-Wallet/
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
