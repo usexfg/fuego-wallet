@@ -73,13 +73,13 @@ jobs:
 
       - name: Bundle Rust backend into app
         run: |
-          APP="build/macos/Build/Products/Release/Fuego Wallet.app"
+          APP="build/macos/Build/Products/Release/fuegowallet.app"
           cp rust-fuego-wallet/target/release/fuego-walletd "$APP/Contents/MacOS/"
           chmod +x "$APP/Contents/MacOS/fuego-walletd"
 
       - name: Re-sign
         run: |
-          APP="build/macos/Build/Products/Release/Fuego Wallet.app"
+          APP="build/macos/Build/Products/Release/fuegowallet.app"
           codesign --force --sign - "$APP/Contents/MacOS/fuego-walletd" 2>/dev/null || true
           find "$APP/Contents/Frameworks" -mindepth 1 -maxdepth 1 -type d -name "*.framework" -exec codesign --force --sign - {} \;
           find "$APP/Contents/Frameworks" -mindepth 1 -maxdepth 1 -name "*.dylib" -exec codesign --force --sign - {} \;
@@ -88,7 +88,7 @@ jobs:
       - name: Package app
         run: |
           cd build/macos/Build/Products/Release
-          zip -r Fuego-Wallet-macOS.zip "Fuego Wallet.app"
+          zip -r Fuego-Wallet-macOS.zip "fuegowallet.app"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
