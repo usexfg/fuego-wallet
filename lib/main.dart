@@ -37,6 +37,12 @@ bool get _useTestnet =>
     Platform.environment['FUEGO_TESTNET'] == '1' ||
     Platform.environment['FUEGO_TESTNET'] == 'true';
 
+bool get _useLocalNode {
+  final env = Platform.environment['FUEGO_USE_LOCAL_NODE'];
+  if (env != null) return env == '1' || env.toLowerCase() == 'true';
+  return Platform.isLinux || Platform.isMacOS || Platform.isWindows;
+}
+
 NetworkConfig get _activeConfig =>
     _useTestnet ? NetworkConfig.testnet : NetworkConfig.mainnet;
 
@@ -79,7 +85,7 @@ Future<void> _startBackend() async {
     if (!_backendReady.isCompleted) _backendReady.complete();
     return;
   }
-  _logDebug('[backend] Starting local backend');
+  _logDebug('[backend] Starting ${_useLocalNode ? "local node" : "remote proxy"}');
   try {
     final args = [
       '--port',
@@ -91,6 +97,7 @@ Future<void> _startBackend() async {
       _defaultDaemonPort.toString(),
     ];
     if (_useTestnet) args.add('--testnet');
+    if (_useLocalNode) args.add('--local');
     _backend = await Process.start(binary, args);
     if (kDebugMode) {
       _backend!.stdout
