@@ -74,13 +74,13 @@ jobs:
       - name: Bundle Rust backend into app
         run: |
           APP="build/macos/Build/Products/Release/fuegowallet.app"
-          cp rust-fuego-wallet/target/release/fuego-walletd "$APP/Contents/MacOS/"
-          chmod +x "$APP/Contents/MacOS/fuego-walletd"
+          cp rust-fuego-wallet/target/release/fuego_walletd "$APP/Contents/MacOS/"
+          chmod +x "$APP/Contents/MacOS/fuego_walletd"
 
       - name: Re-sign
         run: |
           APP="build/macos/Build/Products/Release/fuegowallet.app"
-          codesign --force --sign - "$APP/Contents/MacOS/fuego-walletd" 2>/dev/null || true
+          codesign --force --sign - "$APP/Contents/MacOS/fuego_walletd" 2>/dev/null || true
           find "$APP/Contents/Frameworks" -mindepth 1 -maxdepth 1 -type d -name "*.framework" -exec codesign --force --sign - {} \;
           find "$APP/Contents/Frameworks" -mindepth 1 -maxdepth 1 -name "*.dylib" -exec codesign --force --sign - {} \;
           codesign --force --sign - "$APP"
@@ -148,8 +148,8 @@ jobs:
       - name: Bundle Rust backend into app
         run: |
           BUNDLE="build/linux/x64/release/bundle"
-          cp rust-fuego-wallet/target/release/fuego-walletd "$BUNDLE/fuego-walletd"
-          chmod +x "$BUNDLE/fuego-walletd"
+          cp rust-fuego-wallet/target/release/fuego_walletd "$BUNDLE/fuego_walletd"
+          chmod +x "$BUNDLE/fuego_walletd"
           cp linux/xfg-wallet.desktop "$BUNDLE/"
           cp assets/logo/fuegologo.png "$BUNDLE/fuego.png" 2>/dev/null || true
 

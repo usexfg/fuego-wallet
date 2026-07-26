@@ -54,7 +54,7 @@ int get _defaultDaemonPort =>
     int.tryParse(Platform.environment['FUEGO_DAEMON_PORT'] ?? '') ??
     _activeConfig.daemonRpcPort;
 
-const int _backendPort = 8070;
+const int _backendPort = 180198;
 
 late final FuegoDaemonClient daemon = FuegoDaemonClient(
   host: _defaultDaemonHost,
@@ -77,7 +77,7 @@ void _logDebug(String message) {
 Future<void> _startBackend() async {
   final binary = _findBackendBinary();
   if (binary == null) {
-    _log.warning('fuego-walletd binary not found — using remote node for public RPC only');
+    _log.warning('fuego_walletd binary not found — using remote node for public RPC only');
     rpcService.updateNode(
       _defaultDaemonHost,
       port: _defaultDaemonPort,
@@ -164,11 +164,11 @@ String? _findBackendBinary() {
   final exe = File(Platform.resolvedExecutable);
   final projectRoot = Directory.current.path;
   final candidates = [
-    '${exe.parent.path}/fuego-walletd',
+    '${exe.parent.path}/fuego_walletd',
     if (Platform.isMacOS)
-      '${exe.parent.parent.parent.path}/Resources/bin/fuego-walletd',
-    '$projectRoot/rust-fuego-wallet/target/debug/fuego-walletd',
-    '$projectRoot/rust-fuego-wallet/target/release/fuego-walletd',
+      '${exe.parent.parent.parent.path}/Resources/bin/fuego_walletd',
+    '$projectRoot/rust-fuego-wallet/target/debug/fuego_walletd',
+    '$projectRoot/rust-fuego-wallet/target/release/fuego_walletd',
   ];
   for (final c in candidates) {
     if (File(c).existsSync()) return c;
