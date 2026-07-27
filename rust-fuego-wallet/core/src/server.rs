@@ -51,7 +51,8 @@ fn is_fuegod_method(method: &str) -> bool {
         "get_orderbook_state" | "get_orderbook_info" | "get_orderbook_estimates" |
         "get_fuego_price" | "getswapoffers" | "getswapprice" | "getswaptrades" |
         "submitswap" | "cancelswap" | "requestswap" |
-        "getactiveswaps" | "initiate" | "accept" | "processswap" | "refundswap" |
+        "getactiveswaps" | "getswapstatus" | "verify_payment" | "htlc_create_hash_lock" | "htlc_build_script" |
+        "initiate" | "accept" | "processswap" | "refundswap" |
         "getdeposits" | "get_block_range" | "get_maturing_deposits" |
         "rollover_deposit" | "get_fee_pool_info" | "get_epoch_history" |
         "get_treasury_info" | "get_alias" | "get_alias_by_address" | "get_all_aliases" |
@@ -191,7 +192,8 @@ async fn proxy_to_fuegod(fuegod_url: &str, body: &serde_json::Value) -> Result<s
         "cd::market_list" | "cd::sell" | "cd::buy" | "cd::cancel_listing" | "cd::apy" |
         "getswapoffers" | "getswapprice" | "getswaptrades" |
         "submitswap" | "cancelswap" | "requestswap" |
-        "getactiveswaps" | "initiate" | "accept" | "processswap" | "refundswap" |
+        "getactiveswaps" | "getswapstatus" | "verify_payment" | "htlc_create_hash_lock" | "htlc_build_script" |
+        "initiate" | "accept" | "processswap" | "refundswap" |
         "getdeposits" | "get_block_range" | "get_maturing_deposits" |
         "rollover_deposit" | "get_fee_pool_info" | "get_epoch_history" |
         "get_treasury_info" | "get_alias" | "get_alias_by_address" | "get_all_aliases" |
@@ -357,12 +359,35 @@ async fn handle_wallet_method(
     }
 }
 
+fn is_authorized_host(headers: &axum::http::HeaderMap) -> bool {
+    if let Some(host_val) = headers.get(axum::http::header::HOST) {
+        if let Ok(host_str) = host_val.to_str() {
+            let host_clean = host_str.split(':').next().unwrap_or("").to_lowercase();
+            if host_clean == "localhost" || host_clean == "127.0.0.1" || host_clean == "[::1]" || host_clean.is_empty() {
+                return true;
+            }
+        }
+        false
+    } else {
+        true
+    }
+}
+
 async fn json_rpc_handler(
     State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
     Json(body): Json<serde_json::Value>,
 ) -> impl IntoResponse {
     let id = body.get("id").and_then(|v| v.as_u64()).unwrap_or(0);
     let method = body.get("method").and_then(|v| v.as_str()).unwrap_or("");
+
+    if !is_authorized_host(&headers) {
+        let error = JsonRpcError {
+            jsonrpc: "2.0".into(), id,
+            error: RpcErrorDetail { code: -32500, message: "forbidden host".into() },
+        };
+        return (StatusCode::FORBIDDEN, Json(serde_json::to_value(error).unwrap())).into_response();
+    }
 
     let result: Result<serde_json::Value, String> = if is_wallet_method(method) {
         let params = body.get("params").cloned().unwrap_or(serde_json::Value::Null);
@@ -394,6 +419,9 @@ async fn fuegod_get(
     State(state): State<Arc<AppState>>,
     req: axum::http::Request<axum::body::Body>,
 ) -> impl IntoResponse {
+    if !is_authorized_host(req.headers()) {
+        return (StatusCode::FORBIDDEN, Json(serde_json::json!({"error": "forbidden host"}))).into_response();
+    }
     let fuegod_path = req.uri().path();
     let fuegod_query = req.uri().query().unwrap_or("");
     let client = reqwest::Client::new();
@@ -423,6 +451,9 @@ async fn fuegod_post(
     State(state): State<Arc<AppState>>,
     req: axum::http::Request<axum::body::Body>,
 ) -> impl IntoResponse {
+    if !is_authorized_host(req.headers()) {
+        return (StatusCode::FORBIDDEN, Json(serde_json::json!({"error": "forbidden host"}))).into_response();
+    }
     let fuegod_path = req.uri().path().to_string();
     let (parts, body) = req.into_parts();
     let _ = parts;
@@ -557,6 +588,16 @@ pub async fn run_server(
         .route("/submitswap", post(fuegod_post))
         .route("/cancelswap", post(fuegod_post))
         .route("/requestswap", post(fuegod_post))
+        .route("/getactiveswaps", post(fuegod_post))
+        .route("/getswapstatus", post(fuegod_post))
+        .route("/verify_payment", post(fuegod_post))
+        .route("/htlc_create_hash_lock", post(fuegod_post))
+        .route("/htlc_build_script", post(fuegod_post))
+        // Extra robustness GET endpoints
+        .route("/getactiveswaps", get(fuegod_get))
+        .route("/getswapstatus", get(fuegod_get))
+        .route("/getinfo", get(fuegod_get))
+        .route("/getinfo", post(fuegod_post))
         .layer(cors)
         .with_state(state);
 
