@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:device_preview/device_preview.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -199,10 +200,13 @@ Future<void> main() async {
     _log.warning('Vault probe failed (non-fatal)');
   }
 
-  runApp(FuegoApp(
-    backendReady: _backendReady.future,
-    vaultService: _vaultService,
-    securityService: _securityService,
+  runApp(DevicePreview(
+    enabled: !kReleaseMode,
+    builder: (context) => FuegoApp(
+      backendReady: _backendReady.future,
+      vaultService: _vaultService,
+      securityService: _securityService,
+    ),
   ));
 
   _startBackend();
@@ -309,6 +313,7 @@ class _FuegoAppState extends State<FuegoApp> with WidgetsBindingObserver {
             themeMode: ThemeMode.dark,
             home: const SplashScreen(),
             debugShowCheckedModeBanner: false,
+            useInheritedMediaQuery: true,
           ),
         ),
       ),
