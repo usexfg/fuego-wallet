@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:device_preview/device_preview.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -37,6 +38,12 @@ bool get _useTestnet =>
     Platform.environment['FUEGO_TESTNET'] == '1' ||
     Platform.environment['FUEGO_TESTNET'] == 'true';
 
+bool get _useLocalNode {
+  final env = Platform.environment['FUEGO_USE_LOCAL_NODE'];
+  if (env != null) return env == '1' || env.toLowerCase() == 'true';
+  return Platform.isLinux || Platform.isMacOS || Platform.isWindows;
+}
+
 NetworkConfig get _activeConfig =>
     _useTestnet ? NetworkConfig.testnet : NetworkConfig.mainnet;
 
@@ -48,7 +55,7 @@ int get _defaultDaemonPort =>
     int.tryParse(Platform.environment['FUEGO_DAEMON_PORT'] ?? '') ??
     _activeConfig.daemonRpcPort;
 
-const int _backendPort = 8070;
+const int _backendPort = 180198;
 
 late final FuegoDaemonClient daemon = FuegoDaemonClient(
   host: _defaultDaemonHost,
@@ -71,7 +78,7 @@ void _logDebug(String message) {
 Future<void> _startBackend() async {
   final binary = _findBackendBinary();
   if (binary == null) {
-    _log.warning('fuego-walletd binary not found — using remote node for public RPC only');
+    _log.warning('fuego_walletd binary not found — using remote node for public RPC only');
     rpcService.updateNode(
       _defaultDaemonHost,
       port: _defaultDaemonPort,
@@ -79,7 +86,7 @@ Future<void> _startBackend() async {
     if (!_backendReady.isCompleted) _backendReady.complete();
     return;
   }
-  _logDebug('[backend] Starting local backend');
+  _logDebug('[backend] Starting ${_useLocalNode ? "local node" : "remote proxy"}');
   try {
     final args = [
       '--port',
@@ -91,6 +98,7 @@ Future<void> _startBackend() async {
       _defaultDaemonPort.toString(),
     ];
     if (_useTestnet) args.add('--testnet');
+    if (_useLocalNode) args.add('--local');
     _backend = await Process.start(binary, args);
     if (kDebugMode) {
       _backend!.stdout
@@ -157,11 +165,11 @@ String? _findBackendBinary() {
   final exe = File(Platform.resolvedExecutable);
   final projectRoot = Directory.current.path;
   final candidates = [
-    '${exe.parent.path}/fuego-walletd',
+    '${exe.parent.path}/fuego_walletd',
     if (Platform.isMacOS)
-      '${exe.parent.parent.parent.path}/Resources/bin/fuego-walletd',
-    '$projectRoot/rust-fuego-wallet/target/debug/fuego-walletd',
-    '$projectRoot/rust-fuego-wallet/target/release/fuego-walletd',
+      '${exe.parent.parent.parent.path}/Resources/bin/fuego_walletd',
+    '$projectRoot/rust-fuego-wallet/target/debug/fuego_walletd',
+    '$projectRoot/rust-fuego-wallet/target/release/fuego_walletd',
   ];
   for (final c in candidates) {
     if (File(c).existsSync()) return c;
@@ -192,10 +200,13 @@ Future<void> main() async {
     _log.warning('Vault probe failed (non-fatal)');
   }
 
-  runApp(FuegoApp(
-    backendReady: _backendReady.future,
-    vaultService: _vaultService,
-    securityService: _securityService,
+  runApp(DevicePreview(
+    enabled: !kReleaseMode,
+    builder: (context) => FuegoApp(
+      backendReady: _backendReady.future,
+      vaultService: _vaultService,
+      securityService: _securityService,
+    ),
   ));
 
   _startBackend();
@@ -302,6 +313,7 @@ class _FuegoAppState extends State<FuegoApp> with WidgetsBindingObserver {
             themeMode: ThemeMode.dark,
             home: const SplashScreen(),
             debugShowCheckedModeBanner: false,
+            useInheritedMediaQuery: true,
           ),
         ),
       ),

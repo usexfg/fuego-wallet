@@ -50,6 +50,9 @@ enum Commands {
 
         #[arg(long)]
         testnet: bool,
+
+        #[arg(long)]
+        local: bool,
     },
     Status,
 }
@@ -81,11 +84,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     std::fs::create_dir_all(&wallet_dir)?;
 
     match cli.command.unwrap_or(Commands::Status) {
-        Commands::Serve { daemon_host, daemon_port, testnet: _testnet } => {
-            // Use remote daemon directly — embedded fuegod is unreliable on macOS
-            let actual_host = daemon_host.clone();
+        Commands::Serve { daemon_host, daemon_port, testnet, local } => {
+            let (actual_host, actual_port, _daemon_guard) = if local {
+                log::info!("--local: starting embedded fuegod...");
+                let data_dir = wallet_dir.join("fuegod");
+                let mut daemon = fuegod::DaemonProcess::new(daemon_port);
+                let url = daemon.start(testnet, data_dir.to_str().unwrap_or("fuegod"))
+                    .await
+                    .map_err(|e| format!("Failed to start fuegod: {}", e))?;
+                log::info!("Embedded fuegod ready at {}", url);
+                ("127.0.0.1".to_string(), daemon_port, Some(daemon))
+            } else {
+                (daemon_host.clone(), daemon_port, None)
+            };
 
-            let daemon_url = format!("http://{}:{}", actual_host, daemon_port);
+            let daemon_url = format!("http://{}:{}", actual_host, actual_port);
 
             // 2. Initialize SDK wallet
             let seed = match &cli.seed {

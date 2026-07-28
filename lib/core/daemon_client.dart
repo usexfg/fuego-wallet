@@ -16,7 +16,7 @@ class FuegoDaemonClient {
   FuegoDaemonClient({
     this.host = '127.0.0.1',
     this.port = defaultRpcPort,
-    this.walletPort = 8070,
+    this.walletPort = 180198,
     http.Client? client,
   }) : _http = client ?? http.Client();
 

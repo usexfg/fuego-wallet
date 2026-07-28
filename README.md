@@ -1,4 +1,4 @@
-# 🔥 FYREFLY / XFG_wallet
+# 🔥 Fuego Wallet GUI
 
 <p align="center">
   <img src="https://img.shields.io/badge/Flutter-3.22.2-blue?logo=flutter" alt="Flutter Version" />
@@ -7,8 +7,8 @@
   <img src="https://img.shields.io/badge/License-MIT-green" alt="License" />
 </p>
 
-A mobile wallet application for **Fuego (XFG)** privacy cryptocurrency. 
-Features include secure untraceable transactions, encrypted messaging, privacy banking suite, menu for Ξlderfier (decentralized verification) nodes, complete with 'Elderfyre Stayking' ceremony, plus built-in mining. 🔥
+A desktop & mobile wallet app for **Fuego (XFG)** privacy cryptocurrency. 
+Features include secure untraceable transactions, Fuego's new flatcoin: ΗΞΔŦ:burn XFG to mint or buy & sell on, HⲈⲆ☈ⲦН : Fuego's on-chain HEAT exchange, DeXFG atomic swaps, earn yield on ΗΞΔŦ_𝖢𝖣s, register your fire alias, built-in pool mining and more. 🔥
 
 
 ![](https://github.com/ColinRitman/xfg_wallet/blob/a3cc073a4ef9ab3961dde35d5ca3616a36181be3/assets/images/xfgwalletdesktopsplash.gif)
@@ -29,10 +29,10 @@ Features include secure untraceable transactions, encrypted messaging, privacy b
 - **Transaction History** with confirmation status monitoring
 
 ### 💸 Privacy Transactions
-- **Send XFG** with configurable privacy levels
-- **Ring Signatures** (8-15 mixins for anonymity)
+- **Send XFG** with default max privacy levels
+- **Ring Signatures** (8-32 mixins for anonymity)
 - **Receive with QR Codes** and integrated addresses
-- **Payment ID Support** for transaction identification
+- **Open Alias Support** for oa1:xfg transactions 
 - **Fee Estimation** and validation
 
 ### ⛏️ Built-in Mining
@@ -40,18 +40,6 @@ Features include secure untraceable transactions, encrypted messaging, privacy b
 - **Thread Configuration** (1-8 CPU threads)
 - **Real-time Hashrate** monitoring
 - **Mining Performance** tracking
-
-### 🔥 Elderfyre Stayking Ceremony
-- **Elderfier Registration** requires 800 XFG stake
-- **Consensus Participation** (3of3 FastPass/ 8of10 FallBack)
-- **Network Monitoring** of all Elderfier nodes
-- **Fyre_Fee Rewards Tracking** and performance metrics
-
-### 📱 Encrypted Messaging
-- **Blockchain Messaging** with end-to-end encryption
-- **Self-Destruct Messages** with configurable timers
-- **Censorship Resistance** via blockchain storage
-- **Complete Privacy** with no metadata tracking
 
 ## 🚀 Getting Started
 
@@ -134,13 +122,12 @@ lib/
 The app connects to remote Fuego network nodes for full functionality. By default, it connects to community-maintained public nodes, but you can configure custom nodes in the app settings.
 
 #### Default Remote Nodes
-The app includes several pre-configured remote nodes, with `207.244.247.64:18180` as the primary default:
-- `207.244.247.64:18180` (Primary)
+The app includes several pre-configured remote nodes:
+- `207.244.247.64:18180` 
 - `node1.usexfg.org`
 - `node2.usexfg.org`
 - `fuego.seednode1.com`
 - `fuego.seednode2.com`
-- `fuego.communitynode.net`
 
 #### Custom Node Configuration
 You can add custom nodes through the Settings > Node Connection menu, or modify the defaults in:
@@ -168,9 +155,8 @@ static const List<String> defaultRemoteNodes = [
 - **Hardware security module** integration when available
 
 ### Privacy Features
-- **Dynamaxin** for highest possible privacy (per available decoy outputs: min 8 max 18) 
-- **Payment IDs** for transaction identification
-- **Integrated addresses** better UX, easier for network services
+- **Dynamaxin** for highest possible privacy (per available decoy outputs: min 8 max 32) 
+- **Subaddresses** for better transaction privacy
 - **No data tracking** - all operations local
 
 ### Authentication Security
@@ -227,7 +213,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🔗 Links
 
 - **Fuego Website**: [https://usexfg.org](https://usexfg.org)
-- **Main Repository**: [https://github.com/usexfg/fuego-suite](https://github.com/usexfg/fuego-suite) (HEAT branch)
+- **Main Repository**: [https://github.com/usexfg/fuego-suite](https://github.com/usexfg/fuego-suite) 
 - **Discord**: [https://discord.gg/5UJcJJg](https://discord.gg/5UJcJJg)
 - **Twitter**: [https://twitter.com/useXFG](https://twitter.com/useXFG)
 
@@ -248,9 +234,5 @@ This software is provided "as is" without warranty. Cryptocurrency transactions 
 ---
 
 <p align="center">
-  <strong> Built with 🔥 for the Fuego Mob</strong>
-</p>
-
-<p align="center">
-  <em>Privacy • Security • Decentralization</em>
-</p>
+  <strong> Built with 🔥 for The Fuego Mob</strong>
+</p>  
