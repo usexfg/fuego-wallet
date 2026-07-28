@@ -46,12 +46,12 @@ class WalletDaemonService {
   static Future<String> _extractWalletdBinary() async {
     final Directory tempDir = await getTemporaryDirectory();
     final String binaryName = Platform.isWindows
-        ? 'fuego-walletd-windows.exe'
+        ? 'fuego_walletd-windows.exe'
         : Platform.isMacOS
-            ? 'fuego-walletd-macos'
-            : 'fuego-walletd-linux';
+            ? 'fuego_walletd-macos'
+            : 'fuego_walletd-linux';
 
-    final File binaryFile = File(path.join(tempDir.path, 'fuego-walletd'));
+    final File binaryFile = File(path.join(tempDir.path, 'fuego_walletd'));
 
     // Extract from assets if not already extracted
     if (!await binaryFile.exists()) {

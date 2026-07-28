@@ -16,7 +16,7 @@ concurrency:
 jobs:
   analyze:
     name: Analyze
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 15
 
     steps:
@@ -26,7 +26,7 @@ jobs:
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.35.0'
+          flutter-version: '3.44.4'
           channel: 'stable'
 
       - name: Install dependencies
@@ -51,7 +51,7 @@ jobs:
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.35.0'
+          flutter-version: '3.44.4'
           channel: 'stable'
 
       - name: Enable macOS desktop
@@ -74,13 +74,13 @@ jobs:
       - name: Bundle Rust backend into app
         run: |
           APP="build/macos/Build/Products/Release/fuego_wallet.app"
-          cp rust-fuego-wallet/target/release/fuego-wallet "$APP/Contents/MacOS/"
-          chmod +x "$APP/Contents/MacOS/fuego-wallet"
+          cp rust-fuego-wallet/target/release/fuego_walletd "$APP/Contents/MacOS/"
+          chmod +x "$APP/Contents/MacOS/fuego_walletd"
 
       - name: Re-sign
         run: |
           APP="build/macos/Build/Products/Release/fuego_wallet.app"
-          codesign --force --sign - "$APP/Contents/MacOS/fuego-wallet" 2>/dev/null || true
+          codesign --force --sign - "$APP/Contents/MacOS/fuego_walletd" 2>/dev/null || true
           find "$APP/Contents/Frameworks" -mindepth 1 -maxdepth 1 -type d -name "*.framework" -exec codesign --force --sign - {} \;
           find "$APP/Contents/Frameworks" -mindepth 1 -maxdepth 1 -name "*.dylib" -exec codesign --force --sign - {} \;
           codesign --force --sign - "$APP"
@@ -117,7 +117,7 @@ jobs:
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.35.0'
+          flutter-version: '3.44.4'
           channel: 'stable'
 
       - name: Install Linux desktop dependencies
@@ -148,14 +148,18 @@ jobs:
       - name: Bundle Rust backend into app
         run: |
           BUNDLE="build/linux/x64/release/bundle"
-          # main.dart resolves backend as sibling of the Flutter binary
-          cp rust-fuego-wallet/target/release/fuego-wallet "$BUNDLE/fuego-wallet"
-          chmod +x "$BUNDLE/fuego-wallet"
+          cp rust-fuego-wallet/target/release/fuego_walletd "$BUNDLE/fuego_walletd"
+          chmod +x "$BUNDLE/fuego_walletd"
+          cp linux/xfg-wallet.desktop "$BUNDLE/"
+          cp assets/logo/fuegologo.png "$BUNDLE/fuego.png" 2>/dev/null || true
 
       - name: Package app
         run: |
           cd build/linux/x64/release/bundle
-          tar -czf "$GITHUB_WORKSPACE/Fuego-Wallet-Linux-x64.tar.gz" .
+          mkdir -p "$GITHUB_WORKSPACE/Fuego-Wallet"
+          cp -r . "$GITHUB_WORKSPACE/Fuego-Wallet/"
+          cd "$GITHUB_WORKSPACE"
+          tar -czf Fuego-Wallet-Linux-x64.tar.gz Fuego-Wallet/
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4

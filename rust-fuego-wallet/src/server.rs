@@ -122,11 +122,14 @@ fn is_fuegod_method(method: &str) -> bool {
         "get_orderbook_state" | "get_orderbook_info" | "get_orderbook_estimates" |
         "get_fuego_price" | "getswapoffers" | "getswapprice" | "getswaptrades" |
         "submitswap" | "cancelswap" | "requestswap" |
-        "getactiveswaps" | "initiate" | "accept" | "processswap" | "refundswap" |
+        "getactiveswaps" | "getswapstatus" | "verify_payment" | "htlc_create_hash_lock" | "htlc_build_script" |
+        "initiate" | "accept" | "processswap" | "refundswap" |
         // Deposits / treasury
         "getdeposits" | "get_block_range" | "get_maturing_deposits" |
         "rollover_deposit" | "get_fee_pool_info" | "get_epoch_history" |
-        "get_treasury_info" | "get_alias" | "get_alias_by_address" | "get_all_aliases"
+        "get_treasury_info" | "get_alias" | "get_alias_by_address" | "get_all_aliases" |
+        "mint_heat" | "swap" | "add_liq" | "remove_liq" | "place_limit_order" |
+        "create_cd" | "withdraw_cd" | "create_deposit" | "withdraw_deposit"
     )
 }
 
@@ -270,13 +273,16 @@ async fn proxy_to_fuegod(fuegod_url: &str, body: &serde_json::Value) -> Result<s
         "cd::market_list" | "cd::sell" | "cd::buy" | "cd::cancel_listing" | "cd::apy" |
         "getswapoffers" | "getswapprice" | "getswaptrades" |
         "submitswap" | "cancelswap" | "requestswap" |
-        "getactiveswaps" | "initiate" | "accept" | "processswap" | "refundswap" |
+        "getactiveswaps" | "getswapstatus" | "verify_payment" | "htlc_create_hash_lock" | "htlc_build_script" |
+        "initiate" | "accept" | "processswap" | "refundswap" |
         "getdeposits" | "get_block_range" | "get_maturing_deposits" |
         "rollover_deposit" | "get_fee_pool_info" | "get_epoch_history" |
         "get_treasury_info" | "get_alias" | "get_alias_by_address" | "get_all_aliases" |
         "heat_metrics" | "amm_quote" | "amm_pool_info" |
         "get_orderbook_state" | "get_orderbook_info" | "get_orderbook_estimates" |
-        "get_fuego_price" => {
+        "get_fuego_price" |
+        "mint_heat" | "swap" | "add_liq" | "remove_liq" | "place_limit_order" |
+        "create_cd" | "withdraw_cd" | "create_deposit" | "withdraw_deposit" => {
             client.post(format!("{}/{}", fuegod_url, method))
                 .json(&params).send().await
                 .map_err(|e| sanitize_error(&format!("fuego daemon: {}", e)))?
@@ -293,13 +299,36 @@ async fn proxy_to_fuegod(fuegod_url: &str, body: &serde_json::Value) -> Result<s
     Ok(val)
 }
 
+fn is_authorized_host(headers: &axum::http::HeaderMap) -> bool {
+    if let Some(host_val) = headers.get(axum::http::header::HOST) {
+        if let Ok(host_str) = host_val.to_str() {
+            let host_clean = host_str.split(':').next().unwrap_or("").to_lowercase();
+            if host_clean == "localhost" || host_clean == "127.0.0.1" || host_clean == "[::1]" || host_clean.is_empty() {
+                return true;
+            }
+        }
+        false
+    } else {
+        true
+    }
+}
+
 async fn json_rpc_handler(
     State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
     Json(body): Json<serde_json::Value>,
 ) -> impl IntoResponse {
     let id = body.get("id").and_then(|v| v.as_u64()).unwrap_or(0);
     let method = body.get("method").and_then(|v| v.as_str()).unwrap_or("");
     let params = body.get("params").cloned().unwrap_or(serde_json::Value::Null);
+
+    if !is_authorized_host(&headers) {
+        let error = JsonRpcError {
+            jsonrpc: "2.0".into(), id,
+            error: RpcErrorDetail { code: -32500, message: "forbidden host".into() },
+        };
+        return (StatusCode::FORBIDDEN, Json(serde_json::to_value(error).unwrap())).into_response();
+    }
 
     let result: Result<serde_json::Value, String> = if needs_walletd(method) {
         match &state.walletd_url {
@@ -331,6 +360,71 @@ async fn json_rpc_handler(
             };
             (StatusCode::OK, Json(serde_json::to_value(error).unwrap())).into_response()
         }
+    }
+}
+
+// ── REST proxy: forward requests to fuegod ──
+
+async fn fuegod_get(
+    State(state): State<Arc<AppState>>,
+    req: axum::http::Request<axum::body::Body>,
+) -> impl IntoResponse {
+    if !is_authorized_host(req.headers()) {
+        return (StatusCode::FORBIDDEN, Json(serde_json::json!({"error": "forbidden host"}))).into_response();
+    }
+    let fuegod_path = req.uri().path();
+    let fuegod_query = req.uri().query().unwrap_or("");
+    let client = reqwest::Client::new();
+    let url = if fuegod_query.is_empty() {
+        format!("{}{}", state.fuegod_url, fuegod_path)
+    } else {
+        format!("{}{}?{}", state.fuegod_url, fuegod_path, fuegod_query)
+    };
+
+    match client.get(&url).send().await {
+        Ok(r) => {
+            let status = StatusCode::from_u16(r.status().as_u16()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+            match r.text().await {
+                Ok(text) => {
+                    let val: serde_json::Value = serde_json::from_str(&text)
+                        .unwrap_or_else(|_| serde_json::json!({"raw": text}));
+                    (status, Json(val)).into_response()
+                }
+                Err(_) => (StatusCode::BAD_GATEWAY, Json(serde_json::json!({"error": "failed to read response"}))).into_response()
+            }
+        }
+        Err(e) => (StatusCode::BAD_GATEWAY, Json(serde_json::json!({"error": sanitize_error(&e.to_string())}))).into_response()
+    }
+}
+
+async fn fuegod_post(
+    State(state): State<Arc<AppState>>,
+    req: axum::http::Request<axum::body::Body>,
+) -> impl IntoResponse {
+    if !is_authorized_host(req.headers()) {
+        return (StatusCode::FORBIDDEN, Json(serde_json::json!({"error": "forbidden host"}))).into_response();
+    }
+    let fuegod_path = req.uri().path().to_string();
+    let (parts, body) = req.into_parts();
+    let _ = parts;
+    let body_bytes = axum::body::to_bytes(body, usize::MAX).await.unwrap_or_default();
+    let body: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap_or(serde_json::json!({}));
+    let client = reqwest::Client::new();
+    let url = format!("{}{}", state.fuegod_url, fuegod_path);
+
+    match client.post(&url).json(&body).send().await {
+        Ok(r) => {
+            let status = StatusCode::from_u16(r.status().as_u16()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+            match r.text().await {
+                Ok(text) => {
+                    let val: serde_json::Value = serde_json::from_str(&text)
+                        .unwrap_or_else(|_| serde_json::json!({"raw": text}));
+                    (status, Json(val)).into_response()
+                }
+                Err(_) => (StatusCode::BAD_GATEWAY, Json(serde_json::json!({"error": "failed to read response"}))).into_response()
+            }
+        }
+        Err(e) => (StatusCode::BAD_GATEWAY, Json(serde_json::json!({"error": sanitize_error(&e.to_string())}))).into_response()
     }
 }
 
@@ -516,6 +610,33 @@ pub async fn run_server(
         .route("/json_rpc", post(json_rpc_handler))
         .route("/health", get(health_check))
         .route("/scan_balance", post(scan_balance_handler))
+        // HEARTH AMM REST proxy
+        .route("/amm_pool_info", get(fuegod_get))
+        .route("/amm_quote", get(fuegod_get))
+        .route("/heat_metrics", get(fuegod_get))
+        .route("/get_fuego_price", get(fuegod_get))
+        // Orderbook REST proxy
+        .route("/get_orderbook_state", get(fuegod_get))
+        .route("/get_orderbook_info", get(fuegod_get))
+        .route("/get_orderbook_estimates", get(fuegod_get))
+        // DEX/swap REST proxy (GET)
+        .route("/getswapoffers", get(fuegod_get))
+        .route("/getswapprice", get(fuegod_get))
+        .route("/getswaptrades", get(fuegod_get))
+        // DEX/swap REST proxy (POST)
+        .route("/submitswap", post(fuegod_post))
+        .route("/cancelswap", post(fuegod_post))
+        .route("/requestswap", post(fuegod_post))
+        .route("/getactiveswaps", post(fuegod_post))
+        .route("/getswapstatus", post(fuegod_post))
+        .route("/verify_payment", post(fuegod_post))
+        .route("/htlc_create_hash_lock", post(fuegod_post))
+        .route("/htlc_build_script", post(fuegod_post))
+        // Extra robustness GET endpoints
+        .route("/getactiveswaps", get(fuegod_get))
+        .route("/getswapstatus", get(fuegod_get))
+        .route("/getinfo", get(fuegod_get))
+        .route("/getinfo", post(fuegod_post))
         .layer(cors)
         .with_state(state);
 

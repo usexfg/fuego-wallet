@@ -373,7 +373,7 @@ class _PinEntryScreenState extends State<PinEntryScreen>
                         PinInputWidget(
                           onComplete: _onPinComplete,
                           errorMessage: _errorMessage,
-                          showForgotPin: _failedAttempts >= 3,
+                          showForgotPin: true,
                           onForgotPin: _onForgotPin,
                           canUseBiometric: _canUseBiometric,
                           onBiometric: _authenticateWithBiometric,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
 import '../providers/wallet_provider.dart';
@@ -23,13 +24,29 @@ class _SplashScreenState extends State<SplashScreen>
   late Animation<Offset> _slideAnimation;
 
   bool _isInitializing = true;
-  String _initMessage = 'Initializing Fuego✺Wallet...';
+  String _initMessage = 'Initializing Fuego Wallet...';
+  String _versionString = '';
 
   @override
   void initState() {
     super.initState();
     _setupAnimations();
+    _loadVersion();
     _initializeApp();
+  }
+
+  Future<void> _loadVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      setState(() {
+        _versionString =
+            'Fuego Wallet v${info.version} • Fuego Suite 𝞶𝟏.𝟏𝟏.𝟎𝟏 ≋ΗΞΔΤ𝖜𝖆𝙫𝖊≋';
+      });
+    } catch (_) {
+      setState(() {
+        _versionString = 'Fuego Wallet v5.11.0 • Fuego Suite 𝞶𝟏.𝟏𝟏.𝟎𝟏 ≋ΗΞΔΤ𝖜𝖆𝙫𝖊≋';
+      });
+    }
   }
 
   void _setupAnimations() {
@@ -68,7 +85,8 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _initializeApp() async {
     try {
-      await Future.delayed(const Duration(milliseconds: 1200));
+      // Splash visible for at least 3 seconds
+      await Future.delayed(const Duration(seconds: 3));
       if (!mounted) return;
 
       setState(() {
@@ -84,11 +102,10 @@ class _SplashScreenState extends State<SplashScreen>
         hasWallet = await walletProvider.hasWalletData();
         hasPIN = await securityService.hasPIN();
       } catch (e) {
-        // Fail closed: require PIN/setup rather than opening Main unlocked
         debugPrint('Secure storage check failed — requiring setup/unlock');
       }
 
-      await Future.delayed(const Duration(milliseconds: 600));
+      await Future.delayed(const Duration(milliseconds: 800));
       if (!mounted) return;
 
       // Never open Main with secrets unlocked. Require PIN when wallet exists;
@@ -182,7 +199,7 @@ class _SplashScreenState extends State<SplashScreen>
                           AnimatedTextKit(
                             animatedTexts: [
                               TypewriterAnimatedText(
-                                'Fuego✺Wallet',
+                                'Fuego Wallet',
                                 textStyle: const TextStyle(
                                   fontSize: 28,
                                   fontWeight: FontWeight.bold,
@@ -278,6 +295,19 @@ class _SplashScreenState extends State<SplashScreen>
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
+                    if (_versionString.isNotEmpty) ...[
+                      Text(
+                        _versionString,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppTheme.primaryColor.withOpacity(0.7),
+                          fontWeight: FontWeight.w400,
+                          letterSpacing: 0.5,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                     Text(
                       'Based on CryptoNote Protocol',
                       style: TextStyle(

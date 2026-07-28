@@ -114,6 +114,7 @@ class WalletCubit extends Cubit<WalletState> {
   final Future<void>? _backendReady;
   final SecurityService _security;
   final SubaddressStore _subaddressStore = SubaddressStore();
+  Timer? _pollTimer;
 
   WalletCubit(
     this._daemon, {
@@ -133,13 +134,43 @@ class WalletCubit extends Cubit<WalletState> {
     if (_backendReady != null) {
       await _backendReady;
     }
-    // Do not auto-refresh with secrets until unlocked
     if (_vault?.isUnlocked == true) {
       emit(state.copyWith(isUnlocked: true, address: _vault!.address));
       await refreshWallet();
     } else {
       emit(state.copyWith(isUnlocked: false));
     }
+    _startPolling();
+  }
+
+  void _startPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (isClosed) return;
+      _pollStatus();
+    });
+  }
+
+  Future<void> _pollStatus() async {
+    if (isClosed || !(_vault?.isUnlocked ?? false)) return;
+    try {
+      final info = await _daemon.getInfo();
+      final peers = await _daemon.getPeerCount();
+      final walletHeight = await _daemon.getWalletHeight();
+      final blockchainHeight = info.height;
+      final progress = blockchainHeight > 0
+          ? (walletHeight / blockchainHeight).clamp(0.0, 1.0)
+          : 0.0;
+      emit(state.copyWith(
+        blockHeight: blockchainHeight,
+        peerCount: peers,
+        scannedHeight: walletHeight,
+        syncProgress: progress,
+        isSynced: progress >= 1.0,
+        isSyncing: progress < 1.0,
+        isConnected: true,
+      ));
+    } catch (_) {}
   }
 
   Future<void> onUnlocked() async {
@@ -243,19 +274,29 @@ class WalletCubit extends Cubit<WalletState> {
           txs = await _daemon.getTransactions(count: 50);
         } catch (_) {}
 
+        int walletHeight = 0;
+        try {
+          walletHeight = await _daemon.getWalletHeight();
+        } catch (_) {}
+
+        final blockchainHeight = info?.height ?? 0;
+        final progress = blockchainHeight > 0
+            ? (walletHeight / blockchainHeight).clamp(0.0, 1.0)
+            : 0.0;
+
         emit(state.copyWith(
           isLoading: false,
-          isSyncing: false,
+          isSyncing: progress < 1.0,
           isConnected: true,
           isUnlocked: _vault?.isUnlocked ?? true,
-          blockHeight: info?.height ?? 0,
+          blockHeight: blockchainHeight,
           address: addr.isNotEmpty ? addr : state.address,
           balance: bal,
           unlockedBalance: unlocked,
           peerCount: peers,
           transactions: txs,
-          syncProgress: 1.0,
-          isSynced: true,
+          syncProgress: progress,
+          isSynced: progress >= 1.0,
           scannedHeight: scannedH,
           clearError: true,
         ));
@@ -362,4 +403,10 @@ class WalletCubit extends Cubit<WalletState> {
   }
 
   void clearError() => emit(state.copyWith(clearError: true));
+
+  @override
+  Future<void> close() {
+    _pollTimer?.cancel();
+    return super.close();
+  }
 }

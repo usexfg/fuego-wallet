@@ -1,12 +1,35 @@
 use std::io::Read;
 use std::path::PathBuf;
 
-const RELEASE_ASSET: &str = "fuego-cli-macOS-apple";
+fn release_asset_name() -> &'static str {
+    #[cfg(target_os = "macos")]
+    {
+        if cfg!(target_arch = "aarch64") {
+            "fuego-cli-macOS-apple"
+        } else {
+            "fuego-cli-macOS-intel"
+        }
+    }
+    #[cfg(target_os = "linux")]
+    {
+        "fuego-cli-Linux"
+    }
+    #[cfg(target_os = "windows")]
+    {
+        "fuego-cli-Windows"
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+    {
+        "fuego-cli-macOS-apple"
+    }
+}
 
 pub async fn ensure_binaries() -> Result<(PathBuf, PathBuf), String> {
     let base = default_path();
-    let fuegod_path = base.join("fuegod");
-    let walletd_path = base.join("walletd");
+    let fuegod_name = if cfg!(target_os = "windows") { "fuegod.exe" } else { "fuegod" };
+    let walletd_name = if cfg!(target_os = "windows") { "walletd.exe" } else { "walletd" };
+    let fuegod_path = base.join(fuegod_name);
+    let walletd_path = base.join(walletd_name);
 
     if fuegod_path.exists() && walletd_path.exists() {
         return Ok((fuegod_path, walletd_path));
@@ -15,7 +38,7 @@ pub async fn ensure_binaries() -> Result<(PathBuf, PathBuf), String> {
     log::info!("Binaries not found — downloading fuego-suite release...");
 
     let tag = get_latest_tag().await?;
-    let asset_name = format!("{}-v{}.zip", RELEASE_ASSET, tag);
+    let asset_name = format!("{}-v{}.zip", release_asset_name(), tag);
     let url = format!(
         "https://github.com/usexfg/fuego-suite/releases/download/{}/{}",
         tag, asset_name
@@ -38,8 +61,14 @@ pub async fn ensure_binaries() -> Result<(PathBuf, PathBuf), String> {
         let base_name = std::path::Path::new(&name)
             .file_name().and_then(|n| n.to_str()).unwrap_or("");
 
-        if base_name == "fuegod" || base_name == "walletd" {
-            let dest = base.join(base_name);
+        let canonical = base_name.trim_end_matches(".exe");
+        if canonical == "fuegod" || canonical == "walletd" {
+            let target_name = if cfg!(target_os = "windows") {
+                format!("{}.exe", canonical)
+            } else {
+                canonical.to_string()
+            };
+            let dest = base.join(&target_name);
             let mut data = Vec::new();
             file.read_to_end(&mut data).map_err(|e| format!("read zip: {}", e))?;
             std::fs::write(&dest, &data).map_err(|e| format!("write: {}", e))?;

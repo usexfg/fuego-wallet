@@ -30,8 +30,12 @@ class FuegoChart extends StatelessWidget {
             ))
         .toList();
     return LayoutBuilder(builder: (context, constraints) {
+      final height = constraints.maxHeight;
+      final width = constraints.maxWidth;
+      if (height <= 0 || width <= 0) return const SizedBox.shrink();
       return Container(
-        height: constraints.maxHeight,
+        height: height,
+        width: width,
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(0),
@@ -46,7 +50,7 @@ class FuegoChart extends StatelessWidget {
               pulseColor: lineColor,
               enableGestures: true,
               showCrosshair: true,
-              defaultVisibleCount: candles.length,
+              defaultVisibleCount: 80,
             ),
             if (pair.isNotEmpty)
               Positioned(

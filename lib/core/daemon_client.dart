@@ -16,7 +16,7 @@ class FuegoDaemonClient {
   FuegoDaemonClient({
     this.host = '127.0.0.1',
     this.port = defaultRpcPort,
-    this.walletPort = 8070,
+    this.walletPort = 180198,
     http.Client? client,
   }) : _http = client ?? http.Client();
 
@@ -104,6 +104,17 @@ class FuegoDaemonClient {
     final outgoing = result['outgoing_connections_count'] as int? ?? 0;
     final incoming = result['incoming_connections_count'] as int? ?? 0;
     return outgoing + incoming;
+  }
+
+  Future<int> getWalletHeight() async {
+    final r = await _post('/json_rpc', {
+      'jsonrpc': '2.0',
+      'id': 'fuego_core',
+      'method': 'get_height',
+      'params': {},
+    }, useWallet: true);
+    final result = r['result'] as Map<String, dynamic>? ?? r;
+    return (result['height'] as int?) ?? 0;
   }
 
   // ── Wallet operations (local walletd / backend only) ──
@@ -219,7 +230,7 @@ class FuegoDaemonClient {
           'threads_count': threads,
           if (address != null) 'miner_address': address,
         },
-      }, useWallet: true);
+      });
     } catch (_) {}
   }
 
@@ -230,7 +241,7 @@ class FuegoDaemonClient {
         'id': 'fuego_core',
         'method': 'stop_mining',
         'params': {},
-      }, useWallet: true);
+      });
     } catch (_) {}
   }
 

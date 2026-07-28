@@ -18,9 +18,14 @@ impl DaemonProcess {
         if testnet { args.push("--testnet"); }
 
         log::info!("Starting fuegod: {}", fuegod.display());
-        let child = Command::new(&fuegod).args(&args)
-            .stdout(Stdio::piped()).stderr(Stdio::piped())
-            .spawn().map_err(|e| format!("spawn: {}", e))?;
+        let mut cmd = Command::new(&fuegod);
+        cmd.args(&args)
+            .stdout(Stdio::piped()).stderr(Stdio::piped());
+
+        #[cfg(windows)]
+        { cmd.creation_flags(0x08000000); } // CREATE_NO_WINDOW
+
+        let child = cmd.spawn().map_err(|e| format!("spawn: {}", e))?;
 
         self.child = Some(child);
         Self::wait_ready(self.rpc_url(), 60).await?;
