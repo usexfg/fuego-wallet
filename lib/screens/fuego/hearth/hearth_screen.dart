@@ -47,11 +47,11 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
   void _updateUsd() {
     final text = _amountController.text.trim();
     final val = double.tryParse(text);
-    final heatPegUsd = context.read<HearthCubit>().state.fuegoPrice?.heatPegUsd;
-    if (val == null || val == 0 || heatPegUsd == null) {
+    if (val == null || val == 0) {
       if (_amountUsd.isNotEmpty) setState(() => _amountUsd = '');
       return;
     }
+    const heatPegUsd = 1.58;
     if (_sellXfg) {
       final spot = double.tryParse(
           context.read<HearthCubit>().state.pool?.spotPrice ?? '') ?? 0;
@@ -62,8 +62,19 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
   }
 
   Future<void> _loadPriceData() async {
-    final candles = await PriceHistoryService().loadAll();
-    if (mounted) setState(() => _candles = candles);
+    final rawCandles = await PriceHistoryService().loadAll();
+    const heatPegUsd = 1.58;
+    final convertedCandles = rawCandles.map((c) {
+      return Candlestick(
+        time: c.time,
+        open: c.open / heatPegUsd,
+        high: c.high / heatPegUsd,
+        low: c.low / heatPegUsd,
+        close: c.close / heatPegUsd,
+        volume: c.volume,
+      );
+    }).toList();
+    if (mounted) setState(() => _candles = convertedCandles);
   }
 
   @override
@@ -128,8 +139,7 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
   Widget _buildHeader(HearthState state) {
     const heatPegUsd = 1.58;
     const xfgHeatRatio = 0.1;
-    final apiHeatUsd = state.fuegoPrice?.heatPegUsd;
-    final heatUsd = (apiHeatUsd != null && apiHeatUsd > 0) ? apiHeatUsd : heatPegUsd;
+    final heatUsd = heatPegUsd;
     final spot = state.pool?.spotPrice;
     final spotNum = (spot != null && double.tryParse(spot) != null && double.parse(spot) > 0)
         ? double.parse(spot)
@@ -241,7 +251,7 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
         ? double.parse(spot)
         : xfgHeatRatio;
 
-    final heatPegUsd = state.fuegoPrice?.heatPegUsd ?? 1.58;
+    const heatPegUsd = 1.58;
 
     final mintRate = (spotNum > 0) ? 1 / spotNum : 10.0;
     final leftLabel = mintRate >= 1
