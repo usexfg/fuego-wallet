@@ -77,6 +77,10 @@ dependencies:
   device_preview: ^1.3.1
   webview_flutter: ^4.14.1
 
+  # ── Web3 / Cross-chain ──
+  web3dart: ^2.7.3
+  solana: ^0.32.0+1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
