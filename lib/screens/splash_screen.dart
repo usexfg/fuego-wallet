@@ -101,6 +101,9 @@ class _SplashScreenState extends State<SplashScreen>
       try {
         hasWallet = await walletProvider.hasWalletData();
         hasPIN = await securityService.hasPIN();
+        // Clear stale lockout from previous session/install —
+        // lockouts are session-level protection, not permanent.
+        await securityService.clearStaleLockout();
       } catch (e) {
         debugPrint('Secure storage check failed — requiring setup/unlock');
       }

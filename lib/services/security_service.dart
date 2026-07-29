@@ -163,6 +163,13 @@ class SecurityService {
     }
   }
 
+  /// Clear stale lockout state from a previous session/install.
+  /// Lockouts are session-level protection, not permanent.
+  Future<void> clearStaleLockout() async {
+    await _delete(_lockUntilKey);
+    await _delete(_failedAttemptsKey);
+  }
+
   // ── Biometrics ───────────────────────────────────────────────────────
 
   Future<bool> isBiometricAvailable() async {
