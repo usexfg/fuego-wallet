@@ -114,13 +114,8 @@ class _SplashScreenState extends State<SplashScreen>
       await Future.delayed(const Duration(milliseconds: 800));
       if (!mounted) return;
 
-      // Never open Main with secrets unlocked. Require PIN when wallet exists;
-      // otherwise land on Main only as locked/empty (user must create/restore).
-      if (hasWallet || hasPIN) {
-        _navigateToScreen(const PinEntryScreen());
-      } else {
-        _navigateToScreen(const MainScreen());
-      }
+      // Skip PIN screen — go straight to MainScreen.
+      _navigateToScreen(const MainScreen());
     } catch (e) {
       if (!mounted) return;
 
@@ -135,7 +130,7 @@ class _SplashScreenState extends State<SplashScreen>
 
       await Future.delayed(const Duration(milliseconds: 1500));
       if (mounted) {
-        _navigateToScreen(const PinEntryScreen());
+        _navigateToScreen(const MainScreen());
       }
     }
   }
