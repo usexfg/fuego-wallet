@@ -96,14 +96,17 @@ class _SplashScreenState extends State<SplashScreen>
       final securityService = SecurityService();
       final walletProvider = Provider.of<WalletProvider>(context, listen: false);
 
+      // Always clear stale lockout FIRST — before any PIN/wallet checks.
+      // This runs unconditionally so a stale lockout never blocks navigation.
+      try {
+        await securityService.clearStaleLockout();
+      } catch (_) {}
+
       bool hasWallet = false;
       bool hasPIN = false;
       try {
         hasWallet = await walletProvider.hasWalletData();
         hasPIN = await securityService.hasPIN();
-        // Clear stale lockout from previous session/install —
-        // lockouts are session-level protection, not permanent.
-        await securityService.clearStaleLockout();
       } catch (e) {
         debugPrint('Secure storage check failed — requiring setup/unlock');
       }
@@ -120,6 +123,11 @@ class _SplashScreenState extends State<SplashScreen>
       }
     } catch (e) {
       if (!mounted) return;
+
+      // Clear lockout even in error path
+      try {
+        await SecurityService().clearStaleLockout();
+      } catch (_) {}
 
       setState(() {
         _initMessage = 'Unable to initialize securely. Please unlock or set up.';
