@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:http/http.dart' as http;
 import '../../models/swap_models.dart';
+import '../../services/swap_daemon_client.dart';
+import '../../services/web3_multi_chain_service.dart';
 
 export '../../models/swap_models.dart' show SwapPairSdk, ChainTypeSdk;
 
@@ -23,6 +25,18 @@ class DexState {
   final String? lastResult;
   final bool isConnected;
 
+  // SPV swap state (xfg-swapd)
+  final bool isSwapDaemonConnected;
+  final List<SwapInfo> spvSwaps;
+  final bool isSwapInitiating;
+
+  // Web3 / EVM / Solana state
+  final double evmBalance;
+  final double solBalance;
+  final bool isBalanceLoading;
+  final String? htlcTxHash;
+  final String selectedSpvChain;
+
   const DexState({
     this.isLoading = false,
     this.error,
@@ -36,6 +50,14 @@ class DexState {
     this.lastProof,
     this.lastResult,
     this.isConnected = false,
+    this.isSwapDaemonConnected = false,
+    this.spvSwaps = const [],
+    this.isSwapInitiating = false,
+    this.evmBalance = 0.0,
+    this.solBalance = 0.0,
+    this.isBalanceLoading = false,
+    this.htlcTxHash,
+    this.selectedSpvChain = 'BTC',
   });
 
   DexState copyWith({
@@ -51,6 +73,14 @@ class DexState {
     PaymentProofSdk? lastProof,
     String? lastResult,
     bool? isConnected,
+    bool? isSwapDaemonConnected,
+    List<SwapInfo>? spvSwaps,
+    bool? isSwapInitiating,
+    double? evmBalance,
+    double? solBalance,
+    bool? isBalanceLoading,
+    String? htlcTxHash,
+    String? selectedSpvChain,
   }) =>
       DexState(
         isLoading: isLoading ?? this.isLoading,
@@ -65,22 +95,73 @@ class DexState {
         lastProof: lastProof ?? this.lastProof,
         lastResult: lastResult,
         isConnected: isConnected ?? this.isConnected,
+        isSwapDaemonConnected: isSwapDaemonConnected ?? this.isSwapDaemonConnected,
+        spvSwaps: spvSwaps ?? this.spvSwaps,
+        isSwapInitiating: isSwapInitiating ?? this.isSwapInitiating,
+        evmBalance: evmBalance ?? this.evmBalance,
+        solBalance: solBalance ?? this.solBalance,
+        isBalanceLoading: isBalanceLoading ?? this.isBalanceLoading,
+        htlcTxHash: htlcTxHash ?? this.htlcTxHash,
+        selectedSpvChain: selectedSpvChain ?? this.selectedSpvChain,
       );
 }
 
 class DexCubit extends Cubit<DexState> {
   final http.Client _http;
   String _baseUrl = '';
+  SwapDaemonClient? _swapClient;
+  Web3MultiChainService? _web3;
+  String? _userAddress;
 
   DexCubit() : _http = http.Client(), super(const DexState());
 
-  void configure(String host, {int port = 180198}) {
+  void configure(String host, {int port = 18098}) {
     _baseUrl = 'http://$host:$port';
   }
 
-  Future<void> init({String host = '127.0.0.1', int port = 180198}) async {
+  void configureSwapDaemon({String host = '127.0.0.1', int port = 18902}) {
+    _swapClient = SwapDaemonClient(host: host, port: port);
+  }
+
+  /// Initialize Web3 service for EVM/Solana chains.
+  void configureWeb3({
+    String ethRpcUrl = '',
+    String solRpcUrl = '',
+    String? userAddress,
+  }) {
+    _web3 = Web3MultiChainService(
+      ethRpcUrl: ethRpcUrl,
+      solRpcUrl: solRpcUrl,
+    );
+    if (userAddress != null) _userAddress = userAddress;
+  }
+
+  /// Reconfigure Web3 for a specific EVM chain (changes RPC endpoint).
+  void switchEvmChain(String chain) {
+    if (_web3 == null) return;
+    switch (chain.toLowerCase()) {
+      case 'arb':
+        _web3!.setEthRpc(Web3MultiChainService.defaultArbRpc);
+        break;
+      case 'base':
+        _web3!.setEthRpc(Web3MultiChainService.defaultBaseRpc);
+        break;
+      case 'bsc':
+        _web3!.setEthRpc(Web3MultiChainService.defaultBscRpc);
+        break;
+      case 'eth':
+      default:
+        _web3!.setEthRpc(Web3MultiChainService.defaultEthRpc);
+        break;
+    }
+  }
+
+  Future<void> init({String host = '127.0.0.1', int port = 18098}) async {
     configure(host, port: port);
+    configureSwapDaemon();
+    configureWeb3();
     await _checkConnection();
+    await _checkSwapDaemon();
   }
 
   Future<void> _checkConnection() async {
@@ -377,11 +458,252 @@ class DexCubit extends Cubit<DexState> {
     await loadTrades();
     await loadOrderbook();
     await loadActiveSwaps();
+    if (_swapClient != null) {
+      await loadSpvSwaps();
+    }
+  }
+
+  // ── SPV Swap Daemon (xfg-swapd) ──────────────────────────────────
+
+  Future<void> _checkSwapDaemon() async {
+    if (_swapClient == null) return;
+    try {
+      final available = await _swapClient!.isAvailable();
+      emit(state.copyWith(isSwapDaemonConnected: available));
+      if (available) {
+        await loadSpvSwaps();
+      }
+    } catch (e) {
+      emit(state.copyWith(isSwapDaemonConnected: false));
+    }
+  }
+
+  Future<void> loadSpvSwaps() async {
+    if (_swapClient == null) return;
+    try {
+      final swaps = await _swapClient!.listSwaps();
+      emit(state.copyWith(spvSwaps: swaps, error: null));
+    } catch (e) {
+      debugPrint('DexCubit: loadSpvSwaps failed: $e');
+    }
+  }
+
+  Future<void> initiateSpvSwap({
+    required String pair,
+    required int xfgAmount,
+    required int ctrAmount,
+    required String peer,
+  }) async {
+    if (_swapClient == null) {
+      emit(state.copyWith(error: 'Swap daemon not connected'));
+      return;
+    }
+    emit(state.copyWith(isSwapInitiating: true, error: null, lastResult: null));
+    try {
+      final swapId = await _swapClient!.initiateSwap(
+        pair: pair,
+        xfgAmount: xfgAmount,
+        ctrAmount: ctrAmount,
+        peer: peer,
+      );
+      emit(state.copyWith(
+        isSwapInitiating: false,
+        lastResult: 'Swap initiated: $swapId',
+      ));
+      await loadSpvSwaps();
+    } catch (e) {
+      emit(state.copyWith(
+        isSwapInitiating: false,
+        error: 'Failed to initiate swap: $e',
+      ));
+    }
+  }
+
+  Future<void> refundSpvSwap(String swapId) async {
+    if (_swapClient == null) return;
+    emit(state.copyWith(isLoading: true, error: null));
+    try {
+      await _swapClient!.refund(swapId);
+      emit(state.copyWith(isLoading: false, lastResult: 'Refunded: $swapId'));
+      await loadSpvSwaps();
+    } catch (e) {
+      emit(state.copyWith(isLoading: false, error: 'Refund failed: $e'));
+    }
+  }
+
+  Future<void> checkSpvTimeouts() async {
+    if (_swapClient == null) return;
+    try {
+      final result = await _swapClient!.checkTimeouts();
+      if (result.refunded.isNotEmpty) {
+        emit(state.copyWith(
+          lastResult: 'Refunded ${result.refunded.length} timed-out swap(s)',
+        ));
+      }
+      await loadSpvSwaps();
+    } catch (e) {
+      debugPrint('DexCubit: checkSpvTimeouts failed: $e');
+    }
+  }
+
+  // ── Web3 / EVM / Solana Operations ──────────────────────────────
+
+  /// Load balance for the current chain.
+  Future<void> loadBalance({String? address}) async {
+    final addr = address ?? _userAddress;
+    if (addr == null || addr.isEmpty || _web3 == null) return;
+
+    emit(state.copyWith(isBalanceLoading: true));
+    try {
+      final chain = state.selectedSpvChain.toLowerCase();
+      final bal = await _web3!.getBalance(addr, chain);
+      if (chain == 'sol') {
+        emit(state.copyWith(solBalance: bal, isBalanceLoading: false));
+      } else {
+        emit(state.copyWith(evmBalance: bal, isBalanceLoading: false));
+      }
+    } catch (e) {
+      emit(state.copyWith(isBalanceLoading: false, error: 'Balance fetch failed: $e'));
+    }
+  }
+
+  /// Lock funds in an EVM HTLC (user initiates one side of the swap).
+  Future<void> evmLockHtlc({
+    required String privateKey,
+    required String htlcAddress,
+    required String hashlock,
+    required int timelock,
+    required double amount,
+    String chain = 'eth',
+  }) async {
+    if (_web3 == null) {
+      emit(state.copyWith(error: 'Web3 not configured'));
+      return;
+    }
+    emit(state.copyWith(isLoading: true, error: null, lastResult: null));
+    try {
+      switchEvmChain(chain);
+      final txHash = await _web3!.lockHtlc(
+        privateKey: privateKey,
+        htlcAddress: htlcAddress,
+        hashlock: hashlock,
+        timelock: timelock,
+        amount: amount,
+        chain: chain,
+      );
+      emit(state.copyWith(
+        isLoading: false,
+        htlcTxHash: txHash,
+        lastResult: 'HTLC locked: $txHash',
+      ));
+    } catch (e) {
+      emit(state.copyWith(isLoading: false, error: 'HTLC lock failed: $e'));
+    }
+  }
+
+  /// Claim funds from an EVM HTLC (reveal preimage).
+  Future<void> evmClaimHtlc({
+    required String privateKey,
+    required String htlcAddress,
+    required String preimage,
+    String chain = 'eth',
+  }) async {
+    if (_web3 == null) return;
+    emit(state.copyWith(isLoading: true, error: null));
+    try {
+      switchEvmChain(chain);
+      final txHash = await _web3!.claimHtlc(
+        privateKey: privateKey,
+        htlcAddress: htlcAddress,
+        preimage: preimage,
+        chain: chain,
+      );
+      emit(state.copyWith(
+        isLoading: false,
+        lastResult: 'Claimed: $txHash',
+      ));
+    } catch (e) {
+      emit(state.copyWith(isLoading: false, error: 'Claim failed: $e'));
+    }
+  }
+
+  /// Refund an EVM HTLC (timelock expired).
+  Future<void> evmRefundHtlc({
+    required String privateKey,
+    required String htlcAddress,
+    String chain = 'eth',
+  }) async {
+    if (_web3 == null) return;
+    emit(state.copyWith(isLoading: true, error: null));
+    try {
+      switchEvmChain(chain);
+      final txHash = await _web3!.refundHtlc(
+        privateKey: privateKey,
+        htlcAddress: htlcAddress,
+        chain: chain,
+      );
+      emit(state.copyWith(
+        isLoading: false,
+        lastResult: 'Refunded: $txHash',
+      ));
+    } catch (e) {
+      emit(state.copyWith(isLoading: false, error: 'Refund failed: $e'));
+    }
+  }
+
+  /// Send SOL (for funding HTLC or transfer).
+  Future<void> sendSol({
+    required String privateKeyBase58,
+    required String toAddress,
+    required double amountSol,
+  }) async {
+    if (_web3 == null) {
+      emit(state.copyWith(error: 'Web3 not configured'));
+      return;
+    }
+    emit(state.copyWith(isLoading: true, error: null));
+    try {
+      final txHash = await _web3!.sendSol(privateKeyBase58, toAddress, amountSol);
+      emit(state.copyWith(
+        isLoading: false,
+        lastResult: 'SOL sent: $txHash',
+      ));
+      await loadBalance();
+    } catch (e) {
+      emit(state.copyWith(isLoading: false, error: 'SOL send failed: $e'));
+    }
+  }
+
+  /// Send native EVM token (ETH/ARB/BASE/BSC).
+  Future<void> sendEvm({
+    required String privateKey,
+    required String toAddress,
+    required double amount,
+    String chain = 'eth',
+  }) async {
+    if (_web3 == null) {
+      emit(state.copyWith(error: 'Web3 not configured'));
+      return;
+    }
+    emit(state.copyWith(isLoading: true, error: null));
+    try {
+      switchEvmChain(chain);
+      final txHash = await _web3!.sendEth(privateKey, toAddress, amount, chain: chain);
+      emit(state.copyWith(
+        isLoading: false,
+        lastResult: '$chain sent: $txHash',
+      ));
+      await loadBalance();
+    } catch (e) {
+      emit(state.copyWith(isLoading: false, error: '$chain send failed: $e'));
+    }
   }
 
   @override
   Future<void> close() {
     _http.close();
+    _swapClient?.dispose();
+    _web3?.dispose();
     return super.close();
   }
 }

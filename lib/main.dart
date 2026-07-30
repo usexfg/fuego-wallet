@@ -25,12 +25,15 @@ import 'services/fuego_daemon_client.dart' as hearth;
 import 'services/fuego_rpc_service.dart';
 import 'services/fuego_vault_service.dart';
 import 'services/security_service.dart';
+import 'services/swap_config_service.dart';
 import 'utils/theme.dart';
 
 final _log = Logger('main');
 Process? _backend;
+Process? _swapDaemon;
 final Completer<void> _backendReady = Completer<void>();
 final SecurityService _securityService = SecurityService();
+final SwapConfigService _swapConfigService = SwapConfigService();
 final FuegoVaultService _vaultService =
     FuegoVaultService(security: _securityService);
 
@@ -55,7 +58,7 @@ int get _defaultDaemonPort =>
     int.tryParse(Platform.environment['FUEGO_DAEMON_PORT'] ?? '') ??
     _activeConfig.daemonRpcPort;
 
-const int _backendPort = 180198;
+const int _backendPort = 18098;
 
 late final FuegoDaemonClient daemon = FuegoDaemonClient(
   host: _defaultDaemonHost,
@@ -161,6 +164,81 @@ Future<void> stopBackend() async {
   } catch (_) {}
 }
 
+Future<void> _startSwapDaemon() async {
+  final configPath = _swapConfigService.configPathSync();
+  final file = File(configPath);
+  if (!file.existsSync()) {
+    _logDebug('[swapd] No swap_config.json found — skipping');
+    return;
+  }
+
+  // Read config to check if at least one chain is configured
+  try {
+    final content = file.readAsStringSync();
+    final config = json.decode(content) as Map<String, dynamic>;
+    final hasChain = config.keys.any(
+      (k) => k.endsWith('_mode') && config[k] == 'spv',
+    );
+    if (!hasChain) {
+      _logDebug('[swapd] No SPV chains configured — skipping');
+      return;
+    }
+  } catch (e) {
+    _logDebug('[swapd] Invalid config: $e');
+    return;
+  }
+
+  final binary = _swapConfigService.findSwapdBinary();
+  if (binary == null) {
+    _logDebug('[swapd] xfg-swapd binary not found');
+    return;
+  }
+
+  try {
+    _swapDaemon = await Process.start(binary, [
+      '--swap-config', configPath,
+      '--service',
+    ]);
+
+    if (kDebugMode) {
+      _swapDaemon!.stdout
+          .transform(utf8.decoder)
+          .listen((l) => debugPrint('[swapd:stdout] $l'));
+      _swapDaemon!.stderr
+          .transform(utf8.decoder)
+          .listen((l) => debugPrint('[swapd:stderr] $l'));
+    } else {
+      _swapDaemon!.stdout.drain<void>();
+      _swapDaemon!.stderr.drain<void>();
+    }
+
+    _swapDaemon!.exitCode.then((code) {
+      _logDebug('[swapd] Exited with code $code');
+      _swapDaemon = null;
+    });
+
+    _logDebug('[swapd] Started (pid=${_swapDaemon!.pid})');
+  } catch (e) {
+    _logDebug('[swapd] Failed to start: $e');
+  }
+}
+
+Future<void> _stopSwapDaemon() async {
+  final p = _swapDaemon;
+  _swapDaemon = null;
+  if (p == null) return;
+  try {
+    p.kill(ProcessSignal.sigterm);
+    await p.exitCode.timeout(
+      const Duration(seconds: 5),
+      onTimeout: () {
+        p.kill(ProcessSignal.sigkill);
+        return -1;
+      },
+    );
+  } catch (_) {}
+}
+
 String? _findBackendBinary() {
   final exe = File(Platform.resolvedExecutable);
   final projectRoot = Directory.current.path;
@@ -210,6 +288,11 @@ Future<void> main() async {
   ));
 
   _startBackend();
+
+  // Start xfg-swapd after backend is ready (config must exist in app data dir)
+  _backendReady.future.then((_) {
+    _startSwapDaemon();
+  });
 }
 
 class FuegoApp extends StatefulWidget {
@@ -239,6 +322,7 @@ class _FuegoAppState extends State<FuegoApp> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     unawaited(stopBackend());
+    unawaited(_stopSwapDaemon());
     super.dispose();
   }
 
@@ -246,6 +330,7 @@ class _FuegoAppState extends State<FuegoApp> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.detached) {
       unawaited(stopBackend());
+      unawaited(_stopSwapDaemon());
     }
   }
 

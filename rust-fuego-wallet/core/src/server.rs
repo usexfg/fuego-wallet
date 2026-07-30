@@ -559,8 +559,8 @@ pub async fn run_server(
 
     let cors = tower_http::cors::CorsLayer::new()
         .allow_origin([
-            "http://localhost:180198".parse().unwrap(),
-            "http://127.0.0.1:180198".parse().unwrap(),
+            "http://localhost:18098".parse().unwrap(),
+            "http://127.0.0.1:18098".parse().unwrap(),
             "http://localhost:8080".parse().unwrap(),
         ])
         .allow_methods(tower_http::cors::Any)

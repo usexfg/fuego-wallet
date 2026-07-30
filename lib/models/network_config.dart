@@ -33,7 +33,7 @@ class NetworkConfig {
     addressPrefix: 'fire',
     networkId: 'fuego-mainnet',
     daemonRpcPort: 18180,
-    walletRpcPort: 180198,
+    walletRpcPort: 18098,
     seedNodes: [
       '207.244.247.64:18180',
       'node1.usexfg.org:18180',
