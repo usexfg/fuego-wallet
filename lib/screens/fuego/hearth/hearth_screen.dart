@@ -62,19 +62,8 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
   }
 
   Future<void> _loadPriceData() async {
-    final rawCandles = await PriceHistoryService().loadAll();
-    const heatPegUsd = 1.58;
-    final convertedCandles = rawCandles.map((c) {
-      return Candlestick(
-        time: c.time,
-        open: c.open / heatPegUsd,
-        high: c.high / heatPegUsd,
-        low: c.low / heatPegUsd,
-        close: c.close / heatPegUsd,
-        volume: c.volume,
-      );
-    }).toList();
-    if (mounted) setState(() => _candles = convertedCandles);
+    final candles = await PriceHistoryService().loadAll();
+    if (mounted) setState(() => _candles = candles);
   }
 
   @override
