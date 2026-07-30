@@ -143,6 +143,9 @@ class DexCubit extends Cubit<DexState> {
       case SwapPairSdk.bch: return ChainTypeSdk.bitcoinCash;
       case SwapPairSdk.arb: return ChainTypeSdk.arbitrum;
       case SwapPairSdk.base: return ChainTypeSdk.base;
+      case SwapPairSdk.kmd: return ChainTypeSdk.komodo;
+      case SwapPairSdk.bnb: return ChainTypeSdk.bnb;
+      case SwapPairSdk.dcr: return ChainTypeSdk.decred;
     }
   }
 
