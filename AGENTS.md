@@ -1,0 +1,102 @@
+# AGENTS.md — Fuego Wallet Architecture Reference
+
+## Swap Architecture (Dual-Mode)
+
+The Fuego swap system uses **two daemons** that serve different purposes:
+
+### fuegod (port 18180)
+- Main CryptoNote blockchain node
+- Has an **embedded SwapDaemon** for XFG-side operations (escrow, ring signatures, state machine)
+- RPC endpoints: `/getswapoffers`, `/getswapprice`, `/getswaptrades`, `/submitswap`, `/cancelswap`, `/requestswap`, `/initiate`, `/accept`, `/processswap`, `/refundswap`, `/getactiveswaps`, `/listswaps`, `/getswapstatus`
+- Does NOT configure counterparty chain clients (BTC, ETH, SOL, etc.)
+- Used by: Dart wallet tabs 1-3 (Orderbook, Trade, Trades)
+
+### xfg-swapd (port 18902)
+- Standalone swap daemon for cross-chain atomic swaps
+- Has its own JSON-RPC HTTP server on port 18902, status server on 18900, P2P on 18901
+- Configurable via `--swap-config` JSON with chain RPC endpoints and signer keys
+- Supports all 12 counterparty chains with SPV or RPC verification
+- Connects to fuegod as an RPC client for Fuego chain operations
+- Used by: Dart wallet Cross-Chain tab
+- Built from: `src/SwapDaemon/` in the fuego C++ repo (`/Users/aejt/xfgo`)
+
+### Why Both Are Needed
+- Fuegod handles Fuego-side escrow and ring signatures only
+- xfg-swapd handles actual cross-chain lock/claim/refund on BTC, ETH, SOL, etc.
+- They use **separate databases** (fuegod: `<configFolder>/swaps`, xfg-swapd: `~/.xfg-swapd`)
+
+## Supported Swap Chains (12 pairs)
+
+| ID | Chain | Adapter | Connection | HTLC Type |
+|----|-------|---------|-----------|-----------|
+| 0 | SOL | `SolChainClient` | Solana JSON-RPC | On-chain program |
+| 1 | ETH | `EthChainClient` | Ethereum JSON-RPC | HashedTimelock.sol |
+| 2 | XMR | `XmrChainClient` | monerod + monero-wallet-rpc | Ring sigs + adaptor sigs |
+| 3 | BCH | `BchChainClient` | Electrum SPV or bitcoind RPC | P2SH |
+| 4 | ARB | `EthChainClient` | Arbitrum JSON-RPC | HashedTimelock.sol |
+| 5 | BASE | `EthChainClient` | Base JSON-RPC | HashedTimelock.sol |
+| 6 | KMD | `KmdChainClient` | Electrum SPV or komodod RPC | P2SH |
+| 7 | BNB | `BscChainClient` | BSC JSON-RPC | HashedTimelock.sol |
+| 8 | DCR | `DcrChainClient` | Neutrino SPV (BIP-157/158) or dcrd RPC | P2SH |
+| 9 | BTC | `BtcChainClient` | Electrum SPV or bitcoind RPC | P2WSH SegWit |
+| 10 | LTC | `LtcChainClient` | Electrum SPV or litecoind RPC | P2WSH SegWit |
+| 11 | POLYGON | `PolygonChainClient` | Polygon JSON-RPC | HashedTimelock.sol |
+
+### Chain Connection Modes
+- **SPV mode**: Read-only verification via Electrum protocol (BTC/LTC/BCH/KMD) or Neutrino (DCR). Cannot create lock transactions — claim/refund needs RPC mode.
+- **RPC mode**: Full node connection with `-txindex`. Required for sending transactions.
+- **EVM chains**: JSON-RPC only (no SPV). Share same HashedTimelock.sol contract.
+- **SOL**: JSON-RPC + on-chain HTLC program.
+- **XMR**: CryptoNote ring signatures — no SPV proof possible.
+
+### Known Issues
+- POLYGON missing from `swapPairToString()`, `swapPairFromString()`, `msPerBlock()`, `PriceOracle.cpp` in xfg-swapd C++ code — shows "???" in logs, fails at CLI level, but works via JSON config.
+- `main.cpp` help text only lists "SOL, ETH, XMR, BCH, ARB, BASE" — stale.
+- SPV mode is read-only; claim/refund requires RPC mode for UTXO chains.
+
+## Dart Wallet Backend Architecture
+
+### Backend Startup (main.dart)
+- `_useLocalNode`: Desktop defaults to `true` (starts fuegod + walletd in-process). Mobile defaults to `false`.
+- `_backendPort`: 18189 (walletd HTTP proxy)
+- `fuego_walletd serve --local` starts embedded fuegod, then HTTP proxy on 18189
+- Health check polls `http://127.0.0.1:18189/health` for up to 120s
+
+### Binary Naming
+- GUI frontend: `fuego-wallet` (dash)
+- Rust backend: `fuego_walletd` (underscore)
+- Fuegod daemon: `fuegod`
+- Swap daemon: `xfg-swapd`
+
+### Port Layout
+| Port | Service |
+|------|---------|
+| 18180 | fuegod daemon RPC |
+| 18189 | fuego_walletd HTTP proxy (Dart connects here) |
+| 18900 | xfg-swapd status server |
+| 18901 | xfg-swapd P2P |
+| 18902 | xfg-swapd JSON-RPC (Dart Cross-Chain tab connects here) |
+
+## Rust SDK (fuego-sdk)
+
+Located at: `rust-fuego-wallet/fuego-sdk/fuego-sdk/src/`
+
+- `types.rs`: SwapPair enum (12 pairs), SwapOffer, SwapPrice, SwapTrade, SwapStatus
+- `chain/mod.rs`: ChainType enum (13 chains including Fuego), ChainSpv trait
+- `chain/bitcoin.rs`: Bitcoin-family SPV adapter (BTC, LTC, BCH, KMD, DCR)
+- `chain/evm.rs`: EVM chain adapter (ETH, ARB, BASE, BNB, POLYGON)
+- `chain/btc_rpc.rs`: Bitcoin JSON-RPC client
+- `chain/evm_rpc.rs`: Ethereum JSON-RPC client
+
+### ChainType Methods
+- `is_bitcoin_family()`: BitcoinCash, Komodo, Decred, Bitcoin, Litecoin
+- `is_evm()`: Ethereum, Arbitrum, Base, Bnb, Polygon
+- `from_symbol()`: Accepts "BSC" as alias for Bnb, "POLYGON"/"POLY" for Polygon
+
+## CI / Build
+
+- Flutter: 3.44.4
+- CI: ubuntu-22.04 (glibc 2.35)
+- macOS app bundle: `fuego_wallet.app`
+- Rust backend binary: `fuego_walletd`
+- Default remote daemon: `207.244.247.64:18180`
