@@ -29,8 +29,8 @@ struct Cli {
     #[arg(short = 'H', long, default_value = "127.0.0.1")]
     host: String,
 
-#[arg(short = 'P', long, default_value_t = 18098)]
-port: u16,
+    #[arg(short = 'P', long, default_value_t = 8070)]
+    port: u16,
 
     #[arg(long)]
     seed: Option<String>,
