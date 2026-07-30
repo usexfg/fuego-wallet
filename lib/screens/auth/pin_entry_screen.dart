@@ -174,12 +174,12 @@ class _PinEntryScreenState extends State<PinEntryScreen>
 
   Future<void> _handleFailedAttempt() async {
     final attempts = await _securityService.failedAttempts();
+    final lockedOut = await _securityService.isLockedOut();
     if (!mounted) return;
     setState(() {
       _failedAttempts = attempts;
       _isLoading = false;
-      if (attempts == 0) {
-        // Reset after lockout threshold
+      if (lockedOut) {
         _errorMessage =
             'Too many failed attempts. Wallet locked for ${SecurityService.lockoutDuration.inMinutes} minutes.';
       } else {
