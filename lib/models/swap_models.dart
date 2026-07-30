@@ -2,7 +2,7 @@
 /// Maps 1:1 with Rust SDK types.rs SwapPair, SwapOffer, SwapStatus, etc.
 
 /// Supported swap pair IDs matching fuego-suite.
-/// SOL=0, ETH=1, XMR=2, BCH=3, ARB=4, BASE=5, KMD=6, BNB=7, DCR=8
+/// SOL=0, ETH=1, XMR=2, BCH=3, ARB=4, BASE=5, KMD=6, BNB=7, DCR=8, BTC=9, LTC=10, POLY=11
 enum SwapPairSdk {
   sol(0, 'SOL', 'XFG/SOL'),
   eth(1, 'ETH', 'XFG/ETH'),
@@ -12,7 +12,10 @@ enum SwapPairSdk {
   base(5, 'BASE', 'XFG/BASE'),
   kmd(6, 'KMD', 'XFG/KMD'),
   bnb(7, 'BNB', 'XFG/BNB'),
-  dcr(8, 'DCR', 'XFG/DCR');
+  dcr(8, 'DCR', 'XFG/DCR'),
+  btc(9, 'BTC', 'XFG/BTC'),
+  ltc(10, 'LTC', 'XFG/LTC'),
+  poly(11, 'POLY', 'XFG/POLY');
 
   final int id;
   final String ticker;
@@ -41,15 +44,18 @@ enum ChainTypeSdk {
   base(6, 'BASE', 'Base'),
   komodo(7, 'KMD', 'Komodo'),
   bnb(8, 'BNB', 'BNB Chain'),
-  decred(9, 'DCR', 'Decred');
+  decred(9, 'DCR', 'Decred'),
+  bitcoin(10, 'BTC', 'Bitcoin'),
+  litecoin(11, 'LTC', 'Litecoin'),
+  polygon(12, 'POLY', 'Polygon');
 
   final int id;
   final String symbol;
   final String name;
   const ChainTypeSdk(this.id, this.symbol, this.name);
 
-  bool get isEvm => this == ChainTypeSdk.ethereum || this == ChainTypeSdk.arbitrum || this == ChainTypeSdk.base || this == ChainTypeSdk.bnb;
-  bool get isBtcFamily => this == ChainTypeSdk.bitcoinCash || this == ChainTypeSdk.komodo || this == ChainTypeSdk.decred;
+  bool get isEvm => this == ChainTypeSdk.ethereum || this == ChainTypeSdk.arbitrum || this == ChainTypeSdk.base || this == ChainTypeSdk.bnb || this == ChainTypeSdk.polygon;
+  bool get isBtcFamily => this == ChainTypeSdk.bitcoinCash || this == ChainTypeSdk.komodo || this == ChainTypeSdk.decred || this == ChainTypeSdk.bitcoin || this == ChainTypeSdk.litecoin;
 
   static ChainTypeSdk fromId(int id) =>
       ChainTypeSdk.values.firstWhere((c) => c.id == id, orElse: () => ChainTypeSdk.fuego);

@@ -22,6 +22,12 @@ pub enum ChainType {
     BitcoinCash,
     Arbitrum,
     Base,
+    Komodo,
+    Bnb,
+    Decred,
+    Bitcoin,
+    Litecoin,
+    Polygon,
 }
 
 impl ChainType {
@@ -34,6 +40,12 @@ impl ChainType {
             Self::BitcoinCash => "Bitcoin Cash",
             Self::Arbitrum => "Arbitrum",
             Self::Base => "Base",
+            Self::Komodo => "Komodo",
+            Self::Bnb => "BNB Chain",
+            Self::Decred => "Decred",
+            Self::Bitcoin => "Bitcoin",
+            Self::Litecoin => "Litecoin",
+            Self::Polygon => "Polygon",
         }
     }
 
@@ -46,15 +58,21 @@ impl ChainType {
             Self::BitcoinCash => "BCH",
             Self::Arbitrum => "ARB",
             Self::Base => "BASE",
+            Self::Komodo => "KMD",
+            Self::Bnb => "BNB",
+            Self::Decred => "DCR",
+            Self::Bitcoin => "BTC",
+            Self::Litecoin => "LTC",
+            Self::Polygon => "POLY",
         }
     }
 
     pub fn is_bitcoin_family(&self) -> bool {
-        matches!(self, Self::BitcoinCash)
+        matches!(self, Self::BitcoinCash | Self::Komodo | Self::Decred | Self::Bitcoin | Self::Litecoin)
     }
 
     pub fn is_evm(&self) -> bool {
-        matches!(self, Self::Ethereum | Self::Arbitrum | Self::Base)
+        matches!(self, Self::Ethereum | Self::Arbitrum | Self::Base | Self::Bnb | Self::Polygon)
     }
 
     pub fn all() -> &'static [ChainType] {
@@ -66,6 +84,12 @@ impl ChainType {
             Self::BitcoinCash,
             Self::Arbitrum,
             Self::Base,
+            Self::Komodo,
+            Self::Bnb,
+            Self::Decred,
+            Self::Bitcoin,
+            Self::Litecoin,
+            Self::Polygon,
         ]
     }
 
@@ -78,6 +102,12 @@ impl ChainType {
             "BCH" => Some(Self::BitcoinCash),
             "ARB" => Some(Self::Arbitrum),
             "BASE" => Some(Self::Base),
+            "KMD" => Some(Self::Komodo),
+            "BNB" | "BSC" => Some(Self::Bnb),
+            "DCR" => Some(Self::Decred),
+            "BTC" => Some(Self::Bitcoin),
+            "LTC" => Some(Self::Litecoin),
+            "POLY" | "POLYGON" => Some(Self::Polygon),
             _ => None,
         }
     }
