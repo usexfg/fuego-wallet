@@ -27,6 +27,21 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
     'SOL': 'Solana', 'POLY': 'Polygon', 'DCR': 'Decred', 'XMR': 'Monero',
   };
 
+  static const Map<String, Map<String, String>> _chainInfo = {
+    'BTC': {'type': 'UTXO', 'connect': 'Electrum SPV (public servers)', 'user': 'No setup needed for swaps. Full node required only for advanced RPC mode.', 'htlc': 'P2WSH SegWit'},
+    'LTC': {'type': 'UTXO', 'connect': 'Electrum SPV (public servers)', 'user': 'No setup needed for swaps. Full node required only for advanced RPC mode.', 'htlc': 'P2WSH SegWit'},
+    'KMD': {'type': 'UTXO', 'connect': 'Electrum SPV (public servers)', 'user': 'No setup needed for swaps. Full node required only for advanced RPC mode.', 'htlc': 'P2SH'},
+    'BCH': {'type': 'UTXO', 'connect': 'Electrum SPV (public servers)', 'user': 'No setup needed for swaps. Full node required only for advanced RPC mode.', 'htlc': 'P2SH'},
+    'ETH': {'type': 'EVM', 'connect': 'Ethereum JSON-RPC (Infura/Alchemy)', 'user': 'No setup needed — public RPC used by default.', 'htlc': 'HashedTimelock.sol'},
+    'ARB': {'type': 'EVM L2', 'connect': 'Arbitrum JSON-RPC', 'user': 'No setup needed — public RPC used by default.', 'htlc': 'HashedTimelock.sol'},
+    'BASE': {'type': 'EVM L2', 'connect': 'Base JSON-RPC', 'user': 'No setup needed — public RPC used by default.', 'htlc': 'HashedTimelock.sol'},
+    'BSC': {'type': 'EVM', 'connect': 'BSC JSON-RPC', 'user': 'No setup needed — public RPC used by default.', 'htlc': 'HashedTimelock.sol'},
+    'POLY': {'type': 'EVM', 'connect': 'Polygon JSON-RPC', 'user': 'No setup needed — public RPC used by default.', 'htlc': 'HashedTimelock.sol'},
+    'SOL': {'type': 'Non-EVM', 'connect': 'Solana JSON-RPC (public)', 'user': 'No setup needed — public RPC used by default.', 'htlc': 'On-chain HTLC program'},
+    'DCR': {'type': 'UTXO', 'connect': 'Neutrino SPV (built-in) or dcrd RPC', 'user': 'No setup needed for SPV mode. Full dcrd node for RPC mode.', 'htlc': 'P2SH'},
+    'XMR': {'type': 'CryptoNote', 'connect': 'monerod + monero-wallet-rpc', 'user': 'You must run monerod and monero-wallet-rpc locally.', 'htlc': 'Ring signatures + adaptor sigs'},
+  };
+
   @override
   void initState() {
     super.initState();
@@ -244,6 +259,8 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
             items: _spvPairNames.keys.map((k) => DropdownMenuItem(value: k, child: Text('$k — ${_spvPairNames[k]}'))).toList(),
             onChanged: (v) { if (v != null) { setState(() => _selectedSpvPair = v); context.read<DexCubit>().loadBalance(); } },
           )))),
+        const SizedBox(width: 8),
+        IconButton(icon: const Icon(Icons.info_outline, size: 18, color: AppTheme.textMuted), onPressed: _showChainInfo, tooltip: 'Chain info'),
       ]),
 
       if (isEvmOrSol) ...[const SizedBox(height: 10),
@@ -329,4 +346,85 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
       context.read<DexCubit>().initiateSpvSwap(pair: _selectedSpvPair, xfgAmount: xfgAmount, ctrAmount: xfgAmount, peer: peer);
     }
   }
+
+  void _showChainInfo() {
+    final children = <Widget>[
+      const Text('All swaps are XFG-paired atomic swaps handled by xfg-swapd.',
+          style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+      const SizedBox(height: 12),
+      ..._chainInfo.entries.map((e) {
+        final info = e.value;
+        final isSelected = e.key == _selectedSpvPair;
+        return Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? AppTheme.primaryColor.withValues(alpha: 0.1)
+                : AppTheme.surfaceColor.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+                color: isSelected
+                    ? AppTheme.primaryColor.withValues(alpha: 0.4)
+                    : AppTheme.surfaceColor)),
+          child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Text('${e.key} — ${_spvPairNames[e.key]}',
+                      style: TextStyle(
+                          color: isSelected
+                              ? AppTheme.primaryColor
+                              : AppTheme.textPrimary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600)),
+                  const SizedBox(width: 6),
+                  Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                          color: AppTheme.primaryColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(3)),
+                      child: Text(info['type']!,
+                          style: const TextStyle(
+                              color: AppTheme.primaryColor,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w600))),
+                ]),
+                const SizedBox(height: 4),
+                _chainInfoRow('Connect', info['connect']!),
+                _chainInfoRow('HTLC', info['htlc']!),
+                _chainInfoRow('Setup', info['user']!),
+              ]),
+        );
+      }),
+    ];
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.cardColor,
+        title: const Text('Supported Chains',
+            style: TextStyle(
+                color: AppTheme.textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.w600)),
+        content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children)),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Close',
+                  style: TextStyle(color: AppTheme.primaryColor)))
+        ],
+      ),
+    );
+  }
+
+  Widget _chainInfoRow(String label, String value) => Padding(padding: const EdgeInsets.only(top: 2), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    Text('$label: ', style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+    Expanded(child: Text(value, style: TextStyle(color: value.startsWith('You must') ? AppTheme.warningColor : AppTheme.textSecondary, fontSize: 11))),
+  ]));
 }

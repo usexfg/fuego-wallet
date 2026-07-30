@@ -45,9 +45,18 @@ The Fuego swap system uses **two daemons** that serve different purposes:
 ### Chain Connection Modes
 - **SPV mode**: Read-only verification via Electrum protocol (BTC/LTC/BCH/KMD) or Neutrino (DCR). Cannot create lock transactions — claim/refund needs RPC mode.
 - **RPC mode**: Full node connection with `-txindex`. Required for sending transactions.
-- **EVM chains**: JSON-RPC only (no SPV). Share same HashedTimelock.sol contract.
-- **SOL**: JSON-RPC + on-chain HTLC program.
-- **XMR**: CryptoNote ring signatures — no SPV proof possible.
+- **EVM chains**: JSON-RPC only (no SPV). Share same HashedTimelock.sol contract. Public RPCs (Infura/Alchemy) used by default — no user setup needed.
+- **SOL**: JSON-RPC + on-chain HTLC program. Public RPC used by default — no user setup needed.
+- **XMR**: CryptoNote ring signatures — no SPV proof possible. **User must run monerod + monero-wallet-rpc locally.** Only chain requiring local infrastructure.
+
+### What Users Need To Run
+| Chain | User Action Required? |
+|-------|----------------------|
+| BTC, LTC, BCH, KMD | None — Electrum SPV handles verification via public servers |
+| ETH, ARB, BASE, BNB, POLYGON | None — public JSON-RPC used by default |
+| SOL | None — public Solana RPC used by default |
+| DCR | None for SPV mode (Neutrino built-in) |
+| XMR | **Must run monerod + monero-wallet-rpc locally** |
 
 ### Known Issues
 - POLYGON missing from `swapPairToString()`, `swapPairFromString()`, `msPerBlock()`, `PriceOracle.cpp` in xfg-swapd C++ code — shows "???" in logs, fails at CLI level, but works via JSON config.
