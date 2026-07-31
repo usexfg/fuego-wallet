@@ -70,3 +70,8 @@
 
 # Keep native libraries
 -keep class com.fuego.fuego_wallet.MainActivity { *; }
+
+# Suppress missing Play Core classes (not used but referenced by Flutter)
+-dontwarn com.google.android.play.core.splitcompat.SplitCompatApplication
+-dontwarn com.google.android.play.core.splitinstall.**
+-dontwarn com.google.android.play.core.tasks.**
