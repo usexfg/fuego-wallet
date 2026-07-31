@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
+import '../main.dart' as app;
 import '../providers/wallet_provider.dart';
 import '../services/security_service.dart';
 import '../utils/theme.dart';
@@ -26,6 +27,7 @@ class _SplashScreenState extends State<SplashScreen>
   bool _isInitializing = true;
   String _initMessage = 'Initializing Fuego Wallet...';
   String _versionString = '';
+  String? _daemonWarning;
 
   @override
   void initState() {
@@ -92,6 +94,13 @@ class _SplashScreenState extends State<SplashScreen>
       setState(() {
         _initMessage = 'Checking wallet status...';
       });
+
+      // Check for daemon errors
+      if (app.daemonError != null) {
+        setState(() {
+          _daemonWarning = app.daemonError;
+        });
+      }
 
       final securityService = SecurityService();
       final walletProvider = Provider.of<WalletProvider>(context, listen: false);
@@ -293,6 +302,33 @@ class _SplashScreenState extends State<SplashScreen>
                         textAlign: TextAlign.center,
                       ),
                     ),
+                    // Daemon error banner
+                    if (_daemonWarning != null) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 32),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppTheme.warningColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppTheme.warningColor.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.warning_amber_rounded, color: AppTheme.warningColor, size: 16),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _daemonWarning!,
+                                style: const TextStyle(color: AppTheme.warningColor, fontSize: 12),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
