@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:device_preview/device_preview.dart';
@@ -21,6 +20,7 @@ import 'core/core.dart';
 import 'models/network_config.dart';
 import 'providers/wallet_provider.dart';
 import 'screens/splash_screen.dart';
+import 'services/daemon_manager.dart';
 import 'services/fuego_daemon_client.dart' as hearth;
 import 'services/fuego_rpc_service.dart';
 import 'services/fuego_vault_service.dart';
@@ -28,11 +28,13 @@ import 'services/security_service.dart';
 import 'utils/theme.dart';
 
 final _log = Logger('main');
-Process? _backend;
+final DaemonManager daemonManager = DaemonManager();
 final Completer<void> _backendReady = Completer<void>();
 final SecurityService _securityService = SecurityService();
 final FuegoVaultService _vaultService =
     FuegoVaultService(security: _securityService);
+
+String? _daemonError;
 
 bool get _useTestnet =>
     Platform.environment['FUEGO_TESTNET'] == '1' ||
@@ -55,7 +57,7 @@ int get _defaultDaemonPort =>
     int.tryParse(Platform.environment['FUEGO_DAEMON_PORT'] ?? '') ??
     _activeConfig.daemonRpcPort;
 
-const int _backendPort = 180198;
+const int _backendPort = 18189;
 
 late final FuegoDaemonClient daemon = FuegoDaemonClient(
   host: _defaultDaemonHost,
@@ -76,47 +78,17 @@ void _logDebug(String message) {
 }
 
 Future<void> _startBackend() async {
-  final binary = _findBackendBinary();
-  if (binary == null) {
-    _log.warning('fuego_walletd binary not found — using remote node for public RPC only');
-    rpcService.updateNode(
-      _defaultDaemonHost,
-      port: _defaultDaemonPort,
-    );
-    if (!_backendReady.isCompleted) _backendReady.complete();
-    return;
-  }
-  _logDebug('[backend] Starting ${_useLocalNode ? "local node" : "remote proxy"}');
-  try {
-    final args = [
-      '--port',
-      _backendPort.toString(),
-      'serve',
-      '--daemon-host',
-      _defaultDaemonHost,
-      '--daemon-port',
-      _defaultDaemonPort.toString(),
-    ];
-    if (_useTestnet) args.add('--testnet');
-    if (_useLocalNode) args.add('--local');
-    _backend = await Process.start(binary, args);
-    if (kDebugMode) {
-      _backend!.stdout
-          .transform(utf8.decoder)
-          .listen((l) => debugPrint('[backend:stdout] $l'));
-      _backend!.stderr
-          .transform(utf8.decoder)
-          .listen((l) => debugPrint('[backend:stderr] $l'));
-    } else {
-      // Drain streams so the process does not block
-      _backend!.stdout.drain<void>();
-      _backend!.stderr.drain<void>();
-    }
-    _backend!.exitCode.then((code) {
-      _logDebug('[backend] Exited with code $code');
-    });
-  } catch (e) {
-    _log.warning('Failed to start backend process');
+  _logDebug('[backend] Starting daemons (local=$_useLocalNode)');
+
+  final error = await daemonManager.startAll(
+    useLocalNode: _useLocalNode,
+    useTestnet: _useTestnet,
+  );
+
+  if (error != null) {
+    _daemonError = error;
+    _log.warning('Daemon startup failed: $error');
+    // Fall back to remote mode
     rpcService.updateNode(
       _defaultDaemonHost,
       port: _defaultDaemonPort,
@@ -125,57 +97,16 @@ Future<void> _startBackend() async {
     return;
   }
 
-  for (var i = 0; i < 120; i++) {
-    try {
-      final client = HttpClient();
-      final req = await client.getUrl(
-        Uri.parse('http://127.0.0.1:$_backendPort/health'),
-      );
-      final resp = await req.close();
-      await resp.drain<void>();
-      client.close(force: true);
-      if (resp.statusCode == 200) {
-        if (!_backendReady.isCompleted) _backendReady.complete();
-        return;
-      }
-    } catch (_) {}
-    await Future.delayed(const Duration(seconds: 1));
-  }
-  _log.warning('Backend did not become ready after 120s');
+  _daemonError = null;
   if (!_backendReady.isCompleted) _backendReady.complete();
 }
 
 Future<void> stopBackend() async {
-  final p = _backend;
-  _backend = null;
-  if (p == null) return;
-  try {
-    p.kill(ProcessSignal.sigterm);
-    await p.exitCode.timeout(
-      const Duration(seconds: 5),
-      onTimeout: () {
-        p.kill(ProcessSignal.sigkill);
-        return -1;
-      },
-    );
-  } catch (_) {}
+  await daemonManager.stopAll();
+  _daemonError = null;
 }
 
-String? _findBackendBinary() {
-  final exe = File(Platform.resolvedExecutable);
-  final projectRoot = Directory.current.path;
-  final candidates = [
-    '${exe.parent.path}/fuego_walletd',
-    if (Platform.isMacOS)
-      '${exe.parent.parent.parent.path}/Resources/bin/fuego_walletd',
-    '$projectRoot/rust-fuego-wallet/target/debug/fuego_walletd',
-    '$projectRoot/rust-fuego-wallet/target/release/fuego_walletd',
-  ];
-  for (final c in candidates) {
-    if (File(c).existsSync()) return c;
-  }
-  return null;
-}
+String? get daemonError => _daemonError;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

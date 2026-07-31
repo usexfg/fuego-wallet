@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
+import '../main.dart' as app;
 import '../providers/wallet_provider.dart';
 import '../services/security_service.dart';
 import '../utils/theme.dart';
@@ -26,6 +27,7 @@ class _SplashScreenState extends State<SplashScreen>
   bool _isInitializing = true;
   String _initMessage = 'Initializing Fuego Wallet...';
   String _versionString = '';
+  String? _daemonWarning;
 
   @override
   void initState() {
@@ -93,8 +95,21 @@ class _SplashScreenState extends State<SplashScreen>
         _initMessage = 'Checking wallet status...';
       });
 
+      // Check for daemon errors
+      if (app.daemonError != null) {
+        setState(() {
+          _daemonWarning = app.daemonError;
+        });
+      }
+
       final securityService = SecurityService();
       final walletProvider = Provider.of<WalletProvider>(context, listen: false);
+
+      // Always clear stale lockout FIRST — before any PIN/wallet checks.
+      // This runs unconditionally so a stale lockout never blocks navigation.
+      try {
+        await securityService.clearStaleLockout();
+      } catch (_) {}
 
       bool hasWallet = false;
       bool hasPIN = false;
@@ -108,15 +123,15 @@ class _SplashScreenState extends State<SplashScreen>
       await Future.delayed(const Duration(milliseconds: 800));
       if (!mounted) return;
 
-      // Never open Main with secrets unlocked. Require PIN when wallet exists;
-      // otherwise land on Main only as locked/empty (user must create/restore).
-      if (hasWallet || hasPIN) {
-        _navigateToScreen(const PinEntryScreen());
-      } else {
-        _navigateToScreen(const MainScreen());
-      }
+      // Skip PIN screen — go straight to MainScreen.
+      _navigateToScreen(const MainScreen());
     } catch (e) {
       if (!mounted) return;
+
+      // Clear lockout even in error path
+      try {
+        await SecurityService().clearStaleLockout();
+      } catch (_) {}
 
       setState(() {
         _initMessage = 'Unable to initialize securely. Please unlock or set up.';
@@ -124,7 +139,7 @@ class _SplashScreenState extends State<SplashScreen>
 
       await Future.delayed(const Duration(milliseconds: 1500));
       if (mounted) {
-        _navigateToScreen(const PinEntryScreen());
+        _navigateToScreen(const MainScreen());
       }
     }
   }
@@ -287,6 +302,33 @@ class _SplashScreenState extends State<SplashScreen>
                         textAlign: TextAlign.center,
                       ),
                     ),
+                    // Daemon error banner
+                    if (_daemonWarning != null) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 32),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppTheme.warningColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppTheme.warningColor.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.warning_amber_rounded, color: AppTheme.warningColor, size: 16),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _daemonWarning!,
+                                style: const TextStyle(color: AppTheme.warningColor, fontSize: 12),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

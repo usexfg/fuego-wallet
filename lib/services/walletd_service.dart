@@ -15,7 +15,7 @@ class WalletdService {
   final SecurityService _security = SecurityService();
 
   bool get isRunning => _running;
-  int get rpcPort => 180198;
+  int get rpcPort => 18189;
 
   Future<void> start({
     String daemonHost = '207.244.247.64',

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../main.dart' as app;
+import '../../services/daemon_manager.dart';
 import '../../utils/theme.dart';
 import '../home/home_screen.dart';
 import '../dex/dex_screen.dart';
@@ -35,9 +37,43 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
+      body: Column(
+        children: [
+          // Daemon status bar
+          ValueListenableBuilder<DaemonStatus>(
+            valueListenable: app.daemonManager.status,
+            builder: (context, status, _) {
+              if (status.allHealthy) return const SizedBox.shrink();
+              final issues = <String>[];
+              if (!status.fuegodRunning) issues.add('Node');
+              if (!status.walletdRunning) issues.add('Wallet');
+              if (!status.swapdRunning) issues.add('Swap');
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                color: AppTheme.warningColor.withValues(alpha: 0.15),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning_amber_rounded, color: AppTheme.warningColor, size: 14),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        '${issues.join(", ")} daemon${issues.length > 1 ? "s" : ""} offline',
+                        style: const TextStyle(color: AppTheme.warningColor, fontSize: 11),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          // Main content
+          Expanded(
+            child: IndexedStack(
+              index: _currentIndex,
+              children: _screens,
+            ),
+          ),
+        ],
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(

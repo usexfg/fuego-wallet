@@ -4,7 +4,7 @@ use zeroize::Zeroize;
 // ── Swap / Orderbook types ────────────────────────────────────────
 
 /// Trading pair for swap offers.
-/// IDs match fuego-suite: SOL=0, ETH=1, XMR=2, BCH=3, ARB=4, BASE=5
+/// IDs match fuego-suite: SOL=0, ETH=1, XMR=2, BCH=3, ARB=4, BASE=5, KMD=6, BNB=7, DCR=8, BTC=9, LTC=10, POLY=11
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub enum SwapPair {
     XfgSol = 0,
@@ -13,6 +13,12 @@ pub enum SwapPair {
     XfgBch = 3,
     XfgArb = 4,
     XfgBase = 5,
+    XfgKmd = 6,
+    XfgBnb = 7,
+    XfgDcr = 8,
+    XfgBtc = 9,
+    XfgLtc = 10,
+    XfgPoly = 11,
 }
 
 impl SwapPair {
@@ -24,6 +30,12 @@ impl SwapPair {
             Self::XfgBch => "XFG/BCH",
             Self::XfgArb => "XFG/ARB",
             Self::XfgBase => "XFG/BASE",
+            Self::XfgKmd => "XFG/KMD",
+            Self::XfgBnb => "XFG/BNB",
+            Self::XfgDcr => "XFG/DCR",
+            Self::XfgBtc => "XFG/BTC",
+            Self::XfgLtc => "XFG/LTC",
+            Self::XfgPoly => "XFG/POLY",
         }
     }
 
@@ -35,6 +47,12 @@ impl SwapPair {
             Self::XfgBch => "BCH",
             Self::XfgArb => "ARB",
             Self::XfgBase => "BASE",
+            Self::XfgKmd => "KMD",
+            Self::XfgBnb => "BNB",
+            Self::XfgDcr => "DCR",
+            Self::XfgBtc => "BTC",
+            Self::XfgLtc => "LTC",
+            Self::XfgPoly => "POLY",
         }
     }
 
@@ -46,6 +64,12 @@ impl SwapPair {
             Self::XfgBch => crate::chain::ChainType::BitcoinCash,
             Self::XfgArb => crate::chain::ChainType::Arbitrum,
             Self::XfgBase => crate::chain::ChainType::Base,
+            Self::XfgKmd => crate::chain::ChainType::Komodo,
+            Self::XfgBnb => crate::chain::ChainType::Bnb,
+            Self::XfgDcr => crate::chain::ChainType::Decred,
+            Self::XfgBtc => crate::chain::ChainType::Bitcoin,
+            Self::XfgLtc => crate::chain::ChainType::Litecoin,
+            Self::XfgPoly => crate::chain::ChainType::Polygon,
         }
     }
 
@@ -57,6 +81,12 @@ impl SwapPair {
             Self::XfgBch,
             Self::XfgArb,
             Self::XfgBase,
+            Self::XfgKmd,
+            Self::XfgBnb,
+            Self::XfgDcr,
+            Self::XfgBtc,
+            Self::XfgLtc,
+            Self::XfgPoly,
         ]
     }
 
@@ -68,6 +98,12 @@ impl SwapPair {
             3 => Some(Self::XfgBch),
             4 => Some(Self::XfgArb),
             5 => Some(Self::XfgBase),
+            6 => Some(Self::XfgKmd),
+            7 => Some(Self::XfgBnb),
+            8 => Some(Self::XfgDcr),
+            9 => Some(Self::XfgBtc),
+            10 => Some(Self::XfgLtc),
+            11 => Some(Self::XfgPoly),
             _ => None,
         }
     }
@@ -80,6 +116,12 @@ impl SwapPair {
             "BCH" => Some(Self::XfgBch),
             "ARB" => Some(Self::XfgArb),
             "BASE" => Some(Self::XfgBase),
+            "KMD" => Some(Self::XfgKmd),
+            "BNB" => Some(Self::XfgBnb),
+            "DCR" => Some(Self::XfgDcr),
+            "BTC" => Some(Self::XfgBtc),
+            "LTC" => Some(Self::XfgLtc),
+            "POLY" | "POLYGON" => Some(Self::XfgPoly),
             _ => None,
         }
     }
