@@ -159,8 +159,11 @@ class DaemonManager {
     final walletdOk = await _checkHealth('http://127.0.0.1:$walletdPort/health');
     final swapdOk = await _checkHealth('http://127.0.0.1:$swapdPort/health');
 
+    // In local mode, walletd manages fuegod internally — fuegod is healthy if walletd is running
+    final fuegodManagedByWalletd = _fuegod == null && _walletd != null && fuegodOk;
+
     status.value = DaemonStatus(
-      fuegodRunning: _fuegod != null && fuegodOk,
+      fuegodRunning: (_fuegod != null && fuegodOk) || fuegodManagedByWalletd,
       walletdRunning: _walletd != null && walletdOk,
       swapdRunning: _swapd != null && swapdOk,
       fuegodError: _fuegod != null && !fuegodOk ? 'Not responding' : null,
@@ -187,6 +190,10 @@ class DaemonManager {
 
     // ── 1. Fuegod ──
     if (useLocalNode) {
+      // When local, walletd --local manages fuegod internally.
+      // Only start fuegod separately for non-local (remote walletd connecting to local fuegod).
+      // Skip separate fuegod — walletd --local will handle it.
+    } else {
       final fuegodErr = await _startFuegod(useTestnet: useTestnet);
       if (fuegodErr != null) {
         errors.add('fuegod: $fuegodErr');
@@ -384,7 +391,7 @@ class DaemonManager {
 
   // ── Convenience getters ──────────────────────────────────────────
 
-  bool get fuegodRunning => _fuegod != null;
+  bool get fuegodRunning => _fuegod != null || (_walletd != null && status.value.fuegodRunning);
   bool get walletdRunning => _walletd != null;
   bool get swapdRunning => _swapd != null;
 
