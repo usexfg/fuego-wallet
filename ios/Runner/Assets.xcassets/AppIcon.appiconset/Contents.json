@@ -117,7 +117,6 @@
   ],
   "info" : {
     "version" : 1,
-    "author" : "xcode",
-    "platform" : "ios"
+    "author" : "xcode"
   }
 }
