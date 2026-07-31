@@ -47,7 +47,7 @@ The Fuego swap system uses **two daemons** that serve different purposes:
 - **RPC mode**: Full node connection with `-txindex`. Required for sending transactions.
 - **EVM chains**: JSON-RPC only (no SPV). Share same HashedTimelock.sol contract. Public RPCs (Infura/Alchemy) used by default — no user setup needed.
 - **SOL**: JSON-RPC + on-chain HTLC program. Public RPC used by default — no user setup needed.
-- **XMR**: CryptoNote ring signatures — no SPV proof possible. **User must run monerod + monero-wallet-rpc locally.** Only chain requiring local infrastructure.
+- **XMR**: CryptoNote ring signatures — no SPV proof possible. Run your own `monerod` + `monero-wallet-rpc` (recommended) or use a remote node from [monero.fail](https://monero.fail).
 
 ### What Users Need To Run
 | Chain | User Action Required? |
@@ -56,7 +56,7 @@ The Fuego swap system uses **two daemons** that serve different purposes:
 | ETH, ARB, BASE, BNB, POLYGON | None — public JSON-RPC used by default |
 | SOL | None — public Solana RPC used by default |
 | DCR | None for SPV mode (Neutrino built-in) |
-| XMR | **Must run monerod + monero-wallet-rpc locally** |
+| XMR | Run your own monerod + monero-wallet-rpc (recommended), or use a remote node from monero.fail |
 
 ### Known Issues
 - POLYGON missing from `swapPairToString()`, `swapPairFromString()`, `msPerBlock()`, `PriceOracle.cpp` in xfg-swapd C++ code — shows "???" in logs, fails at CLI level, but works via JSON config.
