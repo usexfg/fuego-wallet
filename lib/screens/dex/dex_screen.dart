@@ -65,6 +65,21 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
     'SOL': Color(0xFF9945FF), 'DCR': Color(0xFF2970FF), 'XMR': Color(0xFFFF6600),
   };
 
+  static const Map<String, String> _chainIcons = {
+    'BTC': 'assets/coin icons/btc.png',
+    'LTC': 'assets/coin icons/ltc.png',
+    'KMD': 'assets/coin icons/kmd.png',
+    'BCH': 'assets/coin icons/bch.png',
+    'ETH': 'assets/coin icons/eth.png',
+    'ARB': 'assets/coin icons/arb.png',
+    'BASE': 'assets/coin icons/base.png',
+    'BNB': 'assets/coin icons/bnb.png',
+    'POLY': 'assets/coin icons/matic.png',
+    'SOL': 'assets/coin icons/sol.png',
+    'DCR': 'assets/coin icons/dcr.png',
+    'XMR': 'assets/coin icons/monero-xmr-logo.png',
+  };
+
   @override
   void initState() {
     super.initState();
@@ -152,9 +167,23 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
             border: Border.all(color: (_chainColors[state.selectedPair.ticker] ?? AppTheme.primaryColor).withValues(alpha: 0.3)),
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Container(
-              width: 8, height: 8,
-              decoration: BoxDecoration(shape: BoxShape.circle, color: _chainColors[state.selectedPair.ticker] ?? AppTheme.primaryColor),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: Image.asset(
+                _chainIcons[state.selectedPair.ticker] ?? '',
+                width: 20, height: 20,
+                errorBuilder: (_, __, ___) => Container(
+                  width: 20, height: 20,
+                  decoration: BoxDecoration(
+                    color: (_chainColors[state.selectedPair.ticker] ?? AppTheme.primaryColor).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Center(child: Text(
+                    state.selectedPair.ticker.substring(0, 2),
+                    style: TextStyle(color: _chainColors[state.selectedPair.ticker] ?? AppTheme.primaryColor, fontSize: 8, fontWeight: FontWeight.w800),
+                  )),
+                ),
+              ),
             ),
             const SizedBox(width: 6),
             Text(state.selectedPair.ticker, style: TextStyle(
@@ -241,12 +270,19 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     color: isSelected ? color.withValues(alpha: 0.08) : null,
                     child: Row(children: [
-                      // Color dot
-                      Container(
-                        width: 36, height: 36,
-                        decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
-                        child: Center(child: Text(ticker.substring(0, ticker.length.clamp(0, 2)),
-                          style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w800))),
+                      // Coin icon
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.asset(
+                          _chainIcons[ticker] ?? '',
+                          width: 36, height: 36,
+                          errorBuilder: (_, __, ___) => Container(
+                            width: 36, height: 36,
+                            decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
+                            child: Center(child: Text(ticker.substring(0, ticker.length.clamp(0, 2)),
+                              style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w800))),
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 12),
                       // Name + description
@@ -461,9 +497,19 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
       Container(padding: const EdgeInsets.all(12), margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(color: AppTheme.cardColor, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppTheme.surfaceColor)),
         child: Row(children: [
-          Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(4)),
-            child: Text(ticker, style: const TextStyle(color: AppTheme.primaryColor, fontSize: 10, fontWeight: FontWeight.w600))),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: Image.asset(
+              _chainIcons[ticker] ?? '',
+              width: 24, height: 24,
+              errorBuilder: (_, __, ___) => Container(
+                width: 24, height: 24,
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(4)),
+                child: Center(child: Text(ticker.substring(0, 2), style: const TextStyle(color: AppTheme.primaryColor, fontSize: 8, fontWeight: FontWeight.w600))),
+              ),
+            ),
+          ),
           const SizedBox(width: 8),
           Text(_chainNames[ticker] ?? ticker, style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.w500)),
           const Spacer(),
@@ -645,9 +691,18 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
                 ),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(children: [
-                    Container(
-                      width: 10, height: 10,
-                      decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: Image.asset(
+                        _chainIcons[e.key] ?? '',
+                        width: 28, height: 28,
+                        errorBuilder: (_, __, ___) => Container(
+                          width: 28, height: 28,
+                          decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+                          child: Center(child: Text(e.key.substring(0, 2),
+                            style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800))),
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(child: Column(

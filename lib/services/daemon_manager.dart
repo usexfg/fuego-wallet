@@ -28,6 +28,13 @@ class DaemonManager {
   final List<String> errors = [];
   final ValueNotifier<DaemonStatus> status = ValueNotifier(DaemonStatus());
 
+  /// Human-readable error from last `startAll()` call.
+  String? _lastStartError;
+  String? get lastStartError => _lastStartError;
+
+  /// Detailed per-daemon startup error messages.
+  final Map<String, String> daemonErrors = {};
+
   // ── Lifecycle ────────────────────────────────────────────────────
 
   /// Kill any process occupying [port], then return the freed port.
@@ -142,22 +149,43 @@ class DaemonManager {
   // ── Health checks ────────────────────────────────────────────────
 
   Future<bool> _checkHealth(String url, {Duration timeout = const Duration(seconds: 3)}) async {
+    final result = await _checkHealthDetailed(url, timeout: timeout);
+    return result.ok;
+  }
+
+  Future<_HealthResult> _checkHealthDetailed(String url, {Duration timeout = const Duration(seconds: 3)}) async {
     try {
       final client = HttpClient()..connectionTimeout = timeout;
       final req = await client.getUrl(Uri.parse(url));
       final resp = await req.close().timeout(timeout);
       await resp.drain<void>();
       client.close(force: true);
-      return resp.statusCode == 200;
-    } catch (_) {
-      return false;
+      if (resp.statusCode == 200) return _HealthResult.ok();
+      return _HealthResult.error('HTTP ${resp.statusCode}');
+    } on SocketException catch (e) {
+      if (e.osError?.errorCode == 61 || e.message.contains('Connection refused')) {
+        return _HealthResult.error('Connection refused');
+      }
+      if (e.osError?.errorCode == 60 || e.message.contains('ETIMEDOUT') || e.message.contains('timed out')) {
+        return _HealthResult.error('Connection timed out');
+      }
+      return _HealthResult.error(e.message.length > 80 ? '${e.message.substring(0, 77)}...' : e.message);
+    } on TimeoutException {
+      return _HealthResult.error('Connection timed out');
+    } catch (e) {
+      final msg = e.toString();
+      return _HealthResult.error(msg.length > 80 ? '${msg.substring(0, 77)}...' : msg);
     }
   }
 
   Future<void> _updateStatus() async {
-    final fuegodOk = await _checkHealth('http://127.0.0.1:$fuegodPort/getinfo');
-    final walletdOk = await _checkHealth('http://127.0.0.1:$walletdPort/health');
-    final swapdOk = await _checkHealth('http://127.0.0.1:$swapdPort/health');
+    final fuegodHealth = await _checkHealthDetailed('http://127.0.0.1:$fuegodPort/getinfo');
+    final walletdHealth = await _checkHealthDetailed('http://127.0.0.1:$walletdPort/health');
+    final swapdHealth = await _checkHealthDetailed('http://127.0.0.1:$swapdPort/health');
+
+    final fuegodOk = fuegodHealth.ok;
+    final walletdOk = walletdHealth.ok;
+    final swapdOk = swapdHealth.ok;
 
     // In local mode, walletd manages fuegod internally — fuegod is healthy if walletd is running
     final fuegodManagedByWalletd = _fuegod == null && _walletd != null && fuegodOk;
@@ -166,9 +194,9 @@ class DaemonManager {
       fuegodRunning: (_fuegod != null && fuegodOk) || fuegodManagedByWalletd,
       walletdRunning: _walletd != null && walletdOk,
       swapdRunning: _swapd != null && swapdOk,
-      fuegodError: _fuegod != null && !fuegodOk ? 'Not responding' : null,
-      walletdError: _walletd != null && !walletdOk ? 'Not responding' : null,
-      swapdError: _swapd != null && !swapdOk ? 'Not responding' : null,
+      fuegodError: _fuegod != null && !fuegodOk ? fuegodHealth.error : (daemonErrors['fuegod']),
+      walletdError: _walletd != null && !walletdOk ? walletdHealth.error : daemonErrors['walletd'],
+      swapdError: _swapd != null && !swapdOk ? swapdHealth.error : daemonErrors['swapd'],
     );
   }
 
@@ -186,6 +214,8 @@ class DaemonManager {
     int daemonPort = 18180,
   }) async {
     errors.clear();
+    daemonErrors.clear();
+    _lastStartError = null;
     _updateStatus();
 
     // ── 1. Fuegod ──
@@ -197,8 +227,10 @@ class DaemonManager {
       final fuegodErr = await _startFuegod(useTestnet: useTestnet);
       if (fuegodErr != null) {
         errors.add('fuegod: $fuegodErr');
+        daemonErrors['fuegod'] = fuegodErr;
+        _lastStartError = 'fuegod: $fuegodErr';
         _updateStatus();
-        return 'Failed to start fuegod: $fuegodErr';
+        return _lastStartError;
       }
     }
 
@@ -211,8 +243,10 @@ class DaemonManager {
     );
     if (walletdErr != null) {
       errors.add('fuego_walletd: $walletdErr');
+      daemonErrors['walletd'] = walletdErr;
+      _lastStartError = 'walletd: $walletdErr';
       _updateStatus();
-      return 'Failed to start fuego_walletd: $walletdErr';
+      return _lastStartError;
     }
 
     // ── 3. xfg-swapd (optional) ──
@@ -220,6 +254,7 @@ class DaemonManager {
       final swapdErr = await _startSwapd(swapConfigPath);
       if (swapdErr != null) {
         errors.add('xfg-swapd: $swapdErr');
+        daemonErrors['swapd'] = swapdErr;
         // swapd is non-critical — log but don't fail
         debugPrint('[daemon] xfg-swapd failed (non-fatal): $swapdErr');
       }
@@ -420,6 +455,15 @@ class DaemonStatus {
   bool get hasErrors => fuegodError != null || walletdError != null || swapdError != null;
   bool get allHealthy => fuegodRunning && walletdRunning && swapdRunning;
 
+  /// Human-readable status summary for UI display.
+  String get displayText {
+    final parts = <String>[];
+    if (!fuegodRunning) parts.add('Node: ${fuegodError ?? "offline"}');
+    if (!walletdRunning) parts.add('Wallet: ${walletdError ?? "offline"}');
+    if (!swapdRunning) parts.add('Swap: ${swapdError ?? "offline"}');
+    return parts.join(' \u2022 ');
+  }
+
   String? get summary {
     final running = [if (fuegodRunning) 'fuegod', if (walletdRunning) 'walletd', if (swapdRunning) 'swapd'];
     final stopped = [if (!fuegodRunning) 'fuegod', if (!walletdRunning) 'walletd', if (!swapdRunning) 'swapd'];
@@ -427,4 +471,11 @@ class DaemonStatus {
     if (stopped.isEmpty) return 'All daemons running';
     return '${running.join(", ")} running, ${stopped.join(", ")} stopped';
   }
+}
+
+class _HealthResult {
+  final bool ok;
+  final String? error;
+  _HealthResult.ok() : ok = true, error = null;
+  _HealthResult.error(this.error) : ok = false;
 }

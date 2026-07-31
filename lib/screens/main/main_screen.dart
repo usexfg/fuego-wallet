@@ -17,6 +17,7 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
+  bool _showDaemonDetails = false;
 
   final List<Widget> _screens = const [
     HomeScreen(),
@@ -43,25 +44,62 @@ class _MainScreenState extends State<MainScreen> {
           ValueListenableBuilder<DaemonStatus>(
             valueListenable: app.daemonManager.status,
             builder: (context, status, _) {
-              if (status.allHealthy) return const SizedBox.shrink();
+              if (status.allHealthy && app.daemonError == null) return const SizedBox.shrink();
               final issues = <String>[];
               if (!status.fuegodRunning) issues.add('Node');
               if (!status.walletdRunning) issues.add('Wallet');
               if (!status.swapdRunning) issues.add('Swap');
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                color: AppTheme.warningColor.withValues(alpha: 0.15),
-                child: Row(
-                  children: [
-                    const Icon(Icons.warning_amber_rounded, color: AppTheme.warningColor, size: 14),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        '${issues.join(", ")} daemon${issues.length > 1 ? "s" : ""} offline',
-                        style: const TextStyle(color: AppTheme.warningColor, fontSize: 11),
-                      ),
-                    ),
-                  ],
+              final hasStartupError = app.daemonError != null;
+              final hasDaemonErrors = issues.isNotEmpty;
+              if (!hasStartupError && !hasDaemonErrors) return const SizedBox.shrink();
+
+              return GestureDetector(
+                onTap: () => setState(() => _showDaemonDetails = !_showDaemonDetails),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  color: AppTheme.errorColor.withValues(alpha: 0.12),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(children: [
+                        const Icon(Icons.error_outline, color: AppTheme.errorColor, size: 14),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            hasStartupError
+                                ? app.daemonError!
+                                : '${issues.join(", ")} offline',
+                            style: const TextStyle(color: AppTheme.errorColor, fontSize: 11),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Icon(
+                          _showDaemonDetails ? Icons.expand_less : Icons.expand_more,
+                          color: AppTheme.errorColor,
+                          size: 16,
+                        ),
+                      ]),
+                      if (_showDaemonDetails) ...[
+                        const SizedBox(height: 6),
+                        if (!status.fuegodRunning)
+                          _daemonDetail('Node (fuegod)', status.fuegodError),
+                        if (!status.walletdRunning)
+                          _daemonDetail('Wallet (walletd)', status.walletdError),
+                        if (!status.swapdRunning)
+                          _daemonDetail('Swap (xfg-swapd)', status.swapdError),
+                        if (hasStartupError)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              'Tip: Check that binaries exist next to the app, or set FUEGO_USE_LOCAL_NODE=0 for remote mode.',
+                              style: TextStyle(color: AppTheme.textMuted.withValues(alpha: 0.8), fontSize: 10),
+                            ),
+                          ),
+                      ],
+                    ],
+                  ),
                 ),
               );
             },
@@ -127,6 +165,28 @@ class _MainScreenState extends State<MainScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _daemonDetail(String name, String? error) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.circle, color: AppTheme.errorColor, size: 6),
+          const SizedBox(width: 6),
+          Text('$name: ', style: const TextStyle(color: AppTheme.textMuted, fontSize: 10)),
+          Expanded(
+            child: Text(
+              error ?? 'binary not found or port conflict',
+              style: const TextStyle(color: AppTheme.errorColor, fontSize: 10),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -97,5 +97,6 @@ flutter:
     - assets/bin/
     - assets/data/
     - assets/charts/
+    - assets/coin icons/
 
 dependency_overrides:
