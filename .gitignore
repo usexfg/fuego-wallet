@@ -29,3 +29,4 @@ payment_gate.log
 *.so
 *.dll
 *.a
+native/crypto/target/

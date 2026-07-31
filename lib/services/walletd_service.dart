@@ -117,8 +117,6 @@ class WalletdService {
     // Relative to project root (dev mode)
     final devPaths = [
       p.join(Directory.current.path, 'macos', 'bin', 'walletd'),
-      '/Users/aejt/fuego-flutter-wallet/macos/bin/walletd',
-      '/Users/aejt/fuego-flutter-wallet/.build/tool-output/*/bin/walletd',
     ];
     for (final path in devPaths) {
       if (File(path).existsSync()) return path;

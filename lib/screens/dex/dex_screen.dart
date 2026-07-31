@@ -28,6 +28,21 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
     'SOL': 'Solana', 'POLY': 'Polygon', 'DCR': 'Decred', 'XMR': 'Monero',
   };
 
+  static const Map<String, String> _chainDesc = {
+    'BTC': 'Digital gold — the original UTXO chain with deepest liquidity.',
+    'LTC': 'Fast, lightweight Bitcoin fork with low fees and mature SPV.',
+    'KMD': 'Komodo — delayed PoW with built-in atomic swap support.',
+    'BCH': 'Bitcoin Cash — high-throughput UTXO chain for everyday payments.',
+    'ETH': 'Smart contract platform — largest DeFi ecosystem.',
+    'ARB': 'Arbitrum — Ethereum L2 with fast finality and low gas.',
+    'BASE': 'Base — Coinbase L2 on the OP Stack, fast and cheap.',
+    'BNB': 'BNB Chain — EVM-compatible, high throughput, low fees.',
+    'POLY': 'Polygon — Ethereum sidechain with fast 2s blocks.',
+    'SOL': 'Solana — high-performance non-EVM chain with sub-second slots.',
+    'DCR': 'Decred — hybrid PoW/PoS with built-in governance and Neutrino SPV.',
+    'XMR': 'Monero — privacy coin using ring signatures and stealth addresses.',
+  };
+
   static const Map<String, Map<String, String>> _chainInfo = {
     'BTC': {'type': 'UTXO', 'connect': 'Electrum SPV (public servers)', 'user': 'No setup needed. Full node only for advanced RPC mode.', 'htlc': 'P2WSH SegWit'},
     'LTC': {'type': 'UTXO', 'connect': 'Electrum SPV (public servers)', 'user': 'No setup needed. Full node only for advanced RPC mode.', 'htlc': 'P2WSH SegWit'},
@@ -41,6 +56,13 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
     'SOL': {'type': 'Non-EVM', 'connect': 'Solana JSON-RPC (public)', 'user': 'No setup needed — public RPC used by default.', 'htlc': 'On-chain HTLC program'},
     'DCR': {'type': 'UTXO', 'connect': 'Neutrino SPV (built-in) or dcrd RPC', 'user': 'No setup needed for SPV mode.', 'htlc': 'P2SH'},
     'XMR': {'type': 'CryptoNote', 'connect': 'monerod + monero-wallet-rpc', 'user': 'Run your own node (recommended) or use a remote node from monero.fail.', 'htlc': 'Ring signatures + adaptor sigs'},
+  };
+
+  static const Map<String, Color> _chainColors = {
+    'BTC': Color(0xFFF7931A), 'LTC': Color(0xFFBFBBBB), 'KMD': Color(0xFF2B6DE9),
+    'BCH': Color(0xFF8DC351), 'ETH': Color(0xFF627EEA), 'ARB': Color(0xFF28A0F0),
+    'BASE': Color(0xFF0052FF), 'BNB': Color(0xFFF0B90B), 'POLY': Color(0xFF8247E5),
+    'SOL': Color(0xFF9945FF), 'DCR': Color(0xFF2970FF), 'XMR': Color(0xFFFF6600),
   };
 
   @override
@@ -112,31 +134,48 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
   );
 
   Widget _buildPairBar(DexState state) => Container(
-    padding: const EdgeInsets.all(8),
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     color: AppTheme.surfaceColor,
     child: Row(children: [
-      const Icon(Icons.currency_exchange, color: AppTheme.primaryColor, size: 20),
+      const Text('XFG', style: TextStyle(color: AppTheme.primaryColor, fontSize: 15, fontWeight: FontWeight.w700)),
+      const SizedBox(width: 4),
+      const Text('/', style: TextStyle(color: AppTheme.textMuted, fontSize: 15)),
+      const SizedBox(width: 4),
+      // Chain selector button
+      GestureDetector(
+        onTap: () => _showChainSelector(state),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: (_chainColors[state.selectedPair.ticker] ?? AppTheme.primaryColor).withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: (_chainColors[state.selectedPair.ticker] ?? AppTheme.primaryColor).withValues(alpha: 0.3)),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+              width: 8, height: 8,
+              decoration: BoxDecoration(shape: BoxShape.circle, color: _chainColors[state.selectedPair.ticker] ?? AppTheme.primaryColor),
+            ),
+            const SizedBox(width: 6),
+            Text(state.selectedPair.ticker, style: TextStyle(
+              color: _chainColors[state.selectedPair.ticker] ?? AppTheme.primaryColor,
+              fontSize: 14, fontWeight: FontWeight.w700)),
+            const SizedBox(width: 4),
+            Icon(Icons.keyboard_arrow_down_rounded, color: _chainColors[state.selectedPair.ticker] ?? AppTheme.primaryColor, size: 18),
+          ]),
+        ),
+      ),
       const SizedBox(width: 8),
-      const Text('XFG/', style: TextStyle(color: AppTheme.primaryColor, fontSize: 14, fontWeight: FontWeight.w600)),
-      SizedBox(width: 90, child: DropdownButtonFormField<SwapPairSdk>(
-        value: state.selectedPair,
-        isExpanded: true,
-        dropdownColor: AppTheme.cardColor,
-        style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13),
-        decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6), border: OutlineInputBorder()),
-        items: SwapPairSdk.values.map((p) => DropdownMenuItem(value: p, child: Text(p.ticker))).toList(),
-        onChanged: (p) { if (p != null) context.read<DexCubit>().selectPair(p); },
-      )),
-      const SizedBox(width: 8),
+      // Chain type badge
       Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(4)),
-        child: Text(state.selectedChain.symbol, style: const TextStyle(color: AppTheme.primaryColor, fontSize: 10, fontWeight: FontWeight.w600))),
+        decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
+        child: Text(_chainInfo[state.selectedPair.ticker]?['type'] ?? '', style: const TextStyle(color: AppTheme.textMuted, fontSize: 9, fontWeight: FontWeight.w600))),
       const Spacer(),
       IconButton(
-        icon: const Icon(Icons.info_outline, size: 16, color: AppTheme.textMuted),
+        icon: const Icon(Icons.info_outline, size: 18, color: AppTheme.textMuted),
         onPressed: _showChainInfo,
-        tooltip: 'Supported chains'),
+        tooltip: 'Chain details'),
       const SizedBox(width: 4),
       if (!state.isConnected)
         const Icon(Icons.cloud_off, color: AppTheme.errorColor, size: 16)
@@ -150,6 +189,100 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
         constraints: const BoxConstraints(minWidth: 32, minHeight: 32)),
     ]),
   );
+
+  void _showChainSelector(DexState state) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.7),
+        decoration: BoxDecoration(
+          color: AppTheme.cardColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          // Handle bar
+          Container(
+            margin: const EdgeInsets.only(top: 12),
+            width: 40, height: 4,
+            decoration: BoxDecoration(color: AppTheme.textMuted.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2)),
+          ),
+          // Title
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 16, 20, 12),
+            child: Row(children: [
+              Text('Select Chain', style: TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
+              Spacer(),
+              Text('XFG paired', style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+            ]),
+          ),
+          Divider(height: 1, color: AppTheme.surfaceColor),
+          // Chain list
+          Flexible(
+            child: ListView.builder(
+              shrinkWrap: true,
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              itemCount: SwapPairSdk.values.length,
+              itemBuilder: (_, i) {
+                final pair = SwapPairSdk.values[i];
+                final ticker = pair.ticker;
+                final name = _chainNames[ticker] ?? ticker;
+                final desc = _chainDesc[ticker] ?? '';
+                final color = _chainColors[ticker] ?? AppTheme.primaryColor;
+                final info = _chainInfo[ticker];
+                final isSelected = pair == state.selectedPair;
+                return InkWell(
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    context.read<DexCubit>().selectPair(pair);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    color: isSelected ? color.withValues(alpha: 0.08) : null,
+                    child: Row(children: [
+                      // Color dot
+                      Container(
+                        width: 36, height: 36,
+                        decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
+                        child: Center(child: Text(ticker.substring(0, ticker.length.clamp(0, 2)),
+                          style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w800))),
+                      ),
+                      const SizedBox(width: 12),
+                      // Name + description
+                      Expanded(child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(children: [
+                            Text(name, style: TextStyle(color: isSelected ? color : AppTheme.textPrimary,
+                              fontSize: 14, fontWeight: FontWeight.w600)),
+                            const SizedBox(width: 6),
+                            if (info != null)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(4)),
+                                child: Text(info['type']!, style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w600))),
+                          ]),
+                          const SizedBox(height: 2),
+                          Text(desc, style: const TextStyle(color: AppTheme.textMuted, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        ],
+                      )),
+                      // Selected indicator
+                      if (isSelected)
+                        Icon(Icons.check_circle_rounded, color: color, size: 20)
+                      else
+                        Icon(Icons.chevron_right_rounded, color: AppTheme.textMuted.withValues(alpha: 0.4), size: 20),
+                    ]),
+                  ),
+                );
+              },
+            ),
+          ),
+          SizedBox(height: MediaQuery.of(ctx).viewInsets.bottom),
+        ]),
+      ),
+    );
+  }
 
   Widget _buildPriceBar(DexState state) {
     final p = state.price;
@@ -481,38 +614,66 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.cardColor,
-        title: const Text('Supported Chains', style: TextStyle(color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(children: [
+          Icon(Icons.hub_outlined, color: AppTheme.primaryColor, size: 20),
+          SizedBox(width: 8),
+          Text('Swap Chains', style: TextStyle(color: AppTheme.textPrimary, fontSize: 17, fontWeight: FontWeight.w700)),
+        ]),
         content: SizedBox(
           width: double.maxFinite,
           child: SingleChildScrollView(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('All swaps are XFG-paired atomic swaps handled by xfg-swapd.',
+            const Text('All swaps are XFG-paired atomic swaps handled by xfg-swapd.\n',
                 style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-            const SizedBox(height: 12),
             ...entries.map((e) {
               final info = e.value;
               final isSelected = e.key == selected;
+              final color = _chainColors[e.key] ?? AppTheme.primaryColor;
+              final desc = _chainDesc[e.key] ?? '';
               return Container(
                 margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? AppTheme.primaryColor.withValues(alpha: 0.1)
-                      : AppTheme.surfaceColor.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: isSelected
-                      ? AppTheme.primaryColor.withValues(alpha: 0.4)
-                      : AppTheme.surfaceColor)),
+                      ? color.withValues(alpha: 0.08)
+                      : AppTheme.surfaceColor.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isSelected
+                        ? color.withValues(alpha: 0.3)
+                        : AppTheme.surfaceColor),
+                ),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(children: [
-                    Text('${e.key} — ${_chainNames[e.key]}',
-                        style: TextStyle(color: isSelected ? AppTheme.primaryColor : AppTheme.textPrimary,
-                            fontSize: 13, fontWeight: FontWeight.w600)),
-                    const SizedBox(width: 6),
-                    Container(padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                      decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(3)),
-                      child: Text(info['type']!, style: const TextStyle(color: AppTheme.primaryColor, fontSize: 9, fontWeight: FontWeight.w600))),
+                    Container(
+                      width: 10, height: 10,
+                      decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          Text('${e.key} — ${_chainNames[e.key]}',
+                            style: TextStyle(color: isSelected ? color : AppTheme.textPrimary,
+                              fontSize: 13, fontWeight: FontWeight.w600)),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                            decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(4)),
+                            child: Text(info['type']!, style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w600))),
+                        ]),
+                        const SizedBox(height: 2),
+                        Text(desc, style: const TextStyle(color: AppTheme.textMuted, fontSize: 10)),
+                      ],
+                    )),
+                    if (isSelected)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(4)),
+                        child: const Text('ACTIVE', style: TextStyle(color: AppTheme.primaryColor, fontSize: 9, fontWeight: FontWeight.w700))),
                   ]),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 8),
                   _chainInfoRow('Connect', info['connect']!),
                   _chainInfoRow('HTLC', info['htlc']!),
                   _chainInfoRow('Setup', info['user']!),
@@ -531,13 +692,14 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
 
   Widget _chainInfoRow(String label, String value) {
     final hasLink = value.contains('monero.fail');
-    final color = value.startsWith('You must') ? AppTheme.warningColor : AppTheme.textSecondary;
+    final isWarning = value.startsWith('Run your own') || value.startsWith('You must');
+    final color = isWarning ? AppTheme.warningColor : AppTheme.textSecondary;
 
     if (!hasLink) {
       return Padding(
         padding: const EdgeInsets.only(top: 2),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('$label: ', style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+          SizedBox(width: 48, child: Text(label, style: const TextStyle(color: AppTheme.textMuted, fontSize: 11, fontWeight: FontWeight.w500))),
           Expanded(child: Text(value, style: TextStyle(color: color, fontSize: 11))),
         ]));
     }
@@ -546,7 +708,7 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
     return Padding(
       padding: const EdgeInsets.only(top: 2),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('$label: ', style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+        SizedBox(width: 48, child: Text(label, style: const TextStyle(color: AppTheme.textMuted, fontSize: 11, fontWeight: FontWeight.w500))),
         Expanded(child: RichText(text: TextSpan(children: [
           TextSpan(text: parts[0], style: TextStyle(color: color, fontSize: 11)),
           TextSpan(text: 'monero.fail', style: const TextStyle(color: AppTheme.primaryColor, fontSize: 11, decoration: TextDecoration.underline),

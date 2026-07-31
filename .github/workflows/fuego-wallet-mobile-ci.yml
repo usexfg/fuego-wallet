@@ -26,7 +26,7 @@ jobs:
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.35.0'
+          flutter-version: '3.44.4'
           channel: 'stable'
 
       - name: Install dependencies
@@ -54,7 +54,7 @@ jobs:
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.35.0'
+          flutter-version: '3.44.4'
           channel: 'stable'
 
       - name: Enable Android
@@ -144,7 +144,7 @@ jobs:
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.35.0'
+          flutter-version: '3.44.4'
           channel: 'stable'
 
       - name: Enable iOS

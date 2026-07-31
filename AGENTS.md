@@ -18,7 +18,7 @@ The Fuego swap system uses **two daemons** that serve different purposes:
 - Supports all 12 counterparty chains with SPV or RPC verification
 - Connects to fuegod as an RPC client for Fuego chain operations
 - Used by: Dart wallet Cross-Chain tab
-- Built from: `src/SwapDaemon/` in the fuego C++ repo (`/Users/aejt/xfgo`)
+- Built from: `src/SwapDaemon/` in the fuego C++ repo
 
 ### Why Both Are Needed
 - Fuegod handles Fuego-side escrow and ring signatures only
