@@ -1,0 +1,198 @@
+name: Fuego Wallet Mobile CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+  release:
+    types: [published]
+
+concurrency:
+  group: fuego-wallet-mobile-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.0'
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+  build-android:
+    name: Build Android
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    needs: analyze
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.0'
+          channel: 'stable'
+
+      - name: Enable Android
+        run: flutter config --enable-android
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+          targets: aarch64-linux-android, armv7-linux-androideabi, x86_64-linux-android, i686-linux-android
+
+      - name: Set up NDK
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r25b
+
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk
+
+      - name: Build Rust libraries for Android (fuego_crypto & fuego_ffi)
+        run: |
+          # Build fuego-crypto
+          cd native/crypto
+          cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 -t x86 -p 25 -- build --release
+          cd ../..
+
+          # Build fuego-ffi
+          cd rust-fuego-wallet/fuego-sdk/fuego-ffi
+          cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 -t x86 -p 25 -- build --release
+          cd ../../../
+
+      - name: Copy Rust libraries to Android jniLibs
+        run: |
+          mkdir -p android/app/src/main/jniLibs/arm64-v8a
+          mkdir -p android/app/src/main/jniLibs/armeabi-v7a
+          mkdir -p android/app/src/main/jniLibs/x86_64
+          mkdir -p android/app/src/main/jniLibs/x86
+
+          # Copy fuego_crypto
+          cp native/crypto/target/aarch64-linux-android/release/libfuego_crypto.so android/app/src/main/jniLibs/arm64-v8a/
+          cp native/crypto/target/armv7-linux-androideabi/release/libfuego_crypto.so android/app/src/main/jniLibs/armeabi-v7a/
+          cp native/crypto/target/x86_64-linux-android/release/libfuego_crypto.so android/app/src/main/jniLibs/x86_64/
+          cp native/crypto/target/i686-linux-android/release/libfuego_crypto.so android/app/src/main/jniLibs/x86/
+
+          # Copy fuego_ffi
+          cp rust-fuego-wallet/target/aarch64-linux-android/release/libfuego_ffi.so android/app/src/main/jniLibs/arm64-v8a/
+          cp rust-fuego-wallet/target/armv7-linux-androideabi/release/libfuego_ffi.so android/app/src/main/jniLibs/armeabi-v7a/
+          cp rust-fuego-wallet/target/x86_64-linux-android/release/libfuego_ffi.so android/app/src/main/jniLibs/x86_64/
+          cp rust-fuego-wallet/target/i686-linux-android/release/libfuego_ffi.so android/app/src/main/jniLibs/x86/
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Debug APK
+        run: flutter build apk --debug
+
+      - name: Build Release APK
+        run: flutter build apk --release
+
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuego-wallet-android-debug
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 30
+
+      - name: Upload Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuego-wallet-android-release
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 30
+
+  build-ios:
+    name: Build iOS
+    runs-on: macos-latest
+    timeout-minutes: 35
+    needs: analyze
+
+    steps:
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.0'
+          channel: 'stable'
+
+      - name: Enable iOS
+        run: flutter config --enable-ios
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+          targets: aarch64-apple-ios
+
+      - name: Build Rust libraries for iOS
+        run: |
+          # Build fuego-crypto
+          cd native/crypto
+          cargo build --release --target aarch64-apple-ios
+          cd ../..
+
+          # Build fuego-ffi
+          cd rust-fuego-wallet/fuego-sdk/fuego-ffi
+          cargo build --release --target aarch64-apple-ios
+          cd ../../../
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build iOS App
+        run: flutter build ios --release --no-codesign
+
+      - name: Bundle Rust libraries into iOS app
+        run: |
+          APP="build/ios/iphoneos/Runner.app"
+          mkdir -p "$APP/Frameworks"
+          cp native/crypto/target/aarch64-apple-ios/release/libfuego_crypto.dylib "$APP/Frameworks/"
+          cp rust-fuego-wallet/target/aarch64-apple-ios/release/libfuego_ffi.dylib "$APP/Frameworks/"
+          cp native/crypto/target/aarch64-apple-ios/release/libfuego_crypto.dylib "$APP/"
+          cp rust-fuego-wallet/target/aarch64-apple-ios/release/libfuego_ffi.dylib "$APP/"
+
+      - name: Package iOS App (.ipa)
+        run: |
+          cd build/ios/iphoneos
+          mkdir Payload
+          mv Runner.app Payload/
+          zip -r Fuego-Wallet-iOS.ipa Payload
+
+      - name: Upload iOS App
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuego-wallet-ios
+          path: build/ios/iphoneos/Fuego-Wallet-iOS.ipa
+          retention-days: 30
