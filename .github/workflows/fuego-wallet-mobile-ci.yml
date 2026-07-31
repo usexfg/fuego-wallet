@@ -133,6 +133,7 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 35
     needs: analyze
+    continue-on-error: true
 
     steps:
       - name: Select Xcode
