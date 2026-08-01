@@ -429,7 +429,8 @@ class DaemonManager {
     }
 
     // Wait for ready — unified daemon exposes /json_rpc with getHealth
-    for (var i = 0; i < 60; i++) {
+    // Blockchain rescan + wallet scan can take up to ~150s on mainnet
+    for (var i = 0; i < 90; i++) {
       await Future<void>.delayed(const Duration(seconds: 2));
       try {
         final client = HttpClient()..connectionTimeout = const Duration(seconds: 2);
@@ -450,7 +451,7 @@ class DaemonManager {
         }
       } catch (_) {}
     }
-    return 'unified daemon not ready after 120s';
+    return 'unified daemon not ready after 180s';
   }
 
   Future<String?> _startSwapd(String configPath) async {
