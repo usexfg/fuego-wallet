@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../main.dart' as app;
-import '../../services/daemon_manager.dart';
+import '../../services/daemon_event_bus.dart';
 import '../../utils/theme.dart';
 import '../home/home_screen.dart';
 import '../dex/dex_screen.dart';
@@ -40,18 +40,15 @@ class _MainScreenState extends State<MainScreen> {
     return Scaffold(
       body: Column(
         children: [
-          // Daemon status bar
-          ValueListenableBuilder<DaemonStatus>(
-            valueListenable: app.daemonManager.status,
-            builder: (context, status, _) {
-              if (status.allHealthy && app.daemonError == null) return const SizedBox.shrink();
-              final issues = <String>[];
-              if (!status.fuegodRunning) issues.add('Node');
-              if (!status.walletdRunning) issues.add('Wallet');
-              if (!status.swapdRunning) issues.add('Swap');
+          // Daemon status bar — driven by EventBus health
+          ValueListenableBuilder<DaemonHealthSnapshot>(
+            valueListenable: app.daemonManager.eventBus.health,
+            builder: (context, health, _) {
+              // Show bar if any daemon is down, or startup error exists
+              if (health.allHealthy && app.daemonError == null) return const SizedBox.shrink();
               final hasStartupError = app.daemonError != null;
-              final hasDaemonErrors = issues.isNotEmpty;
-              if (!hasStartupError && !hasDaemonErrors) return const SizedBox.shrink();
+              final hasIssues = !health.allHealthy;
+              if (!hasStartupError && !hasIssues) return const SizedBox.shrink();
 
               return GestureDetector(
                 onTap: () => setState(() => _showDaemonDetails = !_showDaemonDetails),
@@ -69,7 +66,7 @@ class _MainScreenState extends State<MainScreen> {
                           child: Text(
                             hasStartupError
                                 ? app.daemonError!
-                                : '${issues.join(", ")} offline',
+                                : health.displayText,
                             style: const TextStyle(color: AppTheme.errorColor, fontSize: 11),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -83,12 +80,12 @@ class _MainScreenState extends State<MainScreen> {
                       ]),
                       if (_showDaemonDetails) ...[
                         const SizedBox(height: 6),
-                        if (!status.fuegodRunning)
-                          _daemonDetail('Node (fuegod)', status.fuegodError),
-                        if (!status.walletdRunning)
-                          _daemonDetail('Wallet (walletd)', status.walletdError),
-                        if (!status.swapdRunning)
-                          _daemonDetail('Swap (xfg-swapd)', status.swapdError),
+                        if (!health.fuegodRunning)
+                          _daemonDetail('Node (fuegod)', health.fuegodError),
+                        if (!health.walletdRunning)
+                          _daemonDetail('Wallet (walletd)', health.walletdError),
+                        if (!health.swapdRunning)
+                          _daemonDetail('Swap (xfg-swapd)', health.swapdError),
                         if (hasStartupError)
                           Padding(
                             padding: const EdgeInsets.only(top: 4),

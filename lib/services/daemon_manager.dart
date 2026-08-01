@@ -4,6 +4,8 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
+import 'daemon_event_bus.dart';
+
 /// Unified process manager for all backend daemons.
 ///
 /// Manages fuegod (port 18180), fuego_walletd (port 18189), and xfg-swapd (port 18902).
@@ -27,6 +29,9 @@ class DaemonManager {
   // ── State ────────────────────────────────────────────────────────
   final List<String> errors = [];
   final ValueNotifier<DaemonStatus> status = ValueNotifier(DaemonStatus());
+
+  /// Unified event bus — single source of truth for daemon health.
+  final DaemonEventBus eventBus = DaemonEventBus();
 
   /// Human-readable error from last `startAll()` call.
   String? _lastStartError;
@@ -265,6 +270,10 @@ class DaemonManager {
     }
 
     _updateStatus();
+
+    // Start unified event bus for continuous health monitoring.
+    eventBus.start();
+
     return null;
   }
 
@@ -398,6 +407,7 @@ class DaemonManager {
   // ── Stop all daemons ─────────────────────────────────────────────
 
   Future<void> stopAll() async {
+    eventBus.stop();
     await _stopProcess(_swapd, 'xfg-swapd');
     _swapd = null;
     await _stopProcess(_walletd, 'fuego_walletd');
