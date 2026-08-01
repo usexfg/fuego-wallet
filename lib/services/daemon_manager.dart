@@ -247,11 +247,11 @@ class DaemonManager {
     if (unifiedBin != null) {
       debugPrint('[daemon] Found unified daemon: $unifiedBin');
       final unifiedErr = await _startUnified(unifiedBin, useLocalNode: useLocalNode, useTestnet: useTestnet);
-      if (unifiedErr == null) {
-        _updateStatus();
-        eventBus.start();
-        return null;
-      }
+       if (unifiedErr == null) {
+         _updateStatus();
+         eventBus.start(fuegodPort: fuegodPort, walletdPort: walletdPort, swapdPort: swapdPort);
+         return null;
+       }
       debugPrint('[daemon] Unified daemon failed, falling back to separate processes: $unifiedErr');
     }
 
