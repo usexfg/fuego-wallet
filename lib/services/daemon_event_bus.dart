@@ -159,56 +159,112 @@ class DaemonEventBus {
     } catch (_) {}
   }
 
-  Future<void> _pollWalletd() async {
-    try {
-      final client = HttpClient()..connectionTimeout = const Duration(seconds: 3);
+   Future<void> _pollWalletd() async {
+     try {
+       final client = HttpClient()..connectionTimeout = const Duration(seconds: 3);
 
-      // Health check (matches xfgo dashboard /api/health wallet probe)
-      try {
-        final req = await client.getUrl(
-            Uri.parse('http://127.0.0.1:$walletdPort/health'));
-        final resp = await req.close().timeout(const Duration(seconds: 3));
-        final body = await resp.transform(utf8.decoder).join();
-        client.close(force: true);
+        // Health check — try JSON-RPC getHealth first (unified daemon on port 8070)
+        // then fall back to GET /health (Rust proxy on port 18189)
+        try {
+          final req = await client.postUrl(
+              Uri.parse('http://127.0.0.1:$walletdPort/json_rpc'));
+          req.headers.contentType = ContentType.json;
+          req.write(jsonEncode({
+            'jsonrpc': '2.0',
+            'id': 1,
+            'method': 'getHealth',
+            'params': <String, dynamic>{},
+          }));
+          final resp = await req.close().timeout(const Duration(seconds: 3));
+         final body = await resp.transform(utf8.decoder).join();
+         client.close(force: true);
 
-        if (resp.statusCode == 200) {
-          final data = jsonDecode(body) as Map<String, dynamic>;
-          _updateHealth(walletdOk: true, walletdData: data);
-        } else {
-          _updateHealth(walletdOk: false, walletdError: 'HTTP ${resp.statusCode}');
-        }
-      } catch (_) {
-        client.close(force: true);
-        _updateHealth(walletdOk: false, walletdError: 'Connection refused');
-      }
-    } catch (_) {}
-  }
+         if (resp.statusCode == 200) {
+           final data = jsonDecode(body) as Map<String, dynamic>;
+           final result = data['result'] as Map<String, dynamic>? ?? {};
+           _updateHealth(walletdOk: result['wallet'] as bool? ?? false, walletdData: result);
+           return;
+         }
+       } catch (_) {}
 
-  Future<void> _pollSwapd() async {
-    try {
-      final client = HttpClient()..connectionTimeout = const Duration(seconds: 3);
+       // Fall back to GET /health (Rust proxy)
+       try {
+         final req2 = await client.getUrl(
+             Uri.parse('http://127.0.0.1:$walletdPort/health'));
+         final resp = await req2.close().timeout(const Duration(seconds: 3));
+         final body = await resp.transform(utf8.decoder).join();
+         client.close(force: true);
 
-      // Status check (matches xfgo dashboard pollSwapd line 238+)
-      try {
-        final req = await client.getUrl(
-            Uri.parse('http://127.0.0.1:$swapdPort/health'));
-        final resp = await req.close().timeout(const Duration(seconds: 3));
-        final body = await resp.transform(utf8.decoder).join();
-        client.close(force: true);
+         if (resp.statusCode == 200) {
+           final data = jsonDecode(body) as Map<String, dynamic>;
+           _updateHealth(walletdOk: true, walletdData: data);
+           return;
+         } else {
+           _updateHealth(walletdOk: false, walletdError: 'HTTP ${resp.statusCode}');
+           return;
+         }
+       } catch (_) {}
 
-        if (resp.statusCode == 200) {
-          final data = jsonDecode(body) as Map<String, dynamic>;
-          _updateHealth(swapdOk: true);
-          _emit(eventSwap, data);
-        } else {
-          _updateHealth(swapdOk: false, swapdError: 'HTTP ${resp.statusCode}');
-        }
-      } catch (_) {
-        client.close(force: true);
-        _updateHealth(swapdOk: false, swapdError: 'Connection refused');
-      }
-    } catch (_) {}
-  }
+       client.close(force: true);
+       _updateHealth(walletdOk: false, walletdError: 'Connection refused');
+     } catch (_) {}
+   }
+
+   Future<void> _pollSwapd() async {
+     try {
+       final client = HttpClient()..connectionTimeout = const Duration(seconds: 3);
+
+        // For unified daemon, swapd health is part of getHealth on walletd port
+        // For standalone xfg-swapd, use GET /health on swapd port
+        try {
+          final req = await client.postUrl(
+              Uri.parse('http://127.0.0.1:$walletdPort/json_rpc'));
+          req.headers.contentType = ContentType.json;
+          req.write(jsonEncode({
+            'jsonrpc': '2.0',
+            'id': 1,
+            'method': 'getHealth',
+            'params': <String, dynamic>{},
+          }));
+          final resp = await req.close().timeout(const Duration(seconds: 3));
+         final body = await resp.transform(utf8.decoder).join();
+         client.close(force: true);
+
+         if (resp.statusCode == 200) {
+           final data = jsonDecode(body) as Map<String, dynamic>;
+           final result = data['result'] as Map<String, dynamic>? ?? {};
+           final swapOk = result['swap'] as bool? ?? false;
+           _updateHealth(swapdOk: swapOk);
+           if (swapOk) {
+             _emit(eventSwap, result);
+           }
+           return;
+         }
+       } catch (_) {}
+
+       // Fall back to GET /health for standalone xfg-swapd
+       try {
+         final req2 = await client.getUrl(
+             Uri.parse('http://127.0.0.1:$swapdPort/health'));
+         final resp = await req2.close().timeout(const Duration(seconds: 3));
+         final body = await resp.transform(utf8.decoder).join();
+         client.close(force: true);
+
+         if (resp.statusCode == 200) {
+           final data = jsonDecode(body) as Map<String, dynamic>;
+           _updateHealth(swapdOk: true);
+           _emit(eventSwap, data);
+           return;
+         } else {
+           _updateHealth(swapdOk: false, swapdError: 'HTTP ${resp.statusCode}');
+           return;
+         }
+       } catch (_) {}
+
+       client.close(force: true);
+       _updateHealth(swapdOk: false, swapdError: 'Connection refused');
+     } catch (_) {}
+   }
 
   // ── Health state management ──────────────────────────────────────
 
