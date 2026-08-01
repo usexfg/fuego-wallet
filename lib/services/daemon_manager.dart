@@ -109,6 +109,7 @@ class DaemonManager {
       if (Platform.isMacOS) '${exe.parent.parent.parent.path}/Resources/bin/fuegod',
       '${Directory.current.path}/rust-fuego-wallet/target/debug/fuegod',
       '${Directory.current.path}/rust-fuego-wallet/target/release/fuegod',
+      '${Directory.current.path}/xfgo/build/src/fuegod',
     ];
     for (final path in candidates) {
       if (File(path).existsSync()) { _fuegodBin = path; return path; }
@@ -124,6 +125,7 @@ class DaemonManager {
       if (Platform.isMacOS) '${exe.parent.parent.parent.path}/Resources/bin/fuego_walletd',
       '${Directory.current.path}/rust-fuego-wallet/target/debug/fuego_walletd',
       '${Directory.current.path}/rust-fuego-wallet/target/release/fuego_walletd',
+      '${Directory.current.path}/xfgo/build/src/walletd',
     ];
     for (final path in candidates) {
       if (File(path).existsSync()) { _walletdBin = path; return path; }
@@ -139,6 +141,8 @@ class DaemonManager {
       if (Platform.isMacOS) '${exe.parent.parent.parent.path}/Resources/bin/xfg-swapd',
       '${Directory.current.path}/build/release/src/xfg-swapd',
       '${Directory.current.path}/xfg-swapd',
+      '${Directory.current.path}/xfgo/build/src/xfg-swapd',
+      '${Directory.current.path}/xfgo/build/release/src/xfg-swapd',
     ];
     for (final path in candidates) {
       if (File(path).existsSync()) { _swapdBin = path; return path; }
