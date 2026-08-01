@@ -60,22 +60,39 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@v1
-        with: { toolchain: stable }
+       - name: Set up Rust
+         uses: dtolnay/rust-toolchain@v1
+         with: { toolchain: stable }
 
-      - name: Build Rust backend
-        working-directory: rust-fuego-wallet
-        run: cargo build --release
+       - name: Build unified daemon (xfgo)
+         run: |
+           # Clone fuego-suite repo
+           git clone --depth 1 --branch master https://github.com/usexfg/fuego-suite.git xfgo
+           cd xfgo
+           # Install C++ dependencies
+           brew install boost@1.85 openssl@3 icu4c jsoncpp cmake ninja
+           # Build unified daemon
+           cmake -B build -G Ninja \
+             -DCMAKE_BUILD_TYPE=Release \
+             -DCMAKE_OSX_ARCHITECTURES=$(uname -m)
+           cmake --build build -j$(sysctl -n hw.logicalcpu)
+           # Copy unified binary to project root for bundling
+           cp build/src/unified ../
+           cd ..
+           # Clean up to save space
+           rm -rf xfgo
 
-      - name: Build macOS app
-        run: flutter build macos --release
+       - name: Build macOS app
+         run: flutter build macos --release
 
-      - name: Bundle Rust backend into app
-        run: |
-          APP="build/macos/Build/Products/Release/fuego_wallet.app"
-          cp rust-fuego-wallet/target/release/fuego_walletd "$APP/Contents/MacOS/"
-          chmod +x "$APP/Contents/MacOS/fuego_walletd"
+       - name: Bundle unified daemon into app
+         run: |
+           APP="build/macos/Build/Products/Release/fuego_wallet.app"
+           cp unified "$APP/Contents/MacOS/"
+           chmod +x "$APP/Contents/MacOS/unified"
+           # Also keep rust backend for fallback
+           cp rust-fuego-wallet/target/release/fuego_walletd "$APP/Contents/MacOS/" 2>/dev/null || true
+           chmod +x "$APP/Contents/MacOS/fuego_walletd" 2>/dev/null || true
 
       - name: Re-sign
         run: |
@@ -134,24 +151,40 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@v1
-        with: { toolchain: stable }
+       - name: Set up Rust
+         uses: dtolnay/rust-toolchain@v1
+         with: { toolchain: stable }
 
-      - name: Build Rust backend
-        working-directory: rust-fuego-wallet
-        run: cargo build --release
+       - name: Build unified daemon (xfgo)
+         run: |
+           # Clone fuego-suite repo
+           git clone --depth 1 --branch master https://github.com/usexfg/fuego-suite.git xfgo
+           cd xfgo
+           # Install C++ dependencies
+           sudo apt-get update
+           sudo apt-get install -y build-essential cmake libboost-all-dev libssl-dev libicu-dev libjsoncpp-dev
+           # Build unified daemon
+           cmake -B build -DCMAKE_BUILD_TYPE=Release
+           make -C build -j$(nproc)
+           # Copy unified binary to project root for bundling
+           cp build/src/unified ../
+           cd ..
+           # Clean up to save space
+           rm -rf xfgo
 
-      - name: Build Linux app
-        run: flutter build linux --release
+       - name: Build Linux app
+         run: flutter build linux --release
 
-      - name: Bundle Rust backend into app
-        run: |
-          BUNDLE="build/linux/x64/release/bundle"
-          cp rust-fuego-wallet/target/release/fuego_walletd "$BUNDLE/fuego_walletd"
-          chmod +x "$BUNDLE/fuego_walletd"
-          cp linux/xfg-wallet.desktop "$BUNDLE/"
-          cp assets/logo/fuegologo.png "$BUNDLE/fuego.png" 2>/dev/null || true
+       - name: Bundle unified daemon into app
+         run: |
+           BUNDLE="build/linux/x64/release/bundle"
+           cp unified "$BUNDLE/"
+           chmod +x "$BUNDLE/unified"
+           cp linux/xfg-wallet.desktop "$BUNDLE/"
+           cp assets/logo/fuegologo.png "$BUNDLE/fuego.png" 2>/dev/null || true
+           # Also keep rust backend for fallback
+           cp rust-fuego-wallet/target/release/fuego_walletd "$BUNDLE/" 2>/dev/null || true
+           chmod +x "$BUNDLE/fuego_walletd" 2>/dev/null || true
 
       - name: Package app
         run: |
