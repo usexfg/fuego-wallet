@@ -8,15 +8,16 @@ import 'daemon_event_bus.dart';
 
 /// Unified process manager for all backend daemons.
 ///
-/// Manages fuegod (port 18180), fuego_walletd (port 18189), and xfg-swapd (port 18902).
-/// Handles port conflict detection, process lifecycle, and health monitoring.
+/// Manages the unified daemon (fuegod + walletd + xfg-swapd in one process).
+/// Default ports: fuegod=18180, walletd=8070, swapd=18902.
 class DaemonManager {
   // ── Ports ────────────────────────────────────────────────────────
   static const int fuegodPort = 18180;
-  static const int walletdPort = 18189;
+  static const int walletdPort = 8070;
   static const int swapdPort = 18902;
 
   // ── Process handles ──────────────────────────────────────────────
+  Process? _unified;
   Process? _fuegod;
   Process? _walletd;
   Process? _swapd;
@@ -105,6 +106,20 @@ class DaemonManager {
   }
 
   // ── Binary discovery ─────────────────────────────────────────────
+
+  String? _findUnifiedBinary() {
+    final exe = File(Platform.resolvedExecutable);
+    final candidates = [
+      '${exe.parent.path}/unified',
+      if (Platform.isMacOS) '${exe.parent.parent.parent.path}/Resources/bin/unified',
+      '${Directory.current.path}/xfgo/build/src/unified',
+      '${Directory.current.path}/xfgo/build/release/src/unified',
+    ];
+    for (final path in candidates) {
+      if (File(path).existsSync()) return path;
+    }
+    return null;
+  }
 
   String? _findFuegodBinary() {
     if (_fuegodBin != null && File(_fuegodBin!).existsSync()) return _fuegodBin;
@@ -226,6 +241,19 @@ class DaemonManager {
     daemonErrors.clear();
     _lastStartError = null;
     _updateStatus();
+
+    // ── 0. Try unified daemon first ──
+    final unifiedBin = _findUnifiedBinary();
+    if (unifiedBin != null) {
+      debugPrint('[daemon] Found unified daemon: $unifiedBin');
+      final unifiedErr = await _startUnified(unifiedBin, useLocalNode: useLocalNode, useTestnet: useTestnet);
+      if (unifiedErr == null) {
+        _updateStatus();
+        eventBus.start();
+        return null;
+      }
+      debugPrint('[daemon] Unified daemon failed, falling back to separate processes: $unifiedErr');
+    }
 
     // ── 1. Fuegod ──
     if (useLocalNode) {
@@ -371,6 +399,60 @@ class DaemonManager {
     return 'fuego_walletd not ready after 120s';
   }
 
+  Future<String?> _startUnified(String binary, {bool useLocalNode = true, bool useTestnet = false}) async {
+    // Kill stale process on port
+    final portErr = await _freePort(walletdPort);
+    if (portErr != null) return portErr;
+
+    final args = <String>[
+      '--bind-port', walletdPort.toString(),
+    ];
+    if (useLocalNode) args.add('--local');
+    if (useTestnet) args.add('--testnet');
+
+    try {
+      debugPrint('[daemon] Starting unified daemon: $binary');
+      _unified = await Process.start(binary, args);
+      if (kDebugMode) {
+        _unified!.stdout.transform<String>(utf8.decoder).listen((l) => debugPrint('[unified:out] $l'));
+        _unified!.stderr.transform<String>(utf8.decoder).listen((l) => debugPrint('[unified:err] $l'));
+      } else {
+        _unified!.stdout.drain<void>();
+        _unified!.stderr.drain<void>();
+      }
+      _unified!.exitCode.then((code) {
+        debugPrint('[daemon] unified daemon exited with code $code');
+        _unified = null;
+      });
+    } catch (e) {
+      return 'Failed to spawn: $e';
+    }
+
+    // Wait for ready — unified daemon exposes /json_rpc with getHealth
+    for (var i = 0; i < 60; i++) {
+      await Future<void>.delayed(const Duration(seconds: 2));
+      try {
+        final client = HttpClient()..connectionTimeout = const Duration(seconds: 2);
+        final req = await client.postUrl(Uri.parse('http://127.0.0.1:$walletdPort/json_rpc'));
+        req.headers.contentType = ContentType.json;
+        req.write(jsonEncode({
+          'jsonrpc': '2.0',
+          'id': 1,
+          'method': 'getHealth',
+          'params': <String, dynamic>{},
+        }));
+        final resp = await req.close().timeout(const Duration(seconds: 2));
+        await resp.drain<void>();
+        client.close(force: true);
+        if (resp.statusCode == 200) {
+          debugPrint('[daemon] unified daemon ready on port $walletdPort');
+          return null;
+        }
+      } catch (_) {}
+    }
+    return 'unified daemon not ready after 120s';
+  }
+
   Future<String?> _startSwapd(String configPath) async {
     final binary = _findSwapdBinary();
     if (binary == null) return 'xfg-swapd binary not found';
@@ -408,6 +490,8 @@ class DaemonManager {
 
   Future<void> stopAll() async {
     eventBus.stop();
+    await _stopProcess(_unified, 'unified');
+    _unified = null;
     await _stopProcess(_swapd, 'xfg-swapd');
     _swapd = null;
     await _stopProcess(_walletd, 'fuego_walletd');
@@ -440,9 +524,9 @@ class DaemonManager {
 
   // ── Convenience getters ──────────────────────────────────────────
 
-  bool get fuegodRunning => _fuegod != null || (_walletd != null && status.value.fuegodRunning);
-  bool get walletdRunning => _walletd != null;
-  bool get swapdRunning => _swapd != null;
+  bool get fuegodRunning => _unified != null || _fuegod != null || (_walletd != null && status.value.fuegodRunning);
+  bool get walletdRunning => _unified != null || _walletd != null;
+  bool get swapdRunning => _unified != null || _swapd != null;
 
   bool get allRunning => fuegodRunning && walletdRunning;
   bool get anyRunning => fuegodRunning || walletdRunning || _swapd != null;
