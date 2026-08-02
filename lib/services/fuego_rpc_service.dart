@@ -364,8 +364,9 @@ class FuegoRPCService {
 
   Future<bool> testConnection() async {
     try {
-      await getInfo();
-      return true;
+      // Test wallet proxy (goes through walletd on walletRpcPort)
+      final result = await _makeRPCCall('getBalance', {});
+      return result.containsKey('availableBalance');
     } catch (e) {
       return false;
     }

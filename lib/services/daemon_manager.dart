@@ -3,8 +3,11 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 
 import 'daemon_event_bus.dart';
+import 'security_service.dart';
 
 /// Unified process manager for all backend daemons.
 ///
@@ -13,7 +16,7 @@ import 'daemon_event_bus.dart';
 class DaemonManager {
   // ── Ports ────────────────────────────────────────────────────────
   static const int fuegodPort = 18180;
-  static const int walletdPort = 8070;
+  static const int walletdPort = 18189;
   static const int swapdPort = 18902;
 
   // ── Process handles ──────────────────────────────────────────────
@@ -300,7 +303,7 @@ class DaemonManager {
     _updateStatus();
 
     // Start unified event bus for continuous health monitoring.
-    eventBus.start();
+    eventBus.start(fuegodPort: fuegodPort, walletdPort: walletdPort, swapdPort: swapdPort);
 
     return null;
   }
@@ -404,8 +407,18 @@ class DaemonManager {
     final portErr = await _freePort(walletdPort);
     if (portErr != null) return portErr;
 
+    // Unified daemon needs --container-file and --container-password
+    final security = SecurityService();
+    final appDir = await getApplicationSupportDirectory();
+    final walletDir = p.join(appDir.path, 'wallet');
+    await Directory(walletDir).create(recursive: true);
+    final containerFile = p.join(walletDir, 'fuego_wallet');
+    final containerPassword = await security.getOrCreateWalletdPassword();
+
     final args = <String>[
       '--bind-port', walletdPort.toString(),
+      '--container-file', containerFile,
+      '--container-password', containerPassword,
     ];
     if (useLocalNode) args.add('--local');
     if (useTestnet) args.add('--testnet');
