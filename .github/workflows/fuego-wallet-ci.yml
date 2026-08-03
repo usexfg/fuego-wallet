@@ -72,7 +72,8 @@ jobs:
           brew install boost openssl icu4c jsoncpp cmake ninja
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_OSX_ARCHITECTURES=$(uname -m)
+            -DCMAKE_OSX_ARCHITECTURES=$(uname -m) \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0
           cmake --build build -j$(sysctl -n hw.logicalcpu)
           cp build/src/unified ../
           cd ..
