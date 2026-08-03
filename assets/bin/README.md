@@ -1,18 +1,18 @@
 # CLI Binaries
 
-This directory contains platform-specific CLI binaries for the XF₲ Wallet.
+This directory contains platform-specific CLI binaries for the Fuego Wallet.
 
 ## Binaries
 
-### STARK Proof Generation
-- `xfg-stark-cli-linux` - Linux binary for STARK proof generation
-- `xfg-stark-cli-macos` - macOS binary for STARK proof generation  
-- `xfg-stark-cli.exe` - Windows binary for STARK proof generation
-
 ### Wallet Daemon
-- `fuego-walletd-linux` - Linux wallet daemon binary
-- `fuego-walletd-macos` - macOS wallet daemon binary
-- `fuego-walletd-windows.exe` - Windows wallet daemon binary
+- `fuego_walletd-linux` - Linux wallet daemon binary
+- `fuego_walletd-macos` - macOS wallet daemon binary
+- `fuego_walletd-windows.exe` - Windows wallet daemon binary
+
+### Unified Daemon
+- `unified-linux` - Linux unified daemon (fuegod + walletd + xfg-swapd)
+- `unified-macos` - macOS unified daemon
+- `unified-windows.exe` - Windows unified daemon
 
 ## Usage
 
@@ -20,6 +20,5 @@ These binaries are automatically downloaded during the GitHub Actions build proc
 
 ## Sources
 
-- STARK CLI binaries: https://github.com/ColinRitman/xfgwin/releases/tag/v0.8.8
-- Wallet daemon binaries: https://github.com/usexfg/fuego-suite (HEAT branch)
-- Build from source using the HEAT branch for latest features
+- Unified daemon: https://github.com/usexfg/fuego-suite (master branch)
+- Build from source using the master branch for latest features

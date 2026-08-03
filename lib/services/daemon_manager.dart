@@ -538,6 +538,7 @@ class DaemonManager {
 
   // ── Convenience getters ──────────────────────────────────────────
 
+  bool get unifiedRunning => _unified != null;
   bool get fuegodRunning => _unified != null || _fuegod != null || (_walletd != null && status.value.fuegodRunning);
   bool get walletdRunning => _unified != null || _walletd != null;
   bool get swapdRunning => _unified != null || _swapd != null;

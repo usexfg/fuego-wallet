@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../bloc/wallet/wallet_cubit.dart';
+import '../../main.dart' as app;
 import '../../providers/wallet_provider.dart';
 import '../../services/fuego_rpc_service.dart';
 import '../../services/fuego_vault_service.dart';
@@ -29,6 +30,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _fuegodHost = '207.244.247.64';
   int _fuegodPort = 18180;
   bool _fuegodConfigured = true;
+  bool _useLocalNode = true; // Local built-in node vs Remote
 
   WalletProvider get walletProvider =>
       Provider.of<WalletProvider>(context, listen: false);
@@ -43,6 +45,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final biometricEnabled = await _securityService.isBiometricEnabled();
     setState(() {
       _biometricEnabled = biometricEnabled;
+      // Initialize from current daemon state
+      _useLocalNode = app.daemonManager.unifiedRunning || app.daemonManager.fuegodRunning;
     });
   }
 
@@ -55,7 +59,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
       
       final authenticated = await _securityService.authenticateWithBiometrics(
-        reason: 'Enable biometric authentication for XF₲ Wallet',
+        reason: 'Enable biometric authentication for Fuego Wallet',
       );
       
       if (!authenticated) {
@@ -192,6 +196,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _showNodeSelectionDialog() {
     final TextEditingController customNodeController = TextEditingController();
     String selectedNode = FuegoRPCService.defaultRemoteNodes.first;
+    bool useLocal = _useLocalNode;
 
     showDialog(
       context: context,
@@ -217,7 +222,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(width: 12),
                   const Text(
-                    'Select Node',
+                    'Node Connection',
                     style: TextStyle(color: AppTheme.textPrimary),
                   ),
                 ],
@@ -226,53 +231,154 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Choose a Fuego network node to connect to:',
-                    style: TextStyle(color: AppTheme.textSecondary),
+                  // Local/Remote toggle
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: AppTheme.surfaceColor.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setState(() => useLocal = true),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              decoration: BoxDecoration(
+                                color: useLocal ? AppTheme.primaryColor : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.computer, size: 16,
+                                    color: useLocal ? Colors.white : AppTheme.textMuted),
+                                  const SizedBox(width: 6),
+                                  Text('Local Node',
+                                    style: TextStyle(
+                                      color: useLocal ? Colors.white : AppTheme.textMuted,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                    )),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setState(() => useLocal = false),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              decoration: BoxDecoration(
+                                color: !useLocal ? AppTheme.primaryColor : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.cloud, size: 16,
+                                    color: !useLocal ? Colors.white : AppTheme.textMuted),
+                                  const SizedBox(width: 6),
+                                  Text('Remote Node',
+                                    style: TextStyle(
+                                      color: !useLocal ? Colors.white : AppTheme.textMuted,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                    )),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 16),
-                  ...FuegoRPCService.defaultRemoteNodes.map((node) => RadioListTile<String>(
-                    title: Text(
-                      node,
-                      style: const TextStyle(color: AppTheme.textPrimary),
-                    ),
-                    value: node,
-                    groupValue: selectedNode,
-                    onChanged: (value) {
-                      setState(() {
-                        selectedNode = value!;
-                        customNodeController.clear();
-                      });
-                    },
-                    activeColor: AppTheme.primaryColor,
-                  )),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Or enter custom node:',
-                    style: TextStyle(color: AppTheme.textSecondary),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: customNodeController,
-                    decoration: InputDecoration(
-                      hintText: 'node.example.com:18180',
-                      hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.5)),
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
+
+                  // Content based on selection
+                  if (useLocal) ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.successColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppTheme.successColor.withValues(alpha: 0.3)),
                       ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: AppTheme.primaryColor),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(children: [
+                            Icon(Icons.check_circle, color: AppTheme.successColor, size: 16),
+                            const SizedBox(width: 8),
+                            Text('Built-in Node', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600)),
+                          ]),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Runs fuegod, walletd, and xfg-swapd as an embedded unified daemon. '
+                            'No external dependencies needed.',
+                            style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'The wallet will sync to the Fuego network automatically.',
+                            style: TextStyle(color: AppTheme.textMuted, fontSize: 11),
+                          ),
+                        ],
                       ),
                     ),
-                    style: const TextStyle(color: AppTheme.textPrimary),
-                    onChanged: (value) {
-                      if (value.isNotEmpty) {
+                  ] else ...[
+                    const Text(
+                      'Connect to a remote Fuego node:',
+                      style: TextStyle(color: AppTheme.textSecondary),
+                    ),
+                    const SizedBox(height: 12),
+                    ...FuegoRPCService.defaultRemoteNodes.map((node) => RadioListTile<String>(
+                      title: Text(
+                        node,
+                        style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                      ),
+                      value: node,
+                      groupValue: selectedNode,
+                      onChanged: (value) {
                         setState(() {
-                          selectedNode = value;
+                          selectedNode = value!;
+                          customNodeController.clear();
                         });
-                      }
-                    },
-                  ),
+                      },
+                      activeColor: AppTheme.primaryColor,
+                      contentPadding: EdgeInsets.zero,
+                    )),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Or enter custom node:',
+                      style: TextStyle(color: AppTheme.textSecondary),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: customNodeController,
+                      decoration: InputDecoration(
+                        hintText: 'node.example.com:18180',
+                        hintStyle: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.5)),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha: 0.3)),
+                        ),
+                        focusedBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(color: AppTheme.primaryColor),
+                        ),
+                      ),
+                      style: const TextStyle(color: AppTheme.textPrimary),
+                      onChanged: (value) {
+                        if (value.isNotEmpty) {
+                          setState(() {
+                            selectedNode = value;
+                          });
+                        }
+                      },
+                    ),
+                  ],
                 ],
               ),
               actions: [
@@ -287,23 +393,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onPressed: () async {
                     Navigator.of(context).pop();
 
-                    final walletProvider = Provider.of<WalletProvider>(context, listen: false);
-                    final nodeUrl = selectedNode.contains(':')
-                        ? 'http://$selectedNode'
-                        : 'http://$selectedNode:${walletProvider.networkConfig.daemonRpcPort}';
+                    setState(() {
+                      _useLocalNode = useLocal;
+                    });
 
-                    await walletProvider.connectToNode(nodeUrl);
-
-                    if (mounted) {
+                    if (useLocal) {
+                      // Restart with local daemon
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text(
-                            'Connecting to $selectedNode...',
-                            style: const TextStyle(color: Colors.white),
-                          ),
+                          content: const Text('Starting built-in node...'),
                           backgroundColor: AppTheme.primaryColor,
                         ),
                       );
+                      // The daemon manager will handle starting/stopping
+                    } else {
+                      // Connect to remote node
+                      final walletProvider = Provider.of<WalletProvider>(context, listen: false);
+                      final nodeUrl = selectedNode.contains(':')
+                          ? 'http://$selectedNode'
+                          : 'http://$selectedNode:${walletProvider.networkConfig.daemonRpcPort}';
+
+                      await walletProvider.connectToNode(nodeUrl);
+
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Connecting to $selectedNode...',
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                            backgroundColor: AppTheme.primaryColor,
+                          ),
+                        );
+                      }
                     }
                   },
                   child: const Text('Connect'),
@@ -576,7 +698,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Connect to a fuegod instance for DEX trading and swaps.\nNo KDF required — fuego-native P2P swap protocol.',
+                  'Connect to a fuegod instance for DEX trading and swaps.',
                   style: TextStyle(color: AppTheme.textSecondary),
                 ),
                 const SizedBox(height: 16),
@@ -684,9 +806,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               const SizedBox(width: 12),
-              const Text(
-                'XF₲ Wallet',
-                style: TextStyle(color: AppTheme.textPrimary),
+                const Text(
+                  'Fuego Wallet',
+                  style: TextStyle(color: AppTheme.textPrimary),
               ),
             ],
           ),
@@ -704,7 +826,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'A privacy-focused cryptocurrency wallet for XF₲ (XFG)',
+                'A privacy-focused cryptocurrency wallet for Fuego (XFG)',
                 style: TextStyle(color: AppTheme.textSecondary),
               ),
               const SizedBox(height: 16),
@@ -720,6 +842,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 '• Private transactions with ring signatures\n'
                 '• HEAT stablecoin mint & redeem\n'
                 '• Certificates of Deposit earning yield\n'
+                '• Built-in unified daemon (fuegod + walletd + xfg-swapd)\n'
+                '• Cross-chain atomic swaps (12 chains)\n'
                 '• Built-in mining capabilities\n'
                 '• Advanced security features',
                 style: TextStyle(
@@ -818,15 +942,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _buildSettingsTile(
                 icon: Icons.cloud,
                 title: 'Node Connection',
-                subtitle: state.isConnected
-                    ? 'Connected — height ${state.blockHeight}'
-                    : 'Disconnected',
+                subtitle: _useLocalNode
+                    ? 'Built-in node (unified daemon)'
+                    : 'Remote node — ${_fuegodHost}:${_fuegodPort}',
                 trailing: Container(
                   width: 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: state.isConnected 
-                        ? AppTheme.successColor 
+                    color: state.isConnected
+                        ? AppTheme.successColor
                         : AppTheme.errorColor,
                     shape: BoxShape.circle,
                   ),
@@ -918,7 +1042,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _buildSettingsTile(
                 icon: Icons.help,
                 title: 'Help & Support',
-                subtitle: 'Get help using XF₲ Wallet',
+                subtitle: 'Get help using Fuego Wallet',
                 onTap: () {
                   // TODO: Open help/support
                 },

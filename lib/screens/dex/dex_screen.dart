@@ -112,7 +112,6 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
           if (_candles != null && _candles!.isNotEmpty)
             SizedBox(height: screenH * 0.35, child: FuegoChart(candles: _candles!, pair: 'XFG/${state.selectedPair.ticker}')),
           _buildPairBar(state),
-          _buildPriceBar(state),
           if (state.error != null)
             Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               child: Text(state.error!, style: const TextStyle(color: AppTheme.errorColor, fontSize: 11))),
@@ -152,6 +151,24 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     color: AppTheme.surfaceColor,
     child: Row(children: [
+      // Fuego logo + XFG
+      ClipRRect(
+        borderRadius: BorderRadius.circular(4),
+        child: Image.asset(
+          'assets/coin icons/fuego.png',
+          width: 20, height: 20,
+          errorBuilder: (_, __, ___) => Container(
+            width: 20, height: 20,
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: const Center(child: Text('FG',
+              style: TextStyle(color: AppTheme.primaryColor, fontSize: 8, fontWeight: FontWeight.w800))),
+          ),
+        ),
+      ),
+      const SizedBox(width: 4),
       const Text('XFG', style: TextStyle(color: AppTheme.primaryColor, fontSize: 15, fontWeight: FontWeight.w700)),
       const SizedBox(width: 4),
       const Text('/', style: TextStyle(color: AppTheme.textMuted, fontSize: 15)),
@@ -347,7 +364,7 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
       const SizedBox(height: 8),
       Text(state.error ?? 'Connecting to fuegod...', style: const TextStyle(color: AppTheme.errorColor, fontSize: 13), textAlign: TextAlign.center),
       const SizedBox(height: 16),
-      Text('No KDF required.\nSwap offers sourced from fuego P2P network.', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12), textAlign: TextAlign.center),
+      Text('Swap offers sourced from fuego P2P network.', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12), textAlign: TextAlign.center),
     ]));
     if (state.isLoading && state.offers.isEmpty) return const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor));
     if (state.offers.isEmpty) return const Center(child: Text('No active offers', style: TextStyle(color: AppTheme.textMuted, fontSize: 14)));

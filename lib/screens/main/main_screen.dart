@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../main.dart' as app;
 import '../../services/daemon_event_bus.dart';
 import '../../utils/theme.dart';
@@ -63,13 +64,12 @@ class _MainScreenState extends State<MainScreen> {
                         const Icon(Icons.error_outline, color: AppTheme.errorColor, size: 14),
                         const SizedBox(width: 6),
                         Expanded(
-                          child: Text(
+                          child: SelectableText(
                             hasStartupError
                                 ? app.daemonError!
                                 : health.displayText,
                             style: const TextStyle(color: AppTheme.errorColor, fontSize: 11),
                             maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         Icon(
@@ -80,20 +80,44 @@ class _MainScreenState extends State<MainScreen> {
                       ]),
                       if (_showDaemonDetails) ...[
                         const SizedBox(height: 6),
+                        // Unified daemon status
+                        _daemonDetail('Unified', app.daemonManager.unifiedRunning ? null : 'not running'),
+                        // Individual daemon statuses
                         if (!health.fuegodRunning)
-                          _daemonDetail('Node (fuegod)', health.fuegodError),
+                          _daemonDetail('  fuegod', health.fuegodError),
                         if (!health.walletdRunning)
-                          _daemonDetail('Wallet (walletd)', health.walletdError),
+                          _daemonDetail('  walletd', health.walletdError),
                         if (!health.swapdRunning)
-                          _daemonDetail('Swap (xfg-swapd)', health.swapdError),
+                          _daemonDetail('  xfg-swapd', health.swapdError),
                         if (hasStartupError)
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
                             child: Text(
-                              'Tip: Check that binaries exist next to the app, or set FUEGO_USE_LOCAL_NODE=0 for remote mode.',
+                              'Tip: Check that unified binary exists next to the app, or set FUEGO_USE_LOCAL_NODE=0 for remote mode.',
                               style: TextStyle(color: AppTheme.textMuted.withValues(alpha: 0.8), fontSize: 10),
                             ),
                           ),
+                        // Copy button for error reporting
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: GestureDetector(
+                            onTap: () {
+                              final text = hasStartupError ? app.daemonError! : health.displayText;
+                              Clipboard.setData(ClipboardData(text: text));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Status copied to clipboard'), duration: Duration(seconds: 1)),
+                              );
+                            },
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.copy, size: 12, color: AppTheme.textMuted.withValues(alpha: 0.6)),
+                                const SizedBox(width: 4),
+                                Text('Copy status', style: TextStyle(color: AppTheme.textMuted.withValues(alpha: 0.6), fontSize: 10)),
+                              ],
+                            ),
+                          ),
+                        ),
                       ],
                     ],
                   ),
