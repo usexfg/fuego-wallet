@@ -243,6 +243,9 @@ class DaemonManager {
     errors.clear();
     daemonErrors.clear();
     _lastStartError = null;
+    debugPrint('[daemon] === Starting daemons ===');
+    debugPrint('[daemon] Mode: ${useLocalNode ? "LOCAL" : "REMOTE"}');
+    debugPrint('[daemon] Testnet: $useTestnet');
     _updateStatus();
 
     // ── 0. Try unified daemon first ──
@@ -257,11 +260,14 @@ class DaemonManager {
         debugPrint('[daemon] Unified daemon crashed: $e');
       }
       if (unifiedErr == null) {
+        debugPrint('[daemon] Unified daemon started OK on port $walletdPort');
         _updateStatus();
         eventBus.start(fuegodPort: fuegodPort, walletdPort: walletdPort, swapdPort: swapdPort);
         return null;
       }
-      debugPrint('[daemon] Unified daemon failed, falling back to separate processes: $unifiedErr');
+      debugPrint('[daemon] Unified daemon failed ($unifiedErr), falling back...');
+    } else {
+      debugPrint('[daemon] Unified daemon binary not found — using separate processes');
     }
 
     // ── 1. Fuegod ──
@@ -409,9 +415,13 @@ class DaemonManager {
   }
 
    Future<String?> _startUnified(String binary, {bool useLocalNode = true, bool useTestnet = false}) async {
+     debugPrint('[daemon] _startUnified: binary=$binary');
      // Kill stale process on port
      final portErr = await _freePort(walletdPort);
-     if (portErr != null) return portErr;
+     if (portErr != null) {
+       debugPrint('[daemon] Port $walletdPort error: $portErr');
+       return portErr;
+     }
 
      // Unified daemon needs --container-file and --container-password
      final security = SecurityService();
@@ -422,8 +432,9 @@ class DaemonManager {
      String? containerPassword;
      try {
        containerPassword = await security.getOrCreateWalletdPassword();
-     } catch (_) {
-       debugPrint('[daemon] Keychain unavailable, starting unified without container credentials');
+       debugPrint('[daemon] Got wallet password from Keychain');
+     } catch (e) {
+       debugPrint('[daemon] Keychain unavailable ($e), starting without container password');
      }
 
      final args = <String>[
@@ -437,9 +448,12 @@ class DaemonManager {
      if (useLocalNode) args.add('--local');
      if (useTestnet) args.add('--testnet');
 
+     debugPrint('[daemon] unified args: $args');
+
     try {
-      debugPrint('[daemon] Starting unified daemon: $binary');
+      debugPrint('[daemon] Spawning unified daemon...');
       _unified = await Process.start(binary, args);
+      debugPrint('[daemon] unified process started (PID ${_unified!.pid})');
       if (kDebugMode) {
         _unified!.stdout.transform<String>(utf8.decoder).listen((l) => debugPrint('[unified:out] $l'));
         _unified!.stderr.transform<String>(utf8.decoder).listen((l) => debugPrint('[unified:err] $l'));
@@ -457,6 +471,7 @@ class DaemonManager {
 
     // Wait for ready — unified daemon exposes /json_rpc with getHealth
     // Blockchain rescan + wallet scan can take up to ~150s on mainnet
+    debugPrint('[daemon] Waiting for unified daemon on port $walletdPort...');
     for (var i = 0; i < 90; i++) {
       await Future<void>.delayed(const Duration(seconds: 2));
       try {
@@ -473,11 +488,18 @@ class DaemonManager {
         await resp.drain<void>();
         client.close(force: true);
         if (resp.statusCode == 200) {
-          debugPrint('[daemon] unified daemon ready on port $walletdPort');
+          debugPrint('[daemon] unified daemon healthy on port $walletdPort (attempt ${i + 1})');
           return null;
+        } else {
+          debugPrint('[daemon] health check attempt ${i + 1}: HTTP ${resp.statusCode}');
         }
-      } catch (_) {}
+      } catch (e) {
+        if (i % 10 == 0) {
+          debugPrint('[daemon] health check attempt ${i + 1}: $e');
+        }
+      }
     }
+    debugPrint('[daemon] unified daemon not ready after 180s');
     return 'unified daemon not ready after 180s';
   }
 

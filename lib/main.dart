@@ -79,6 +79,7 @@ void _logDebug(String message) {
 
 Future<void> _startBackend() async {
   _logDebug('[backend] Starting daemons (local=$useLocalNode)');
+  _logDebug('[backend] Config: host=$_defaultDaemonHost port=$_defaultDaemonPort walletPort=$_backendPort');
 
   String? error;
   try {
@@ -93,16 +94,19 @@ Future<void> _startBackend() async {
 
   if (error != null) {
     _daemonError = error;
-    _log.warning('Daemon startup failed: $error');
+    _log.warning('Daemon startup failed: $error — falling back to remote');
     rpcService.updateNode(
       _defaultDaemonHost,
       port: _defaultDaemonPort,
     );
+    _logDebug('[backend] Fallback: RPC now points to ${_defaultDaemonHost}:$_defaultDaemonPort');
     if (!_backendReady.isCompleted) _backendReady.complete();
     return;
   }
 
   _daemonError = null;
+  _logDebug('[backend] All daemons started successfully');
+  _logDebug('[backend] RPC: http://127.0.0.1:$_backendPort (local proxy)');
   if (!_backendReady.isCompleted) _backendReady.complete();
 }
 
