@@ -115,8 +115,8 @@ class DaemonManager {
     final candidates = [
       '${exe.parent.path}/unified',
       if (Platform.isMacOS) '${exe.parent.parent.parent.path}/Resources/bin/unified',
-      '${Directory.current.path}/xfgo/build/src/unified',
-      '${Directory.current.path}/xfgo/build/release/src/unified',
+      '${Directory.current.path}/fuego-suite/build/src/unified',
+      '${Directory.current.path}/fuego-suite/build/release/src/unified',
     ];
     for (final path in candidates) {
       if (File(path).existsSync()) return path;
@@ -132,7 +132,7 @@ class DaemonManager {
       if (Platform.isMacOS) '${exe.parent.parent.parent.path}/Resources/bin/fuegod',
       '${Directory.current.path}/rust-fuego-wallet/target/debug/fuegod',
       '${Directory.current.path}/rust-fuego-wallet/target/release/fuegod',
-      '${Directory.current.path}/xfgo/build/src/fuegod',
+      '${Directory.current.path}/fuego-suite/build/src/fuegod',
     ];
     for (final path in candidates) {
       if (File(path).existsSync()) { _fuegodBin = path; return path; }
@@ -148,7 +148,7 @@ class DaemonManager {
       if (Platform.isMacOS) '${exe.parent.parent.parent.path}/Resources/bin/fuego_walletd',
       '${Directory.current.path}/rust-fuego-wallet/target/debug/fuego_walletd',
       '${Directory.current.path}/rust-fuego-wallet/target/release/fuego_walletd',
-      '${Directory.current.path}/xfgo/build/src/walletd',
+      '${Directory.current.path}/fuego-suite/build/src/walletd',
     ];
     for (final path in candidates) {
       if (File(path).existsSync()) { _walletdBin = path; return path; }
@@ -164,8 +164,8 @@ class DaemonManager {
       if (Platform.isMacOS) '${exe.parent.parent.parent.path}/Resources/bin/xfg-swapd',
       '${Directory.current.path}/build/release/src/xfg-swapd',
       '${Directory.current.path}/xfg-swapd',
-      '${Directory.current.path}/xfgo/build/src/xfg-swapd',
-      '${Directory.current.path}/xfgo/build/release/src/xfg-swapd',
+      '${Directory.current.path}/fuego-suite/build/src/xfg-swapd',
+      '${Directory.current.path}/fuego-suite/build/release/src/xfg-swapd',
     ];
     for (final path in candidates) {
       if (File(path).existsSync()) { _swapdBin = path; return path; }
@@ -249,12 +249,18 @@ class DaemonManager {
     final unifiedBin = _findUnifiedBinary();
     if (unifiedBin != null) {
       debugPrint('[daemon] Found unified daemon: $unifiedBin');
-      final unifiedErr = await _startUnified(unifiedBin, useLocalNode: useLocalNode, useTestnet: useTestnet);
-       if (unifiedErr == null) {
-         _updateStatus();
-         eventBus.start(fuegodPort: fuegodPort, walletdPort: walletdPort, swapdPort: swapdPort);
-         return null;
-       }
+      String? unifiedErr;
+      try {
+        unifiedErr = await _startUnified(unifiedBin, useLocalNode: useLocalNode, useTestnet: useTestnet);
+      } catch (e) {
+        unifiedErr = e.toString();
+        debugPrint('[daemon] Unified daemon crashed: $e');
+      }
+      if (unifiedErr == null) {
+        _updateStatus();
+        eventBus.start(fuegodPort: fuegodPort, walletdPort: walletdPort, swapdPort: swapdPort);
+        return null;
+      }
       debugPrint('[daemon] Unified daemon failed, falling back to separate processes: $unifiedErr');
     }
 
@@ -402,26 +408,34 @@ class DaemonManager {
     return 'fuego_walletd not ready after 120s';
   }
 
-  Future<String?> _startUnified(String binary, {bool useLocalNode = true, bool useTestnet = false}) async {
-    // Kill stale process on port
-    final portErr = await _freePort(walletdPort);
-    if (portErr != null) return portErr;
+   Future<String?> _startUnified(String binary, {bool useLocalNode = true, bool useTestnet = false}) async {
+     // Kill stale process on port
+     final portErr = await _freePort(walletdPort);
+     if (portErr != null) return portErr;
 
-    // Unified daemon needs --container-file and --container-password
-    final security = SecurityService();
-    final appDir = await getApplicationSupportDirectory();
-    final walletDir = p.join(appDir.path, 'wallet');
-    await Directory(walletDir).create(recursive: true);
-    final containerFile = p.join(walletDir, 'fuego_wallet');
-    final containerPassword = await security.getOrCreateWalletdPassword();
+     // Unified daemon needs --container-file and --container-password
+     final security = SecurityService();
+     final appDir = await getApplicationSupportDirectory();
+     final walletDir = p.join(appDir.path, 'wallet');
+     await Directory(walletDir).create(recursive: true);
+     final containerFile = p.join(walletDir, 'fuego_wallet');
+     String? containerPassword;
+     try {
+       containerPassword = await security.getOrCreateWalletdPassword();
+     } catch (_) {
+       debugPrint('[daemon] Keychain unavailable, starting unified without container credentials');
+     }
 
-    final args = <String>[
-      '--bind-port', walletdPort.toString(),
-      '--container-file', containerFile,
-      '--container-password', containerPassword,
-    ];
-    if (useLocalNode) args.add('--local');
-    if (useTestnet) args.add('--testnet');
+     final args = <String>[
+       '--bind-port', walletdPort.toString(),
+       '--container-file', containerFile,
+     ];
+     if (containerPassword != null) {
+       args.add('--container-password');
+       args.add(containerPassword);
+     }
+     if (useLocalNode) args.add('--local');
+     if (useTestnet) args.add('--testnet');
 
     try {
       debugPrint('[daemon] Starting unified daemon: $binary');

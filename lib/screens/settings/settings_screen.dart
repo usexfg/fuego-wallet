@@ -405,7 +405,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           backgroundColor: AppTheme.primaryColor,
                         ),
                       );
-                      // The daemon manager will handle starting/stopping
+                      // Stop existing daemons and restart with local mode
+                      await app.daemonManager.stopAll();
+                      final error = await app.daemonManager.startAll(
+                        useLocalNode: true,
+                        useTestnet: app.useTestnet,
+                      );
+                      if (error != null && mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Failed to start local node: $error'),
+                            backgroundColor: AppTheme.errorColor,
+                          ),
+                        );
+                      }
                     } else {
                       // Connect to remote node
                       final walletProvider = Provider.of<WalletProvider>(context, listen: false);
@@ -413,6 +426,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ? 'http://$selectedNode'
                           : 'http://$selectedNode:${walletProvider.networkConfig.daemonRpcPort}';
 
+                      // Stop local daemons if running
+                      await app.daemonManager.stopAll();
                       await walletProvider.connectToNode(nodeUrl);
 
                       if (mounted) {

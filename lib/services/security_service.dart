@@ -310,10 +310,14 @@ class SecurityService {
   // ── Walletd container password (random, stored securely) ─────────────
 
   Future<String> getOrCreateWalletdPassword() async {
-    final existing = await _read(_walletdPasswordKey);
-    if (existing != null && existing.isNotEmpty) return existing;
+    try {
+      final existing = await _read(_walletdPasswordKey);
+      if (existing != null && existing.isNotEmpty) return existing;
+    } catch (_) {}
     final password = base64UrlEncode(_secureRandomBytes(32));
-    await _write(_walletdPasswordKey, password);
+    try {
+      await _write(_walletdPasswordKey, password);
+    } catch (_) {}
     return password;
   }
 

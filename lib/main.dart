@@ -36,18 +36,18 @@ final FuegoVaultService _vaultService =
 
 String? _daemonError;
 
-bool get _useTestnet =>
+bool get useTestnet =>
     Platform.environment['FUEGO_TESTNET'] == '1' ||
     Platform.environment['FUEGO_TESTNET'] == 'true';
 
-bool get _useLocalNode {
+bool get useLocalNode {
   final env = Platform.environment['FUEGO_USE_LOCAL_NODE'];
   if (env != null) return env == '1' || env.toLowerCase() == 'true';
   return Platform.isLinux || Platform.isMacOS || Platform.isWindows;
 }
 
 NetworkConfig get _activeConfig =>
-    _useTestnet ? NetworkConfig.testnet : NetworkConfig.mainnet;
+    useTestnet ? NetworkConfig.testnet : NetworkConfig.mainnet;
 
 String get _defaultDaemonHost =>
     Platform.environment['FUEGO_DAEMON_HOST'] ??
@@ -78,17 +78,22 @@ void _logDebug(String message) {
 }
 
 Future<void> _startBackend() async {
-  _logDebug('[backend] Starting daemons (local=$_useLocalNode)');
+  _logDebug('[backend] Starting daemons (local=$useLocalNode)');
 
-  final error = await daemonManager.startAll(
-    useLocalNode: _useLocalNode,
-    useTestnet: _useTestnet,
-  );
+  String? error;
+  try {
+    error = await daemonManager.startAll(
+      useLocalNode: useLocalNode,
+      useTestnet: useTestnet,
+    );
+  } catch (e) {
+    error = e.toString();
+    _log.warning('Daemon startup crashed: $e');
+  }
 
   if (error != null) {
     _daemonError = error;
     _log.warning('Daemon startup failed: $error');
-    // Fall back to remote mode
     rpcService.updateNode(
       _defaultDaemonHost,
       port: _defaultDaemonPort,
