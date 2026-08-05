@@ -1,25 +1,25 @@
-# 🔥 Fuego Wallet GUI
+# 🔥 Fuego Wallet
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Flutter-3.22.2-blue?logo=flutter" alt="Flutter Version" />
+  <img src="https://img.shields.io/badge/Flutter-3.44.4-blue?logo=flutter" alt="Flutter Version" />
   <img src="https://img.shields.io/badge/Dart-3.4.3-blue?logo=dart" alt="Dart Version" />
-  <img src="https://img.shields.io/badge/Platform-Android%20%7C%20iOS-lightgrey" alt="Platform Support" />
+  <img src="https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20%7C%20macOS%20%7C%20Linux%20%7C%20Windows-lightgrey" alt="Platform Support" />
   <img src="https://img.shields.io/badge/License-MIT-green" alt="License" />
 </p>
 
-A desktop & mobile wallet app for **Fuego (XFG)** privacy cryptocurrency. 
-Features include secure untraceable transactions, Fuego's new flatcoin: ΗΞΔŦ:burn XFG to mint or buy & sell on, HⲈⲆ☈ⲦН : Fuego's on-chain HEAT exchange, DeXFG atomic swaps, earn yield on ΗΞΔŦ_𝖢𝖣s, register your fire alias, built-in pool mining and more. 🔥
+A desktop & mobile wallet app for **Fuego (XFG)** privacy cryptocurrency.
+Features include secure untraceable transactions, Fuego's new flatcoin: ΗΞΔŦ (burn XFG to mint or buy & sell on), HⲈⲆ☈ⲦН (Fuego's on-chain HEAT exchange), DeXFG atomic swaps, earn yield on ΗΞΔŦ_𝖢𝖣s, register your fire alias, built-in pool mining and more. 🔥
 
-
-![](https://github.com/ColinRitman/xfg_wallet/blob/a3cc073a4ef9ab3961dde35d5ca3616a36181be3/assets/images/xfgwalletdesktopsplash.gif)
-
+<p align="center">
+  <img src="https://github.com/usexfg/fuego-wallet/raw/master/assets/images/xfgwalletdesktopsplash.gif" alt="Fuego Wallet Screenshot" />
+</p>
 
 ### 🔐 Advanced Security
 - **PIN Authentication** with PBKDF2 secure hashing
 - **Biometric Authentication** (fingerprint/Face ID)
 - **AES-256-CBC Encryption** for wallet data
 - **Secure Device Storage** with hardware keychain
-- **25-word Mnemonic** backup / recovery 
+- **25-word Mnemonic** backup / recovery
 
 ### 💼 Wallet Management
 - **Create New Wallets** with secure entropy
@@ -32,7 +32,7 @@ Features include secure untraceable transactions, Fuego's new flatcoin: ΗΞΔŦ
 - **Send XFG** with default max privacy levels
 - **Ring Signatures** (8-32 mixins for anonymity)
 - **Receive with QR Codes** and integrated addresses
-- **Open Alias Support** for oa1:xfg transactions 
+- **Open Alias Support** for oa1:xfg transactions
 - **Fee Estimation** and validation
 
 ### ⛏️ Built-in Mining
@@ -41,11 +41,14 @@ Features include secure untraceable transactions, Fuego's new flatcoin: ΗΞΔŦ
 - **Real-time Hashrate** monitoring
 - **Mining Performance** tracking
 
+### 🔄 Unified Daemon
+The app uses a **unified daemon** process (`unified`) that bundles fuegod, walletd, and xfg-swapd into a single embedded process for local node operation. When the unified daemon is unavailable, the app falls back to a remote node connection.
+
 ## 🚀 Getting Started
 
 ### Prerequisites
 
-- **Flutter SDK**: 3.22.2 or higher
+- **Flutter SDK**: 3.44.4 or higher
 - **Dart SDK**: 3.4.3 or higher
 - **Android Studio** / **Xcode** for platform-specific builds
 - **Internet connection** to connect to Fuego network nodes
@@ -54,8 +57,8 @@ Features include secure untraceable transactions, Fuego's new flatcoin: ΗΞΔŦ
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/usexfg/fuego-flutter.git
-   cd fuego-flutter
+   git clone https://github.com/usexfg/fuego-wallet.git
+   cd fuego-wallet
    ```
 
 2. **Install dependencies**
@@ -79,6 +82,15 @@ flutter build appbundle --release
 
 # iOS (requires Xcode)
 flutter build ios --release
+
+# macOS
+flutter build macos --release
+
+# Linux
+flutter build linux --release
+
+# Windows
+flutter build windows --release
 ```
 
 ## 🏗️ Architecture
@@ -86,22 +98,54 @@ flutter build ios --release
 ### Project Structure
 ```
 lib/
-├── main.dart                    # App entry point
-├── models/                      # Data models
-├── services/                    # Business logic
-│   ├── fuego_rpc_service.dart  # Fuego RPC communication
-│   └── security_service.dart   # Security & encryption
-├── providers/                   # State management
-├── screens/                     # UI screens
-│   ├── auth/                   # Authentication
-│   ├── wallet_setup/           # Wallet creation/restore
-│   ├── home/                   # Main dashboard
-│   ├── transactions/           # Send/receive
-│   ├── elderfier/              # Staking features
-│   ├── messaging/              # Encrypted messaging
-│   └── settings/               # Configuration
-├── widgets/                     # Reusable components
-└── utils/                       # Utilities & theming
+├── main.dart                          # App entry point
+├── models/                            # Data models
+│   ├── candlestick.dart
+│   ├── cd.dart
+│   ├── heat_amm.dart
+│   ├── network_config.dart
+│   ├── subaddress.dart
+│   ├── swap_models.dart
+│   ├── transaction_model.dart
+│   ├── wallet.dart
+│   └── wallet.g.dart
+├── services/                          # Business logic
+│   ├── cli_service.dart
+│   ├── daemon_event_bus.dart          # Unified daemon health monitoring
+│   ├── daemon_manager.dart            # Daemon lifecycle management
+│   ├── fuego_daemon_client.dart       # Fuego node RPC client
+│   ├── fuego_rpc_service.dart         # RPC communication
+│   ├── fuego_vault_service.dart       # Vault management
+│   ├── output_scanner.dart
+│   ├── pool_mining_service.dart
+│   ├── price_history_service.dart
+│   ├── security_service.dart          # Secure storage & PIN auth
+│   ├── swap_config_service.dart
+│   ├── swap_daemon_client.dart
+│   ├── wallet_service.dart
+│   ├── walletd_service.dart
+│   └── web3_multi_chain_service.dart
+├── providers/                         # State management
+│   └── wallet_provider.dart
+├── screens/                           # UI screens
+│   ├── auth/                          # Authentication
+│   ├── cd/                            # CD/staking features
+│   ├── dex/                           # DEX swap interface
+│   ├── fuego/                         # Fuego-specific features
+│   ├── home/                          # Main dashboard
+│   ├── main/                          # Main navigation
+│   ├── settings/                      # Configuration
+│   ├── splash_screen.dart             # Launch screen
+│   └── transactions/                  # Send/receive
+├── widgets/                           # Reusable components
+│   ├── fuego_chart.dart
+│   ├── mnemonic_display.dart
+│   ├── mnemonic_input.dart
+│   ├── pin_input_widget.dart
+│   └── quick_actions.dart
+└── utils/                             # Utilities & theming
+    ├── hearth_theme.dart
+    └── theme.dart
 ```
 
 ### State Management
@@ -109,21 +153,37 @@ lib/
 - **Clean Architecture** with separation of concerns
 - **Comprehensive Error Handling** throughout
 
+### Daemon Architecture
+The app supports two daemon modes:
+
+| Mode | Description | Ports |
+|------|-------------|-------|
+| **Unified** (preferred) | Single `unified` binary bundling fuegod + walletd + xfg-swapd | walletd: 18189 |
+| **Separate** | Individual daemons (fuegod, fuego_walletd, xfg-swapd) | fuegod: 18180, walletd: 18189, swapd: 18902 |
+
+The unified daemon is started automatically when the binary is present in the app bundle. If it fails (missing binary, port conflict, Keychain error), the app falls back to remote node mode.
+
 ### Security Implementation
 - **Multi-layered Encryption** with industry standards
-- **Hardware Security Integration** when available
+- **Hardware Security Integration** when available (Keychain on macOS, Keystore on Android)
 - **Memory Protection** with automatic data clearing
 - **Secure Key Derivation** and storage
 
 ## 🔧 Configuration
 
-### Fuego Node Setup
+### Local Node (Unified Daemon)
+When running with a local node, the app uses the unified daemon process. The daemon is managed automatically by `DaemonManager`:
 
-The app connects to remote Fuego network nodes for full functionality. By default, it connects to community-maintained public nodes, but you can configure custom nodes in the app settings.
+- **walletd port**: `18189` (unified daemon binds here)
+- **fuegod port**: `18180` (internal, managed by unified daemon)
+- **swapd port**: `18902` (internal, managed by unified daemon)
+
+### Remote Node Connection
+The app connects to remote Fuego network nodes by default. You can configure custom nodes in the app settings.
 
 #### Default Remote Nodes
 The app includes several pre-configured remote nodes:
-- `207.244.247.64:18180` 
+- `207.244.247.64:18180`
 - `node1.usexfg.org`
 - `node2.usexfg.org`
 - `fuego.seednode1.com`
@@ -142,9 +202,7 @@ static const List<String> defaultRemoteNodes = [
 
 #### Node Requirements
 - RPC port: `18180` (default)
-- Wallet RPC port: `8070`
 - Must support standard CryptoNote RPC methods
-
 
 ## 🔒 Security Features
 
@@ -155,7 +213,7 @@ static const List<String> defaultRemoteNodes = [
 - **Hardware security module** integration when available
 
 ### Privacy Features
-- **Dynamaxin** for highest possible privacy (per available decoy outputs: min 8 max 32) 
+- **Dynamaxin** for highest possible privacy (per available decoy outputs: min 8 max 32)
 - **Subaddresses** for better transaction privacy
 - **No data tracking** - all operations local
 
@@ -169,9 +227,9 @@ static const List<String> defaultRemoteNodes = [
 
 - ✅ **Android 7.0+** (API level 24+)
 - ✅ **iOS 12.0+**
-- 🔄 **Linux Desktop** (ready)
-- 🔄 **Windows Desktop** (ready)
-- 🔄 **macOS Desktop** (ready)
+- ✅ **macOS Desktop**
+- ✅ **Linux Desktop**
+- ✅ **Windows Desktop**
 
 ## 🧪 Testing
 
@@ -213,13 +271,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🔗 Links
 
 - **Fuego Website**: [https://usexfg.org](https://usexfg.org)
-- **Main Repository**: [https://github.com/usexfg/fuego-suite](https://github.com/usexfg/fuego-suite) 
+- **Main Repository**: [https://github.com/usexfg/fuego-wallet](https://github.com/usexfg/fuego-wallet)
 - **Discord**: [https://discord.gg/5UJcJJg](https://discord.gg/5UJcJJg)
 - **Twitter**: [https://twitter.com/useXFG](https://twitter.com/useXFG)
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/usexfg/fuego-flutter/issues)
+- **Issues**: [GitHub Issues](https://github.com/usexfg/fuego-wallet/issues)
 - **Discord**: [Fuego Community](https://discord.gg/5UJcJJg)
 - **Email**: support@usexfg.org
 
