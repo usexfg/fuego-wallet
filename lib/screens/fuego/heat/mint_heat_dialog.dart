@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../services/fuego_daemon_client.dart';
+import '../../../services/fuego_rpc_service.dart';
 import '../../../utils/theme.dart';
 
 class MintHeatDialog extends StatefulWidget {
@@ -83,10 +84,13 @@ class _MintHeatDialogState extends State<MintHeatDialog> {
               suffixText: 'XFG',
             ),
             style: const TextStyle(color: AppTheme.textPrimary),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,7}')),
+            ],
           ),
           const SizedBox(height: 8),
-          Text('HEAT received depends on PI redemption price',
-              style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+          const Text('HEAT received depends on PI redemption price',
+              style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
           if (_error != null)
             Padding(
               padding: const EdgeInsets.only(top: 8),
@@ -106,10 +110,11 @@ class _MintHeatDialogState extends State<MintHeatDialog> {
         const Text('HEAT Minted!', style: TextStyle(
             color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
-        Text('$_heatReceived HEAT received',
-            style: const TextStyle(color: AppTheme.successColor, fontSize: 16)),
+        if (_heatReceived != null)
+          Text('$_heatReceived HEAT received',
+              style: const TextStyle(color: AppTheme.successColor, fontSize: 16)),
         const SizedBox(height: 4),
-        Text('TX: ${_txHash!.substring(0, 16)}...',
+        Text('TX: ${_txHash!.substring(0, _txHash!.length > 16 ? 16 : _txHash!.length)}...',
             style: const TextStyle(color: AppTheme.textMuted, fontSize: 11, fontFamily: 'monospace')),
       ],
     );
@@ -128,12 +133,18 @@ class _MintHeatDialogState extends State<MintHeatDialog> {
     }
     setState(() { _submitting = true; _error = null; });
     try {
-      final daemon = context.read<FuegoDaemonClient>();
-      final atomic = (xfg * xfgAtomic).round();
-      final result = await daemon.mintHeat(atomic);
+      final rpc = context.read<FuegoRPCService>();
+      final xfgAtomicAmt = (xfg * xfgAtomic).round();
+      // heat_minted = xfg_burned (1:1 at launch, server validates ratio)
+      final result = await rpc.heatMint(
+        xfgBurned: xfgAtomicAmt,
+        heatMinted: xfgAtomicAmt,
+        fee: 0,
+        mixin: 4,
+      );
       setState(() {
-        _txHash = result['tx_hash'] as String? ?? result['txHash'] as String?;
-        _heatReceived = result['heat_received']?.toString() ?? result['heatReceived']?.toString();
+        _txHash = result['tx_hash'] as String?;
+        _heatReceived = (xfgAtomicAmt / xfgAtomic).toStringAsFixed(7);
         _submitting = false;
       });
     } catch (e) {

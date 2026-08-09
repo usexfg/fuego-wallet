@@ -60,26 +60,40 @@ class PoolInfo {
   final String heatReserve;
   final String spotPrice;
   final String totalLpShares;
-  final String lpFees24h;
-  final String volume24h;
 
   const PoolInfo({
     required this.xfgReserve,
     required this.heatReserve,
     required this.spotPrice,
     required this.totalLpShares,
-    required this.lpFees24h,
-    required this.volume24h,
   });
 
   factory PoolInfo.fromJson(Map<String, dynamic> json) => PoolInfo(
-        xfgReserve: json['xfg_reserve'] as String? ?? '0',
-        heatReserve: json['heat_reserve'] as String? ?? '0',
+        xfgReserve: json['reserve_xfg'] as String? ?? '0',
+        heatReserve: json['reserve_heat'] as String? ?? '0',
         spotPrice: json['spot_price'] as String? ?? '0',
         totalLpShares: json['total_lp_shares'] as String? ?? '0',
-        lpFees24h: json['lp_fees_24h'] as String? ?? '0',
-        volume24h: json['volume_24h'] as String? ?? '0',
       );
+}
+
+class LpPosition {
+  final String shares;
+  final String originalXfg;
+  final String originalHeat;
+  final String currentValueXfg;
+  final String currentValueHeat;
+  final String earningsXfg;
+  final String earningsHeat;
+
+  const LpPosition({
+    required this.shares,
+    required this.originalXfg,
+    required this.originalHeat,
+    required this.currentValueXfg,
+    required this.currentValueHeat,
+    required this.earningsXfg,
+    required this.earningsHeat,
+  });
 }
 
 class OrderBookLevel {

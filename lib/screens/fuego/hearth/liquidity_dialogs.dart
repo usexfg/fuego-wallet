@@ -118,15 +118,20 @@ class _RemoveLiquidityDialogState extends State<RemoveLiquidityDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       backgroundColor: HearthTheme.bgCard,
-      title: Text('Remove Liquidity', style: HearthTheme.mono(size: 16, weight: FontWeight.w700, color: HearthTheme.textWhite)),
+      title: Text('Withdraw Earnings', style: HearthTheme.mono(size: 16, weight: FontWeight.w700, color: HearthTheme.textWhite)),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _dialogInput(_sharesController, 'LP Shares'),
+          Text(
+            'Enter the number of LP shares to burn. Your proportional share of pool reserves will be returned.',
+            style: HearthTheme.mono(size: 11, color: HearthTheme.textSecondary),
+          ),
           const SizedBox(height: 12),
-          _dialogInput(_minXfgController, 'Min XFG'),
+          _dialogInput(_sharesController, 'LP Shares to Burn'),
           const SizedBox(height: 12),
-          _dialogInput(_minHeatController, 'Min HΞ∆T'),
+          _dialogInput(_minXfgController, 'Min XFG (slippage)'),
+          const SizedBox(height: 12),
+          _dialogInput(_minHeatController, 'Min HΞ∆T (slippage)'),
         ],
       ),
       actions: [
@@ -143,7 +148,7 @@ class _RemoveLiquidityDialogState extends State<RemoveLiquidityDialog> {
           ),
           child: _submitting
               ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: HearthTheme.textWhite))
-              : const Text('Remove'),
+              : const Text('Withdraw'),
         ),
       ],
     );

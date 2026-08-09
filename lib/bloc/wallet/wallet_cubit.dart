@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../core/core.dart';
 import '../../models/subaddress.dart';
+import '../../services/fuego_rpc_service.dart';
 import '../../services/fuego_vault_service.dart';
 import '../../services/security_service.dart';
 
@@ -17,6 +18,8 @@ class WalletState extends Equatable {
   final String? error;
   final int balance;
   final int unlockedBalance;
+  final int unlockedHeatBalance;
+  final int lockedHeatBalance;
   final String? address;
   final String? alias;
   final double syncProgress;
@@ -35,6 +38,8 @@ class WalletState extends Equatable {
     this.error,
     this.balance = 0,
     this.unlockedBalance = 0,
+    this.unlockedHeatBalance = 0,
+    this.lockedHeatBalance = 0,
     this.address,
     this.alias,
     this.syncProgress = 0,
@@ -55,6 +60,8 @@ class WalletState extends Equatable {
     bool clearError = false,
     int? balance,
     int? unlockedBalance,
+    int? unlockedHeatBalance,
+    int? lockedHeatBalance,
     String? address,
     String? alias,
     double? syncProgress,
@@ -73,6 +80,8 @@ class WalletState extends Equatable {
         error: clearError ? null : (error ?? this.error),
         balance: balance ?? this.balance,
         unlockedBalance: unlockedBalance ?? this.unlockedBalance,
+        unlockedHeatBalance: unlockedHeatBalance ?? this.unlockedHeatBalance,
+        lockedHeatBalance: lockedHeatBalance ?? this.lockedHeatBalance,
         address: address ?? this.address,
         alias: alias ?? this.alias,
         syncProgress: syncProgress ?? this.syncProgress,
@@ -86,6 +95,9 @@ class WalletState extends Equatable {
 
   double get balanceXfg => balance / atomicPerCoin;
   double get unlockedBalanceXfg => unlockedBalance / atomicPerCoin;
+  double get unlockedHeatXfg => unlockedHeatBalance / atomicPerCoin;
+  double get lockedHeatXfg => lockedHeatBalance / atomicPerCoin;
+  double get totalHeatXfg => (unlockedHeatBalance + lockedHeatBalance) / atomicPerCoin;
 
   @override
   List<Object?> get props => [
@@ -96,6 +108,8 @@ class WalletState extends Equatable {
         error,
         balance,
         unlockedBalance,
+        unlockedHeatBalance,
+        lockedHeatBalance,
         address,
         alias,
         syncProgress,
@@ -110,6 +124,7 @@ class WalletState extends Equatable {
 
 class WalletCubit extends Cubit<WalletState> {
   final FuegoDaemonClient _daemon;
+  final FuegoRPCService? _rpcService;
   final FuegoVaultService? _vault;
   final Future<void>? _backendReady;
   final SecurityService _security;
@@ -118,10 +133,12 @@ class WalletCubit extends Cubit<WalletState> {
 
   WalletCubit(
     this._daemon, {
+    FuegoRPCService? rpcService,
     FuegoVaultService? vault,
     Future<void>? backendReady,
     SecurityService? security,
-  })  : _vault = vault,
+  })  : _rpcService = rpcService,
+        _vault = vault,
         _backendReady = backendReady,
         _security = security ?? SecurityService(),
         super(const WalletState()) {
@@ -274,6 +291,17 @@ class WalletCubit extends Cubit<WalletState> {
           txs = await _daemon.getTransactions(count: 50);
         } catch (_) {}
 
+        // Fetch HEAT balance
+        int unlockedHeat = 0;
+        int lockedHeat = 0;
+        if (_rpcService != null) {
+          try {
+            final heat = await _rpcService!.getHeatBalance();
+            unlockedHeat = heat.unlockedHeat;
+            lockedHeat = heat.lockedHeat;
+          } catch (_) {}
+        }
+
         int walletHeight = 0;
         try {
           walletHeight = await _daemon.getWalletHeight();
@@ -293,6 +321,8 @@ class WalletCubit extends Cubit<WalletState> {
           address: addr.isNotEmpty ? addr : state.address,
           balance: bal,
           unlockedBalance: unlocked,
+          unlockedHeatBalance: unlockedHeat,
+          lockedHeatBalance: lockedHeat,
           peerCount: peers,
           transactions: txs,
           syncProgress: progress,
@@ -388,6 +418,48 @@ class WalletCubit extends Cubit<WalletState> {
       mixin: mixin,
     );
     final txHash = await _daemon.sendTransaction(req);
+    if (txHash.isEmpty) {
+      throw StateError('Empty transaction hash');
+    }
+    unawaited(refreshWallet());
+    return txHash;
+  }
+
+  /// Send HEAT to another address. Requires verified PIN.
+  Future<String> sendHeat({
+    required String address,
+    required double amount,
+    required double fee,
+    required String pin,
+    int mixin = 4,
+  }) async {
+    if (!state.isUnlocked && !(_vault?.isUnlocked ?? false)) {
+      throw StateError('Wallet is locked');
+    }
+    final pinOk = await _security.verifyPIN(pin);
+    if (!pinOk) {
+      throw StateError('Invalid PIN');
+    }
+    if (amount <= 0) {
+      throw ArgumentError('Amount must be positive');
+    }
+    if (fee < 0) {
+      throw ArgumentError('Fee cannot be negative');
+    }
+    final totalAtomic = ((amount + fee) * atomicPerCoin).round();
+    if (totalAtomic > state.unlockedHeatBalance) {
+      throw StateError('Insufficient unlocked HEAT balance (including fee)');
+    }
+
+    if (_rpcService == null) {
+      throw StateError('Wallet RPC service not available');
+    }
+    final txHash = await _rpcService!.sendHeat(
+      address: address,
+      amount: (amount * atomicPerCoin).round(),
+      fee: (fee * atomicPerCoin).round(),
+      mixin: mixin,
+    );
     if (txHash.isEmpty) {
       throw StateError('Empty transaction hash');
     }

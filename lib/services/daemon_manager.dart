@@ -8,16 +8,23 @@ import 'package:path/path.dart' as p;
 
 import 'daemon_event_bus.dart';
 import 'security_service.dart';
+import '../models/network_config.dart';
 
 /// Unified process manager for all backend daemons.
 ///
 /// Manages the unified daemon (fuegod + walletd + xfg-swapd in one process).
-/// Default ports: fuegod=18180, walletd=8070, swapd=18902.
+/// Default ports: fuegod=18180, walletd=18189, swapd=18902.
 class DaemonManager {
-  // ── Ports ────────────────────────────────────────────────────────
-  static const int fuegodPort = 18180;
-  static const int walletdPort = 18189;
-  static const int swapdPort = 18902;
+  // ── Ports (configurable per network) ──────────────────────────────
+  int fuegodPort;
+  int walletdPort;
+  int swapdPort;
+
+  DaemonManager({
+    NetworkConfig? config,
+  }) : fuegodPort = config?.daemonRpcPort ?? 18180,
+       walletdPort = config?.walletRpcPort ?? 18189,
+       swapdPort = 18902;
 
   // ── Process handles ──────────────────────────────────────────────
   Process? _unified;
@@ -437,18 +444,42 @@ class DaemonManager {
        debugPrint('[daemon] Keychain unavailable ($e), starting without container password');
      }
 
-     final args = <String>[
-       '--bind-port', walletdPort.toString(),
-       '--container-file', containerFile,
-     ];
-     if (containerPassword != null) {
-       args.add('--container-password');
-       args.add(containerPassword);
-     }
-     if (useLocalNode) args.add('--local');
-     if (useTestnet) args.add('--testnet');
+      // Generate container if it doesn't exist yet
+      final containerExists = await File(containerFile).exists();
+      if (!containerExists) {
+        debugPrint('[daemon] Container not found at $containerFile — generating...');
+        final genArgs = <String>[
+          '--generate-container',
+          '--container-file', containerFile,
+        ];
+        if (containerPassword != null) {
+          genArgs.add('--container-password');
+          genArgs.add(containerPassword);
+        }
+        if (useTestnet) genArgs.add('--testnet');
+        debugPrint('[daemon] unified generate-container args: $genArgs');
+        final genProc = await Process.run(binary, genArgs);
+        debugPrint('[daemon] generate-container exit code: ${genProc.exitCode}');
+        if (genProc.exitCode != 0) {
+          final err = genProc.stderr.toString().trim();
+          debugPrint('[daemon] generate-container stderr: $err');
+          return 'Failed to generate wallet container: $err';
+        }
+        debugPrint('[daemon] Wallet container generated at $containerFile');
+      }
 
-     debugPrint('[daemon] unified args: $args');
+      final args = <String>[
+        '--bind-port', walletdPort.toString(),
+        '--container-file', containerFile,
+      ];
+      if (containerPassword != null) {
+        args.add('--container-password');
+        args.add(containerPassword);
+      }
+      if (useLocalNode) args.add('--local');
+      if (useTestnet) args.add('--testnet');
+
+      debugPrint('[daemon] unified args: $args');
 
     try {
       debugPrint('[daemon] Spawning unified daemon...');

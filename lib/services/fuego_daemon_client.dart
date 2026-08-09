@@ -52,7 +52,7 @@ class FuegoDaemonClient {
     return AmmQuote.fromJson(result);
   }
 
-  /// Get pool information: reserves, spot price, LP fees
+  /// Get pool information: reserves, spot price, total LP shares
   Future<PoolInfo> getPoolInfo() async {
     final result = await _daemonGet('/amm_pool_info');
     return PoolInfo.fromJson(result);

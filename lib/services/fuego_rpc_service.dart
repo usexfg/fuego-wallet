@@ -235,6 +235,55 @@ class FuegoRPCService {
     }
   }
 
+  // ── HEAT Methods ──
+
+  Future<Map<String, dynamic>> heatMint({
+    required int xfgBurned,
+    required int heatMinted,
+    int fee = 0,
+    int mixin = 4,
+  }) async {
+    try {
+      final response = await _makeRPCCall('heat_mint', {
+        'xfg_burned': xfgBurned,
+        'heat_minted': heatMinted,
+        'mixin': mixin,
+      });
+      return response;
+    } catch (e) {
+      throw FuegoRPCException('Failed to mint HEAT: $e');
+    }
+  }
+
+  Future<String> sendHeat({
+    required String address,
+    required int amount,
+    int fee = 0,
+    int mixin = 4,
+  }) async {
+    try {
+      final response = await _makeRPCCall('send_heat', {
+        'address': address,
+        'amount': amount,
+        'mixin': mixin,
+      });
+      return response['tx_hash'] as String? ?? '';
+    } catch (e) {
+      throw FuegoRPCException('Failed to send HEAT: $e');
+    }
+  }
+
+  Future<({int unlockedHeat, int lockedHeat})> getHeatBalance() async {
+    try {
+      final response = await _makeRPCCall('getBalance', {});
+      final unlockedHeat = (response['unlockedHeatBalance'] ?? 0) as int;
+      final lockedHeat = (response['lockedHeatBalance'] ?? 0) as int;
+      return (unlockedHeat: unlockedHeat, lockedHeat: lockedHeat);
+    } catch (e) {
+      throw FuegoRPCException('Failed to get HEAT balance: $e');
+    }
+  }
+
   // ── CD Methods ──
   // cd::list → proxy remaps to walletd "list_cds"
   // cd::create → proxy remaps to walletd "create_cd"

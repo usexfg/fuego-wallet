@@ -28,7 +28,7 @@ import 'services/security_service.dart';
 import 'utils/theme.dart';
 
 final _log = Logger('main');
-final DaemonManager daemonManager = DaemonManager();
+late final DaemonManager daemonManager = DaemonManager(config: _activeConfig);
 final Completer<void> _backendReady = Completer<void>();
 final SecurityService _securityService = SecurityService();
 final FuegoVaultService _vaultService =
@@ -57,7 +57,7 @@ int get _defaultDaemonPort =>
     int.tryParse(Platform.environment['FUEGO_DAEMON_PORT'] ?? '') ??
     _activeConfig.daemonRpcPort;
 
-const int _backendPort = 18189;
+late final int _backendPort = daemonManager.walletdPort;
 
 late final FuegoDaemonClient daemon = FuegoDaemonClient(
   host: _defaultDaemonHost,
@@ -224,6 +224,7 @@ class _FuegoAppState extends State<FuegoApp> with WidgetsBindingObserver {
             BlocProvider<WalletCubit>(
               create: (_) => WalletCubit(
                 daemon,
+                rpcService: rpcService,
                 vault: widget.vaultService,
                 backendReady: widget.backendReady,
                 security: widget.securityService,

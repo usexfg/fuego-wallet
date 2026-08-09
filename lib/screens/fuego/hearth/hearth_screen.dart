@@ -177,7 +177,7 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
               style: HearthTheme.mono(size: 13, weight: FontWeight.w700, color: HearthTheme.askPrimary)),
           const Spacer(),
           // HΞ∆T-denominated (right of center)
-          _metricChip(_formatVol(state.pool?.volume24h), HearthTheme.textSecondary),
+          _metricChip('1 XFG ≈ ${spotNum.toStringAsFixed(1)} HΞ∆T', HearthTheme.askPrimary),
           const SizedBox(width: 8),
           Text('HΞ∆T ≋ \$${heatUsd.toStringAsFixed(2)}',
               style: HearthTheme.mono(size: 13, weight: FontWeight.w700, color: HearthTheme.textWhite)),
@@ -197,12 +197,6 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
     );
   }
 
-  String _formatVol(String? vol) {
-    final v = double.tryParse(vol ?? '') ?? 0;
-    if (v >= 1000) return '${(v / 1000).toStringAsFixed(1)}K HΞ∆T';
-    return '${v.toStringAsFixed(0)} HΞ∆T';
-  }
-
   Widget _buildPoolStats(PoolInfo pool) {
     return Container(
       color: HearthTheme.bgDeep,
@@ -213,9 +207,7 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
           _poolDivider(),
           _poolStat('HΞ∆T Res', pool.heatReserve),
           _poolDivider(),
-          _poolStat('24h Vol', pool.volume24h),
-          _poolDivider(),
-          _poolStat('LP Fees', pool.lpFees24h),
+          _poolStat('LP Shares', pool.totalLpShares),
         ],
       ),
     );
@@ -790,10 +782,23 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('PROVIDE LIQUIDITY', style: HearthTheme.label(size: 10, color: HearthTheme.askPrimary)),
+                Row(
+                  children: [
+                    Text('PROVIDE LIQUIDITY', style: HearthTheme.label(size: 10, color: HearthTheme.askPrimary)),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: HearthTheme.bidPrimary.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text('AUTO-COMPOUND', style: HearthTheme.label(size: 8, color: HearthTheme.bidPrimary)),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 8),
                 Text(
-                  'Earn fees by providing liquidity to the XFG/HΞ∆T pool.',
+                  'Fees auto-compound into pool reserves. Your LP shares appreciate as the pool earns.',
                   style: HearthTheme.mono(size: 11, color: HearthTheme.textSecondary),
                 ),
               ],
@@ -823,11 +828,11 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
                   child: OutlinedButton(
                     onPressed: () => _showRemoveLiquidity(context),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: HearthTheme.textMuted,
-                      side: const BorderSide(color: HearthTheme.border, width: 1),
+                      foregroundColor: HearthTheme.askPrimary,
+                      side: const BorderSide(color: HearthTheme.askPrimary, width: 1),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                     ),
-                    child: const Text('Remove', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    child: const Text('Withdraw Earnings', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                   ),
                 ),
               ),

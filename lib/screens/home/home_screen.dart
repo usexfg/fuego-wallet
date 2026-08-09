@@ -7,6 +7,7 @@ import '../../bloc/mining/mining_cubit.dart';
 import '../../utils/theme.dart';
 import '../transactions/transaction_details_screen.dart';
 import '../transactions/send_screen.dart';
+import '../transactions/send_heat_screen.dart';
 import '../transactions/receive_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -86,6 +87,26 @@ class _HomeScreenState extends State<HomeScreen> {
             _showBalance ? '${state.unlockedBalanceXfg.toStringAsFixed(decimalPlaces)} available' : '••••••••',
             style: const TextStyle(color: Colors.white60, fontSize: 13),
           ),
+          const SizedBox(height: 12),
+          // HEAT balance row
+          if (state.totalHeatXfg > 0)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('HEAT', style: TextStyle(color: AppTheme.accentColor, fontSize: 11, letterSpacing: 1)),
+                  Text(
+                    _showBalance ? state.unlockedHeatXfg.toStringAsFixed(decimalPlaces) : '••••••••',
+                    style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -95,7 +116,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   MaterialPageRoute(builder: (context) => const SendScreen()),
                 );
               }),
-              const SizedBox(width: 24),
+              const SizedBox(width: 16),
+              _actionBtn('Send HEAT', Icons.arrow_upward, () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => const SendHeatScreen()),
+                );
+              }, color: AppTheme.accentColor),
+              const SizedBox(width: 16),
               _actionBtn('Receive', Icons.arrow_downward, () {
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (context) => const ReceiveScreen()),
@@ -152,20 +179,20 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _actionBtn(String label, IconData icon, VoidCallback onTap) {
+  Widget _actionBtn(String label, IconData icon, VoidCallback onTap, {Color? color}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.15),
+          color: (color ?? Colors.white).withOpacity(0.15),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
           children: [
-            Icon(icon, color: Colors.white, size: 18),
-            const SizedBox(width: 6),
-            Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+            Icon(icon, color: color ?? Colors.white, size: 16),
+            const SizedBox(width: 4),
+            Text(label, style: TextStyle(color: color ?? Colors.white, fontWeight: FontWeight.w600, fontSize: 11)),
           ],
         ),
       ),
