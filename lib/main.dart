@@ -24,6 +24,7 @@ import 'services/daemon_manager.dart';
 import 'services/fuego_daemon_client.dart' as hearth;
 import 'services/fuego_rpc_service.dart';
 import 'services/fuego_vault_service.dart';
+import 'services/node_connection.dart';
 import 'services/security_service.dart';
 import 'utils/theme.dart';
 
@@ -40,35 +41,33 @@ bool get useTestnet =>
     Platform.environment['FUEGO_TESTNET'] == '1' ||
     Platform.environment['FUEGO_TESTNET'] == 'true';
 
-bool get useLocalNode {
-  final env = Platform.environment['FUEGO_USE_LOCAL_NODE'];
-  if (env != null) return env == '1' || env.toLowerCase() == 'true';
-  return Platform.isLinux || Platform.isMacOS || Platform.isWindows;
-}
-
 NetworkConfig get _activeConfig =>
     useTestnet ? NetworkConfig.testnet : NetworkConfig.mainnet;
 
-String get _defaultDaemonHost =>
-    Platform.environment['FUEGO_DAEMON_HOST'] ??
-    _activeConfig.defaultSeedNode.split(':')[0];
-
-int get _defaultDaemonPort =>
-    int.tryParse(Platform.environment['FUEGO_DAEMON_PORT'] ?? '') ??
-    _activeConfig.daemonRpcPort;
+/// Platform default: desktop → local, mobile → remote.
+/// Prefer [nodeConnection.useLocalNode] after prefs load.
+bool get useLocalNode => nodeConnection.useLocalNode;
 
 late final int _backendPort = daemonManager.walletdPort;
-
-late final FuegoDaemonClient daemon = FuegoDaemonClient(
-  host: _defaultDaemonHost,
-  port: _defaultDaemonPort,
-  walletPort: _backendPort,
-);
 
 late final FuegoRPCService rpcService = FuegoRPCService(
   host: '127.0.0.1',
   port: _backendPort,
   networkConfig: _activeConfig,
+);
+
+/// Owns mode/host/port, starts daemons, rewires [rpcService].
+late final NodeConnection nodeConnection = NodeConnection(
+  daemonManager: daemonManager,
+  rpcService: rpcService,
+  networkConfig: _activeConfig,
+);
+
+/// Chain client — host updated after [nodeConnection.connect].
+late final FuegoDaemonClient daemon = FuegoDaemonClient(
+  host: nodeConnection.remoteHost,
+  port: nodeConnection.remotePort,
+  walletPort: _backendPort,
 );
 
 void _logDebug(String message) {
@@ -78,40 +77,45 @@ void _logDebug(String message) {
 }
 
 Future<void> _startBackend() async {
-  _logDebug('[backend] Starting daemons (local=$useLocalNode)');
-  _logDebug('[backend] Config: host=$_defaultDaemonHost port=$_defaultDaemonPort walletPort=$_backendPort');
-
-  String? error;
   try {
-    error = await daemonManager.startAll(
-      useLocalNode: useLocalNode,
-      useTestnet: useTestnet,
-    );
+    await nodeConnection.loadPreferences();
   } catch (e) {
-    error = e.toString();
-    _log.warning('Daemon startup crashed: $e');
+    _log.warning('Failed to load node prefs: $e');
   }
 
-  if (error != null) {
-    _daemonError = error;
-    _log.warning('Daemon startup failed: $error — falling back to remote');
-    rpcService.updateNode(
-      _defaultDaemonHost,
-      port: _defaultDaemonPort,
-    );
-    _logDebug('[backend] Fallback: RPC now points to ${_defaultDaemonHost}:$_defaultDaemonPort');
+  _logDebug(
+    '[backend] Starting (mode=${nodeConnection.mode}, '
+    'desktop=${NodeConnection.isDesktop}, mobile=${NodeConnection.isMobile})',
+  );
+  _logDebug(
+    '[backend] Remote seed ${nodeConnection.remoteHost}:'
+    '${nodeConnection.remotePort}  walletPort=$_backendPort',
+  );
+
+  ConnectionEndpoints endpoints;
+  try {
+    endpoints = await nodeConnection.connect(useTestnet: useTestnet);
+  } catch (e) {
+    _daemonError = e.toString();
+    _log.warning('Daemon startup crashed: $e');
     if (!_backendReady.isCompleted) _backendReady.complete();
     return;
   }
 
-  _daemonError = null;
-  _logDebug('[backend] All daemons started successfully');
-  _logDebug('[backend] RPC: http://127.0.0.1:$_backendPort (local proxy)');
+  _daemonError = endpoints.error;
+  if (endpoints.error != null) {
+    _log.warning('Node connection: ${endpoints.error}');
+  }
+  _logDebug(
+    '[backend] wallet=${endpoints.walletBaseUrl} '
+    'chain=${endpoints.chainBaseUrl} proxy=${endpoints.proxyRunning}',
+  );
+
   if (!_backendReady.isCompleted) _backendReady.complete();
 }
 
 Future<void> stopBackend() async {
-  await daemonManager.stopAll();
+  await nodeConnection.disconnect();
   _daemonError = null;
 }
 
@@ -236,12 +240,22 @@ class _FuegoAppState extends State<FuegoApp> with WidgetsBindingObserver {
             ),
             BlocProvider<HearthCubit>(
               create: (_) => HearthCubit(hearth.FuegoDaemonClient(
-                host: _defaultDaemonHost,
+                host: nodeConnection.remoteHost,
                 networkConfig: _activeConfig,
               )),
             ),
             BlocProvider<DexCubit>(
-              create: (_) => DexCubit()..init(),
+              create: (_) {
+                final dex = DexCubit();
+                // Always hit local wallet proxy once backend is up.
+                unawaited(widget.backendReady.then((_) {
+                  final ep = nodeConnection.lastEndpoints;
+                  final host = ep?.walletHost ?? '127.0.0.1';
+                  final port = ep?.walletPort ?? _backendPort;
+                  return dex.init(host: host, port: port);
+                }));
+                return dex;
+              },
             ),
             BlocProvider<MiningCubit>(
               create: (_) => MiningCubit(),

@@ -30,7 +30,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _fuegodHost = '207.244.247.64';
   int _fuegodPort = 18180;
   bool _fuegodConfigured = true;
-  bool _useLocalNode = true; // Local built-in node vs Remote
+  /// Desktop default = local, mobile default = remote (from [NodeConnection]).
+  bool _useLocalNode = app.useLocalNode;
 
   WalletProvider get walletProvider =>
       Provider.of<WalletProvider>(context, listen: false);
@@ -43,10 +44,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadSettings() async {
     final biometricEnabled = await _securityService.isBiometricEnabled();
+    final ep = app.nodeConnection.lastEndpoints;
     setState(() {
       _biometricEnabled = biometricEnabled;
-      // Initialize from current daemon state
-      _useLocalNode = app.daemonManager.unifiedRunning || app.daemonManager.fuegodRunning;
+      _useLocalNode = app.nodeConnection.useLocalNode;
+      _fuegodHost = ep?.chainHost ?? app.nodeConnection.remoteHost;
+      _fuegodPort = ep?.chainPort ?? app.nodeConnection.remotePort;
+      _fuegodConfigured = ep?.proxyRunning == true || ep?.error == null;
     });
   }
 
@@ -317,13 +321,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ]),
                           const SizedBox(height: 8),
                           Text(
-                            'Runs fuegod, walletd, and xfg-swapd as an embedded unified daemon. '
-                            'No external dependencies needed.',
+                            'Desktop default. Runs fuego_walletd with --local '
+                            '(embedded fuegod). Wallet RPC on 127.0.0.1:18189.',
                             style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'The wallet will sync to the Fuego network automatically.',
+                            'Requires bundled binaries. Syncs the chain on this machine.',
                             style: TextStyle(color: AppTheme.textMuted, fontSize: 11),
                           ),
                         ],
@@ -398,43 +402,72 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     });
 
                     if (useLocal) {
-                      // Restart with local daemon
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: const Text('Starting built-in node...'),
+                          content: const Text('Starting built-in local node...'),
                           backgroundColor: AppTheme.primaryColor,
                         ),
                       );
-                      // Stop existing daemons and restart with local mode
-                      await app.daemonManager.stopAll();
-                      final error = await app.daemonManager.startAll(
-                        useLocalNode: true,
+                      final ep = await app.nodeConnection.switchToLocal(
                         useTestnet: app.useTestnet,
                       );
-                      if (error != null && mounted) {
+                      if (!mounted) return;
+                      setState(() {
+                        _fuegodHost = ep.chainHost;
+                        _fuegodPort = ep.chainPort;
+                        _fuegodConfigured = ep.proxyRunning;
+                      });
+                      if (ep.error != null) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('Failed to start local node: $error'),
+                            content: Text(ep.error!),
                             backgroundColor: AppTheme.errorColor,
+                          ),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Local node ready — ${ep.walletBaseUrl}',
+                            ),
+                            backgroundColor: AppTheme.successColor,
                           ),
                         );
                       }
                     } else {
-                      // Connect to remote node
-                      final walletProvider = Provider.of<WalletProvider>(context, listen: false);
-                      final nodeUrl = selectedNode.contains(':')
-                          ? 'http://$selectedNode'
-                          : 'http://$selectedNode:${walletProvider.networkConfig.daemonRpcPort}';
+                      final custom = customNodeController.text.trim();
+                      final target = custom.isNotEmpty ? custom : selectedNode;
 
-                      // Stop local daemons if running
-                      await app.daemonManager.stopAll();
-                      await walletProvider.connectToNode(nodeUrl);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Connecting via remote $target...'),
+                          backgroundColor: AppTheme.primaryColor,
+                        ),
+                      );
+
+                      final ep = await app.nodeConnection.switchToRemote(
+                        host: target,
+                        useTestnet: app.useTestnet,
+                      );
+                      if (!mounted) return;
+                      setState(() {
+                        _fuegodHost = ep.chainHost;
+                        _fuegodPort = ep.chainPort;
+                        _fuegodConfigured = ep.proxyRunning;
+                      });
+
+                      // Keep WalletProvider node URL in sync with wallet proxy.
+                      final walletProvider =
+                          Provider.of<WalletProvider>(context, listen: false);
+                      await walletProvider.connectToNode(ep.walletBaseUrl);
 
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
-                              'Connecting to $selectedNode...',
+                              ep.proxyRunning
+                                  ? 'Remote chain $target via proxy ${ep.walletBaseUrl}'
+                                  : (ep.error ?? 'Connected to $target'),
                               style: const TextStyle(color: Colors.white),
                             ),
                             backgroundColor: AppTheme.primaryColor,

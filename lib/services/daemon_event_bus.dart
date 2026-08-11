@@ -47,6 +47,7 @@ class DaemonEventBus {
   Timer? _swapdTimer;
 
   // ── Config ───────────────────────────────────────────────────────
+  String fuegodHost = '127.0.0.1';
   int fuegodPort = 18180;
   int walletdPort = 18189;
   int swapdPort = 18902;
@@ -54,11 +55,17 @@ class DaemonEventBus {
   // ── Lifecycle ────────────────────────────────────────────────────
 
   /// Start polling all daemons.
+  ///
+  /// [fuegodHost] is `127.0.0.1` in local mode, or the remote seed host
+  /// when the wallet proxy is in remote mode.
   void start({
+    String fuegodHost = '127.0.0.1',
     int fuegodPort = 18180,
     int walletdPort = 18189,
     int swapdPort = 18902,
   }) {
+    stop();
+    this.fuegodHost = fuegodHost;
     this.fuegodPort = fuegodPort;
     this.walletdPort = walletdPort;
     this.swapdPort = swapdPort;
@@ -98,6 +105,8 @@ class DaemonEventBus {
 
   // ── Pollers (mirrors xfgo dashboard pollDaemon/pollWallet/pollSwapd) ──
 
+  String get _fuegodBase => 'http://$fuegodHost:$fuegodPort';
+
   Future<void> _pollFuegod() async {
     try {
       final client = HttpClient()..connectionTimeout = const Duration(seconds: 3);
@@ -105,7 +114,7 @@ class DaemonEventBus {
       // Block height + chain info (matches xfgo pollDaemon line 189)
       try {
         final req = await client.getUrl(
-            Uri.parse('http://127.0.0.1:$fuegodPort/getinfo'));
+            Uri.parse('$_fuegodBase/getinfo'));
         final resp = await req.close().timeout(const Duration(seconds: 3));
         final body = await resp.transform(utf8.decoder).join();
         client.close(force: true);
@@ -128,7 +137,7 @@ class DaemonEventBus {
         final heatClient = HttpClient()
           ..connectionTimeout = const Duration(seconds: 3);
         final req = await heatClient.getUrl(
-            Uri.parse('http://127.0.0.1:$fuegodPort/heat_metrics'));
+            Uri.parse('$_fuegodBase/heat_metrics'));
         final resp = await req.close().timeout(const Duration(seconds: 3));
         final body = await resp.transform(utf8.decoder).join();
         heatClient.close(force: true);
@@ -145,7 +154,7 @@ class DaemonEventBus {
         final poolClient = HttpClient()
           ..connectionTimeout = const Duration(seconds: 3);
         final req = await poolClient.getUrl(
-            Uri.parse('http://127.0.0.1:$fuegodPort/amm_pool_info'));
+            Uri.parse('$_fuegodBase/amm_pool_info'));
         final resp = await req.close().timeout(const Duration(seconds: 3));
         final body = await resp.transform(utf8.decoder).join();
         poolClient.close(force: true);

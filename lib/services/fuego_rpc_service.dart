@@ -13,8 +13,14 @@ class FuegoRPCService {
   String _baseUrl;
   NetworkConfig _networkConfig;
 
+  /// Mainnet seed list (must stay in sync with [NetworkConfig.mainnet.seedNodes]).
   static const List<String> defaultRemoteNodes = [
-    '207.244.247.64:18180'
+    '207.244.247.64:18180',
+    'node1.usexfg.org:18180',
+    'node2.usexfg.org:18180',
+    'fuego.seednode1.com:18180',
+    'fuego.seednode2.com:18180',
+    'fuego.communitynode.net:18180',
   ];
 
   FuegoRPCService({
@@ -29,23 +35,40 @@ class FuegoRPCService {
          headers: {'Content-Type': 'application/json'},
        ));
 
+  /// Point wallet JSON-RPC at [host]:[port].
+  ///
+  /// Prefer the local fuego_walletd proxy (`127.0.0.1` + walletRpcPort).
+  /// Passing a remote seed node without a local proxy is degraded mode.
   void updateNode(String host, {int? port}) {
-    _baseUrl = 'http://$host:${port ?? _networkConfig.daemonRpcPort}';
+    final p = port ?? _networkConfig.walletRpcPort;
+    _baseUrl = 'http://$host:$p';
   }
 
   void updateNetworkConfig(NetworkConfig config) {
     _networkConfig = config;
     final uri = Uri.parse(_baseUrl);
-    _baseUrl = 'http://${uri.host}:${config.daemonRpcPort}';
+    // Keep the current host; only retarget port when it was a known network port.
+    final keepPort = uri.port == NetworkConfig.mainnet.walletRpcPort ||
+            uri.port == NetworkConfig.testnet.walletRpcPort ||
+            uri.port == NetworkConfig.mainnet.daemonRpcPort ||
+            uri.port == NetworkConfig.testnet.daemonRpcPort
+        ? config.walletRpcPort
+        : uri.port;
+    _baseUrl = 'http://${uri.host}:$keepPort';
   }
 
   NetworkConfig get networkConfig => _networkConfig;
   String get currentNodeUrl => _baseUrl;
 
-  // ── Daemon RPC (routed through Rust proxy → fuegod) ──
+  // ── Daemon RPC (prefer wallet proxy; fall back to direct chain) ──
 
   Future<Map<String, dynamic>> getInfo() async {
-    return _makeDaemonRPCCall('getinfo', {});
+    // Proxy remaps /json_rpc getinfo → fuegod (works in local and remote-proxy modes).
+    try {
+      return await _makeRPCCall('getinfo', {});
+    } catch (_) {
+      return _makeDaemonRPCCall('getinfo', {});
+    }
   }
 
   Future<int> getHeight() async {
@@ -412,13 +435,32 @@ class FuegoRPCService {
   }
 
   Future<bool> testConnection() async {
+    // 1) Wallet proxy / full wallet API
     try {
-      // Test wallet proxy (goes through walletd on walletRpcPort)
       final result = await _makeRPCCall('getBalance', {});
-      return result.containsKey('availableBalance');
-    } catch (e) {
-      return false;
-    }
+      if (result.containsKey('availableBalance') ||
+          result.containsKey('available_balance') ||
+          result.containsKey('balance')) {
+        return true;
+      }
+    } catch (_) {}
+
+    // 2) Health endpoint on proxy
+    try {
+      final resp = await _dio.get(
+        _baseUrl.replaceAll(RegExp(r'/json_rpc/?$'), '') + '/health',
+        options: Options(receiveTimeout: const Duration(seconds: 5)),
+      );
+      if (resp.statusCode == 200) return true;
+    } catch (_) {}
+
+    // 3) Chain getinfo (works against raw fuegod or proxy-forwarded)
+    try {
+      await getInfo();
+      return true;
+    } catch (_) {}
+
+    return false;
   }
 
   void dispose() {

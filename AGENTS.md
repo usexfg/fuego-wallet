@@ -65,11 +65,14 @@ The Fuego swap system uses **two daemons** that serve different purposes:
 
 ## Dart Wallet Backend Architecture
 
-### Backend Startup (main.dart)
-- `_useLocalNode`: Desktop defaults to `true` (starts fuegod + walletd in-process). Mobile defaults to `false`.
-- `_backendPort`: 18189 (walletd HTTP proxy)
-- `fuego_walletd serve --local` starts embedded fuegod, then HTTP proxy on 18189
-- Health check polls `http://127.0.0.1:18189/health` for up to 120s
+### Backend Startup (main.dart + NodeConnection)
+- `NodeConnection` is the single source of truth for local vs remote mode
+- Platform defaults: **desktop → local**, **mobile → remote** (override via prefs or `FUEGO_USE_LOCAL_NODE`)
+- **Local**: `fuego_walletd -P 18189 serve --local` (embedded fuegod; never spawn a separate fuegod in remote mode)
+- **Remote**: `fuego_walletd -P 18189 serve --daemon-host <seed> --daemon-port <port>` — local proxy always preferred
+- Wallet JSON-RPC always targets `http://127.0.0.1:18189` when the proxy is up
+- Desktop local failure auto-falls back to remote proxy + seed failover across `NetworkConfig.seedNodes`
+- Health: `/health` or JSON-RPC `getHealth` on 18189 (up to ~180s for local)
 
 ### Binary Naming
 - GUI frontend: `fuego-wallet` (dash)
