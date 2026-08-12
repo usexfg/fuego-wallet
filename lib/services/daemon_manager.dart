@@ -41,6 +41,10 @@ class DaemonManager {
   final List<String> errors = [];
   final ValueNotifier<DaemonStatus> status = ValueNotifier(DaemonStatus());
 
+  /// Bounded stderr/stdout buffer captured during walletd startup (release
+  /// mode) so failures surface the real cause, not just the exit code.
+  StringBuffer? _walletdExitLog;
+
   /// Unified event bus — single source of truth for daemon health.
   final DaemonEventBus eventBus = DaemonEventBus();
 
@@ -103,16 +107,31 @@ class DaemonManager {
     try {
       if (Platform.isWindows) {
         final result = await Process.run('taskkill', ['/F', '/PID', pid.toString()]);
-        return result.exitCode == 0;
+        if (result.exitCode != 0) return false;
       } else {
-        Process.killPid(pid, ProcessSignal.sigkill);
-        // Wait briefly and verify
-        await Future<void>.delayed(const Duration(milliseconds: 500));
-        return !Process.killPid(pid); // returns false if process is gone
+        // Ignore if the process is already gone (ESRCH throws on POSIX).
+        try {
+          Process.killPid(pid, ProcessSignal.sigkill);
+        } catch (_) {}
+        // Wait for the process to actually disappear so the port frees up.
+        for (var i = 0; i < 10; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 200));
+          bool alive;
+          try {
+            alive = Process.killPid(pid, ProcessSignal.sigterm);
+          } catch (_) {
+            alive = false;
+          }
+          if (!alive) return true;
+        }
+        // Give up tracking but the SIGKILL was delivered — treat as killed.
+        debugPrint('[daemon] PID $pid survived SIGKILL for 2s — continuing anyway');
+        return true;
       }
     } catch (_) {
       return false;
     }
+    return true;
   }
 
   // ── Binary discovery ─────────────────────────────────────────────
@@ -460,10 +479,20 @@ class DaemonManager {
     if (useTestnet) args.add('--testnet');
     if (useLocalNode) args.add('--local');
 
+    // Ensure the Rust backend can locate fuegod regardless of bundle layout.
+    // The Rust side searches its own exe dir + Resources/bin, but the wallet
+    // knows where fuegod actually lives (dev builds, custom paths) — pass it.
+    final fuegodBin = _findFuegodBinary();
+    final env = {...Platform.environment};
+    if (fuegodBin != null) {
+      env['FUEGO_FUEGOD_BIN'] = fuegodBin;
+      debugPrint('[daemon] Passing FUEGO_FUEGOD_BIN=$fuegodBin');
+    }
+
     try {
       debugPrint('[daemon] Starting fuego_walletd: $binary ${args.join(' ')}');
-      _walletd = await Process.start(binary, args);
-      if (kDebugMode) {
+      _walletd = await Process.start(binary, args, environment: env);
+      if (kDebugMode || !useLocalNode) {
         _walletd!.stdout
             .transform<String>(utf8.decoder)
             .listen((l) => debugPrint('[walletd:out] $l'));
@@ -471,13 +500,26 @@ class DaemonManager {
             .transform<String>(utf8.decoder)
             .listen((l) => debugPrint('[walletd:err] $l'));
       } else {
-        _walletd!.stdout.drain<void>();
-        _walletd!.stderr.drain<void>();
+        // Local node: the embedded fuegod logs to stderr too. Keep a bounded
+        // buffer so startup failures show the REAL error, not just exit code.
+        final buffer = StringBuffer();
+        _walletd!.stdout.transform<String>(utf8.decoder).listen((l) {
+          if (buffer.length < 8192) buffer.write(l);
+          debugPrint('[walletd:out] $l');
+        });
+        _walletd!.stderr.transform<String>(utf8.decoder).listen((l) {
+          if (buffer.length < 8192) buffer.write(l);
+          debugPrint('[walletd:err] $l');
+        });
+        _walletdExitLog = buffer;
       }
       _walletd!.exitCode.then((code) {
         debugPrint('[daemon] fuego_walletd exited with code $code');
         _walletd = null;
-        daemonErrors['walletd'] = 'exited with code $code';
+        final logTail = _walletdExitLog?.toString().trim();
+        daemonErrors['walletd'] = logTail != null && logTail.isNotEmpty
+            ? 'exited with code $code — $logTail'
+            : 'exited with code $code';
       });
     } catch (e) {
       return 'Failed to spawn: $e';
@@ -605,9 +647,15 @@ class DaemonManager {
 
       debugPrint('[daemon] unified args: $args');
 
+    final fuegodBin = _findFuegodBinary();
+    final env = {...Platform.environment};
+    if (fuegodBin != null) {
+      env['FUEGO_FUEGOD_BIN'] = fuegodBin;
+    }
+
     try {
       debugPrint('[daemon] Spawning unified daemon...');
-      _unified = await Process.start(binary, args);
+      _unified = await Process.start(binary, args, environment: env);
       debugPrint('[daemon] unified process started (PID ${_unified!.pid})');
       if (kDebugMode) {
         _unified!.stdout.transform<String>(utf8.decoder).listen((l) => debugPrint('[unified:out] $l'));

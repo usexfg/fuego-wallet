@@ -90,7 +90,8 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_OSX_ARCHITECTURES=$(uname -m) \
             -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0
-          # PaymentGateService outputs as "unified" — do NOT build the whole tree
+          # PaymentGateService outputs as "unified". Daemon target produces
+          # "fuegod" and MUST succeed — local mode depends on it.
           # (tests + incomplete swap chain clients break `cmake --build` all).
           cmake --build build --target PaymentGateService -j$(sysctl -n hw.logicalcpu)
           cmake --build build --target Daemon -j$(sysctl -n hw.logicalcpu) || true
@@ -127,10 +128,16 @@ jobs:
           cp "$WALLETD" "$RESOURCES_BIN/fuego_walletd"
           chmod +x "$BIN/fuego_walletd" "$RESOURCES_BIN/fuego_walletd"
 
+          # fuegod is REQUIRED for local mode. The Rust backend refuses to
+          # start embedded fuegod without it, so a bundle without fuegod is a
+          # broken app — fail the build instead of shipping a degraded one.
           if [ -x ./fuegod ]; then
             cp ./fuegod "$BIN/fuegod"
             cp ./fuegod "$RESOURCES_BIN/fuegod"
             chmod +x "$BIN/fuegod" "$RESOURCES_BIN/fuegod"
+          else
+            echo "::error::fuegod missing — local mode would fail at runtime. Build the xfgo 'Daemon' target."
+            exit 1
           fi
 
           if [ -x ./unified ]; then
@@ -253,7 +260,13 @@ jobs:
           cp "$WALLETD" "$BUNDLE/fuego_walletd"
           chmod +x "$BUNDLE/fuego_walletd"
           if [ -x ./unified ]; then cp ./unified "$BUNDLE/" && chmod +x "$BUNDLE/unified"; fi
-          if [ -x ./fuegod ]; then cp ./fuegod "$BUNDLE/" && chmod +x "$BUNDLE/fuegod"; fi
+          # fuegod required — local mode depends on it. Fail rather than ship broken.
+          if [ -x ./fuegod ]; then
+            cp ./fuegod "$BUNDLE/" && chmod +x "$BUNDLE/fuegod"
+          else
+            echo "::error::fuegod missing — local mode would fail at runtime. Build the xfgo 'Daemon' target."
+            exit 1
+          fi
           cp linux/xfg-wallet.desktop "$BUNDLE/" 2>/dev/null || true
           cp assets/logo/fuegologo.png "$BUNDLE/fuego.png" 2>/dev/null || true
 

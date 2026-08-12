@@ -1,3 +1,4 @@
+use std::io::Read;
 use std::process::{Child, Command, Stdio};
 
 pub struct DaemonProcess {
@@ -10,7 +11,7 @@ impl DaemonProcess {
     pub fn rpc_url(&self) -> String { format!("http://127.0.0.1:{}", self.port) }
 
     pub async fn start(&mut self, testnet: bool, data_dir: &str) -> Result<String, String> {
-        let (fuegod, _) = crate::release::ensure_binaries().await?;
+        let fuegod = crate::release::find_fuegod()?;
         std::fs::create_dir_all(data_dir).map_err(|e| format!("mkdir: {}", e))?;
 
         let port_str = self.port.to_string();
@@ -25,10 +26,17 @@ impl DaemonProcess {
         #[cfg(windows)]
         { cmd.creation_flags(0x08000000); } // CREATE_NO_WINDOW
 
-        let child = cmd.spawn().map_err(|e| format!("spawn: {}", e))?;
+        let mut child = cmd.spawn().map_err(|e| format!("spawn: {}", e))?;
+
+        // fuegod logs heavily on a synced data dir. The pipe buffer is only
+        // 64KB — if the parent never reads, fuegod blocks on write and never
+        // binds its RPC port. Drain both pipes on dedicated threads and
+        // forward the output to the wallet proxy's own log stream.
+        drain_async(child.stdout.take(), "fuegod:out");
+        drain_async(child.stderr.take(), "fuegod:err");
 
         self.child = Some(child);
-        Self::wait_ready(self.rpc_url(), 60).await?;
+        Self::wait_ready(self.rpc_url(), 120).await?;
         log::info!("fuegod ready on port {}", self.port);
         Ok(self.rpc_url())
     }
@@ -46,6 +54,42 @@ impl DaemonProcess {
 
     pub fn stop(&mut self) {
         if let Some(mut c) = self.child.take() { let _ = c.kill(); let _ = c.wait(); }
+    }
+}
+
+#[cfg(unix)]
+fn drain_async<R: Read + Send + 'static>(pipe: Option<R>, label: &'static str) {
+    if let Some(mut p) = pipe {
+        std::thread::spawn(move || {
+            let mut buf = [0u8; 4096];
+            loop {
+                match p.read(&mut buf) {
+                    Ok(0) | Err(_) => break,
+                    Ok(n) => {
+                        let line = String::from_utf8_lossy(&buf[..n]);
+                        log::info!("{} {}", label, line.trim_end());
+                    }
+                }
+            }
+        });
+    }
+}
+
+#[cfg(windows)]
+fn drain_async<R: Read + Send + 'static>(pipe: Option<R>, label: &'static str) {
+    if let Some(mut p) = pipe {
+        std::thread::spawn(move || {
+            let mut buf = [0u8; 4096];
+            loop {
+                match p.read(&mut buf) {
+                    Ok(0) | Err(_) => break,
+                    Ok(n) => {
+                        let line = String::from_utf8_lossy(&buf[..n]);
+                        log::info!("{} {}", label, line.trim_end());
+                    }
+                }
+            }
+        });
     }
 }
 
