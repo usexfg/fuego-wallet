@@ -38,7 +38,7 @@ jobs:
   build-macos:
     name: Build macOS
     runs-on: macos-latest
-    timeout-minutes: 25
+    timeout-minutes: 45
     needs: analyze
 
     steps:
@@ -64,37 +64,87 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with: { toolchain: stable }
 
-      - name: Build unified daemon (xfgo)
+      - name: Build fuego_walletd (Rust — primary backend)
         run: |
+          cargo build --release --manifest-path rust-fuego-wallet/core/Cargo.toml
+          test -x rust-fuego-wallet/target/release/fuego_walletd
+          # workspace may place binary under core/target or target/
+          if [ ! -x rust-fuego-wallet/target/release/fuego_walletd ]; then
+            mkdir -p rust-fuego-wallet/target/release
+            cp rust-fuego-wallet/core/target/release/fuego_walletd \
+              rust-fuego-wallet/target/release/fuego_walletd
+          fi
+          ls -la rust-fuego-wallet/target/release/fuego_walletd \
+            rust-fuego-wallet/core/target/release/fuego_walletd 2>/dev/null || true
+
+      - name: Build unified daemon (xfgo) — optional
+        id: unified
+        continue-on-error: true
+        run: |
+          set -euo pipefail
           git clone --depth 1 --branch master --recurse-submodules --shallow-submodules \
-            https://github.com/usexfg/fuego-suite.git xfgo
-          cd xfgo
-          brew install boost openssl icu4c jsoncpp cmake ninja
+            https://github.com/usexfg/fuego-suite.git xfgo-build
+          cd xfgo-build
+          brew install boost openssl icu4c jsoncpp cmake ninja || true
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_OSX_ARCHITECTURES=$(uname -m) \
             -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0
-          cmake --build build -j$(sysctl -n hw.logicalcpu)
-          cp build/src/unified ../
+          # PaymentGateService outputs as "unified" — do NOT build the whole tree
+          # (tests + incomplete swap chain clients break `cmake --build` all).
+          cmake --build build --target PaymentGateService -j$(sysctl -n hw.logicalcpu)
+          cmake --build build --target Daemon -j$(sysctl -n hw.logicalcpu) || true
+          UNIFIED="$(find build -name unified -type f | head -1)"
+          FUEGOD="$(find build -name fuegod -type f | head -1)"
+          test -n "$UNIFIED"
+          cp "$UNIFIED" ../unified
+          if [ -n "$FUEGOD" ]; then cp "$FUEGOD" ../fuegod; fi
           cd ..
-          rm -rf xfgo
+          rm -rf xfgo-build
+          echo "built=true" >> "$GITHUB_OUTPUT"
 
       - name: Build macOS app
         run: flutter build macos --release
 
-      - name: Bundle unified daemon into app
+      - name: Bundle backends into app
         run: |
+          set -euo pipefail
           APP="build/macos/Build/Products/Release/fuego_wallet.app"
-          cp unified "$APP/Contents/MacOS/"
-          chmod +x "$APP/Contents/MacOS/unified"
-          # Also keep rust backend for fallback
-          cp rust-fuego-wallet/target/release/fuego_walletd "$APP/Contents/MacOS/" 2>/dev/null || true
-          chmod +x "$APP/Contents/MacOS/fuego_walletd" 2>/dev/null || true
+          BIN="$APP/Contents/MacOS"
+          RESOURCES_BIN="$APP/Contents/Resources/bin"
+          mkdir -p "$BIN" "$RESOURCES_BIN"
+
+          # Primary: Rust wallet proxy
+          WALLETD=""
+          for c in \
+            rust-fuego-wallet/target/release/fuego_walletd \
+            rust-fuego-wallet/core/target/release/fuego_walletd
+          do
+            if [ -x "$c" ]; then WALLETD="$c"; break; fi
+          done
+          test -n "$WALLETD"
+          cp "$WALLETD" "$BIN/fuego_walletd"
+          cp "$WALLETD" "$RESOURCES_BIN/fuego_walletd"
+          chmod +x "$BIN/fuego_walletd" "$RESOURCES_BIN/fuego_walletd"
+
+          if [ -x ./fuegod ]; then
+            cp ./fuegod "$BIN/fuegod"
+            cp ./fuegod "$RESOURCES_BIN/fuegod"
+            chmod +x "$BIN/fuegod" "$RESOURCES_BIN/fuegod"
+          fi
+
+          if [ -x ./unified ]; then
+            cp ./unified "$BIN/unified"
+            cp ./unified "$RESOURCES_BIN/unified"
+            chmod +x "$BIN/unified" "$RESOURCES_BIN/unified"
+          fi
 
       - name: Re-sign
         run: |
           APP="build/macos/Build/Products/Release/fuego_wallet.app"
           codesign --force --sign - "$APP/Contents/MacOS/fuego_walletd" 2>/dev/null || true
+          codesign --force --sign - "$APP/Contents/MacOS/unified" 2>/dev/null || true
+          codesign --force --sign - "$APP/Contents/MacOS/fuegod" 2>/dev/null || true
           find "$APP/Contents/Frameworks" -mindepth 1 -maxdepth 1 -type d -name "*.framework" -exec codesign --force --sign - {} \;
           find "$APP/Contents/Frameworks" -mindepth 1 -maxdepth 1 -name "*.dylib" -exec codesign --force --sign - {} \;
           codesign --force --sign - "$APP"
@@ -117,11 +167,10 @@ jobs:
         with:
           files: build/macos/Build/Products/Release/Fuego-Wallet-macOS.zip
 
-  # Parallel with build-macos (both depend only on analyze)
   build-linux:
     name: Build Linux (Ubuntu 22.04)
     runs-on: ubuntu-22.04
-    timeout-minutes: 35
+    timeout-minutes: 45
     needs: analyze
 
     steps:
@@ -152,32 +201,61 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with: { toolchain: stable }
 
-      - name: Build unified daemon (xfgo)
+      - name: Build fuego_walletd (Rust — primary backend)
         run: |
+          cargo build --release --manifest-path rust-fuego-wallet/core/Cargo.toml
+          if [ ! -x rust-fuego-wallet/target/release/fuego_walletd ]; then
+            mkdir -p rust-fuego-wallet/target/release
+            cp rust-fuego-wallet/core/target/release/fuego_walletd \
+              rust-fuego-wallet/target/release/fuego_walletd
+          fi
+          test -x rust-fuego-wallet/target/release/fuego_walletd || \
+            test -x rust-fuego-wallet/core/target/release/fuego_walletd
+
+      - name: Build unified daemon (xfgo) — optional
+        id: unified
+        continue-on-error: true
+        run: |
+          set -euo pipefail
           git clone --depth 1 --branch master --recurse-submodules --shallow-submodules \
-            https://github.com/usexfg/fuego-suite.git xfgo
-          cd xfgo
+            https://github.com/usexfg/fuego-suite.git xfgo-build
+          cd xfgo-build
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake libboost-all-dev libssl-dev libicu-dev libjsoncpp-dev
-          cmake -B build -DCMAKE_BUILD_TYPE=Release
-          make -C build -j$(nproc)
-          cp build/src/unified ../
+          sudo apt-get install -y build-essential cmake ninja-build \
+            libboost-all-dev libssl-dev libicu-dev libjsoncpp-dev
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --target PaymentGateService -j"$(nproc)"
+          cmake --build build --target Daemon -j"$(nproc)" || true
+          UNIFIED="$(find build -name unified -type f | head -1)"
+          FUEGOD="$(find build -name fuegod -type f | head -1)"
+          test -n "$UNIFIED"
+          cp "$UNIFIED" ../unified
+          if [ -n "$FUEGOD" ]; then cp "$FUEGOD" ../fuegod; fi
           cd ..
-          rm -rf xfgo
+          rm -rf xfgo-build
+          echo "built=true" >> "$GITHUB_OUTPUT"
 
       - name: Build Linux app
         run: flutter build linux --release
 
-      - name: Bundle unified daemon into app
+      - name: Bundle backends into app
         run: |
+          set -euo pipefail
           BUNDLE="build/linux/x64/release/bundle"
-          cp unified "$BUNDLE/"
-          chmod +x "$BUNDLE/unified"
-          cp linux/xfg-wallet.desktop "$BUNDLE/"
+          WALLETD=""
+          for c in \
+            rust-fuego-wallet/target/release/fuego_walletd \
+            rust-fuego-wallet/core/target/release/fuego_walletd
+          do
+            if [ -x "$c" ]; then WALLETD="$c"; break; fi
+          done
+          test -n "$WALLETD"
+          cp "$WALLETD" "$BUNDLE/fuego_walletd"
+          chmod +x "$BUNDLE/fuego_walletd"
+          if [ -x ./unified ]; then cp ./unified "$BUNDLE/" && chmod +x "$BUNDLE/unified"; fi
+          if [ -x ./fuegod ]; then cp ./fuegod "$BUNDLE/" && chmod +x "$BUNDLE/fuegod"; fi
+          cp linux/xfg-wallet.desktop "$BUNDLE/" 2>/dev/null || true
           cp assets/logo/fuegologo.png "$BUNDLE/fuego.png" 2>/dev/null || true
-          # Also keep rust backend for fallback
-          cp rust-fuego-wallet/target/release/fuego_walletd "$BUNDLE/" 2>/dev/null || true
-          chmod +x "$BUNDLE/fuego_walletd" 2>/dev/null || true
 
       - name: Package app
         run: |
