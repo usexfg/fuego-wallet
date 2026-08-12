@@ -93,13 +93,27 @@ jobs:
           # PaymentGateService outputs as "unified". Daemon target produces
           # "fuegod" and MUST succeed — local mode depends on it.
           # (tests + incomplete swap chain clients break `cmake --build` all).
-          cmake --build build --target PaymentGateService -j$(sysctl -n hw.logicalcpu)
-          cmake --build build --target Daemon -j$(sysctl -n hw.logicalcpu) || true
-          UNIFIED="$(find build -name unified -type f | head -1)"
+          echo "::group::Building fuegod (Daemon target)"
+          cmake --build build --target Daemon -j$(sysctl -n hw.logicalcpu)
+          echo "::endgroup::"
           FUEGOD="$(find build -name fuegod -type f | head -1)"
-          test -n "$UNIFIED"
-          cp "$UNIFIED" ../unified
-          if [ -n "$FUEGOD" ]; then cp "$FUEGOD" ../fuegod; fi
+          if [ -z "$FUEGOD" ]; then
+            echo "::error::Failed to build or find 'fuegod' binary from xfgo 'Daemon' target."
+            exit 1
+          fi
+          cp "$FUEGOD" ../fuegod
+          echo "Successfully built and copied fuegod."
+
+          # `PaymentGateService` target (unified) is optional.
+          echo "::group::Building unified (PaymentGateService target)"
+          cmake --build build --target PaymentGateService -j$(sysctl -n hw.logicalcpu) || echo "Unified daemon build failed, continuing..."
+          echo "::endgroup::"
+          UNIFIED="$(find build -name unified -type f | head -1)"
+          if [ -n "$UNIFIED" ]; then
+            cp "$UNIFIED" ../unified
+            echo "Successfully built and copied unified."
+          fi
+
           cd ..
           rm -rf xfgo-build
           echo "built=true" >> "$GITHUB_OUTPUT"
@@ -231,13 +245,28 @@ jobs:
           sudo apt-get install -y build-essential cmake ninja-build \
             libboost-all-dev libssl-dev libicu-dev libjsoncpp-dev
           cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-          cmake --build build --target PaymentGateService -j"$(nproc)"
-          cmake --build build --target Daemon -j"$(nproc)" || true
-          UNIFIED="$(find build -name unified -type f | head -1)"
+          # `Daemon` target (fuegod) is REQUIRED for local mode to work.
+          echo "::group::Building fuegod (Daemon target)"
+          cmake --build build --target Daemon -j"$(nproc)"
+          echo "::endgroup::"
           FUEGOD="$(find build -name fuegod -type f | head -1)"
-          test -n "$UNIFIED"
-          cp "$UNIFIED" ../unified
-          if [ -n "$FUEGOD" ]; then cp "$FUEGOD" ../fuegod; fi
+          if [ -z "$FUEGOD" ]; then
+            echo "::error::Failed to build or find 'fuegod' binary from xfgo 'Daemon' target."
+            exit 1
+          fi
+          cp "$FUEGOD" ../fuegod
+          echo "Successfully built and copied fuegod."
+
+          # `PaymentGateService` target (unified) is optional.
+          echo "::group::Building unified (PaymentGateService target)"
+          cmake --build build --target PaymentGateService -j"$(nproc)" || echo "Unified daemon build failed, continuing..."
+          echo "::endgroup::"
+          UNIFIED="$(find build -name unified -type f | head -1)"
+          if [ -n "$UNIFIED" ]; then
+            cp "$UNIFIED" ../unified
+            echo "Successfully built and copied unified."
+          fi
+
           cd ..
           rm -rf xfgo-build
           echo "built=true" >> "$GITHUB_OUTPUT"
