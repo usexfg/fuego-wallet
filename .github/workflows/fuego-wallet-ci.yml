@@ -77,9 +77,8 @@ jobs:
           ls -la rust-fuego-wallet/target/release/fuego_walletd \
             rust-fuego-wallet/core/target/release/fuego_walletd 2>/dev/null || true
 
-      - name: Build unified daemon (xfgo) — optional
-        id: unified
-        continue-on-error: true
+      - name: Build C++ Backends (fuegod, unified)
+        id: build-cpp
         run: |
           set -euo pipefail
           git clone --depth 1 --branch master --recurse-submodules --shallow-submodules \
@@ -90,15 +89,20 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_OSX_ARCHITECTURES=$(uname -m) \
             -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0
-          # PaymentGateService outputs as "unified". Daemon target produces
-          # "fuegod" and MUST succeed — local mode depends on it.
-          # (tests + incomplete swap chain clients break `cmake --build` all).
+
+          BUILD_LOG="build_log.txt"
+
+          # `Daemon` target (fuegod) is REQUIRED for local mode to work.
           echo "::group::Building fuegod (Daemon target)"
-          cmake --build build --target Daemon -j$(sysctl -n hw.logicalcpu)
+          if ! cmake --build build --target Daemon -j$(sysctl -n hw.logicalcpu) > "$BUILD_LOG" 2>&1; then
+            echo "::error::Building 'Daemon' (fuegod) target failed. See log below."
+            cat "$BUILD_LOG"
+            exit 1
+          fi
           echo "::endgroup::"
           FUEGOD="$(find build -name fuegod -type f | head -1)"
           if [ -z "$FUEGOD" ]; then
-            echo "::error::Failed to build or find 'fuegod' binary from xfgo 'Daemon' target."
+            echo "::error::Build for 'Daemon' target succeeded but 'fuegod' binary not found."
             exit 1
           fi
           cp "$FUEGOD" ../fuegod
@@ -106,7 +110,7 @@ jobs:
 
           # `PaymentGateService` target (unified) is optional.
           echo "::group::Building unified (PaymentGateService target)"
-          cmake --build build --target PaymentGateService -j$(sysctl -n hw.logicalcpu) || echo "Unified daemon build failed, continuing..."
+          cmake --build build --target PaymentGateService -j$(sysctl -n hw.logicalcpu) > "$BUILD_LOG" 2>&1 || echo "Unified daemon build failed, continuing..."
           echo "::endgroup::"
           UNIFIED="$(find build -name unified -type f | head -1)"
           if [ -n "$UNIFIED" ]; then
@@ -233,9 +237,8 @@ jobs:
           test -x rust-fuego-wallet/target/release/fuego_walletd || \
             test -x rust-fuego-wallet/core/target/release/fuego_walletd
 
-      - name: Build unified daemon (xfgo) — optional
-        id: unified
-        continue-on-error: true
+      - name: Build C++ Backends (fuegod, unified)
+        id: build-cpp
         run: |
           set -euo pipefail
           git clone --depth 1 --branch master --recurse-submodules --shallow-submodules \
@@ -245,13 +248,20 @@ jobs:
           sudo apt-get install -y build-essential cmake ninja-build \
             libboost-all-dev libssl-dev libicu-dev libjsoncpp-dev
           cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+          BUILD_LOG="build_log.txt"
+
           # `Daemon` target (fuegod) is REQUIRED for local mode to work.
           echo "::group::Building fuegod (Daemon target)"
-          cmake --build build --target Daemon -j"$(nproc)"
+          if ! cmake --build build --target Daemon -j"$(nproc)" > "$BUILD_LOG" 2>&1; then
+            echo "::error::Building 'Daemon' (fuegod) target failed. See log below."
+            cat "$BUILD_LOG"
+            exit 1
+          fi
           echo "::endgroup::"
           FUEGOD="$(find build -name fuegod -type f | head -1)"
           if [ -z "$FUEGOD" ]; then
-            echo "::error::Failed to build or find 'fuegod' binary from xfgo 'Daemon' target."
+            echo "::error::Build for 'Daemon' target succeeded but 'fuegod' binary not found."
             exit 1
           fi
           cp "$FUEGOD" ../fuegod
@@ -259,7 +269,7 @@ jobs:
 
           # `PaymentGateService` target (unified) is optional.
           echo "::group::Building unified (PaymentGateService target)"
-          cmake --build build --target PaymentGateService -j"$(nproc)" || echo "Unified daemon build failed, continuing..."
+          cmake --build build --target PaymentGateService -j"$(nproc)" > "$BUILD_LOG" 2>&1 || echo "Unified daemon build failed, continuing..."
           echo "::endgroup::"
           UNIFIED="$(find build -name unified -type f | head -1)"
           if [ -n "$UNIFIED" ]; then
