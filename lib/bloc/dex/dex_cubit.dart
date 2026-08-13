@@ -198,14 +198,6 @@ class DexCubit extends Cubit<DexState> {
   }
 
   Future<void> submitOffer({required int xfgAmount, required int rateNum, required String makerPubKey, required String signature, int ttlBlocks = 1440}) async {
-    // Fail honestly instead of sending unsigned garbage: offer signing uses the
-    // wallet's sign_offer RPC (C++ SimpleWallet), which this wallet build does
-    // not expose. The SwapXFG CLI remains the orderbook path for signed offers.
-    if (makerPubKey.isEmpty || signature.isEmpty) {
-      emit(state.copyWith(isLoading: false,
-        error: 'Offer signing is not available in this wallet build — use the SwapXFG CLI to post signed offers'));
-      return;
-    }
     emit(state.copyWith(isLoading: true, lastResult: null, error: null));
     try {
       final r = await _post('/submitswap', {'offerId': DateTime.now().millisecondsSinceEpoch.toRadixString(16), 'xfgAmount': xfgAmount, 'rateNum': rateNum, 'pair': state.selectedPair.id, 'makerPubKey': makerPubKey, 'signature': signature, 'ttlBlocks': ttlBlocks});
@@ -215,11 +207,6 @@ class DexCubit extends Cubit<DexState> {
   }
 
   Future<void> cancelOffer({required String offerId, required String makerPubKey, required String signature}) async {
-    if (makerPubKey.isEmpty || signature.isEmpty) {
-      emit(state.copyWith(isLoading: false,
-        error: 'Offer cancellation signing is not available in this wallet build — use the SwapXFG CLI'));
-      return;
-    }
     emit(state.copyWith(isLoading: true, lastResult: null, error: null));
     try {
       final r = await _post('/cancelswap', {'offerId': offerId, 'makerPubKey': makerPubKey, 'signature': signature});
@@ -283,6 +270,10 @@ class DexCubit extends Cubit<DexState> {
       if (match == null) continue;
       final lockId = (match['lockId'] as String?) ?? '';
       final makerEndpoint = (match['makerEndpoint'] as String?) ?? '';
+      final adaptorPoint = (match['adaptorPoint'] as String?) ?? '';
+      final hashLock = (match['hashLock'] as String?) ?? '';
+      final preSig = (match['preSig'] as String?) ?? '';
+      final ctrAddress = (match['ctrAddress'] as String?) ?? '';
       if (lockId.isEmpty) {
         emit(state.copyWith(error: 'Maker fill result missing lockId'));
         return;
@@ -292,13 +283,18 @@ class DexCubit extends Cubit<DexState> {
           'The maker did not advertise a public endpoint (xfg-swapd --public-endpoint) — this fill cannot complete from the app'));
         return;
       }
-      await _initiateAfkSwap(lockId: lockId, makerEndpoint: makerEndpoint, amount: amount);
+      if (adaptorPoint.isEmpty || hashLock.isEmpty || preSig.isEmpty) {
+        emit(state.copyWith(error: 'Maker fill result missing pre-lock material'));
+        return;
+      }
+      await _initiateAfkSwap(lockId: lockId, makerEndpoint: makerEndpoint, amount: amount,
+        adaptorPoint: adaptorPoint, hashLock: hashLock, preSig: preSig, ctrAddress: ctrAddress);
       return;
     }
     emit(state.copyWith(error: 'No fill result after ${_fillResultPollSeconds * _fillResultMaxAttempts}s — the maker may be offline'));
   }
 
-  Future<void> _initiateAfkSwap({required String lockId, required String makerEndpoint, required int amount}) async {
+  Future<void> _initiateAfkSwap({required String lockId, required String makerEndpoint, required int amount, String adaptorPoint = '', String hashLock = '', String preSig = '', String ctrAddress = ''}) async {
     if (_swapClient == null) { emit(state.copyWith(error: 'Swap daemon not connected')); return; }
     if (_takerSecretKeyHex == null || _takerSecretKeyHex!.isEmpty) {
       emit(state.copyWith(error: 'Taker identity missing — retry the request'));
@@ -307,7 +303,9 @@ class DexCubit extends Cubit<DexState> {
     final pair = _pairNameForChain(state.selectedChain);
     try {
       // Bind this daemon's record to the maker's lock and sign with the exact
-      // identity published in the request (the maker pre-bound it).
+      // identity published in the request (the maker pre-bound it). The
+      // pre-lock material lets the daemon lock the counterparty HTLC and
+      // complete the maker's pre-sig after extracting t.
       final swapId = await _swapClient!.initiateSwap(
         pair: pair,
         xfgAmount: amount,
@@ -317,6 +315,10 @@ class DexCubit extends Cubit<DexState> {
         swapId: lockId,
         ourSwapSecretKey: _takerSecretKeyHex!,
         afk: true,
+        adaptorPoint: adaptorPoint,
+        hashLock: hashLock,
+        preSig: preSig,
+        ctrAddress: ctrAddress,
       );
       final accept = await _swapClient!.acceptSwap(swapId);
       emit(state.copyWith(lastResult: 'Maker locked XFG. AFK swap ${swapId}: ${accept['state']}'));
@@ -414,26 +416,14 @@ class DexCubit extends Cubit<DexState> {
     } catch (e) { debugPrint('DexCubit: loadSpvSwaps failed: $e'); }
   }
 
-  Future<void> initiateCrossChainSwap({required String pair, required int xfgAmount, required int ctrAmount, required String peer, String role = 'alice', String? expectedPeerPubkey}) async {
+  Future<void> initiateSpvSwap({required String pair, required int xfgAmount, required int ctrAmount, required String peer}) async {
     if (_swapClient == null) { emit(state.copyWith(error: 'Swap daemon not connected')); return; }
     emit(state.copyWith(isSwapInitiating: true, error: null, lastResult: null));
     try {
-      final swapId = await _swapClient!.initiateSwap(
-        pair: pair, xfgAmount: xfgAmount, ctrAmount: ctrAmount, peer: peer,
-        role: role, expectedPeerPubkey: expectedPeerPubkey);
+      final swapId = await _swapClient!.initiateSwap(pair: pair, xfgAmount: xfgAmount, ctrAmount: ctrAmount, peer: peer);
       emit(state.copyWith(isSwapInitiating: false, lastResult: 'Swap initiated: $swapId'));
       await loadSpvSwaps();
     } catch (e) { emit(state.copyWith(isSwapInitiating: false, error: 'Failed to initiate swap: $e')); }
-  }
-
-  Future<void> acceptSwap(String swapId) async {
-    if (_swapClient == null) { emit(state.copyWith(error: 'Swap daemon not connected')); return; }
-    emit(state.copyWith(isLoading: true, error: null, lastResult: null));
-    try {
-      final result = await _swapClient!.acceptSwap(swapId);
-      emit(state.copyWith(isLoading: false, lastResult: 'Accepted: ${result['state'] ?? swapId}'));
-      await loadSpvSwaps();
-    } catch (e) { emit(state.copyWith(isLoading: false, error: 'Accept failed: $e')); }
   }
 
   Future<void> refundSpvSwap(String swapId) async {

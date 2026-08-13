@@ -4,10 +4,9 @@ import 'package:http/http.dart' as http;
 class SwapDaemonClient {
   final String host;
   final int port;
-  final String? rpcToken;
   http.Client? _httpClient;
 
-  SwapDaemonClient({this.host = '127.0.0.1', this.port = 18902, this.rpcToken});
+  SwapDaemonClient({this.host = '127.0.0.1', this.port = 18902});
 
   String get _baseUrl => 'http://$host:$port';
   http.Client get _client => _httpClient ??= http.Client();
@@ -23,11 +22,8 @@ class SwapDaemonClient {
 
   Future<dynamic> _rpc(String method, [Map<String, dynamic>? params]) async {
     final body = json.encode({'jsonrpc': '2.0', 'id': 1, 'method': method, 'params': params ?? {}});
-    final headers = {'Content-Type': 'application/json'};
-    if (rpcToken != null && rpcToken!.isNotEmpty) headers['X-Swap-Token'] = rpcToken!;
-    final resp = await _client.post(Uri.parse('$_baseUrl/'), headers: headers, body: body)
+    final resp = await _client.post(Uri.parse('$_baseUrl/'), headers: {'Content-Type': 'application/json'}, body: body)
         .timeout(const Duration(seconds: 30));
-    if (resp.statusCode == 401) throw SwapRpcException('Unauthorized (X-Swap-Token required)', -32001);
     if (resp.statusCode != 200) throw SwapRpcException('HTTP ${resp.statusCode}', -1);
     final decoded = json.decode(resp.body) as Map<String, dynamic>;
     if (decoded.containsKey('error')) {
@@ -37,12 +33,16 @@ class SwapDaemonClient {
     return decoded['result'];
   }
 
-  Future<String> initiateSwap({required String pair, required int xfgAmount, required int ctrAmount, required String peer, String role = 'alice', String? expectedPeerPubkey, String? swapId, String? ourSwapSecretKey, bool afk = false}) async {
+  Future<String> initiateSwap({required String pair, required int xfgAmount, required int ctrAmount, required String peer, String role = 'alice', String? expectedPeerPubkey, String? swapId, String? ourSwapSecretKey, bool afk = false, String? adaptorPoint, String? hashLock, String? preSig, String? ctrAddress}) async {
     final params = <String, dynamic>{'pair': pair, 'xfg_amount': xfgAmount, 'ctr_amount': ctrAmount, 'peer': peer, 'role': role};
     if (expectedPeerPubkey != null && expectedPeerPubkey.isNotEmpty) params['expected_peer_pubkey'] = expectedPeerPubkey;
     if (swapId != null && swapId.isNotEmpty) params['swap_id'] = swapId;
     if (ourSwapSecretKey != null && ourSwapSecretKey.isNotEmpty) params['our_swap_secret_key'] = ourSwapSecretKey;
     if (afk) params['afk'] = true;
+    if (adaptorPoint != null && adaptorPoint.isNotEmpty) params['adaptor_point'] = adaptorPoint;
+    if (hashLock != null && hashLock.isNotEmpty) params['hash_lock'] = hashLock;
+    if (preSig != null && preSig.isNotEmpty) params['pre_sig'] = preSig;
+    if (ctrAddress != null && ctrAddress.isNotEmpty) params['ctr_address'] = ctrAddress;
     final result = await _rpc('initiate_swap', params) as Map<String, dynamic>;
     return result['swap_id'] as String;
   }
