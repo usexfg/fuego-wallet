@@ -4,9 +4,10 @@ import 'package:http/http.dart' as http;
 class SwapDaemonClient {
   final String host;
   final int port;
+  final String? rpcToken;
   http.Client? _httpClient;
 
-  SwapDaemonClient({this.host = '127.0.0.1', this.port = 18902});
+  SwapDaemonClient({this.host = '127.0.0.1', this.port = 18902, this.rpcToken});
 
   String get _baseUrl => 'http://$host:$port';
   http.Client get _client => _httpClient ??= http.Client();
@@ -22,8 +23,11 @@ class SwapDaemonClient {
 
   Future<dynamic> _rpc(String method, [Map<String, dynamic>? params]) async {
     final body = json.encode({'jsonrpc': '2.0', 'id': 1, 'method': method, 'params': params ?? {}});
-    final resp = await _client.post(Uri.parse('$_baseUrl/'), headers: {'Content-Type': 'application/json'}, body: body)
+    final headers = {'Content-Type': 'application/json'};
+    if (rpcToken != null && rpcToken!.isNotEmpty) headers['X-Swap-Token'] = rpcToken!;
+    final resp = await _client.post(Uri.parse('$_baseUrl/'), headers: headers, body: body)
         .timeout(const Duration(seconds: 30));
+    if (resp.statusCode == 401) throw SwapRpcException('Unauthorized (X-Swap-Token required)', -32001);
     if (resp.statusCode != 200) throw SwapRpcException('HTTP ${resp.statusCode}', -1);
     final decoded = json.decode(resp.body) as Map<String, dynamic>;
     if (decoded.containsKey('error')) {
@@ -33,9 +37,16 @@ class SwapDaemonClient {
     return decoded['result'];
   }
 
-  Future<String> initiateSwap({required String pair, required int xfgAmount, required int ctrAmount, required String peer}) async {
-    final result = await _rpc('initiate_swap', {'pair': pair, 'xfg_amount': xfgAmount, 'ctr_amount': ctrAmount, 'peer': peer}) as Map<String, dynamic>;
+  Future<String> initiateSwap({required String pair, required int xfgAmount, required int ctrAmount, required String peer, String role = 'alice', String? expectedPeerPubkey}) async {
+    final params = <String, dynamic>{'pair': pair, 'xfg_amount': xfgAmount, 'ctr_amount': ctrAmount, 'peer': peer, 'role': role};
+    if (expectedPeerPubkey != null && expectedPeerPubkey.isNotEmpty) params['expected_peer_pubkey'] = expectedPeerPubkey;
+    final result = await _rpc('initiate_swap', params) as Map<String, dynamic>;
     return result['swap_id'] as String;
+  }
+
+  Future<Map<String, dynamic>> acceptSwap(String swapId) async {
+    final result = await _rpc('accept', {'swap_id': swapId}) as Map<String, dynamic>;
+    return result;
   }
 
   Future<List<SwapInfo>> listSwaps() async {
@@ -74,9 +85,22 @@ class SwapInfo {
 
   factory SwapInfo.fromJson(Map<String, dynamic> j) {
     final params = j['params'] as Map<String, dynamic>? ?? j;
+    // The daemon sends the numeric state id in "state" plus a human-readable
+    // "stateName". Prefer stateName; fall back to numeric id → name mapping.
+    String? stateName = j['stateName'] as String?;
+    if (stateName == null || stateName.isEmpty) {
+      final rawState = j['state'];
+      if (rawState is num) {
+        stateName = _stateNames[rawState.toInt()] ?? 'UNKNOWN';
+      } else if (rawState is String) {
+        stateName = rawState;
+      } else {
+        stateName = 'UNKNOWN';
+      }
+    }
     return SwapInfo(
       swapId: params['swapId'] as String? ?? j['swapId'] as String? ?? '',
-      state: j['state'] as String? ?? 'UNKNOWN',
+      state: stateName,
       pair: (params['pair'] as num?)?.toInt() ?? 0,
       xfgAmount: (params['xfgAmount'] as num?)?.toInt() ?? 0,
       ctrAmount: (params['ctrAmount'] as num?)?.toInt() ?? 0,
@@ -86,6 +110,20 @@ class SwapInfo {
       timeoutHeight: (params['xfgTimeoutHeight'] as num?)?.toInt(),
     );
   }
+
+  // Numeric SwapState ids (XfgSwap::SwapState) → names. Kept in sync with the
+  // C++ SwapTypes.h enum; terminal names match the daemon's isTerminal set.
+  static const Map<int, String> _stateNames = {
+    0: 'INITIATED', 1: 'XFG_LOCKED', 2: 'CTR_LOCKED', 3: 'XFG_CLAIMED',
+    4: 'CTR_CLAIMED', 5: 'XFG_REFUNDED', 6: 'CTR_REFUNDED', 7: 'FAILED',
+    10: 'ADAPTOR_KEYS_EXCHANGED', 11: 'ADAPTOR_ESCROW_FUNDED',
+    12: 'ADAPTOR_PRESIGS_READY', 13: 'ADAPTOR_CTR_LOCKED',
+    14: 'ADAPTOR_SECRET_REVEALED', 15: 'ADAPTOR_XFG_SPENT',
+    16: 'ADAPTOR_REFUNDED', 17: 'ADAPTOR_WAITING_SPV',
+    18: 'ADAPTOR_SECRET_CONFIRMED_SPV',
+    100: 'AFK_OFFER_LOCKED', 101: 'AFK_OFFER_ACCEPTED',
+    102: 'AFK_CLAIMED', 103: 'AFK_REFUNDED',
+  };
 
   String get pairName {
     const names = {0: 'SOL', 1: 'ETH', 2: 'XMR', 3: 'BCH', 4: 'ARB', 5: 'BASE', 6: 'KMD', 7: 'BNB', 8: 'DCR', 9: 'BTC', 10: 'LTC', 11: 'POLYGON'};

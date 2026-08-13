@@ -12,7 +12,7 @@ import '../../services/fuego_vault_service.dart';
 import '../../services/security_service.dart';
 import '../../utils/theme.dart';
 import '../main/main_screen.dart';
-
+import 'swap_settings_screen.dart';
 import 'alias_registration_screen.dart';
 import 'network_selection_screen.dart';
 
@@ -1074,6 +1074,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
                 onTap: _showFuegodConfigDialog,
+              ),
+              _buildSettingsTile(
+                icon: Icons.hub_outlined,
+                title: 'Cross-Chain Swap Settings',
+                subtitle: 'Configure xfg-swapd chain RPCs, keys and SPV servers',
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const SwapSettingsScreen()),
+                ),
               ),
               
               const SizedBox(height: 24),

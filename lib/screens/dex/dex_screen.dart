@@ -497,12 +497,10 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
     final history = state.spvSwaps.where((s) => s.isTerminal).toList();
     final chainInfo = _chainInfo[ticker];
     final isEvm = chainInfo?['type']?.startsWith('EVM') == true || ticker == 'SOL';
-    final isUtxo = chainInfo?['type'] == 'UTXO';
-    final isMonero = ticker == 'XMR';
 
     return SingleChildScrollView(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      // Warning if swap daemon not running (UTXO chains need it)
-      if (!state.isSwapDaemonConnected && isUtxo)
+      // Warning if swap daemon not running (all chains need it)
+      if (!state.isSwapDaemonConnected)
         Container(padding: const EdgeInsets.all(12), margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(color: AppTheme.errorColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8), border: Border.all(color: AppTheme.errorColor.withValues(alpha: 0.3))),
           child: const Row(children: [
@@ -562,29 +560,27 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
           focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: AppTheme.primaryColor))),
         style: const TextStyle(color: AppTheme.textPrimary)),
 
-      // Peer endpoint for UTXO chains
-      if (isUtxo) ...[
-        const SizedBox(height: 12),
-        TextField(controller: _peerController,
-          decoration: InputDecoration(labelText: 'Peer Endpoint', labelStyle: const TextStyle(color: AppTheme.textSecondary), hintText: '192.168.1.100:18901',
-            hintStyle: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.5)),
-            enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha: 0.3))),
-            focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: AppTheme.primaryColor))),
-          style: const TextStyle(color: AppTheme.textPrimary)),
-      ],
+      // Peer endpoint (required for all chains — the daemon drives the swap)
+      const SizedBox(height: 12),
+      TextField(controller: _peerController,
+        decoration: InputDecoration(labelText: 'Peer Endpoint', labelStyle: const TextStyle(color: AppTheme.textSecondary), hintText: '192.168.1.100:18901',
+          hintStyle: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.5)),
+          enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha: 0.3))),
+          focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: AppTheme.primaryColor))),
+        style: const TextStyle(color: AppTheme.textPrimary)),
 
       const SizedBox(height: 16),
 
-      // Initiate button
+      // Initiate button — drives xfg-swapd for every chain (UTXO, EVM, SOL, XMR)
       ElevatedButton(
-        onPressed: (state.isSwapInitiating || (isUtxo && !state.isSwapDaemonConnected)) ? null : () => _initiateSwap(state, ticker),
+        onPressed: (state.isSwapInitiating || !state.isSwapDaemonConnected) ? null : () => _initiateSwap(state, ticker),
         style: ElevatedButton.styleFrom(
-          backgroundColor: isEvm ? AppTheme.successColor : AppTheme.primaryColor,
+          backgroundColor: AppTheme.primaryColor,
           padding: const EdgeInsets.symmetric(vertical: 14)),
         child: state.isSwapInitiating
           ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-          : Text(isEvm ? 'LOCK HTLC' : isMonero ? 'INITIATE (XMR)' : 'INITIATE SWAP',
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+          : const Text('INITIATE SWAP',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
 
       // Status messages
       if (state.lastResult != null) ...[const SizedBox(height: 12),
@@ -618,6 +614,9 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
               const SizedBox(width: 8),
               Text(swap.state, style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
               const Spacer(),
+              if (swap.state == 'INITIATED')
+                TextButton(onPressed: () => context.read<DexCubit>().acceptSwap(swap.swapId),
+                  child: const Text('Accept', style: TextStyle(color: AppTheme.successColor, fontSize: 11))),
               TextButton(onPressed: () => context.read<DexCubit>().refundSpvSwap(swap.swapId),
                 child: const Text('Refund', style: TextStyle(color: AppTheme.errorColor, fontSize: 11))),
             ]),
@@ -654,16 +653,14 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
     final amountXfg = double.tryParse(amountStr);
     if (amountXfg == null || amountXfg <= 0) return;
     final xfgAmount = (amountXfg * 1e7).toInt();
-    final chainInfo = _chainInfo[ticker];
-    final isEvm = chainInfo?['type']?.startsWith('EVM') == true || ticker == 'SOL';
-    final isUtxo = chainInfo?['type'] == 'UTXO';
-    if (isEvm) {
-      context.read<DexCubit>().loadBalance();
-    } else if (isUtxo) {
-      final peer = _peerController.text.trim();
-      if (peer.isEmpty) return;
-      context.read<DexCubit>().initiateSpvSwap(pair: ticker, xfgAmount: xfgAmount, ctrAmount: xfgAmount, peer: peer);
-    }
+    final peer = _peerController.text.trim();
+    if (peer.isEmpty) return;
+    // The daemon drives lock/claim/refund on every chain (UTXO SPV, EVM,
+    // Solana, Monero adaptor). The counterparty amount defaults to 1:1; the
+    // daemon validates the rate against TWAP and rejects below-floor prices,
+    // so a bad default fails closed with a clear error.
+    context.read<DexCubit>().initiateCrossChainSwap(
+      pair: ticker, xfgAmount: xfgAmount, ctrAmount: xfgAmount, peer: peer);
   }
 
   // ── Chain Info Dialog ────────────────────────────────────────────

@@ -196,6 +196,14 @@ class DexCubit extends Cubit<DexState> {
   }
 
   Future<void> submitOffer({required int xfgAmount, required int rateNum, required String makerPubKey, required String signature, int ttlBlocks = 1440}) async {
+    // Fail honestly instead of sending unsigned garbage: offer signing uses the
+    // wallet's sign_offer RPC (C++ SimpleWallet), which this wallet build does
+    // not expose. The SwapXFG CLI remains the orderbook path for signed offers.
+    if (makerPubKey.isEmpty || signature.isEmpty) {
+      emit(state.copyWith(isLoading: false,
+        error: 'Offer signing is not available in this wallet build — use the SwapXFG CLI to post signed offers'));
+      return;
+    }
     emit(state.copyWith(isLoading: true, lastResult: null, error: null));
     try {
       final r = await _post('/submitswap', {'offerId': DateTime.now().millisecondsSinceEpoch.toRadixString(16), 'xfgAmount': xfgAmount, 'rateNum': rateNum, 'pair': state.selectedPair.id, 'makerPubKey': makerPubKey, 'signature': signature, 'ttlBlocks': ttlBlocks});
@@ -205,6 +213,11 @@ class DexCubit extends Cubit<DexState> {
   }
 
   Future<void> cancelOffer({required String offerId, required String makerPubKey, required String signature}) async {
+    if (makerPubKey.isEmpty || signature.isEmpty) {
+      emit(state.copyWith(isLoading: false,
+        error: 'Offer cancellation signing is not available in this wallet build — use the SwapXFG CLI'));
+      return;
+    }
     emit(state.copyWith(isLoading: true, lastResult: null, error: null));
     try {
       final r = await _post('/cancelswap', {'offerId': offerId, 'makerPubKey': makerPubKey, 'signature': signature});
@@ -214,6 +227,14 @@ class DexCubit extends Cubit<DexState> {
   }
 
   Future<void> requestSwap({required String offerId, required int amount, required String takerPubKey, required String proofOfFunds}) async {
+    // A signed taker identity + reserve proof are required; neither is
+    // producible in this wallet build yet. Fail honestly instead of sending
+    // empty values that the daemon would reject anyway.
+    if (takerPubKey.isEmpty || proofOfFunds.isEmpty) {
+      emit(state.copyWith(isLoading: false,
+        error: 'Taking offers requires a signed taker identity — use the SwapXFG CLI for order fills'));
+      return;
+    }
     emit(state.copyWith(isLoading: true, lastResult: null, error: null));
     try {
       final r = await _post('/requestswap', {'offerId': offerId, 'amount': amount, 'takerPubKey': takerPubKey, 'proofOfFunds': proofOfFunds});
@@ -266,14 +287,26 @@ class DexCubit extends Cubit<DexState> {
     } catch (e) { debugPrint('DexCubit: loadSpvSwaps failed: $e'); }
   }
 
-  Future<void> initiateSpvSwap({required String pair, required int xfgAmount, required int ctrAmount, required String peer}) async {
+  Future<void> initiateCrossChainSwap({required String pair, required int xfgAmount, required int ctrAmount, required String peer, String role = 'alice', String? expectedPeerPubkey}) async {
     if (_swapClient == null) { emit(state.copyWith(error: 'Swap daemon not connected')); return; }
     emit(state.copyWith(isSwapInitiating: true, error: null, lastResult: null));
     try {
-      final swapId = await _swapClient!.initiateSwap(pair: pair, xfgAmount: xfgAmount, ctrAmount: ctrAmount, peer: peer);
+      final swapId = await _swapClient!.initiateSwap(
+        pair: pair, xfgAmount: xfgAmount, ctrAmount: ctrAmount, peer: peer,
+        role: role, expectedPeerPubkey: expectedPeerPubkey);
       emit(state.copyWith(isSwapInitiating: false, lastResult: 'Swap initiated: $swapId'));
       await loadSpvSwaps();
     } catch (e) { emit(state.copyWith(isSwapInitiating: false, error: 'Failed to initiate swap: $e')); }
+  }
+
+  Future<void> acceptSwap(String swapId) async {
+    if (_swapClient == null) { emit(state.copyWith(error: 'Swap daemon not connected')); return; }
+    emit(state.copyWith(isLoading: true, error: null, lastResult: null));
+    try {
+      final result = await _swapClient!.acceptSwap(swapId);
+      emit(state.copyWith(isLoading: false, lastResult: 'Accepted: ${result['state'] ?? swapId}'));
+      await loadSpvSwaps();
+    } catch (e) { emit(state.copyWith(isLoading: false, error: 'Accept failed: $e')); }
   }
 
   Future<void> refundSpvSwap(String swapId) async {
