@@ -111,7 +111,43 @@ class DaemonEventBus {
     try {
       final client = HttpClient()..connectionTimeout = const Duration(seconds: 3);
 
-      // Block height + chain info (matches xfgo pollDaemon line 189)
+      // Unified mode: the daemon on walletdPort embeds the chain node and
+      // exposes it via JSON-RPC getHealth (result.daemon, result.height).
+      // There is no /getinfo on 18180 in that architecture.
+      try {
+        final req = await client.postUrl(
+            Uri.parse('http://127.0.0.1:$walletdPort/json_rpc'));
+        req.headers.contentType = ContentType.json;
+        req.write(jsonEncode({
+          'jsonrpc': '2.0',
+          'id': 1,
+          'method': 'getHealth',
+          'params': <String, dynamic>{},
+        }));
+        final resp = await req.close().timeout(const Duration(seconds: 3));
+        final body = await resp.transform(utf8.decoder).join();
+        client.close(force: true);
+
+        if (resp.statusCode == 200) {
+          final data = jsonDecode(body) as Map<String, dynamic>;
+          final result = data['result'] as Map<String, dynamic>? ?? {};
+          if (result.containsKey('daemon')) {
+            // Unified daemon answered — its node state is authoritative.
+            final ok = result['daemon'] as bool? ?? false;
+            if (ok) {
+              blockInfo.value = result;
+              _emit(eventBlock, result);
+            }
+            _updateHealth(fuegodOk: ok,
+                fuegodError: ok ? null : 'daemon embedded in unified: offline');
+            return;
+          }
+        }
+      } catch (_) {
+        client.close(force: true);
+      }
+
+      // Standalone architecture: direct getinfo on the fuegod port.
       try {
         final req = await client.getUrl(
             Uri.parse('$_fuegodBase/getinfo'));
@@ -191,10 +227,7 @@ class DaemonEventBus {
          if (resp.statusCode == 200) {
            final data = jsonDecode(body) as Map<String, dynamic>;
            final result = data['result'] as Map<String, dynamic>? ?? {};
-           final walletOk = result['wallet'] is bool
-               ? result['wallet'] as bool
-               : true;
-           _updateHealth(walletdOk: walletOk, walletdData: result);
+           _updateHealth(walletdOk: result['wallet'] as bool? ?? false, walletdData: result);
            return;
          }
        } catch (_) {}
@@ -208,13 +241,7 @@ class DaemonEventBus {
          client.close(force: true);
 
          if (resp.statusCode == 200) {
-           final Map<String, dynamic> data;
-           try {
-             data = jsonDecode(body) as Map<String, dynamic>;
-           } catch (_) {
-             _updateHealth(walletdOk: false, walletdError: 'invalid health response');
-             return;
-           }
+           final data = jsonDecode(body) as Map<String, dynamic>;
            _updateHealth(walletdOk: true, walletdData: data);
            return;
          } else {
@@ -251,14 +278,12 @@ class DaemonEventBus {
          if (resp.statusCode == 200) {
            final data = jsonDecode(body) as Map<String, dynamic>;
            final result = data['result'] as Map<String, dynamic>? ?? {};
-           if (result['swap'] is bool) {
-             final swapOk = result['swap'] as bool;
-             _updateHealth(swapdOk: swapOk);
-             if (swapOk) {
-               _emit(eventSwap, result);
-             }
-             return;
+           final swapOk = result['swap'] as bool? ?? false;
+           _updateHealth(swapdOk: swapOk);
+           if (swapOk) {
+             _emit(eventSwap, result);
            }
+           return;
          }
        } catch (_) {}
 
@@ -271,13 +296,7 @@ class DaemonEventBus {
          client.close(force: true);
 
          if (resp.statusCode == 200) {
-           final Map<String, dynamic> data;
-           try {
-             data = jsonDecode(body) as Map<String, dynamic>;
-           } catch (_) {
-             _updateHealth(swapdOk: false, swapdError: 'invalid health response');
-             return;
-           }
+           final data = jsonDecode(body) as Map<String, dynamic>;
            _updateHealth(swapdOk: true);
            _emit(eventSwap, data);
            return;
