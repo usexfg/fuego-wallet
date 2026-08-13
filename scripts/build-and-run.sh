@@ -108,6 +108,23 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         print_fail "fuegod not built — bundle will fail in local mode"
         exit 1
     fi
+    SWAPD=""
+    for c in "$ROOT/xfgo/build/src/xfg-swapd" "$ROOT/xfgo/build/release/src/xfg-swapd"; do
+        if [ -x "$c" ]; then SWAPD="$c"; break; fi
+    done
+    if [ -n "$SWAPD" ]; then
+        cp "$SWAPD" "$BIN_PATH/xfg-swapd"
+        cp "$SWAPD" "$RES_PATH/xfg-swapd"
+        chmod +x "$BIN_PATH/xfg-swapd" "$RES_PATH/xfg-swapd"
+        print_success "xfg-swapd bundled"
+    else
+        print_warn "xfg-swapd not built — cross-chain swaps unavailable (build xfgo 'SwapDaemon' target)"
+    fi
+
+    # Bundle homebrew dylibs the C++ daemons link against so the app runs
+    # on machines without brew.
+    print_status "Bundling daemon dylibs into app..."
+    "$ROOT/scripts/bundle-macos-dylibs.sh" "$APP_PATH"
 else
     flutter build linux --release
     APP_PATH="build/linux/x64/release/bundle"
@@ -135,6 +152,16 @@ else
     else
         print_fail "fuegod not built — bundle will fail in local mode"
         exit 1
+    fi
+    SWAPD=""
+    for c in "$ROOT/xfgo/build/src/xfg-swapd" "$ROOT/xfgo/build/release/src/xfg-swapd"; do
+        if [ -x "$c" ]; then SWAPD="$c"; break; fi
+    done
+    if [ -n "$SWAPD" ]; then
+        cp "$SWAPD" "$APP_PATH/xfg-swapd" && chmod +x "$APP_PATH/xfg-swapd"
+        print_success "xfg-swapd bundled"
+    else
+        print_warn "xfg-swapd not built — cross-chain swaps unavailable (build xfgo 'SwapDaemon' target)"
     fi
 fi
 

@@ -114,6 +114,19 @@ jobs:
             echo "Successfully built and copied unified."
           fi
 
+          # `SwapDaemon` target outputs "xfg-swapd" — cross-chain atomic
+          # swaps (Dart Cross-Chain tab connects to its JSON-RPC on 18902).
+          echo "::group::Building xfg-swapd (SwapDaemon target)"
+          cmake --build build --target SwapDaemon -j$(sysctl -n hw.logicalcpu)
+          echo "::endgroup::"
+          SWAPD="$(find build -name xfg-swapd -type f | head -1)"
+          if [ -z "$SWAPD" ]; then
+            echo "::error::Failed to build or find 'xfg-swapd' binary from xfgo 'SwapDaemon' target."
+            exit 1
+          fi
+          cp "$SWAPD" ../xfg-swapd
+          echo "Successfully built and copied xfg-swapd."
+
           cd ..
           rm -rf xfgo-build
           echo "built=true" >> "$GITHUB_OUTPUT"
@@ -154,11 +167,24 @@ jobs:
             exit 1
           fi
 
+          # xfg-swapd REQUIRED — cross-chain atomic swaps depend on it.
+          if [ -x ./xfg-swapd ]; then
+            cp ./xfg-swapd "$BIN/xfg-swapd"
+            cp ./xfg-swapd "$RESOURCES_BIN/xfg-swapd"
+            chmod +x "$BIN/xfg-swapd" "$RESOURCES_BIN/xfg-swapd"
+          else
+            echo "::error::xfg-swapd missing — cross-chain swaps would fail at runtime. Build the xfgo 'SwapDaemon' target."
+            exit 1
+          fi
+
           if [ -x ./unified ]; then
             cp ./unified "$BIN/unified"
             cp ./unified "$RESOURCES_BIN/unified"
             chmod +x "$BIN/unified" "$RESOURCES_BIN/unified"
           fi
+
+      - name: Bundle daemon dylibs into app
+        run: ./scripts/bundle-macos-dylibs.sh "build/macos/Build/Products/Release/fuego_wallet.app"
 
       - name: Re-sign
         run: |
@@ -166,6 +192,7 @@ jobs:
           codesign --force --sign - "$APP/Contents/MacOS/fuego_walletd"
           codesign --force --sign - "$APP/Contents/MacOS/unified"
           codesign --force --sign - "$APP/Contents/MacOS/fuegod"
+          codesign --force --sign - "$APP/Contents/MacOS/xfg-swapd"
           find "$APP/Contents/Frameworks" -mindepth 1 -maxdepth 1 -type d -name "*.framework" -exec codesign --force --sign - {} \;
           find "$APP/Contents/Frameworks" -mindepth 1 -maxdepth 1 -name "*.dylib" -exec codesign --force --sign - {} \;
           codesign --force --sign - "$APP"
@@ -268,6 +295,18 @@ jobs:
             echo "Successfully built and copied unified."
           fi
 
+          # `SwapDaemon` target outputs "xfg-swapd" — cross-chain swaps.
+          echo "::group::Building xfg-swapd (SwapDaemon target)"
+          cmake --build build --target SwapDaemon -j"$(nproc)"
+          echo "::endgroup::"
+          SWAPD="$(find build -name xfg-swapd -type f | head -1)"
+          if [ -z "$SWAPD" ]; then
+            echo "::error::Failed to build or find 'xfg-swapd' binary from xfgo 'SwapDaemon' target."
+            exit 1
+          fi
+          cp "$SWAPD" ../xfg-swapd
+          echo "Successfully built and copied xfg-swapd."
+
           cd ..
           rm -rf xfgo-build
           echo "built=true" >> "$GITHUB_OUTPUT"
@@ -295,6 +334,13 @@ jobs:
             cp ./fuegod "$BUNDLE/" && chmod +x "$BUNDLE/fuegod"
           else
             echo "::error::fuegod missing — local mode would fail at runtime. Build the xfgo 'Daemon' target."
+            exit 1
+          fi
+          # xfg-swapd required — cross-chain atomic swaps depend on it.
+          if [ -x ./xfg-swapd ]; then
+            cp ./xfg-swapd "$BUNDLE/" && chmod +x "$BUNDLE/xfg-swapd"
+          else
+            echo "::error::xfg-swapd missing — cross-chain swaps would fail at runtime. Build the xfgo 'SwapDaemon' target."
             exit 1
           fi
           cp linux/xfg-wallet.desktop "$BUNDLE/" 2>/dev/null || true

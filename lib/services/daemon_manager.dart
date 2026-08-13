@@ -711,11 +711,24 @@ class DaemonManager {
         '--no-bch',
       ];
       // Do not pass bare --testnet: it overrides --daemon/--wallet to hard-coded ports.
-    } else if (configPath != null && File(configPath).existsSync()) {
-      args = ['--swap-config', configPath, '--service'];
     } else {
-      return 'xfg-swapd needs Go headless binary (xfgo/swapxfg/xfg-swapd) '
-          'or a C++ --swap-config file';
+      // C++ xfg-swapd — config is optional; without one it serves the
+      // Fuego-side orderbook/offers and the wallet integration RPC.
+      // Chain clients activate once the user saves WIFs in swap settings.
+      final appSupport = await getApplicationSupportDirectory();
+      final dataDir = p.join(appSupport.path, 'swapd');
+      await Directory(dataDir).create(recursive: true);
+      args = [
+        '--service',
+        '--fuegod-host', chainHost,
+        '--fuegod-port', chainPort.toString(),
+        '--rpc-port', swapdPort.toString(),
+        '--data-dir', dataDir,
+      ];
+      final cfg = configPath ?? p.join(appSupport.path, 'swap_config.json');
+      if (File(cfg).existsSync()) {
+        args.insertAll(0, ['--swap-config', cfg]);
+      }
     }
 
     try {
