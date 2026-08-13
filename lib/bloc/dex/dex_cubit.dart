@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:http/http.dart' as http;
 import '../../models/swap_models.dart';
+import '../../native/crypto/bindings/crypto_bindings.dart';
+import '../../services/reserve_proof_service.dart';
 import '../../services/swap_daemon_client.dart';
 import '../../services/web3_multi_chain_service.dart';
 
@@ -226,21 +228,60 @@ class DexCubit extends Cubit<DexState> {
     } catch (e) { emit(state.copyWith(isLoading: false, error: 'Cancel failed: $e')); }
   }
 
-  Future<void> requestSwap({required String offerId, required int amount, required String takerPubKey, required String proofOfFunds}) async {
-    // A signed taker identity + reserve proof are required; neither is
-    // producible in this wallet build yet. Fail honestly instead of sending
-    // empty values that the daemon would reject anyway.
-    if (takerPubKey.isEmpty || proofOfFunds.isEmpty) {
+  Future<void> requestSwap({required String offerId, required int amount, required String takerPubKey, required String proofOfFunds, String? takerChainKey}) async {
+    // The taker identity (Ed25519 keypair from the native crypto lib) and the
+    // chain reserve proof are required; the maker verifies both before locking.
+    var pubKey = takerPubKey;
+    var proof = proofOfFunds;
+    if ((pubKey.isEmpty || proof.isEmpty) && takerChainKey != null && takerChainKey.isNotEmpty) {
+      pubKey = _takerPublicKeyHex();
+      final chain = state.selectedChain;
+      if (chain.isEvm) {
+        proof = ReserveProofService.buildEvmProof(offerId: offerId, privateKeyHex: takerChainKey);
+      } else if (chain == ChainTypeSdk.solana) {
+        proof = await ReserveProofService.buildSolProof(offerId: offerId, privateKeyHex: takerChainKey);
+      } else {
+        emit(state.copyWith(isLoading: false,
+          error: 'Reserve proofs for ${chain.symbol} need the SwapXFG CLI for now (EVM and SOL are supported in-app)'));
+        return;
+      }
+    }
+    if (pubKey.isEmpty || proof.isEmpty) {
       emit(state.copyWith(isLoading: false,
-        error: 'Taking offers requires a signed taker identity — use the SwapXFG CLI for order fills'));
+        error: 'Taking offers requires a taker identity + chain reserve proof — enter your chain private key'));
       return;
     }
     emit(state.copyWith(isLoading: true, lastResult: null, error: null));
     try {
-      final r = await _post('/requestswap', {'offerId': offerId, 'amount': amount, 'takerPubKey': takerPubKey, 'proofOfFunds': proofOfFunds});
+      final r = await _post('/requestswap', {'offerId': offerId, 'amount': amount, 'takerPubKey': pubKey, 'proofOfFunds': proof});
       emit(state.copyWith(isLoading: false, lastResult: 'Swap requested: ${r['status'] ?? 'error'}'));
     } catch (e) { emit(state.copyWith(isLoading: false, error: 'Swap failed: $e')); }
   }
+
+  // ── Taker identity ──
+  // Lazily generated Ed25519 keypair (session-scoped). The public key is sent
+  // as takerPubKey; the maker's SwapDaemon binds it as the expected peer key
+  // for the resulting AFK swap.
+  String? _takerSecretKeyHex;
+  String? _takerPublicKeyHexCache;
+
+  String _takerPublicKeyHex() {
+    if (_takerPublicKeyHexCache == null) {
+      final keys = NativeCrypto.generateKeys();
+      final priv = keys?['private_spend_key'];
+      final pub = keys?['public_spend_key'];
+      if (priv != null && pub != null) {
+        _takerSecretKeyHex = _bytesToHex(priv);
+        _takerPublicKeyHexCache = _bytesToHex(pub);
+      } else {
+        _takerPublicKeyHexCache = '';
+      }
+    }
+    return _takerPublicKeyHexCache!;
+  }
+
+  static String _bytesToHex(List<int> bytes) =>
+      bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
 
   Future<void> verifyPayment({required String txHash, required String fromAddress, required String toAddress, required int amount, int minConfirmations = 6}) async {
     emit(state.copyWith(isLoading: true, error: null));

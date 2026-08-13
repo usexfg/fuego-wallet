@@ -20,6 +20,7 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
   final _amountController = TextEditingController();
   final _rateController = TextEditingController();
   final _peerController = TextEditingController();
+  final _takerKeyController = TextEditingController();
   List<Candlestick>? _candles;
 
   static const Map<String, String> _chainNames = {
@@ -99,6 +100,7 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
     _amountController.dispose();
     _rateController.dispose();
     _peerController.dispose();
+    _takerKeyController.dispose();
     super.dispose();
   }
 
@@ -420,6 +422,18 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
         enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha: 0.3))),
         focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: AppTheme.primaryColor))),
       style: const TextStyle(color: AppTheme.textPrimary)),
+    const SizedBox(height: 12),
+    // Taker key: the funded chain address's private key, used to build the
+    // reserve proof (proof-of-funds) when taking an offer. Never persisted.
+    TextField(controller: _takerKeyController, obscureText: true,
+      decoration: InputDecoration(
+        labelText: 'Your ${state.selectedChain.symbol} private key (for reserve proof)',
+        labelStyle: const TextStyle(color: AppTheme.textSecondary),
+        hintText: state.selectedChain.isEvm ? '64-hex ETH key' : 'SOL keypair hex',
+        hintStyle: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.5)),
+        enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha: 0.3))),
+        focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: AppTheme.primaryColor))),
+      style: const TextStyle(color: AppTheme.textPrimary)),
     const SizedBox(height: 20),
     Row(children: [
       Expanded(child: ElevatedButton(onPressed: state.isLoading ? null : () => _submitOffer(state),
@@ -486,7 +500,14 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
     if (amountStr.isEmpty) return;
     final amountXfg = double.tryParse(amountStr);
     if (amountXfg == null || amountXfg <= 0) return;
-    context.read<DexCubit>().requestSwap(offerId: state.offers.first.offerId, amount: (amountXfg * 1e7).toInt(), takerPubKey: '', proofOfFunds: '');
+    final takerKey = _takerKeyController.text.trim();
+    context.read<DexCubit>().requestSwap(
+      offerId: state.offers.first.offerId,
+      amount: (amountXfg * 1e7).toInt(),
+      takerPubKey: '',
+      proofOfFunds: '',
+      takerChainKey: takerKey,
+    );
   }
 
   // ── Swaps Tab (atomic swap initiation + active/history) ──────────
