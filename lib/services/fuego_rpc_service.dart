@@ -13,15 +13,9 @@ class FuegoRPCService {
   String _baseUrl;
   NetworkConfig _networkConfig;
 
-  /// Mainnet seed list (must stay in sync with [NetworkConfig.mainnet.seedNodes]).
-  static const List<String> defaultRemoteNodes = [
-    '207.244.247.64:18180',
-    'node1.usexfg.org:18180',
-    'node2.usexfg.org:18180',
-    'fuego.seednode1.com:18180',
-    'fuego.seednode2.com:18180',
-    'fuego.communitynode.net:18180',
-  ];
+  /// Mainnet seed list (derived from [NetworkConfig.mainnet.seedNodes]).
+  static List<String> get defaultRemoteNodes =>
+      NetworkConfig.mainnet.seedNodes;
 
   FuegoRPCService({
     String host = 'localhost',
@@ -445,21 +439,25 @@ class FuegoRPCService {
       }
     } catch (_) {}
 
-    // 2) Health endpoint on proxy
+    // 2) Health endpoint on the proxy — only a proxy-shaped JSON body counts.
     try {
       final resp = await _dio.get(
         _baseUrl.replaceAll(RegExp(r'/json_rpc/?$'), '') + '/health',
         options: Options(receiveTimeout: const Duration(seconds: 5)),
       );
-      if (resp.statusCode == 200) return true;
+      if (resp.statusCode == 200) {
+        final data = resp.data;
+        if (data is Map &&
+            (data.containsKey('wallet') ||
+                data.containsKey('status') ||
+                data.containsKey('ok'))) {
+          return true;
+        }
+      }
     } catch (_) {}
 
-    // 3) Chain getinfo (works against raw fuegod or proxy-forwarded)
-    try {
-      await getInfo();
-      return true;
-    } catch (_) {}
-
+    // 3) getInfo is NOT a success signal: a raw chain node may answer it
+    //    while the wallet proxy is dead.
     return false;
   }
 

@@ -22,6 +22,8 @@ fn exe_dir() -> PathBuf {
 /// - macOS app bundle helper dir: `Contents/Resources/bin`
 /// - Conventional `bin/` sibling of the executable
 /// - Current working directory (worst case)
+/// - Every directory on `PATH` (dev machines where `fuegod` is installed
+///   system-wide, e.g. `/opt/homebrew/bin`, or lives in build dirs)
 fn candidate_dirs() -> Vec<PathBuf> {
     let mut dirs = Vec::new();
     let exe = exe_dir();
@@ -30,6 +32,14 @@ fn candidate_dirs() -> Vec<PathBuf> {
     dirs.push(exe.join("../Resources/bin"));   // macOS bundle: Contents/Resources/bin
     dirs.push(exe.join("../bin"));             // generic bundle layout
     dirs.push(PathBuf::from("."));             // cwd
+
+    if let Some(path) = std::env::var_os("PATH") {
+        for entry in std::env::split_paths(&path) {
+            if !entry.as_os_str().is_empty() && !dirs.contains(&entry) {
+                dirs.push(entry);
+            }
+        }
+    }
 
     dirs
 }
@@ -50,6 +60,24 @@ fn find_binary(name: &str, env_key: &str) -> Option<PathBuf> {
         let candidate = dir.join(bin_name(name));
         if candidate.is_file() {
             log::info!("Found {} at {}", name, candidate.display());
+            return Some(candidate);
+        }
+    }
+
+    // 3. Fallback: plain PATH lookup (e.g. fuegod installed via brew or in a build dir).
+    if let Some(found) = find_binary_on_path(name) {
+        log::info!("Found {} via PATH at {}", name, found.display());
+        return Some(found);
+    }
+    None
+}
+
+/// Locate `name` in the directories listed in `PATH`.
+fn find_binary_on_path(name: &str) -> Option<PathBuf> {
+    let path = std::env::var_os("PATH")?;
+    for entry in std::env::split_paths(&path) {
+        let candidate = entry.join(bin_name(name));
+        if candidate.is_file() {
             return Some(candidate);
         }
     }

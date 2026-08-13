@@ -16,16 +16,18 @@ print_success() { echo -e "${GREEN}[OK]${NC} $1"; }
 print_fail() { echo -e "${RED}[FAIL]${NC} $1"; }
 print_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 
+cd "$(dirname "$0")/.."
+
 PASS=0
 FAIL=0
 
 check() {
     if eval "$2" >/dev/null 2>&1; then
         print_success "$1"
-        ((PASS++))
+        PASS=$((PASS + 1))
     else
         print_fail "$1"
-        ((FAIL++))
+        FAIL=$((FAIL + 1))
     fi
 }
 
@@ -49,8 +51,13 @@ echo " Fuego Wallet Daemon Test Suite"
 echo "==========================================="
 echo ""
 
-# ── Step 1: Find or build unified binary ──
-print_status "Step 1: Finding unified daemon binary..."
+# ── Step 1: Find or build daemon binary ──
+print_status "Step 1: Finding daemon binary..."
+
+WALLETD_BIN=""
+if [ -x "rust-fuego-wallet/target/release/fuego_walletd" ]; then
+    WALLETD_BIN="$(pwd)/rust-fuego-wallet/target/release/fuego_walletd"
+fi
 
 UNIFIED_BIN=""
 if [ -f "xfgo/build/src/unified" ]; then
@@ -61,7 +68,7 @@ elif [ -f "build/src/unified" ]; then
     UNIFIED_BIN="$(pwd)/build/src/unified"
 fi
 
-if [ -z "$UNIFIED_BIN" ]; then
+if [ -z "$WALLETD_BIN" ] && [ -z "$UNIFIED_BIN" ]; then
     print_warn "Unified binary not found. Building from source..."
     
     if [ ! -d "xfgo" ]; then
@@ -91,23 +98,37 @@ if [ -z "$UNIFIED_BIN" ]; then
     UNIFIED_BIN="$(pwd)/xfgo/build/src/unified"
 fi
 
-if [ ! -f "$UNIFIED_BIN" ]; then
+if [ -z "$WALLETD_BIN" ] && [ ! -f "$UNIFIED_BIN" ]; then
     print_fail "Unified binary not found at: $UNIFIED_BIN"
     exit 1
 fi
 
-print_success "Unified binary: $UNIFIED_BIN"
-print_success "Binary size: $(du -h "$UNIFIED_BIN" | cut -f1)"
+if [ -n "$WALLETD_BIN" ]; then
+    print_success "Wallet daemon (Rust): $WALLETD_BIN"
+    print_success "Binary size: $(du -h "$WALLETD_BIN" | cut -f1)"
+else
+    print_success "Unified binary: $UNIFIED_BIN"
+    print_success "Binary size: $(du -h "$UNIFIED_BIN" | cut -f1)"
+fi
 
 # ── Step 2: Verify binary runs ──
 print_status "Step 2: Verifying binary runs..."
 
 # Test that binary starts and shows help/usage
-if timeout 5 "$UNIFIED_BIN" --help 2>/dev/null | head -1 | grep -qi "usage\|help\|fuego\|unified"; then
-    print_success "Binary runs and shows usage info"
+if [ -n "$WALLETD_BIN" ]; then
+    if timeout 5 "$WALLETD_BIN" --help 2>/dev/null | head -1 | grep -qi "usage\|help\|fuego\|walletd"; then
+        print_success "Binary runs and shows usage info"
+    else
+        # Binary might not have --help, just check it doesn't crash immediately
+        print_warn "Binary doesn't respond to --help (may be normal)"
+    fi
 else
-    # Binary might not have --help, just check it doesn't crash immediately
-    print_warn "Binary doesn't respond to --help (may be normal)"
+    if timeout 5 "$UNIFIED_BIN" --help 2>/dev/null | head -1 | grep -qi "usage\|help\|fuego\|unified"; then
+        print_success "Binary runs and shows usage info"
+    else
+        # Binary might not have --help, just check it doesn't crash immediately
+        print_warn "Binary doesn't respond to --help (may be normal)"
+    fi
 fi
 
 # ── Step 3: Free ports ──
@@ -132,11 +153,15 @@ mkdir -p "$WALLET_DIR"
 CONTAINER_FILE="$WALLET_DIR/fuego_wallet"
 CONTAINER_PASSWORD="test_password_$(date +%s)"
 
-"$UNIFIED_BIN" \
-    --bind-port "$UNIFIED_PORT" \
-    --container-file "$CONTAINER_FILE" \
-    --container-password "$CONTAINER_PASSWORD" \
-    --local &
+if [ -n "$WALLETD_BIN" ]; then
+    "$WALLETD_BIN" -P 18189 serve --daemon-host 127.0.0.1 --daemon-port 18180 --local &
+else
+    "$UNIFIED_BIN" \
+        --bind-port "$UNIFIED_PORT" \
+        --container-file "$CONTAINER_FILE" \
+        --container-password "$CONTAINER_PASSWORD" \
+        --local &
+fi
 UNIFIED_PID=$!
 
 print_success "Unified daemon started (PID $UNIFIED_PID)"
@@ -173,7 +198,7 @@ check "GET /health returns 200" "echo '$RESP' | grep -q 'ok\|status'"
 # Test /getinfo via fuegod port (if reachable)
 if curl -s --connect-timeout 2 "http://127.0.0.1:$FUEGOD_PORT/getinfo" 2>/dev/null | grep -q "status\|version"; then
     print_success "GET /getinfo on fuegod port $FUEGOD_PORT responds"
-    ((PASS++))
+    PASS=$((PASS + 1))
 else
     print_warn "fuegod port $FUEGOD_PORT not reachable (may be embedded)"
 fi
@@ -184,10 +209,10 @@ BALANCE_RESP=$(curl -s -X POST "http://127.0.0.1:$UNIFIED_PORT/json_rpc" \
     -d '{"jsonrpc":"2.0","id":1,"method":"getBalance","params":{"accountIndex":0}}' 2>/dev/null)
 if echo "$BALANCE_RESP" | grep -q "balance\|result\|jsonrpc"; then
     print_success "JSON-RPC getBalance works"
-    ((PASS++))
+    PASS=$((PASS + 1))
 else
     print_fail "JSON-RPC getBalance failed"
-    ((FAIL++))
+    FAIL=$((FAIL + 1))
 fi
 
 # Test JSON-RPC getBlockCount
@@ -196,10 +221,10 @@ HEIGHT_RESP=$(curl -s -X POST "http://127.0.0.1:$UNIFIED_PORT/json_rpc" \
     -d '{"jsonrpc":"2.0","id":1,"method":"getBlockCount","params":{}}' 2>/dev/null)
 if echo "$HEIGHT_RESP" | grep -q "count\|result\|jsonrpc"; then
     print_success "JSON-RPC getBlockCount works"
-    ((PASS++))
+    PASS=$((PASS + 1))
 else
     print_fail "JSON-RPC getBlockCount failed"
-    ((FAIL++))
+    FAIL=$((FAIL + 1))
 fi
 
 # Test JSON-RPC getHealth
@@ -208,10 +233,10 @@ HEALTH_RESP=$(curl -s -X POST "http://127.0.0.1:$UNIFIED_PORT/json_rpc" \
     -d '{"jsonrpc":"2.0","id":1,"method":"getHealth","params":{}}' 2>/dev/null)
 if echo "$HEALTH_RESP" | grep -q "health\|status\|jsonrpc"; then
     print_success "JSON-RPC getHealth works"
-    ((PASS++))
+    PASS=$((PASS + 1))
 else
     print_fail "JSON-RPC getHealth failed"
-    ((FAIL++))
+    FAIL=$((FAIL + 1))
 fi
 
 # Test swap endpoints (may not be available without config)
@@ -219,7 +244,7 @@ for endpoint in getswapoffers getswapprice getswaptrades; do
     SWAP_RESP=$(curl -s "http://127.0.0.1:$UNIFIED_PORT/$endpoint?pair=0" 2>/dev/null)
     if echo "$SWAP_RESP" | grep -q "offer\|price\|trade\|result\|\[\]"; then
         print_success "GET /$endpoint responds"
-        ((PASS++))
+        PASS=$((PASS + 1))
     else
         print_warn "GET /$endpoint not available (may need swap config)"
     fi
@@ -233,7 +258,7 @@ REMOTE_PORT=18180
 
 if curl -s --connect-timeout 5 "http://$REMOTE_HOST:$REMOTE_PORT/getinfo" 2>/dev/null | grep -q "status\|version\|height"; then
     print_success "Remote daemon $REMOTE_HOST:$REMOTE_PORT is reachable"
-    ((PASS++))
+    PASS=$((PASS + 1))
 else
     print_warn "Remote daemon $REMOTE_HOST:$REMOTE_PORT not reachable"
 fi

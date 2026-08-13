@@ -57,6 +57,9 @@ fi
 
 cd ..
 
+print_status "Building Rust backend (fuego_walletd)..."
+cargo build --release --manifest-path rust-fuego-wallet/core/Cargo.toml || print_fail "cargo build failed"
+
 # ── Step 2: Build Flutter app ──
 print_status "Step 2: Building Flutter app..."
 
@@ -84,7 +87,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         if [ -x "$c" ]; then WALLETD="$c"; break; fi
     done
     FUEGOD=""
-    for c in "$ROOT/rust-fuego-wallet/target/release/fuegod" "$ROOT/rust-fuego-wallet/target/debug/fuegod"; do
+    for c in "$ROOT/rust-fuego-wallet/target/release/fuegod" "$ROOT/xfgo/build/src/fuegod" "$ROOT/rust-fuego-wallet/target/debug/fuegod"; do
         if [ -x "$c" ]; then FUEGOD="$c"; break; fi
     done
     if [ -n "$WALLETD" ]; then
@@ -94,6 +97,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         print_success "fuego_walletd bundled"
     else
         print_fail "fuego_walletd not built — run: cargo build --release --manifest-path rust-fuego-wallet/core/Cargo.toml"
+        exit 1
     fi
     if [ -n "$FUEGOD" ]; then
         cp "$FUEGOD" "$BIN_PATH/fuegod"
@@ -102,6 +106,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         print_success "fuegod bundled"
     else
         print_fail "fuegod not built — bundle will fail in local mode"
+        exit 1
     fi
 else
     flutter build linux --release
@@ -116,11 +121,21 @@ else
         if [ -x "$c" ]; then WALLETD="$c"; break; fi
     done
     FUEGOD=""
-    for c in "$ROOT/rust-fuego-wallet/target/release/fuegod" "$ROOT/rust-fuego-wallet/target/debug/fuegod"; do
+    for c in "$ROOT/rust-fuego-wallet/target/release/fuegod" "$ROOT/xfgo/build/src/fuegod" "$ROOT/rust-fuego-wallet/target/debug/fuegod"; do
         if [ -x "$c" ]; then FUEGOD="$c"; break; fi
     done
-    if [ -n "$WALLETD" ]; then cp "$WALLETD" "$APP_PATH/fuego_walletd" && chmod +x "$APP_PATH/fuego_walletd"; fi
-    if [ -n "$FUEGOD" ]; then cp "$FUEGOD" "$APP_PATH/fuegod" && chmod +x "$APP_PATH/fuegod"; fi
+    if [ -n "$WALLETD" ]; then
+        cp "$WALLETD" "$APP_PATH/fuego_walletd" && chmod +x "$APP_PATH/fuego_walletd"
+    else
+        print_fail "fuego_walletd not built — run: cargo build --release --manifest-path rust-fuego-wallet/core/Cargo.toml"
+        exit 1
+    fi
+    if [ -n "$FUEGOD" ]; then
+        cp "$FUEGOD" "$APP_PATH/fuegod" && chmod +x "$APP_PATH/fuegod"
+    else
+        print_fail "fuegod not built — bundle will fail in local mode"
+        exit 1
+    fi
 fi
 
 # ── Step 3: Run app ──

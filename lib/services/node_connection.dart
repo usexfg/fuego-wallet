@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -214,35 +215,60 @@ class NodeConnection {
     return out;
   }
 
-  /// Probe whether a seed node answers getinfo (3s timeout).
+  /// Probe whether a seed node answers getinfo with a daemon-shaped body
+  /// (3s timeout).
   Future<bool> _probeSeed(String host, int port) async {
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 3);
     try {
-      final client = HttpClient()
-        ..connectionTimeout = const Duration(seconds: 3);
       final req = await client.getUrl(Uri.parse('http://$host:$port/getinfo'));
       final resp = await req.close().timeout(const Duration(seconds: 3));
-      await resp.drain<void>();
-      client.close(force: true);
-      return resp.statusCode == 200;
+      if (resp.statusCode != 200) return false;
+      final body = await resp
+          .transform(utf8.decoder)
+          .join()
+          .timeout(const Duration(seconds: 3));
+      Object? decoded;
+      try {
+        decoded = jsonDecode(body);
+      } catch (_) {
+        decoded = null;
+      }
+      if (decoded is Map &&
+          (decoded.containsKey('height') ||
+              decoded.containsKey('status') ||
+              decoded.containsKey('version'))) {
+        return true;
+      }
+      return body.contains('"status"');
     } catch (_) {
       return false;
+    } finally {
+      client.close(force: true);
     }
   }
 
-  /// Pick first reachable seed; fall back to preferred if all probes fail.
-  Future<({String host, int port})> _resolveReachableSeed() async {
+  /// Probe all seed candidates in parallel; pick the first reachable one in
+  /// preference order, or `null` when none answer.
+  Future<({String host, int port})?> _resolveReachableSeed() async {
     final candidates = _seedCandidates();
-    for (final c in candidates) {
-      debugPrint('[node] probing seed ${c.host}:${c.port}…');
-      if (await _probeSeed(c.host, c.port)) {
-        debugPrint('[node] seed reachable: ${c.host}:${c.port}');
-        return c;
+    final results = await Future.wait(
+      candidates.map((c) async {
+        debugPrint('[node] probing seed ${c.host}:${c.port}…');
+        final reachable = await _probeSeed(c.host, c.port);
+        return (candidate: c, reachable: reachable);
+      }),
+    );
+    for (final r in results) {
+      if (r.reachable) {
+        debugPrint(
+          '[node] seed reachable: ${r.candidate.host}:${r.candidate.port}',
+        );
+        return r.candidate;
       }
     }
-    debugPrint(
-      '[node] no seed answered probe — using preferred $_remoteHost:$_remotePort',
-    );
-    return (host: _remoteHost, port: _remotePort);
+    debugPrint('[node] no seed answered probe');
+    return null;
   }
 
   /// Start daemons for the current mode and point [rpcService] at the wallet proxy.
@@ -260,6 +286,21 @@ class NodeConnection {
 
     if (!local) {
       final seed = await _resolveReachableSeed();
+      if (seed == null) {
+        debugPrint('[node] no reachable seed node found');
+        rpcService.updateNode('127.0.0.1', port: walletPort);
+        final ep = ConnectionEndpoints(
+          mode: ConnectionMode.remote,
+          walletHost: '127.0.0.1',
+          walletPort: walletPort,
+          chainHost: _remoteHost,
+          chainPort: _remotePort,
+          proxyRunning: false,
+          error: 'No reachable Fuego seed node found',
+        );
+        _notify(ep);
+        return ep;
+      }
       _remoteHost = seed.host;
       _remotePort = seed.port;
     }
@@ -303,8 +344,10 @@ class NodeConnection {
       if (fallback.proxyRunning) return fallback;
     }
 
-    // Degraded: point RPC at remote chain daemon (no wallet proxy).
-    rpcService.updateNode(_remoteHost, port: _remotePort);
+    // Degraded: point RPC at the wallet proxy endpoint so wallet calls fail
+    // cleanly with connection refused instead of "method not found" against
+    // the raw chain daemon.
+    rpcService.updateNode('127.0.0.1', port: walletPort);
     final ep = ConnectionEndpoints(
       mode: ConnectionMode.remote,
       walletHost: _remoteHost,
@@ -327,6 +370,19 @@ class NodeConnection {
   }) async {
     final walletPort = networkConfig.walletRpcPort;
     final seed = await _resolveReachableSeed();
+    if (seed == null) {
+      debugPrint('[node] no reachable seed node found');
+      rpcService.updateNode('127.0.0.1', port: walletPort);
+      return ConnectionEndpoints(
+        mode: ConnectionMode.remote,
+        walletHost: '127.0.0.1',
+        walletPort: walletPort,
+        chainHost: _remoteHost,
+        chainPort: _remotePort,
+        proxyRunning: false,
+        error: 'No reachable Fuego seed node found',
+      );
+    }
     _remoteHost = seed.host;
     _remotePort = seed.port;
 

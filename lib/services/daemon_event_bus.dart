@@ -191,7 +191,10 @@ class DaemonEventBus {
          if (resp.statusCode == 200) {
            final data = jsonDecode(body) as Map<String, dynamic>;
            final result = data['result'] as Map<String, dynamic>? ?? {};
-           _updateHealth(walletdOk: result['wallet'] as bool? ?? false, walletdData: result);
+           final walletOk = result['wallet'] is bool
+               ? result['wallet'] as bool
+               : true;
+           _updateHealth(walletdOk: walletOk, walletdData: result);
            return;
          }
        } catch (_) {}
@@ -205,7 +208,13 @@ class DaemonEventBus {
          client.close(force: true);
 
          if (resp.statusCode == 200) {
-           final data = jsonDecode(body) as Map<String, dynamic>;
+           final Map<String, dynamic> data;
+           try {
+             data = jsonDecode(body) as Map<String, dynamic>;
+           } catch (_) {
+             _updateHealth(walletdOk: false, walletdError: 'invalid health response');
+             return;
+           }
            _updateHealth(walletdOk: true, walletdData: data);
            return;
          } else {
@@ -242,12 +251,14 @@ class DaemonEventBus {
          if (resp.statusCode == 200) {
            final data = jsonDecode(body) as Map<String, dynamic>;
            final result = data['result'] as Map<String, dynamic>? ?? {};
-           final swapOk = result['swap'] as bool? ?? false;
-           _updateHealth(swapdOk: swapOk);
-           if (swapOk) {
-             _emit(eventSwap, result);
+           if (result['swap'] is bool) {
+             final swapOk = result['swap'] as bool;
+             _updateHealth(swapdOk: swapOk);
+             if (swapOk) {
+               _emit(eventSwap, result);
+             }
+             return;
            }
-           return;
          }
        } catch (_) {}
 
@@ -260,7 +271,13 @@ class DaemonEventBus {
          client.close(force: true);
 
          if (resp.statusCode == 200) {
-           final data = jsonDecode(body) as Map<String, dynamic>;
+           final Map<String, dynamic> data;
+           try {
+             data = jsonDecode(body) as Map<String, dynamic>;
+           } catch (_) {
+             _updateHealth(swapdOk: false, swapdError: 'invalid health response');
+             return;
+           }
            _updateHealth(swapdOk: true);
            _emit(eventSwap, data);
            return;

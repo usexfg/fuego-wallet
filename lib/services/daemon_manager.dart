@@ -167,6 +167,19 @@ class DaemonManager {
         return path;
       }
     }
+    // Final fallback: PATH lookup via `which` (unix) / `where` (windows).
+    try {
+      final which = Platform.isWindows ? 'where' : 'which';
+      final result = Process.runSync(which, ['fuegod']);
+      if (result.exitCode == 0) {
+        final path = (result.stdout as String).trim();
+        if (path.isNotEmpty && File(path).existsSync()) {
+          debugPrint('[daemon] Found fuegod via PATH: $path');
+          _fuegodBin = path;
+          return path;
+        }
+      }
+    } catch (_) {}
     return null;
   }
 
@@ -281,7 +294,6 @@ class DaemonManager {
     status.value = DaemonStatus(
       fuegodRunning: (_fuegod != null && fuegodOk) ||
           (_unified != null && proxyHealthy) ||
-          (_walletd != null && proxyHealthy && fuegodOk) ||
           (_walletd != null && proxyHealthy), // remote mode: chain is remote
       walletdRunning: proxyHealthy,
       swapdRunning: (_swapd != null || _unified != null) && swapdOk,
@@ -377,6 +389,12 @@ class DaemonManager {
       errors.add('fuego_walletd: $walletdErr');
       daemonErrors['walletd'] = walletdErr;
       _lastStartError = 'walletd: $walletdErr';
+      eventBus.start(
+        fuegodPort: useLocalNode ? fuegodPort : daemonPort,
+        walletdPort: walletdPort,
+        swapdPort: swapdPort,
+        fuegodHost: useLocalNode ? '127.0.0.1' : daemonHost,
+      );
       await _updateStatus();
       return _lastStartError;
     }
@@ -409,49 +427,6 @@ class DaemonManager {
     );
 
     return null;
-  }
-
-  Future<String?> _startFuegod({bool useTestnet = false}) async {
-    final binary = _findFuegodBinary();
-    if (binary == null) return 'fuegod binary not found';
-
-    // Kill stale process on port
-    final portErr = await _freePort(fuegodPort);
-    if (portErr != null) return portErr;
-
-    final dataDir = '${Directory.current.path}/fuegod_data';
-    await Directory(dataDir).create(recursive: true);
-
-    final args = [
-      '--data-dir', dataDir,
-      '--rpc-bind-port', fuegodPort.toString(),
-      '--rpc-bind-ip', '127.0.0.1',
-      '--log-level', '1',
-    ];
-    if (useTestnet) args.add('--testnet');
-
-    try {
-      debugPrint('[daemon] Starting fuegod: $binary');
-      _fuegod = await Process.start(binary, args);
-      _fuegod!.stdout.drain<void>();
-      _fuegod!.stderr.drain<void>();
-      _fuegod!.exitCode.then((code) {
-        debugPrint('[daemon] fuegod exited with code $code');
-        _fuegod = null;
-      });
-    } catch (e) {
-      return 'Failed to spawn: $e';
-    }
-
-    // Wait for ready
-    for (var i = 0; i < 30; i++) {
-      await Future<void>.delayed(const Duration(seconds: 2));
-      if (await _checkHealth('http://127.0.0.1:$fuegodPort/getinfo', timeout: const Duration(seconds: 2))) {
-        debugPrint('[daemon] fuegod ready on port $fuegodPort');
-        return null;
-      }
-    }
-    return 'fuegod not ready after 60s';
   }
 
   Future<String?> _startWalletd({
@@ -520,6 +495,7 @@ class DaemonManager {
         daemonErrors['walletd'] = logTail != null && logTail.isNotEmpty
             ? 'exited with code $code — $logTail'
             : 'exited with code $code';
+        _updateStatus();
       });
     } catch (e) {
       return 'Failed to spawn: $e';
