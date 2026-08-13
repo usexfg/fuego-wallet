@@ -37,9 +37,12 @@ class SwapDaemonClient {
     return decoded['result'];
   }
 
-  Future<String> initiateSwap({required String pair, required int xfgAmount, required int ctrAmount, required String peer, String role = 'alice', String? expectedPeerPubkey}) async {
+  Future<String> initiateSwap({required String pair, required int xfgAmount, required int ctrAmount, required String peer, String role = 'alice', String? expectedPeerPubkey, String? swapId, String? ourSwapSecretKey, bool afk = false}) async {
     final params = <String, dynamic>{'pair': pair, 'xfg_amount': xfgAmount, 'ctr_amount': ctrAmount, 'peer': peer, 'role': role};
     if (expectedPeerPubkey != null && expectedPeerPubkey.isNotEmpty) params['expected_peer_pubkey'] = expectedPeerPubkey;
+    if (swapId != null && swapId.isNotEmpty) params['swap_id'] = swapId;
+    if (ourSwapSecretKey != null && ourSwapSecretKey.isNotEmpty) params['our_swap_secret_key'] = ourSwapSecretKey;
+    if (afk) params['afk'] = true;
     final result = await _rpc('initiate_swap', params) as Map<String, dynamic>;
     return result['swap_id'] as String;
   }
@@ -111,6 +114,11 @@ class SwapInfo {
     );
   }
 
+  String get pairName {
+    const names = {0: 'SOL', 1: 'ETH', 2: 'XMR', 3: 'BCH', 4: 'ARB', 5: 'BASE', 6: 'KMD', 7: 'BNB', 8: 'DCR', 9: 'BTC', 10: 'LTC', 11: 'POLYGON'};
+    return names[pair] ?? 'PAIR_$pair';
+  }
+
   // Numeric SwapState ids (XfgSwap::SwapState) → names. Kept in sync with the
   // C++ SwapTypes.h enum; terminal names match the daemon's isTerminal set.
   static const Map<int, String> _stateNames = {
@@ -124,11 +132,6 @@ class SwapInfo {
     100: 'AFK_OFFER_LOCKED', 101: 'AFK_OFFER_ACCEPTED',
     102: 'AFK_CLAIMED', 103: 'AFK_REFUNDED',
   };
-
-  String get pairName {
-    const names = {0: 'SOL', 1: 'ETH', 2: 'XMR', 3: 'BCH', 4: 'ARB', 5: 'BASE', 6: 'KMD', 7: 'BNB', 8: 'DCR', 9: 'BTC', 10: 'LTC', 11: 'POLYGON'};
-    return names[pair] ?? 'PAIR_$pair';
-  }
 
   bool get isTerminal {
     const terminal = {'ADAPTOR_XFG_SPENT', 'ADAPTOR_REFUNDED', 'AFK_CLAIMED', 'AFK_REFUNDED', 'FAILED', 'XFG_REFUNDED', 'XFG_CLAIMED', 'CTR_CLAIMED', 'CTR_REFUNDED'};

@@ -584,6 +584,7 @@ pub async fn run_server(
         .route("/getswapoffers", get(fuegod_get))
         .route("/getswapprice", get(fuegod_get))
         .route("/getswaptrades", get(fuegod_get))
+        .route("/getswaprequests", get(fuegod_get))
         // DEX/swap REST proxy (POST)
         .route("/submitswap", post(fuegod_post))
         .route("/cancelswap", post(fuegod_post))

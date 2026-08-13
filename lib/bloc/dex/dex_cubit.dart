@@ -254,8 +254,94 @@ class DexCubit extends Cubit<DexState> {
     emit(state.copyWith(isLoading: true, lastResult: null, error: null));
     try {
       final r = await _post('/requestswap', {'offerId': offerId, 'amount': amount, 'takerPubKey': pubKey, 'proofOfFunds': proof});
-      emit(state.copyWith(isLoading: false, lastResult: 'Swap requested: ${r['status'] ?? 'error'}'));
+      emit(state.copyWith(isLoading: false,
+        lastResult: 'Swap requested: ${r['status'] ?? 'error'} — waiting for the maker to lock XFG'));
+      // The maker's SwapDaemon verifies the proof, creates the AFK lock and
+      // publishes the fill result. Poll for it, then drive the local swap
+      // daemon into the AFK flow.
+      await _awaitFillResult(offerId: offerId, takerPubKey: pubKey, amount: amount);
     } catch (e) { emit(state.copyWith(isLoading: false, error: 'Swap failed: $e')); }
+  }
+
+  // ── Fill-result polling + local AFK initiation ──
+  static const _fillResultPollSeconds = 5;
+  static const _fillResultMaxAttempts = 30;  // 2.5 minutes
+
+  Future<void> _awaitFillResult({required String offerId, required String takerPubKey, required int amount}) async {
+    for (var attempt = 0; attempt < _fillResultMaxAttempts; ++attempt) {
+      await Future<void>.delayed(const Duration(seconds: _fillResultPollSeconds));
+      Map<String, dynamic> r;
+      try {
+        r = await _get('/getswaprequests', query: {'takerPubKey': takerPubKey});
+      } catch (e) { continue; }
+      final requests = (r['requests'] as List<dynamic>? ?? const []);
+      Map<String, dynamic>? match;
+      for (final q in requests) {
+        final m = q as Map<String, dynamic>;
+        if (m['offerId'] == offerId) { match = m; break; }
+      }
+      if (match == null) continue;
+      final lockId = (match['lockId'] as String?) ?? '';
+      final makerEndpoint = (match['makerEndpoint'] as String?) ?? '';
+      if (lockId.isEmpty) {
+        emit(state.copyWith(error: 'Maker fill result missing lockId'));
+        return;
+      }
+      if (makerEndpoint.isEmpty) {
+        emit(state.copyWith(error:
+          'The maker did not advertise a public endpoint (xfg-swapd --public-endpoint) — this fill cannot complete from the app'));
+        return;
+      }
+      await _initiateAfkSwap(lockId: lockId, makerEndpoint: makerEndpoint, amount: amount);
+      return;
+    }
+    emit(state.copyWith(error: 'No fill result after ${_fillResultPollSeconds * _fillResultMaxAttempts}s — the maker may be offline'));
+  }
+
+  Future<void> _initiateAfkSwap({required String lockId, required String makerEndpoint, required int amount}) async {
+    if (_swapClient == null) { emit(state.copyWith(error: 'Swap daemon not connected')); return; }
+    if (_takerSecretKeyHex == null || _takerSecretKeyHex!.isEmpty) {
+      emit(state.copyWith(error: 'Taker identity missing — retry the request'));
+      return;
+    }
+    final pair = _pairNameForChain(state.selectedChain);
+    try {
+      // Bind this daemon's record to the maker's lock and sign with the exact
+      // identity published in the request (the maker pre-bound it).
+      final swapId = await _swapClient!.initiateSwap(
+        pair: pair,
+        xfgAmount: amount,
+        ctrAmount: amount,  // approximate; the maker's offer terms govern the on-chain lock
+        peer: makerEndpoint,
+        role: 'alice',
+        swapId: lockId,
+        ourSwapSecretKey: _takerSecretKeyHex!,
+        afk: true,
+      );
+      final accept = await _swapClient!.acceptSwap(swapId);
+      emit(state.copyWith(lastResult: 'Maker locked XFG. AFK swap ${swapId}: ${accept['state']}'));
+      await loadSpvSwaps();
+    } catch (e) {
+      emit(state.copyWith(error: 'AFK swap initiation failed: $e'));
+    }
+  }
+
+  static String _pairNameForChain(ChainTypeSdk chain) {
+    switch (chain) {
+      case ChainTypeSdk.solana: return 'SOL';
+      case ChainTypeSdk.ethereum: return 'ETH';
+      case ChainTypeSdk.monero: return 'XMR';
+      case ChainTypeSdk.bitcoinCash: return 'BCH';
+      case ChainTypeSdk.arbitrum: return 'ARB';
+      case ChainTypeSdk.base: return 'BASE';
+      case ChainTypeSdk.komodo: return 'KMD';
+      case ChainTypeSdk.bnb: return 'BNB';
+      case ChainTypeSdk.decred: return 'DCR';
+      case ChainTypeSdk.bitcoin: return 'BTC';
+      case ChainTypeSdk.litecoin: return 'LTC';
+      case ChainTypeSdk.polygon: return 'POLYGON';
+      default: return 'SOL';
+    }
   }
 
   // ── Taker identity ──
