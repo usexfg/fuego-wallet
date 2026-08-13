@@ -41,9 +41,10 @@ class DaemonManager {
   final List<String> errors = [];
   final ValueNotifier<DaemonStatus> status = ValueNotifier(DaemonStatus());
 
-  /// Bounded stderr/stdout buffer captured during walletd startup (release
-  /// mode) so failures surface the real cause, not just the exit code.
-  StringBuffer? _walletdExitLog;
+  /// Bounded stderr buffer captured during unified daemon startup
+  /// (release mode) so failures surface the real cause, not just the
+  /// exit code (e.g. "Address already in use").
+  StringBuffer? _unifiedExitLog;
 
   /// Unified event bus — single source of truth for daemon health.
   final DaemonEventBus eventBus = DaemonEventBus();
@@ -107,31 +108,16 @@ class DaemonManager {
     try {
       if (Platform.isWindows) {
         final result = await Process.run('taskkill', ['/F', '/PID', pid.toString()]);
-        if (result.exitCode != 0) return false;
+        return result.exitCode == 0;
       } else {
-        // Ignore if the process is already gone (ESRCH throws on POSIX).
-        try {
-          Process.killPid(pid, ProcessSignal.sigkill);
-        } catch (_) {}
-        // Wait for the process to actually disappear so the port frees up.
-        for (var i = 0; i < 10; i++) {
-          await Future<void>.delayed(const Duration(milliseconds: 200));
-          bool alive;
-          try {
-            alive = Process.killPid(pid, ProcessSignal.sigterm);
-          } catch (_) {
-            alive = false;
-          }
-          if (!alive) return true;
-        }
-        // Give up tracking but the SIGKILL was delivered — treat as killed.
-        debugPrint('[daemon] PID $pid survived SIGKILL for 2s — continuing anyway');
-        return true;
+        Process.killPid(pid, ProcessSignal.sigkill);
+        // Wait briefly and verify
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+        return !Process.killPid(pid); // returns false if process is gone
       }
     } catch (_) {
       return false;
     }
-    return true;
   }
 
   // ── Binary discovery ─────────────────────────────────────────────
@@ -167,19 +153,6 @@ class DaemonManager {
         return path;
       }
     }
-    // Final fallback: PATH lookup via `which` (unix) / `where` (windows).
-    try {
-      final which = Platform.isWindows ? 'where' : 'which';
-      final result = Process.runSync(which, ['fuegod']);
-      if (result.exitCode == 0) {
-        final path = (result.stdout as String).trim();
-        if (path.isNotEmpty && File(path).existsSync()) {
-          debugPrint('[daemon] Found fuegod via PATH: $path');
-          _fuegodBin = path;
-          return path;
-        }
-      }
-    } catch (_) {}
     return null;
   }
 
@@ -294,6 +267,7 @@ class DaemonManager {
     status.value = DaemonStatus(
       fuegodRunning: (_fuegod != null && fuegodOk) ||
           (_unified != null && proxyHealthy) ||
+          (_walletd != null && proxyHealthy && fuegodOk) ||
           (_walletd != null && proxyHealthy), // remote mode: chain is remote
       walletdRunning: proxyHealthy,
       swapdRunning: (_swapd != null || _unified != null) && swapdOk,
@@ -389,12 +363,6 @@ class DaemonManager {
       errors.add('fuego_walletd: $walletdErr');
       daemonErrors['walletd'] = walletdErr;
       _lastStartError = 'walletd: $walletdErr';
-      eventBus.start(
-        fuegodPort: useLocalNode ? fuegodPort : daemonPort,
-        walletdPort: walletdPort,
-        swapdPort: swapdPort,
-        fuegodHost: useLocalNode ? '127.0.0.1' : daemonHost,
-      );
       await _updateStatus();
       return _lastStartError;
     }
@@ -429,6 +397,49 @@ class DaemonManager {
     return null;
   }
 
+  Future<String?> _startFuegod({bool useTestnet = false}) async {
+    final binary = _findFuegodBinary();
+    if (binary == null) return 'fuegod binary not found';
+
+    // Kill stale process on port
+    final portErr = await _freePort(fuegodPort);
+    if (portErr != null) return portErr;
+
+    final dataDir = '${Directory.current.path}/fuegod_data';
+    await Directory(dataDir).create(recursive: true);
+
+    final args = [
+      '--data-dir', dataDir,
+      '--rpc-bind-port', fuegodPort.toString(),
+      '--rpc-bind-ip', '127.0.0.1',
+      '--log-level', '1',
+    ];
+    if (useTestnet) args.add('--testnet');
+
+    try {
+      debugPrint('[daemon] Starting fuegod: $binary');
+      _fuegod = await Process.start(binary, args);
+      _fuegod!.stdout.drain<void>();
+      _fuegod!.stderr.drain<void>();
+      _fuegod!.exitCode.then((code) {
+        debugPrint('[daemon] fuegod exited with code $code');
+        _fuegod = null;
+      });
+    } catch (e) {
+      return 'Failed to spawn: $e';
+    }
+
+    // Wait for ready
+    for (var i = 0; i < 30; i++) {
+      await Future<void>.delayed(const Duration(seconds: 2));
+      if (await _checkHealth('http://127.0.0.1:$fuegodPort/getinfo', timeout: const Duration(seconds: 2))) {
+        debugPrint('[daemon] fuegod ready on port $fuegodPort');
+        return null;
+      }
+    }
+    return 'fuegod not ready after 60s';
+  }
+
   Future<String?> _startWalletd({
     bool useLocalNode = true,
     bool useTestnet = false,
@@ -444,6 +455,14 @@ class DaemonManager {
     final portErr = await _freePort(walletdPort);
     if (portErr != null) return portErr;
 
+    // In local mode the Rust backend spawns fuegod on daemonPort (18180).
+    // A stale fuegod from a previous app instance would otherwise block it
+    // or get silently reused with stale data.
+    if (useLocalNode) {
+      final chainPortErr = await _freePort(daemonPort);
+      if (chainPortErr != null) return chainPortErr;
+    }
+
     // clap: -P/--port global, then serve subcommand flags
     final args = <String>[
       '-P', walletdPort.toString(),
@@ -454,20 +473,10 @@ class DaemonManager {
     if (useTestnet) args.add('--testnet');
     if (useLocalNode) args.add('--local');
 
-    // Ensure the Rust backend can locate fuegod regardless of bundle layout.
-    // The Rust side searches its own exe dir + Resources/bin, but the wallet
-    // knows where fuegod actually lives (dev builds, custom paths) — pass it.
-    final fuegodBin = _findFuegodBinary();
-    final env = {...Platform.environment};
-    if (fuegodBin != null) {
-      env['FUEGO_FUEGOD_BIN'] = fuegodBin;
-      debugPrint('[daemon] Passing FUEGO_FUEGOD_BIN=$fuegodBin');
-    }
-
     try {
       debugPrint('[daemon] Starting fuego_walletd: $binary ${args.join(' ')}');
-      _walletd = await Process.start(binary, args, environment: env);
-      if (kDebugMode || !useLocalNode) {
+      _walletd = await Process.start(binary, args);
+      if (kDebugMode) {
         _walletd!.stdout
             .transform<String>(utf8.decoder)
             .listen((l) => debugPrint('[walletd:out] $l'));
@@ -475,27 +484,13 @@ class DaemonManager {
             .transform<String>(utf8.decoder)
             .listen((l) => debugPrint('[walletd:err] $l'));
       } else {
-        // Local node: the embedded fuegod logs to stderr too. Keep a bounded
-        // buffer so startup failures show the REAL error, not just exit code.
-        final buffer = StringBuffer();
-        _walletd!.stdout.transform<String>(utf8.decoder).listen((l) {
-          if (buffer.length < 8192) buffer.write(l);
-          debugPrint('[walletd:out] $l');
-        });
-        _walletd!.stderr.transform<String>(utf8.decoder).listen((l) {
-          if (buffer.length < 8192) buffer.write(l);
-          debugPrint('[walletd:err] $l');
-        });
-        _walletdExitLog = buffer;
+        _walletd!.stdout.drain<void>();
+        _walletd!.stderr.drain<void>();
       }
       _walletd!.exitCode.then((code) {
         debugPrint('[daemon] fuego_walletd exited with code $code');
         _walletd = null;
-        final logTail = _walletdExitLog?.toString().trim();
-        daemonErrors['walletd'] = logTail != null && logTail.isNotEmpty
-            ? 'exited with code $code — $logTail'
-            : 'exited with code $code';
-        _updateStatus();
+        daemonErrors['walletd'] = 'exited with code $code';
       });
     } catch (e) {
       return 'Failed to spawn: $e';
@@ -561,12 +556,18 @@ class DaemonManager {
     int daemonPort = 18180,
   }) async {
      debugPrint('[daemon] _startUnified: binary=$binary');
-     // Kill stale process on port
-     final portErr = await _freePort(walletdPort);
+   // Kill stale processes on ports the unified daemon binds: wallet proxy
+   // (18189), embedded fuegod RPC (18180), and P2P (10808). Leftover
+   // daemons from a previous app instance (e.g. a translocated copy of the
+   // app) hold these and make the new instance die with "Address already
+   // in use" → exit code 1.
+   for (final port in [walletdPort, daemonPort, 10808]) {
+     final portErr = await _freePort(port);
      if (portErr != null) {
-       debugPrint('[daemon] Port $walletdPort error: $portErr');
+       debugPrint('[daemon] Port $port error: $portErr');
        return portErr;
      }
+   }
 
      // Unified daemon needs --container-file and --container-password
      final security = SecurityService();
@@ -623,26 +624,33 @@ class DaemonManager {
 
       debugPrint('[daemon] unified args: $args');
 
-    final fuegodBin = _findFuegodBinary();
-    final env = {...Platform.environment};
-    if (fuegodBin != null) {
-      env['FUEGO_FUEGOD_BIN'] = fuegodBin;
-    }
-
     try {
       debugPrint('[daemon] Spawning unified daemon...');
-      _unified = await Process.start(binary, args, environment: env);
+      _unified = await Process.start(binary, args);
       debugPrint('[daemon] unified process started (PID ${_unified!.pid})');
       if (kDebugMode) {
         _unified!.stdout.transform<String>(utf8.decoder).listen((l) => debugPrint('[unified:out] $l'));
         _unified!.stderr.transform<String>(utf8.decoder).listen((l) => debugPrint('[unified:err] $l'));
       } else {
-        _unified!.stdout.drain<void>();
-        _unified!.stderr.drain<void>();
+        // Keep a bounded buffer so startup failures surface the real
+        // cause (e.g. "Address already in use") instead of just exit code 1.
+        final buffer = StringBuffer();
+        _unified!.stdout.transform<String>(utf8.decoder).listen((l) {
+          if (buffer.length < 8192) buffer.write(l);
+        });
+        _unified!.stderr.transform<String>(utf8.decoder).listen((l) {
+          if (buffer.length < 8192) buffer.write(l);
+        });
+        _unifiedExitLog = buffer;
       }
       _unified!.exitCode.then((code) {
         debugPrint('[daemon] unified daemon exited with code $code');
+        final logTail = _unifiedExitLog?.toString().trim();
+        daemonErrors['unified'] = logTail != null && logTail.isNotEmpty
+            ? 'exited with code $code — $logTail'
+            : 'exited with code $code';
         _unified = null;
+        _updateStatus();
       });
     } catch (e) {
       return 'Failed to spawn: $e';
@@ -653,6 +661,13 @@ class DaemonManager {
     debugPrint('[daemon] Waiting for unified daemon on port $walletdPort...');
     for (var i = 0; i < 90; i++) {
       await Future<void>.delayed(const Duration(seconds: 2));
+
+      // Process died — don't keep polling a corpse for 180s.
+      if (_unified == null) {
+        debugPrint('[daemon] unified daemon exited during startup');
+        return daemonErrors['unified'] ?? 'unified daemon exited during startup';
+      }
+
       try {
         final client = HttpClient()..connectionTimeout = const Duration(seconds: 2);
         final req = await client.postUrl(Uri.parse('http://127.0.0.1:$walletdPort/json_rpc'));
@@ -711,24 +726,11 @@ class DaemonManager {
         '--no-bch',
       ];
       // Do not pass bare --testnet: it overrides --daemon/--wallet to hard-coded ports.
+    } else if (configPath != null && File(configPath).existsSync()) {
+      args = ['--swap-config', configPath, '--service'];
     } else {
-      // C++ xfg-swapd — config is optional; without one it serves the
-      // Fuego-side orderbook/offers and the wallet integration RPC.
-      // Chain clients activate once the user saves WIFs in swap settings.
-      final appSupport = await getApplicationSupportDirectory();
-      final dataDir = p.join(appSupport.path, 'swapd');
-      await Directory(dataDir).create(recursive: true);
-      args = [
-        '--service',
-        '--fuegod-host', chainHost,
-        '--fuegod-port', chainPort.toString(),
-        '--rpc-port', swapdPort.toString(),
-        '--data-dir', dataDir,
-      ];
-      final cfg = configPath ?? p.join(appSupport.path, 'swap_config.json');
-      if (File(cfg).existsSync()) {
-        args.insertAll(0, ['--swap-config', cfg]);
-      }
+      return 'xfg-swapd needs Go headless binary (xfgo/swapxfg/xfg-swapd) '
+          'or a C++ --swap-config file';
     }
 
     try {
