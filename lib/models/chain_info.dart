@@ -1,0 +1,108 @@
+import 'dart:ui';
+
+/// Chain display metadata shared by the DEX marketplace (Orderbook/Trade/
+/// Trades) and the Peer Swap section.
+class ChainInfo {
+  static const Map<String, String> names = {
+    'BTC': 'Bitcoin', 'LTC': 'Litecoin', 'KMD': 'Komodo', 'BCH': 'Bitcoin Cash',
+    'ETH': 'Ethereum', 'ARB': 'Arbitrum', 'BASE': 'Base', 'BNB': 'BNB Chain',
+    'SOL': 'Solana', 'POLY': 'Polygon', 'DCR': 'Decred', 'XMR': 'Monero',
+    'XFG': 'Fuego',
+    'AVAX': 'Avalanche', 'BOB': 'BOB (Build on Bitcoin)', 'CRONOS': 'Cronos',
+    'DASH': 'Dash', 'DOGE': 'Dogecoin', 'MONAD': 'Monad', 'OP': 'Optimism',
+    'PLSX': 'PulseChain', 'RHC': 'RHC', 'UNI': 'Unichain', 'XPL': 'XPLA',
+    'ZANO': 'Zano', 'ZEC': 'Zcash',
+  };
+
+  static const Map<String, String> desc = {
+    'BTC': 'Digital gold — the original UTXO chain with deepest liquidity.',
+    'LTC': 'Fast, lightweight Bitcoin fork with low fees and mature SPV.',
+    'KMD': 'Komodo — delayed PoW with built-in atomic swap support.',
+    'BCH': 'Bitcoin Cash — high-throughput UTXO chain for everyday payments.',
+    'ETH': 'Smart contract platform — largest DeFi ecosystem.',
+    'ARB': 'Arbitrum — Ethereum L2 with fast finality and low gas.',
+    'BASE': 'Base — Coinbase L2 on the OP Stack, fast and cheap.',
+    'BNB': 'BNB Chain — EVM-compatible, high throughput, low fees.',
+    'POLY': 'Polygon — Ethereum sidechain with fast 2s blocks.',
+    'SOL': 'Solana — high-performance non-EVM chain with sub-second slots.',
+    'DCR': 'Decred — hybrid PoW/PoS with built-in governance and Neutrino SPV.',
+    'XMR': 'Monero — privacy coin using ring signatures and stealth addresses.',
+  };
+
+  static const Map<String, Map<String, String>> info = {
+    'BTC': {'type': 'UTXO', 'connect': 'Electrum SPV (public servers)', 'user': 'No setup needed. Full node only for advanced RPC mode.', 'htlc': 'P2WSH SegWit'},
+    'LTC': {'type': 'UTXO', 'connect': 'Electrum SPV (public servers)', 'user': 'No setup needed. Full node only for advanced RPC mode.', 'htlc': 'P2WSH SegWit'},
+    'KMD': {'type': 'UTXO', 'connect': 'Electrum SPV (public servers)', 'user': 'No setup needed. Full node only for advanced RPC mode.', 'htlc': 'P2SH'},
+    'BCH': {'type': 'UTXO', 'connect': 'Electrum SPV (public servers)', 'user': 'No setup needed. Full node only for advanced RPC mode.', 'htlc': 'P2SH'},
+    'ETH': {'type': 'EVM', 'connect': 'Ethereum JSON-RPC (Infura/Alchemy)', 'user': 'No setup needed — public RPC used by default.', 'htlc': 'HashedTimelock.sol'},
+    'ARB': {'type': 'EVM L2', 'connect': 'Arbitrum JSON-RPC', 'user': 'No setup needed — public RPC used by default.', 'htlc': 'HashedTimelock.sol'},
+    'BASE': {'type': 'EVM L2', 'connect': 'Base JSON-RPC', 'user': 'No setup needed — public RPC used by default.', 'htlc': 'HashedTimelock.sol'},
+    'BNB': {'type': 'EVM', 'connect': 'BSC JSON-RPC', 'user': 'No setup needed — public RPC used by default.', 'htlc': 'HashedTimelock.sol'},
+    'POLY': {'type': 'EVM', 'connect': 'Polygon JSON-RPC', 'user': 'No setup needed — public RPC used by default.', 'htlc': 'HashedTimelock.sol'},
+    'SOL': {'type': 'Non-EVM', 'connect': 'Solana JSON-RPC (public)', 'user': 'No setup needed — public RPC used by default.', 'htlc': 'On-chain HTLC program'},
+    'DCR': {'type': 'UTXO', 'connect': 'Neutrino SPV (built-in) or dcrd RPC', 'user': 'No setup needed for SPV mode.', 'htlc': 'P2SH'},
+    'XMR': {'type': 'CryptoNote', 'connect': 'monerod + monero-wallet-rpc', 'user': 'Run your own node (recommended) or use a remote node from monero.fail.', 'htlc': 'Ring signatures + adaptor sigs'},
+    'XFG': {'type': 'Native', 'connect': 'Embedded fuegod daemon', 'user': 'Built into the wallet — no setup needed.', 'htlc': 'Base chain'},
+    'AVAX': {'type': 'EVM', 'wired': 'false'},
+    'BOB': {'type': 'EVM L2', 'wired': 'false'},
+    'CRONOS': {'type': 'EVM', 'wired': 'false'},
+    'DASH': {'type': 'UTXO', 'wired': 'false'},
+    'DOGE': {'type': 'UTXO', 'wired': 'false'},
+    'MONAD': {'type': 'EVM', 'wired': 'false'},
+    'OP': {'type': 'EVM L2', 'wired': 'false'},
+    'PLSX': {'type': 'EVM', 'wired': 'false'},
+    'RHC': {'type': 'EVM', 'wired': 'false'},
+    'UNI': {'type': 'EVM L2', 'wired': 'false'},
+    'XPL': {'type': 'EVM', 'wired': 'false'},
+    'ZANO': {'type': 'CryptoNote', 'wired': 'false'},
+    'ZEC': {'type': 'UTXO', 'wired': 'false'},
+  };
+
+  static const Map<String, Color> colors = {
+    'BTC': Color(0xFFF7931A), 'LTC': Color(0xFFBFBBBB), 'KMD': Color(0xFF2B6DE9),
+    'BCH': Color(0xFF8DC351), 'ETH': Color(0xFF627EEA), 'ARB': Color(0xFF28A0F0),
+    'BASE': Color(0xFF0052FF), 'BNB': Color(0xFFF0B90B), 'POLY': Color(0xFF8247E5),
+    'SOL': Color(0xFF9945FF), 'DCR': Color(0xFF2970FF), 'XMR': Color(0xFFFF6600),
+    'XFG': Color(0xFFD84315),
+    'AVAX': Color(0xFFE84142), 'BOB': Color(0xFFFF6D00), 'CRONOS': Color(0xFF002D74),
+    'DASH': Color(0xFF008CE7), 'DOGE': Color(0xFFC2A633), 'MONAD': Color(0xFF836EF9),
+    'OP': Color(0xFFFF0420), 'PLSX': Color(0xFF9C27B0), 'RHC': Color(0xFF6B7280),
+    'UNI': Color(0xFFFF007A), 'XPL': Color(0xFF4FA9E0), 'ZANO': Color(0xFF6A5AF9),
+    'ZEC': Color(0xFFF4B728),
+  };
+
+  static const Map<String, String> icons = {
+    'BTC': 'assets/coin icons/btc.png',
+    'LTC': 'assets/coin icons/ltc.png',
+    'KMD': 'assets/coin icons/kmd.png',
+    'BCH': 'assets/coin icons/bch.png',
+    'ETH': 'assets/coin icons/eth.png',
+    'ARB': 'assets/coin icons/arb.png',
+    'BASE': 'assets/coin icons/base.png',
+    'BNB': 'assets/coin icons/bnb.png',
+    'POLY': 'assets/coin icons/matic.png',
+    'SOL': 'assets/coin icons/sol.png',
+    'DCR': 'assets/coin icons/dcr.png',
+    'XMR': 'assets/coin icons/monero.png',
+    'XFG': 'assets/coin icons/xfg.png',
+    'AVAX': 'assets/coin icons/avax.png',
+    'BOB': 'assets/coin icons/bob.png',
+    'CRONOS': 'assets/coin icons/cronos.png',
+    'DASH': 'assets/coin icons/dash.png',
+    'DOGE': 'assets/coin icons/doge.png',
+    'MONAD': 'assets/coin icons/monad.png',
+    'OP': 'assets/coin icons/op.jpg',
+    'PLSX': 'assets/coin icons/plsx.png',
+    'RHC': 'assets/coin icons/rhc.png',
+    'UNI': 'assets/coin icons/uni.png',
+    'XPL': 'assets/coin icons/xpl.png',
+    'ZANO': 'assets/coin icons/zano.png',
+    'ZEC': 'assets/coin icons/zec.png',
+  };
+
+  /// Chains a direct peer swap can actually run on (the ones the local
+  /// xfg-swapd has chain clients for). Everything else is display-only.
+  static const List<String> swapableChains = [
+    'BTC', 'LTC', 'BCH', 'KMD', 'DCR', 'ETH', 'ARB', 'BASE', 'BNB', 'POLY', 'SOL', 'XMR',
+  ];
+}

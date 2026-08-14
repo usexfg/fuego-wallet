@@ -5,6 +5,7 @@ import '../../services/daemon_event_bus.dart';
 import '../../utils/theme.dart';
 import '../home/home_screen.dart';
 import '../dex/dex_screen.dart';
+import '../dex/peer_swap_screen.dart';
 import '../fuego/cd/cd_overview_screen.dart';
 import '../fuego/hearth/hearth_screen.dart';
 import '../settings/settings_screen.dart';
@@ -25,6 +26,7 @@ class _MainScreenState extends State<MainScreen> {
     HearthScreen(),
     CdOverviewScreen(),
     DexScreen(),
+    PeerSwapScreen(),
     SettingsScreen(),
   ];
 
@@ -32,7 +34,8 @@ class _MainScreenState extends State<MainScreen> {
     _NavItem(icon: Icons.account_balance_wallet, label: 'Wallet'),
     _NavItem(icon: Icons.swap_horiz, label: 'Hearth'),
     _NavItem(icon: Icons.savings, label: 'CDs'),
-    _NavItem(icon: Icons.swap_calls, label: 'DEX'),
+    _NavItem(icon: Icons.storefront, label: 'DEX'),
+    _NavItem(icon: Icons.handshake, label: 'Swaps'),
     _NavItem(icon: Icons.settings, label: 'Settings'),
   ];
 

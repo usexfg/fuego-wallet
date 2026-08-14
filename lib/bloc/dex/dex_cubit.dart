@@ -140,6 +140,16 @@ class DexCubit extends Cubit<DexState> {
   }
   void selectChain(ChainTypeSdk chain) => emit(state.copyWith(selectedChain: chain));
 
+  /// Select a pair by chain ticker (e.g. "BTC"); no-op for unknown tickers.
+  void selectPairById(String ticker) {
+    for (final pair in SwapPairSdk.values) {
+      if (pair.ticker == ticker) {
+        selectPair(pair);
+        return;
+      }
+    }
+  }
+
   ChainTypeSdk _chainForPair(SwapPairSdk pair) {
     switch (pair) {
       case SwapPairSdk.sol: return ChainTypeSdk.solana;
@@ -224,6 +234,7 @@ class DexCubit extends Cubit<DexState> {
     var pubKey = takerPubKey;
     var proof = proofOfFunds;
     if ((pubKey.isEmpty || proof.isEmpty) && takerChainKey != null && takerChainKey.isNotEmpty) {
+      await _ensureTakerIdentity();
       pubKey = _takerPublicKeyHex();
       final chain = state.selectedChain;
       if (chain.isEvm) {
@@ -494,10 +505,25 @@ class DexCubit extends Cubit<DexState> {
   }
 
   Future<void> initiateSpvSwap({required String pair, required int xfgAmount, required int ctrAmount, required String peer}) async {
+    await initiateCrossChainSwap(pair: pair, xfgAmount: xfgAmount, ctrAmount: ctrAmount, peer: peer);
+  }
+
+  Future<void> acceptSwap(String swapId) async {
+    if (_swapClient == null) { emit(state.copyWith(error: 'Swap daemon not connected')); return; }
+    emit(state.copyWith(isLoading: true, error: null, lastResult: null));
+    try {
+      final result = await _swapClient!.acceptSwap(swapId);
+      emit(state.copyWith(isLoading: false, lastResult: 'Accepted: ${result['state'] ?? swapId}'));
+      await loadSpvSwaps();
+    } catch (e) { emit(state.copyWith(isLoading: false, error: 'Accept failed: $e')); }
+  }
+
+  /// Direct peer-to-peer atomic swap via the local xfg-swapd (any chain).
+  Future<void> initiateCrossChainSwap({required String pair, required int xfgAmount, required int ctrAmount, required String peer, String role = 'alice', String? expectedPeerPubkey}) async {
     if (_swapClient == null) { emit(state.copyWith(error: 'Swap daemon not connected')); return; }
     emit(state.copyWith(isSwapInitiating: true, error: null, lastResult: null));
     try {
-      final swapId = await _swapClient!.initiateSwap(pair: pair, xfgAmount: xfgAmount, ctrAmount: ctrAmount, peer: peer);
+      final swapId = await _swapClient!.initiateSwap(pair: pair, xfgAmount: xfgAmount, ctrAmount: ctrAmount, peer: peer, role: role, expectedPeerPubkey: expectedPeerPubkey);
       emit(state.copyWith(isSwapInitiating: false, lastResult: 'Swap initiated: $swapId'));
       await loadSpvSwaps();
     } catch (e) { emit(state.copyWith(isSwapInitiating: false, error: 'Failed to initiate swap: $e')); }

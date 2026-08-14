@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../bloc/dex/dex_cubit.dart';
 import '../../models/swap_models.dart';
+import '../../models/chain_info.dart';
 import '../../models/candlestick.dart';
 import '../../services/price_history_service.dart';
 import '../../utils/theme.dart';
@@ -19,111 +20,13 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
   late TabController _tabController;
   final _amountController = TextEditingController();
   final _rateController = TextEditingController();
-  final _peerController = TextEditingController();
   final _takerKeyController = TextEditingController();
   List<Candlestick>? _candles;
-
-  static const Map<String, String> _chainNames = {
-    'BTC': 'Bitcoin', 'LTC': 'Litecoin', 'KMD': 'Komodo', 'BCH': 'Bitcoin Cash',
-    'ETH': 'Ethereum', 'ARB': 'Arbitrum', 'BASE': 'Base', 'BNB': 'BNB Chain',
-    'SOL': 'Solana', 'POLY': 'Polygon', 'DCR': 'Decred', 'XMR': 'Monero',
-    'XFG': 'Fuego',
-    'AVAX': 'Avalanche', 'BOB': 'BOB (Build on Bitcoin)', 'CRONOS': 'Cronos',
-    'DASH': 'Dash', 'DOGE': 'Dogecoin', 'MONAD': 'Monad', 'OP': 'Optimism',
-    'PLSX': 'PulseChain', 'RHC': 'RHC', 'UNI': 'Unichain', 'XPL': 'XPLA',
-    'ZANO': 'Zano', 'ZEC': 'Zcash',
-  };
-
-  static const Map<String, String> _chainDesc = {
-    'BTC': 'Digital gold — the original UTXO chain with deepest liquidity.',
-    'LTC': 'Fast, lightweight Bitcoin fork with low fees and mature SPV.',
-    'KMD': 'Komodo — delayed PoW with built-in atomic swap support.',
-    'BCH': 'Bitcoin Cash — high-throughput UTXO chain for everyday payments.',
-    'ETH': 'Smart contract platform — largest DeFi ecosystem.',
-    'ARB': 'Arbitrum — Ethereum L2 with fast finality and low gas.',
-    'BASE': 'Base — Coinbase L2 on the OP Stack, fast and cheap.',
-    'BNB': 'BNB Chain — EVM-compatible, high throughput, low fees.',
-    'POLY': 'Polygon — Ethereum sidechain with fast 2s blocks.',
-    'SOL': 'Solana — high-performance non-EVM chain with sub-second slots.',
-    'DCR': 'Decred — hybrid PoW/PoS with built-in governance and Neutrino SPV.',
-    'XMR': 'Monero — privacy coin using ring signatures and stealth addresses.',
-  };
-
-  static const Map<String, Map<String, String>> _chainInfo = {
-    'BTC': {'type': 'UTXO', 'connect': 'Electrum SPV (public servers)', 'user': 'No setup needed. Full node only for advanced RPC mode.', 'htlc': 'P2WSH SegWit'},
-    'LTC': {'type': 'UTXO', 'connect': 'Electrum SPV (public servers)', 'user': 'No setup needed. Full node only for advanced RPC mode.', 'htlc': 'P2WSH SegWit'},
-    'KMD': {'type': 'UTXO', 'connect': 'Electrum SPV (public servers)', 'user': 'No setup needed. Full node only for advanced RPC mode.', 'htlc': 'P2SH'},
-    'BCH': {'type': 'UTXO', 'connect': 'Electrum SPV (public servers)', 'user': 'No setup needed. Full node only for advanced RPC mode.', 'htlc': 'P2SH'},
-    'ETH': {'type': 'EVM', 'connect': 'Ethereum JSON-RPC (Infura/Alchemy)', 'user': 'No setup needed — public RPC used by default.', 'htlc': 'HashedTimelock.sol'},
-    'ARB': {'type': 'EVM L2', 'connect': 'Arbitrum JSON-RPC', 'user': 'No setup needed — public RPC used by default.', 'htlc': 'HashedTimelock.sol'},
-    'BASE': {'type': 'EVM L2', 'connect': 'Base JSON-RPC', 'user': 'No setup needed — public RPC used by default.', 'htlc': 'HashedTimelock.sol'},
-    'BNB': {'type': 'EVM', 'connect': 'BSC JSON-RPC', 'user': 'No setup needed — public RPC used by default.', 'htlc': 'HashedTimelock.sol'},
-    'POLY': {'type': 'EVM', 'connect': 'Polygon JSON-RPC', 'user': 'No setup needed — public RPC used by default.', 'htlc': 'HashedTimelock.sol'},
-    'SOL': {'type': 'Non-EVM', 'connect': 'Solana JSON-RPC (public)', 'user': 'No setup needed — public RPC used by default.', 'htlc': 'On-chain HTLC program'},
-    'DCR': {'type': 'UTXO', 'connect': 'Neutrino SPV (built-in) or dcrd RPC', 'user': 'No setup needed for SPV mode.', 'htlc': 'P2SH'},
-    'XMR': {'type': 'CryptoNote', 'connect': 'monerod + monero-wallet-rpc', 'user': 'Run your own node (recommended) or use a remote node from monero.fail.', 'htlc': 'Ring signatures + adaptor sigs'},
-    'XFG': {'type': 'Native', 'connect': 'Embedded fuegod daemon', 'user': 'Built into the wallet — no setup needed.', 'htlc': 'Base chain'},
-    'AVAX': {'type': 'EVM', 'wired': 'false'},
-    'BOB': {'type': 'EVM L2', 'wired': 'false'},
-    'CRONOS': {'type': 'EVM', 'wired': 'false'},
-    'DASH': {'type': 'UTXO', 'wired': 'false'},
-    'DOGE': {'type': 'UTXO', 'wired': 'false'},
-    'MONAD': {'type': 'EVM', 'wired': 'false'},
-    'OP': {'type': 'EVM L2', 'wired': 'false'},
-    'PLSX': {'type': 'EVM', 'wired': 'false'},
-    'RHC': {'type': 'EVM', 'wired': 'false'},
-    'UNI': {'type': 'EVM L2', 'wired': 'false'},
-    'XPL': {'type': 'EVM', 'wired': 'false'},
-    'ZANO': {'type': 'CryptoNote', 'wired': 'false'},
-    'ZEC': {'type': 'UTXO', 'wired': 'false'},
-  };
-
-  static const Map<String, Color> _chainColors = {
-    'BTC': Color(0xFFF7931A), 'LTC': Color(0xFFBFBBBB), 'KMD': Color(0xFF2B6DE9),
-    'BCH': Color(0xFF8DC351), 'ETH': Color(0xFF627EEA), 'ARB': Color(0xFF28A0F0),
-    'BASE': Color(0xFF0052FF), 'BNB': Color(0xFFF0B90B), 'POLY': Color(0xFF8247E5),
-    'SOL': Color(0xFF9945FF), 'DCR': Color(0xFF2970FF), 'XMR': Color(0xFFFF6600),
-    'XFG': Color(0xFFD84315),
-    'AVAX': Color(0xFFE84142), 'BOB': Color(0xFFFF6D00), 'CRONOS': Color(0xFF002D74),
-    'DASH': Color(0xFF008CE7), 'DOGE': Color(0xFFC2A633), 'MONAD': Color(0xFF836EF9),
-    'OP': Color(0xFFFF0420), 'PLSX': Color(0xFF9C27B0), 'RHC': Color(0xFF6B7280),
-    'UNI': Color(0xFFFF007A), 'XPL': Color(0xFF4FA9E0), 'ZANO': Color(0xFF6A5AF9),
-    'ZEC': Color(0xFFF4B728),
-  };
-
-  static const Map<String, String> _chainIcons = {
-    'BTC': 'assets/coin icons/btc.png',
-    'LTC': 'assets/coin icons/ltc.png',
-    'KMD': 'assets/coin icons/kmd.png',
-    'BCH': 'assets/coin icons/bch.png',
-    'ETH': 'assets/coin icons/eth.png',
-    'ARB': 'assets/coin icons/arb.png',
-    'BASE': 'assets/coin icons/base.png',
-    'BNB': 'assets/coin icons/bnb.png',
-    'POLY': 'assets/coin icons/matic.png',
-    'SOL': 'assets/coin icons/sol.png',
-    'DCR': 'assets/coin icons/dcr.png',
-    'XMR': 'assets/coin icons/monero.png',
-    'XFG': 'assets/coin icons/xfg.png',
-    'AVAX': 'assets/coin icons/avax.png',
-    'BOB': 'assets/coin icons/bob.png',
-    'CRONOS': 'assets/coin icons/cronos.png',
-    'DASH': 'assets/coin icons/dash.png',
-    'DOGE': 'assets/coin icons/doge.png',
-    'MONAD': 'assets/coin icons/monad.png',
-    'OP': 'assets/coin icons/op.jpg',
-    'PLSX': 'assets/coin icons/plsx.png',
-    'RHC': 'assets/coin icons/rhc.png',
-    'UNI': 'assets/coin icons/uni.png',
-    'XPL': 'assets/coin icons/xpl.png',
-    'ZANO': 'assets/coin icons/zano.png',
-    'ZEC': 'assets/coin icons/zec.png',
-  };
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _loadPriceData();
     WidgetsBinding.instance.addPostFrameCallback((_) => context.read<DexCubit>().init());
   }
@@ -138,7 +41,6 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
     _tabController.dispose();
     _amountController.dispose();
     _rateController.dispose();
-    _peerController.dispose();
     _takerKeyController.dispose();
     super.dispose();
   }
@@ -146,26 +48,24 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
   @override
   Widget build(BuildContext context) {
     final screenH = MediaQuery.of(context).size.height;
-    final tabH = screenH * 0.38;
     return BlocBuilder<DexCubit, DexState>(
       builder: (context, state) => Column(children: [
-        Expanded(child: SingleChildScrollView(child: Column(children: [
-          if (_candles != null && _candles!.isNotEmpty)
-            SizedBox(height: screenH * 0.35, child: FuegoChart(candles: _candles!, pair: 'XFG/${state.selectedPair.ticker}')),
-          _buildPairBar(state),
-          if (state.error != null)
-            Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              child: Text(state.error!, style: const TextStyle(color: AppTheme.errorColor, fontSize: 11))),
-          if (state.lastResult != null)
-            Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              child: Text(state.lastResult!, style: const TextStyle(color: AppTheme.successColor, fontSize: 11))),
-        ]))),
+        // Top half: chart + pair bar — fixed, never scrolls
+        if (_candles != null && _candles!.isNotEmpty)
+          SizedBox(height: screenH * 0.35, child: FuegoChart(candles: _candles!, pair: 'XFG/${state.selectedPair.ticker}')),
+        _buildPairBar(state),
+        if (state.error != null)
+          Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            child: Text(state.error!, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppTheme.errorColor, fontSize: 11))),
+        if (state.lastResult != null)
+          Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            child: Text(state.lastResult!, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppTheme.successColor, fontSize: 11))),
         _buildTabBar(),
-        SizedBox(height: tabH, child: TabBarView(controller: _tabController, children: [
+        // Bottom half: tabs area scrolls internally, takes remaining space
+        Expanded(child: TabBarView(controller: _tabController, children: [
           _buildOrderbook(state),
           _buildTradeForm(state),
           _buildRecentTrades(state),
-          _buildSwapsTab(state),
         ])),
       ]),
     );
@@ -183,7 +83,6 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
         Tab(text: 'Orderbook'),
         Tab(text: 'Trade'),
         Tab(text: 'Trades'),
-        Tab(text: 'Swaps'),
       ],
     ),
   );
@@ -220,35 +119,35 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: (_chainColors[state.selectedPair.ticker] ?? AppTheme.primaryColor).withValues(alpha: 0.12),
+            color: (ChainInfo.colors[state.selectedPair.ticker] ?? AppTheme.primaryColor).withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: (_chainColors[state.selectedPair.ticker] ?? AppTheme.primaryColor).withValues(alpha: 0.3)),
+            border: Border.all(color: (ChainInfo.colors[state.selectedPair.ticker] ?? AppTheme.primaryColor).withValues(alpha: 0.3)),
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: Image.asset(
-                _chainIcons[state.selectedPair.ticker] ?? '',
+                ChainInfo.icons[state.selectedPair.ticker] ?? '',
                 width: 20, height: 20,
                 errorBuilder: (_, __, ___) => Container(
                   width: 20, height: 20,
                   decoration: BoxDecoration(
-                    color: (_chainColors[state.selectedPair.ticker] ?? AppTheme.primaryColor).withValues(alpha: 0.15),
+                    color: (ChainInfo.colors[state.selectedPair.ticker] ?? AppTheme.primaryColor).withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Center(child: Text(
                     state.selectedPair.ticker.substring(0, 2),
-                    style: TextStyle(color: _chainColors[state.selectedPair.ticker] ?? AppTheme.primaryColor, fontSize: 8, fontWeight: FontWeight.w800),
+                    style: TextStyle(color: ChainInfo.colors[state.selectedPair.ticker] ?? AppTheme.primaryColor, fontSize: 8, fontWeight: FontWeight.w800),
                   )),
                 ),
               ),
             ),
             const SizedBox(width: 6),
             Text(state.selectedPair.ticker, style: TextStyle(
-              color: _chainColors[state.selectedPair.ticker] ?? AppTheme.primaryColor,
+              color: ChainInfo.colors[state.selectedPair.ticker] ?? AppTheme.primaryColor,
               fontSize: 14, fontWeight: FontWeight.w700)),
             const SizedBox(width: 4),
-            Icon(Icons.keyboard_arrow_down_rounded, color: _chainColors[state.selectedPair.ticker] ?? AppTheme.primaryColor, size: 18),
+            Icon(Icons.keyboard_arrow_down_rounded, color: ChainInfo.colors[state.selectedPair.ticker] ?? AppTheme.primaryColor, size: 18),
           ]),
         ),
       ),
@@ -257,7 +156,7 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
       Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
-        child: Text(_chainInfo[state.selectedPair.ticker]?['type'] ?? '', style: const TextStyle(color: AppTheme.textMuted, fontSize: 9, fontWeight: FontWeight.w600))),
+        child: Text(ChainInfo.info[state.selectedPair.ticker]?['type'] ?? '', style: const TextStyle(color: AppTheme.textMuted, fontSize: 9, fontWeight: FontWeight.w600))),
       const Spacer(),
       IconButton(
         icon: const Icon(Icons.info_outline, size: 18, color: AppTheme.textMuted),
@@ -314,10 +213,10 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
               itemBuilder: (_, i) {
                 final pair = SwapPairSdk.values[i];
                 final ticker = pair.ticker;
-                final name = _chainNames[ticker] ?? ticker;
-                final desc = _chainDesc[ticker] ?? '';
-                final color = _chainColors[ticker] ?? AppTheme.primaryColor;
-                final info = _chainInfo[ticker];
+                final name = ChainInfo.names[ticker] ?? ticker;
+                final desc = ChainInfo.desc[ticker] ?? '';
+                final color = ChainInfo.colors[ticker] ?? AppTheme.primaryColor;
+                final info = ChainInfo.info[ticker];
                 final isSelected = pair == state.selectedPair;
                 return InkWell(
                   onTap: () {
@@ -332,7 +231,7 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
                       ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child: Image.asset(
-                          _chainIcons[ticker] ?? '',
+                          ChainInfo.icons[ticker] ?? '',
                           width: 36, height: 36,
                           errorBuilder: (_, __, ___) => Container(
                             width: 36, height: 36,
@@ -444,7 +343,7 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
 
   // ── Trade Form ───────────────────────────────────────────────────
 
-  Widget _buildTradeForm(DexState state) => Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+  Widget _buildTradeForm(DexState state) => SingleChildScrollView(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
     Text('Trade XFG/${state.selectedPair.ticker}', style: const TextStyle(color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
     const SizedBox(height: 16),
     TextField(controller: _amountController, keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -498,7 +397,7 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
       _infoRow('Bid', state.price!.bid), _infoRow('Ask', state.price!.ask), _infoRow('Last', '\$${state.price!.last}'),
       _infoRow('24h Volume', state.price!.volume24h), _infoRow('24h Change', state.price!.change24h),
     ],
-  ]));
+  ])));
 
   Widget _infoRow(String label, String value) => Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: Row(children: [
     Text(label, style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)), const Spacer(),
@@ -555,188 +454,12 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
     );
   }
 
-  // ── Swaps Tab (atomic swap initiation + active/history) ──────────
-
-  Widget _buildSwapsTab(DexState state) {
-    final ticker = state.selectedPair.ticker;
-    final active = state.spvSwaps.where((s) => !s.isTerminal).toList();
-    final history = state.spvSwaps.where((s) => s.isTerminal).toList();
-    final chainInfo = _chainInfo[ticker];
-    final isEvm = chainInfo?['type']?.startsWith('EVM') == true || ticker == 'SOL';
-    final isUtxo = chainInfo?['type'] == 'UTXO';
-    final isMonero = ticker == 'XMR';
-
-    return SingleChildScrollView(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      // Warning if swap daemon not running (UTXO chains need it)
-      if (!state.isSwapDaemonConnected && isUtxo)
-        Container(padding: const EdgeInsets.all(12), margin: const EdgeInsets.only(bottom: 12),
-          decoration: BoxDecoration(color: AppTheme.errorColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8), border: Border.all(color: AppTheme.errorColor.withValues(alpha: 0.3))),
-          child: const Row(children: [
-            Icon(Icons.error_outline, color: AppTheme.errorColor, size: 16), SizedBox(width: 8),
-            Expanded(child: Text('xfg-swapd not running — start it from Settings', style: TextStyle(color: AppTheme.errorColor, fontSize: 12))),
-          ])),
-
-      // Selected chain info
-      Container(padding: const EdgeInsets.all(12), margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(color: AppTheme.cardColor, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppTheme.surfaceColor)),
-        child: Row(children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: Image.asset(
-              _chainIcons[ticker] ?? '',
-              width: 24, height: 24,
-              errorBuilder: (_, __, ___) => Container(
-                width: 24, height: 24,
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(4)),
-                child: Center(child: Text(ticker.substring(0, 2), style: const TextStyle(color: AppTheme.primaryColor, fontSize: 8, fontWeight: FontWeight.w600))),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(_chainNames[ticker] ?? ticker, style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.w500)),
-          const Spacer(),
-          if (chainInfo != null)
-            Text(chainInfo['htlc']!, style: const TextStyle(color: AppTheme.textMuted, fontSize: 10)),
-          const SizedBox(width: 8),
-          IconButton(icon: const Icon(Icons.info_outline, size: 16, color: AppTheme.textMuted), onPressed: _showChainInfo, tooltip: 'Chain info'),
-        ])),
-
-      // Balance for EVM/SOL
-      if (isEvm) ...[
-        Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(color: AppTheme.cardColor, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppTheme.surfaceColor)),
-          child: Row(children: [
-            const Icon(Icons.account_balance_wallet, color: AppTheme.primaryColor, size: 16), const SizedBox(width: 8),
-            const Text('Balance:', style: TextStyle(color: AppTheme.textMuted, fontSize: 12)), const SizedBox(width: 8),
-            if (state.isBalanceLoading)
-              const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 1.5, color: AppTheme.primaryColor))
-            else
-              Text('${state.evmBalance.toStringAsFixed(4)} $ticker', style: const TextStyle(color: AppTheme.primaryColor, fontSize: 13, fontWeight: FontWeight.w600)),
-            const Spacer(),
-            IconButton(icon: const Icon(Icons.refresh, size: 16, color: AppTheme.textMuted), onPressed: () => context.read<DexCubit>().loadBalance(),
-              padding: EdgeInsets.zero, constraints: const BoxConstraints(minWidth: 28, minHeight: 28)),
-          ])),
-        const SizedBox(height: 12),
-      ],
-
-      // Amount input
-      TextField(controller: _amountController, keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        decoration: InputDecoration(labelText: 'XFG Amount', labelStyle: const TextStyle(color: AppTheme.textSecondary), hintText: '10.00',
-          hintStyle: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.5)),
-          enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha: 0.3))),
-          focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: AppTheme.primaryColor))),
-        style: const TextStyle(color: AppTheme.textPrimary)),
-
-      // Peer endpoint for UTXO chains
-      if (isUtxo) ...[
-        const SizedBox(height: 12),
-        TextField(controller: _peerController,
-          decoration: InputDecoration(labelText: 'Peer Endpoint', labelStyle: const TextStyle(color: AppTheme.textSecondary), hintText: '192.168.1.100:18901',
-            hintStyle: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.5)),
-            enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha: 0.3))),
-            focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: AppTheme.primaryColor))),
-          style: const TextStyle(color: AppTheme.textPrimary)),
-      ],
-
-      const SizedBox(height: 16),
-
-      // Initiate button
-      ElevatedButton(
-        onPressed: (state.isSwapInitiating || (isUtxo && !state.isSwapDaemonConnected)) ? null : () => _initiateSwap(state, ticker),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isEvm ? AppTheme.successColor : AppTheme.primaryColor,
-          padding: const EdgeInsets.symmetric(vertical: 14)),
-        child: state.isSwapInitiating
-          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-          : Text(isEvm ? 'LOCK HTLC' : isMonero ? 'INITIATE (XMR)' : 'INITIATE SWAP',
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-
-      // Status messages
-      if (state.lastResult != null) ...[const SizedBox(height: 12),
-        Container(padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(color: AppTheme.successColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-          child: Text(state.lastResult!, style: const TextStyle(color: AppTheme.successColor, fontSize: 12)))],
-      if (state.error != null) ...[const SizedBox(height: 12),
-        Container(padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(color: AppTheme.errorColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-          child: Text(state.error!, style: const TextStyle(color: AppTheme.errorColor, fontSize: 12)))],
-      if (isEvm && state.htlcTxHash != null) ...[const SizedBox(height: 10),
-        Container(padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('HTLC Transaction', style: TextStyle(color: AppTheme.textMuted, fontSize: 10)),
-            const SizedBox(height: 4),
-            Text(state.htlcTxHash!, style: const TextStyle(color: AppTheme.primaryColor, fontSize: 11, fontFamily: 'monospace')),
-          ]))],
-
-      // Active swaps
-      if (active.isNotEmpty) ...[const SizedBox(height: 20),
-        const Text('Active Swaps', style: TextStyle(color: AppTheme.textPrimary, fontSize: 14, fontWeight: FontWeight.w600)),
-        const SizedBox(height: 8),
-        ...active.map((swap) => Container(margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: AppTheme.cardColor, borderRadius: BorderRadius.circular(8)),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(4)),
-                child: Text(swap.pairName, style: const TextStyle(color: AppTheme.primaryColor, fontSize: 10, fontWeight: FontWeight.bold))),
-              const SizedBox(width: 8),
-              Text(swap.state, style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
-              const Spacer(),
-              TextButton(onPressed: () => context.read<DexCubit>().refundSpvSwap(swap.swapId),
-                child: const Text('Refund', style: TextStyle(color: AppTheme.errorColor, fontSize: 11))),
-            ]),
-            const SizedBox(height: 6),
-            Text('${swap.xfgAmountDecimal.toStringAsFixed(2)} XFG \u2192 ${swap.ctrAmountDecimal.toStringAsFixed(4)} ${swap.pairName}',
-              style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13)),
-            Text('ID: ${swap.swapId.substring(0, 12)}\u2026', style: TextStyle(color: AppTheme.textMuted, fontSize: 10)),
-          ])))],
-
-      // History
-      if (history.isNotEmpty) ...[const SizedBox(height: 20),
-        const Text('History', style: TextStyle(color: AppTheme.textPrimary, fontSize: 14, fontWeight: FontWeight.w600)),
-        const SizedBox(height: 8),
-        ...history.map((swap) {
-          final isRefunded = swap.state.contains('REFUND') || swap.state.contains('FAILED');
-          return Container(margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: AppTheme.cardColor, borderRadius: BorderRadius.circular(8)),
-            child: Row(children: [
-              Icon(isRefunded ? Icons.replay : Icons.check_circle, color: isRefunded ? AppTheme.warningColor : AppTheme.successColor, size: 16),
-              const SizedBox(width: 8),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('${swap.xfgAmountDecimal.toStringAsFixed(2)} XFG \u2192 ${swap.pairName}', style: const TextStyle(color: AppTheme.textPrimary, fontSize: 12)),
-                Text(swap.state, style: TextStyle(color: AppTheme.textMuted, fontSize: 10)),
-              ])),
-            ]));
-        }),
-      ],
-    ]));
-  }
-
-  void _initiateSwap(DexState state, String ticker) {
-    final amountStr = _amountController.text.trim();
-    if (amountStr.isEmpty) return;
-    final amountXfg = double.tryParse(amountStr);
-    if (amountXfg == null || amountXfg <= 0) return;
-    final xfgAmount = (amountXfg * 1e7).toInt();
-    final chainInfo = _chainInfo[ticker];
-    final isEvm = chainInfo?['type']?.startsWith('EVM') == true || ticker == 'SOL';
-    final isUtxo = chainInfo?['type'] == 'UTXO';
-    if (isEvm) {
-      context.read<DexCubit>().loadBalance();
-    } else if (isUtxo) {
-      final peer = _peerController.text.trim();
-      if (peer.isEmpty) return;
-      context.read<DexCubit>().initiateSpvSwap(pair: ticker, xfgAmount: xfgAmount, ctrAmount: xfgAmount, peer: peer);
-    }
-  }
 
   // ── Chain Info Dialog ────────────────────────────────────────────
 
   void _showChainInfo() {
     final selected = context.read<DexCubit>().state.selectedPair.ticker;
-    final entries = _chainInfo.entries.toList()
+    final entries = ChainInfo.info.entries.toList()
       ..sort((a, b) {
         if (a.key == selected) return -1;
         if (b.key == selected) return 1;
@@ -765,8 +488,8 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
               final info = e.value;
               final isSelected = e.key == selected;
               final comingSoon = info['wired'] == 'false';
-              final color = _chainColors[e.key] ?? AppTheme.primaryColor;
-              final desc = _chainDesc[e.key] ?? '';
+              final color = ChainInfo.colors[e.key] ?? AppTheme.primaryColor;
+              final desc = ChainInfo.desc[e.key] ?? '';
               final row = Container(
                 margin: const EdgeInsets.only(bottom: 8),
                 padding: const EdgeInsets.all(12),
@@ -785,7 +508,7 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
                     ClipRRect(
                       borderRadius: BorderRadius.circular(6),
                       child: Image.asset(
-                        _chainIcons[e.key] ?? '',
+                        ChainInfo.icons[e.key] ?? '',
                         width: 28, height: 28,
                         errorBuilder: (_, __, ___) => Container(
                           width: 28, height: 28,
@@ -800,7 +523,7 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(children: [
-                          Flexible(child: Text('${e.key} — ${_chainNames[e.key]}',
+                          Flexible(child: Text('${e.key} — ${ChainInfo.names[e.key]}',
                             style: TextStyle(color: isSelected ? color : AppTheme.textPrimary,
                               fontSize: 13, fontWeight: FontWeight.w600))),
                           const SizedBox(width: 6),
@@ -823,9 +546,9 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
                   ]),
                   if (!comingSoon) ...[
                     const SizedBox(height: 8),
-                    _chainInfoRow('Connect', info['connect'] ?? ''),
-                    _chainInfoRow('HTLC', info['htlc'] ?? ''),
-                    _chainInfoRow('Setup', info['user'] ?? ''),
+                    _infoRow('Connect', info['connect'] ?? ''),
+                    _infoRow('HTLC', info['htlc'] ?? ''),
+                    _infoRow('Setup', info['user'] ?? ''),
                   ],
                 ]),
               );
@@ -859,32 +582,4 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
     );
   }
 
-  Widget _chainInfoRow(String label, String value) {
-    final hasLink = value.contains('monero.fail');
-    final isWarning = value.startsWith('Run your own') || value.startsWith('You must');
-    final color = isWarning ? AppTheme.warningColor : AppTheme.textSecondary;
-
-    if (!hasLink) {
-      return Padding(
-        padding: const EdgeInsets.only(top: 2),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          SizedBox(width: 48, child: Text(label, style: const TextStyle(color: AppTheme.textMuted, fontSize: 11, fontWeight: FontWeight.w500))),
-          Expanded(child: Text(value, style: TextStyle(color: color, fontSize: 11))),
-        ]));
-    }
-
-    final parts = value.split('monero.fail');
-    return Padding(
-      padding: const EdgeInsets.only(top: 2),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        SizedBox(width: 48, child: Text(label, style: const TextStyle(color: AppTheme.textMuted, fontSize: 11, fontWeight: FontWeight.w500))),
-        Expanded(child: RichText(text: TextSpan(children: [
-          TextSpan(text: parts[0], style: TextStyle(color: color, fontSize: 11)),
-          TextSpan(text: 'monero.fail', style: const TextStyle(color: AppTheme.primaryColor, fontSize: 11, decoration: TextDecoration.underline),
-            recognizer: TapGestureRecognizer()
-              ..onTap = () => launchUrl(Uri.parse('https://monero.fail'), mode: LaunchMode.externalApplication)),
-          if (parts.length > 1) TextSpan(text: parts[1], style: TextStyle(color: color, fontSize: 11)),
-        ]))),
-      ]));
-  }
 }
