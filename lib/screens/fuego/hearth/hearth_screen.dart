@@ -15,7 +15,8 @@ class HearthScreen extends StatefulWidget {
   State<HearthScreen> createState() => _HearthScreenState();
 }
 
-class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderStateMixin {
+class _HearthScreenState extends State<HearthScreen>
+    with TickerProviderStateMixin {
   late TabController _tabController;
   final _amountController = TextEditingController();
   final _priceController = TextEditingController();
@@ -53,9 +54,14 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
     }
     const heatPegUsd = 1.58;
     if (_sellXfg) {
-      final spot = double.tryParse(
-          context.read<HearthCubit>().state.pool?.spotPrice ?? '') ?? 0;
-      setState(() => _amountUsd = '\$${(val * spot * heatPegUsd).toStringAsFixed(2)}');
+      final spot =
+          double.tryParse(
+            context.read<HearthCubit>().state.pool?.spotPrice ?? '',
+          ) ??
+          0;
+      setState(
+        () => _amountUsd = '\$${(val * spot * heatPegUsd).toStringAsFixed(2)}',
+      );
     } else {
       setState(() => _amountUsd = '\$${(val * heatPegUsd).toStringAsFixed(2)}');
     }
@@ -84,7 +90,11 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
         return Scaffold(
           backgroundColor: HearthTheme.bgPure,
           body: state.isLoading
-              ? const Center(child: CircularProgressIndicator(color: HearthTheme.askPrimary))
+              ? const Center(
+                  child: CircularProgressIndicator(
+                    color: HearthTheme.askPrimary,
+                  ),
+                )
               : Column(
                   children: [
                     _buildHeader(state),
@@ -107,10 +117,16 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
                                 height: screenH * 0.30,
                                 color: HearthTheme.bgPure,
                                 child: const Center(
-                                  child: Text('No chart data', style: TextStyle(color: HearthTheme.textMuted)),
+                                  child: Text(
+                                    'No chart data',
+                                    style: TextStyle(
+                                      color: HearthTheme.textMuted,
+                                    ),
+                                  ),
                                 ),
                               ),
-                            if (state.pool != null) _buildPoolStats(state.pool!),
+                            if (state.pool != null)
+                              _buildPoolStats(state.pool!),
                             if (state.pool != null) _buildHeatPriceBar(state),
                             const SizedBox(height: 16),
                             _buildTabSection(state),
@@ -130,7 +146,10 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
     const xfgHeatRatio = 0.1;
     final heatUsd = heatPegUsd;
     final spot = state.pool?.spotPrice;
-    final spotNum = (spot != null && double.tryParse(spot) != null && double.parse(spot) > 0)
+    final spotNum =
+        (spot != null &&
+            double.tryParse(spot) != null &&
+            double.parse(spot) > 0)
         ? double.parse(spot)
         : xfgHeatRatio;
     final xfgUsd = spotNum * heatUsd;
@@ -173,14 +192,29 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
           ),
           const Spacer(),
           // Center: XFG priced in HEAT
-          Text('1 XFG ≈ ${spotNum.toStringAsFixed(1)} HΞ∆T',
-              style: HearthTheme.mono(size: 13, weight: FontWeight.w700, color: HearthTheme.askPrimary)),
+          Text(
+            '1 XFG ≈ ${spotNum.toStringAsFixed(1)} HΞ∆T',
+            style: HearthTheme.mono(
+              size: 13,
+              weight: FontWeight.w700,
+              color: HearthTheme.askPrimary,
+            ),
+          ),
           const Spacer(),
           // HΞ∆T-denominated (right of center)
-          _metricChip('1 XFG ≈ ${spotNum.toStringAsFixed(1)} HΞ∆T', HearthTheme.askPrimary),
+          _metricChip(
+            _formatVol(state.pool?.volume24h),
+            HearthTheme.textSecondary,
+          ),
           const SizedBox(width: 8),
-          Text('HΞ∆T ≋ \$${heatUsd.toStringAsFixed(2)}',
-              style: HearthTheme.mono(size: 13, weight: FontWeight.w700, color: HearthTheme.textWhite)),
+          Text(
+            'HΞ∆T ≋ \$${heatUsd.toStringAsFixed(2)}',
+            style: HearthTheme.mono(
+              size: 13,
+              weight: FontWeight.w700,
+              color: HearthTheme.textWhite,
+            ),
+          ),
         ],
       ),
     );
@@ -193,8 +227,21 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
         color: color.withOpacity(0.08),
         borderRadius: BorderRadius.circular(4),
       ),
-      child: Text(label, style: HearthTheme.mono(size: 11, weight: FontWeight.w600, color: color)),
+      child: Text(
+        label,
+        style: HearthTheme.mono(
+          size: 11,
+          weight: FontWeight.w600,
+          color: color,
+        ),
+      ),
     );
+  }
+
+  String _formatVol(String? vol) {
+    final v = double.tryParse(vol ?? '') ?? 0;
+    if (v >= 1000) return '${(v / 1000).toStringAsFixed(1)}K HΞ∆T';
+    return '${v.toStringAsFixed(0)} HΞ∆T';
   }
 
   Widget _buildPoolStats(PoolInfo pool) {
@@ -217,7 +264,14 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
     return Expanded(
       child: Column(
         children: [
-          Text(value, style: HearthTheme.mono(size: 11, weight: FontWeight.w600, color: HearthTheme.textPrimary)),
+          Text(
+            value,
+            style: HearthTheme.mono(
+              size: 11,
+              weight: FontWeight.w600,
+              color: HearthTheme.textPrimary,
+            ),
+          ),
           const SizedBox(height: 2),
           Text(label, style: HearthTheme.label(size: 9)),
         ],
@@ -228,7 +282,10 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
   Widget _buildHeatPriceBar(HearthState state) {
     const xfgHeatRatio = 0.1;
     final spot = state.pool?.spotPrice;
-    final spotNum = (spot != null && double.tryParse(spot) != null && double.parse(spot) > 0)
+    final spotNum =
+        (spot != null &&
+            double.tryParse(spot) != null &&
+            double.parse(spot) > 0)
         ? double.parse(spot)
         : xfgHeatRatio;
 
@@ -252,10 +309,22 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Current Mint Rate', style: HearthTheme.label(size: 10, color: HearthTheme.textMuted)),
+                Text(
+                  'Current Mint Rate',
+                  style: HearthTheme.label(
+                    size: 10,
+                    color: HearthTheme.textMuted,
+                  ),
+                ),
                 const SizedBox(height: 2),
-                Text('$leftLabel HΞ∆T / 1 XFG',
-                    style: HearthTheme.mono(size: 15, weight: FontWeight.w700, color: HearthTheme.textWhite)),
+                Text(
+                  '$leftLabel HΞ∆T / 1 XFG',
+                  style: HearthTheme.mono(
+                    size: 15,
+                    weight: FontWeight.w700,
+                    color: HearthTheme.textWhite,
+                  ),
+                ),
               ],
             ),
           ),
@@ -269,10 +338,22 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text('1 XFG Value', style: HearthTheme.label(size: 10, color: HearthTheme.textMuted)),
+                Text(
+                  '1 XFG Value',
+                  style: HearthTheme.label(
+                    size: 10,
+                    color: HearthTheme.textMuted,
+                  ),
+                ),
                 const SizedBox(height: 2),
-                Text('$rightLabel ≋',
-                    style: HearthTheme.mono(size: 15, weight: FontWeight.w700, color: HearthTheme.askPrimary)),
+                Text(
+                  '$rightLabel ≋',
+                  style: HearthTheme.mono(
+                    size: 15,
+                    weight: FontWeight.w700,
+                    color: HearthTheme.askPrimary,
+                  ),
+                ),
               ],
             ),
           ),
@@ -297,7 +378,9 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
         children: [
           Container(
             decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: HearthTheme.divider, width: 0.5)),
+              border: Border(
+                bottom: BorderSide(color: HearthTheme.divider, width: 0.5),
+              ),
             ),
             child: TabBar(
               controller: _tabController,
@@ -305,8 +388,14 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
               unselectedLabelColor: HearthTheme.textMuted,
               indicatorColor: HearthTheme.askPrimary,
               indicatorSize: TabBarIndicatorSize.label,
-              labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-              unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+              labelStyle: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+              unselectedLabelStyle: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
               dividerColor: Colors.transparent,
               tabs: const [
                 Tab(text: 'Order Book'),
@@ -336,7 +425,10 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
   Widget _buildOrderBookTab(HearthState state) {
     if (state.orderBook == null) {
       return const Center(
-        child: Text('No order book data', style: TextStyle(color: HearthTheme.textMuted, fontSize: 13)),
+        child: Text(
+          'No order book data',
+          style: TextStyle(color: HearthTheme.textMuted, fontSize: 13),
+        ),
       );
     }
     final book = state.orderBook!;
@@ -356,7 +448,8 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
           child: ListView.builder(
             itemCount: book.asks.length,
             reverse: true,
-            itemBuilder: (context, i) => _depthRow(book.asks[i], false, globalMax),
+            itemBuilder: (context, i) =>
+                _depthRow(book.asks[i], false, globalMax),
           ),
         ),
         _spreadBar(book, state),
@@ -364,7 +457,8 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
           flex: 4,
           child: ListView.builder(
             itemCount: book.bids.length,
-            itemBuilder: (context, i) => _depthRow(book.bids[i], true, globalMax),
+            itemBuilder: (context, i) =>
+                _depthRow(book.bids[i], true, globalMax),
           ),
         ),
       ],
@@ -376,9 +470,26 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: Row(
         children: [
-          Expanded(child: Text('Price (HΞ∆T)', style: HearthTheme.label(size: 10, color: HearthTheme.textMuted))),
-          Expanded(child: Text('Amount (XFG)', style: HearthTheme.label(size: 10, color: HearthTheme.textMuted), textAlign: TextAlign.right)),
-          Expanded(child: Text('Total', style: HearthTheme.label(size: 10, color: HearthTheme.textMuted), textAlign: TextAlign.right)),
+          Expanded(
+            child: Text(
+              'Price (HΞ∆T)',
+              style: HearthTheme.label(size: 10, color: HearthTheme.textMuted),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              'Amount (XFG)',
+              style: HearthTheme.label(size: 10, color: HearthTheme.textMuted),
+              textAlign: TextAlign.right,
+            ),
+          ),
+          Expanded(
+            child: Text(
+              'Total',
+              style: HearthTheme.label(size: 10, color: HearthTheme.textMuted),
+              textAlign: TextAlign.right,
+            ),
+          ),
         ],
       ),
     );
@@ -403,20 +514,36 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3.5),
           child: Row(
             children: [
-              Expanded(child: Text(
-                level.price.toStringAsFixed(4),
-                style: HearthTheme.mono(size: 12, weight: FontWeight.w600, color: color),
-              )),
-              Expanded(child: Text(
-                level.amount.toStringAsFixed(2),
-                style: HearthTheme.mono(size: 11, color: HearthTheme.textSecondary),
-                textAlign: TextAlign.right,
-              )),
-              Expanded(child: Text(
-                level.total.toStringAsFixed(2),
-                style: HearthTheme.mono(size: 11, color: HearthTheme.textMuted),
-                textAlign: TextAlign.right,
-              )),
+              Expanded(
+                child: Text(
+                  level.price.toStringAsFixed(4),
+                  style: HearthTheme.mono(
+                    size: 12,
+                    weight: FontWeight.w600,
+                    color: color,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  level.amount.toStringAsFixed(2),
+                  style: HearthTheme.mono(
+                    size: 11,
+                    color: HearthTheme.textSecondary,
+                  ),
+                  textAlign: TextAlign.right,
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  level.total.toStringAsFixed(2),
+                  style: HearthTheme.mono(
+                    size: 11,
+                    color: HearthTheme.textMuted,
+                  ),
+                  textAlign: TextAlign.right,
+                ),
+              ),
             ],
           ),
         ),
@@ -438,11 +565,23 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(spot.toStringAsFixed(4), style: HearthTheme.mono(size: 14, weight: FontWeight.w700, color: HearthTheme.textWhite)),
+          Text(
+            spot.toStringAsFixed(4),
+            style: HearthTheme.mono(
+              size: 14,
+              weight: FontWeight.w700,
+              color: HearthTheme.textWhite,
+            ),
+          ),
           const SizedBox(width: 8),
           if (state.fuegoPrice != null)
-            Text('≈ \$${(spot * state.fuegoPrice!.heatPegUsd).toStringAsFixed(4)}',
-                style: HearthTheme.mono(size: 11, color: HearthTheme.textSecondary)),
+            Text(
+              '≈ \$${(spot * state.fuegoPrice!.heatPegUsd).toStringAsFixed(4)}',
+              style: HearthTheme.mono(
+                size: 11,
+                color: HearthTheme.textSecondary,
+              ),
+            ),
         ],
       ),
     );
@@ -452,7 +591,7 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
 
   Widget _buildTradeTab(HearthState state) {
     final isLimit = state.orderType == OrderType.limit;
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -462,10 +601,7 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
           _orderTypeRow(state),
           const SizedBox(height: 12),
           _amountInput(state),
-          if (isLimit) ...[
-            const SizedBox(height: 10),
-            _limitPriceInput(state),
-          ],
+          if (isLimit) ...[const SizedBox(height: 10), _limitPriceInput(state)],
           const SizedBox(height: 12),
           _submitButton(state, isLimit),
           if (!isLimit && state.quote != null) ...[
@@ -501,11 +637,17 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
                   color: _sellXfg ? HearthTheme.askPrimary : Colors.transparent,
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: Text('Sell XFG', textAlign: TextAlign.center, style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: _sellXfg ? HearthTheme.textWhite : HearthTheme.textMuted,
-                )),
+                child: Text(
+                  'Sell XFG',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: _sellXfg
+                        ? HearthTheme.textWhite
+                        : HearthTheme.textMuted,
+                  ),
+                ),
               ),
             ),
           ),
@@ -519,14 +661,22 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  color: !_sellXfg ? HearthTheme.bidPrimary : Colors.transparent,
+                  color: !_sellXfg
+                      ? HearthTheme.bidPrimary
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: Text('Buy XFG', textAlign: TextAlign.center, style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: !_sellXfg ? HearthTheme.textWhite : HearthTheme.textMuted,
-                )),
+                child: Text(
+                  'Buy XFG',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: !_sellXfg
+                        ? HearthTheme.textWhite
+                        : HearthTheme.textMuted,
+                  ),
+                ),
               ),
             ),
           ),
@@ -563,11 +713,14 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
             width: 0.5,
           ),
         ),
-        child: Text(label, style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: active ? HearthTheme.textWhite : HearthTheme.textMuted,
-        )),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: active ? HearthTheme.textWhite : HearthTheme.textMuted,
+          ),
+        ),
       ),
     );
   }
@@ -576,7 +729,10 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(_sellXfg ? 'Sell Amount (XFG)' : 'Sell Amount (HΞ∆T)', style: HearthTheme.label(size: 10)),
+        Text(
+          _sellXfg ? 'Sell Amount (XFG)' : 'Sell Amount (HΞ∆T)',
+          style: HearthTheme.label(size: 10),
+        ),
         const SizedBox(height: 6),
         Container(
           decoration: BoxDecoration(
@@ -590,18 +746,33 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
               Expanded(
                 child: TextField(
                   controller: _amountController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  style: HearthTheme.mono(size: 15, weight: FontWeight.w600, color: HearthTheme.textWhite),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  style: HearthTheme.mono(
+                    size: 15,
+                    weight: FontWeight.w600,
+                    color: HearthTheme.textWhite,
+                  ),
                   decoration: InputDecoration(
                     border: InputBorder.none,
                     hintText: '0.00',
-                    hintStyle: HearthTheme.mono(size: 15, color: HearthTheme.textDim),
+                    hintStyle: HearthTheme.mono(
+                      size: 15,
+                      color: HearthTheme.textDim,
+                    ),
                     contentPadding: EdgeInsets.zero,
                   ),
                 ),
               ),
               if (_amountUsd.isNotEmpty)
-                Text(_amountUsd, style: HearthTheme.mono(size: 11, color: HearthTheme.textSecondary)),
+                Text(
+                  _amountUsd,
+                  style: HearthTheme.mono(
+                    size: 11,
+                    color: HearthTheme.textSecondary,
+                  ),
+                ),
             ],
           ),
         ),
@@ -626,7 +797,14 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
                 color: HearthTheme.bgSurface,
                 borderRadius: BorderRadius.circular(3),
               ),
-              child: Text('$pct%', textAlign: TextAlign.center, style: HearthTheme.label(size: 10, color: HearthTheme.textSecondary)),
+              child: Text(
+                '$pct%',
+                textAlign: TextAlign.center,
+                style: HearthTheme.label(
+                  size: 10,
+                  color: HearthTheme.textSecondary,
+                ),
+              ),
             ),
           ),
         );
@@ -650,7 +828,11 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
           child: TextField(
             controller: _priceController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            style: HearthTheme.mono(size: 15, weight: FontWeight.w600, color: HearthTheme.textWhite),
+            style: HearthTheme.mono(
+              size: 15,
+              weight: FontWeight.w600,
+              color: HearthTheme.textWhite,
+            ),
             decoration: InputDecoration(
               border: InputBorder.none,
               hintText: state.pool?.spotPrice ?? '0.00',
@@ -676,11 +858,14 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
             final price = _priceController.text.trim();
             if (price.isEmpty) return;
             context.read<HearthCubit>().placeLimitOrder(
-              sellXfg: _sellXfg, amount: amount, price: price,
+              sellXfg: _sellXfg,
+              amount: amount,
+              price: price,
             );
           } else {
             context.read<HearthCubit>().getQuote(
-              sellXfg: _sellXfg, amount: amount,
+              sellXfg: _sellXfg,
+              amount: amount,
             );
           }
         },
@@ -719,7 +904,10 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
           elevation: 0,
         ),
-        child: const Text('Confirm Swap', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+        child: const Text(
+          'Confirm Swap',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+        ),
       ),
     );
   }
@@ -741,15 +929,31 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('You receive', style: HearthTheme.label(size: 10)),
-              Text(quote.outputAmount, style: HearthTheme.mono(size: 14, weight: FontWeight.w700, color: HearthTheme.textWhite)),
+              Text(
+                quote.outputAmount,
+                style: HearthTheme.mono(
+                  size: 14,
+                  weight: FontWeight.w700,
+                  color: HearthTheme.textWhite,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 6),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('≈ \$${usd.toStringAsFixed(2)}', style: HearthTheme.mono(size: 11, color: HearthTheme.textSecondary)),
-              Text('Fee: ${quote.fee}', style: HearthTheme.mono(size: 10, color: HearthTheme.textMuted)),
+              Text(
+                '≈ \$${usd.toStringAsFixed(2)}',
+                style: HearthTheme.mono(
+                  size: 11,
+                  color: HearthTheme.textSecondary,
+                ),
+              ),
+              Text(
+                'Fee: ${quote.fee}',
+                style: HearthTheme.mono(size: 10, color: HearthTheme.textMuted),
+              ),
             ],
           ),
           const SizedBox(height: 2),
@@ -757,7 +961,13 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Price Impact', style: HearthTheme.label(size: 9)),
-              Text('${quote.priceImpact}%', style: HearthTheme.mono(size: 10, color: HearthTheme.textSecondary)),
+              Text(
+                '${quote.priceImpact}%',
+                style: HearthTheme.mono(
+                  size: 10,
+                  color: HearthTheme.textSecondary,
+                ),
+              ),
             ],
           ),
         ],
@@ -768,7 +978,7 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
   // ───────────────────── LIQUIDITY ─────────────────────
 
   Widget _buildLiquidityTab() {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -784,22 +994,40 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
               children: [
                 Row(
                   children: [
-                    Text('PROVIDE LIQUIDITY', style: HearthTheme.label(size: 10, color: HearthTheme.askPrimary)),
+                    Text(
+                      'PROVIDE LIQUIDITY',
+                      style: HearthTheme.label(
+                        size: 10,
+                        color: HearthTheme.askPrimary,
+                      ),
+                    ),
                     const Spacer(),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: HearthTheme.bidPrimary.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(4),
                       ),
-                      child: Text('AUTO-COMPOUND', style: HearthTheme.label(size: 8, color: HearthTheme.bidPrimary)),
+                      child: Text(
+                        'AUTO-COMPOUND',
+                        style: HearthTheme.label(
+                          size: 8,
+                          color: HearthTheme.bidPrimary,
+                        ),
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Fees auto-compound into pool reserves. Your LP shares appreciate as the pool earns.',
-                  style: HearthTheme.mono(size: 11, color: HearthTheme.textSecondary),
+                  style: HearthTheme.mono(
+                    size: 11,
+                    color: HearthTheme.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -814,10 +1042,21 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
                     onPressed: () => _showAddLiquidity(context),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: HearthTheme.bidPrimary,
-                      side: const BorderSide(color: HearthTheme.bidPrimary, width: 1),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                      side: const BorderSide(
+                        color: HearthTheme.bidPrimary,
+                        width: 1,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
                     ),
-                    child: const Text('Add Liquidity', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    child: const Text(
+                      'Add Liquidity',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -829,10 +1068,21 @@ class _HearthScreenState extends State<HearthScreen> with SingleTickerProviderSt
                     onPressed: () => _showRemoveLiquidity(context),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: HearthTheme.askPrimary,
-                      side: const BorderSide(color: HearthTheme.askPrimary, width: 1),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                      side: const BorderSide(
+                        color: HearthTheme.askPrimary,
+                        width: 1,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
                     ),
-                    child: const Text('Withdraw Earnings', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    child: const Text(
+                      'Withdraw Earnings',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
               ),

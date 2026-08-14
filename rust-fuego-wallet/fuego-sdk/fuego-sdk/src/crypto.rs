@@ -36,15 +36,15 @@ pub fn generate_key_derivation(view_pub: &PublicKey, spend_secret: &SecretKey) -
     fc::generate_key_derivation(&pk, &spend_secret.0)
 }
 
-/// Derive public key from derivation
-pub fn derive_public_key(derivation: &[u8; 32], index: u64) -> PublicKey {
-    PublicKey(fc::derive_public_key(derivation, index).0)
+/// Derive a one-time output key: P = Hs(D || varint(i)) * G + base.
+pub fn derive_public_key(derivation: &[u8; 32], index: u64, base: &PublicKey) -> Option<PublicKey> {
+    fc::derive_public_key(derivation, index, &base.0).map(|p| PublicKey(p.0))
 }
 
-/// Underive public key (recover sender)
-pub fn underive_public_key(derivation: &[u8; 32], index: u64, output_key: &PublicKey) -> PublicKey {
+/// Underive public key (recover sender).
+pub fn underive_public_key(derivation: &[u8; 32], index: u64, output_key: &PublicKey) -> Option<PublicKey> {
     let out = fc::PublicKey(output_key.0);
-    PublicKey(fc::underive_public_key(derivation, index, &out).0)
+    fc::underive_public_key(derivation, index, &out).map(|p| PublicKey(p.0))
 }
 
 /// Generate key image for ring signatures

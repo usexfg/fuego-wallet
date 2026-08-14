@@ -30,6 +30,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _fuegodHost = '207.244.247.64';
   int _fuegodPort = 18180;
   bool _fuegodConfigured = true;
+
   /// Desktop default = local, mobile default = remote (from [NodeConnection]).
   bool _useLocalNode = app.useLocalNode;
 
@@ -61,11 +62,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _showError('Biometric authentication not available on this device');
         return;
       }
-      
+
       final authenticated = await _securityService.authenticateWithBiometrics(
         reason: 'Enable biometric authentication for Fuego Wallet',
       );
-      
+
       if (!authenticated) {
         return; // User cancelled or authentication failed
       }
@@ -75,11 +76,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _biometricEnabled = enabled;
     });
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          enabled 
+          enabled
               ? 'Biometric authentication enabled'
               : 'Biometric authentication disabled',
         ),
@@ -90,10 +91,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppTheme.errorColor,
-      ),
+      SnackBar(content: Text(message), backgroundColor: AppTheme.errorColor),
     );
   }
 
@@ -179,7 +177,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     try {
       await _securityService.clearWalletData();
-      
+
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const MainScreen()),
@@ -250,21 +248,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             child: Container(
                               padding: const EdgeInsets.symmetric(vertical: 10),
                               decoration: BoxDecoration(
-                                color: useLocal ? AppTheme.primaryColor : Colors.transparent,
+                                color: useLocal
+                                    ? AppTheme.primaryColor
+                                    : Colors.transparent,
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.computer, size: 16,
-                                    color: useLocal ? Colors.white : AppTheme.textMuted),
+                                  Icon(
+                                    Icons.computer,
+                                    size: 16,
+                                    color: useLocal
+                                        ? Colors.white
+                                        : AppTheme.textMuted,
+                                  ),
                                   const SizedBox(width: 6),
-                                  Text('Local Node',
+                                  Text(
+                                    'Local Node',
                                     style: TextStyle(
-                                      color: useLocal ? Colors.white : AppTheme.textMuted,
+                                      color: useLocal
+                                          ? Colors.white
+                                          : AppTheme.textMuted,
                                       fontWeight: FontWeight.w600,
                                       fontSize: 13,
-                                    )),
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -277,21 +286,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             child: Container(
                               padding: const EdgeInsets.symmetric(vertical: 10),
                               decoration: BoxDecoration(
-                                color: !useLocal ? AppTheme.primaryColor : Colors.transparent,
+                                color: !useLocal
+                                    ? AppTheme.primaryColor
+                                    : Colors.transparent,
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.cloud, size: 16,
-                                    color: !useLocal ? Colors.white : AppTheme.textMuted),
+                                  Icon(
+                                    Icons.cloud,
+                                    size: 16,
+                                    color: !useLocal
+                                        ? Colors.white
+                                        : AppTheme.textMuted,
+                                  ),
                                   const SizedBox(width: 6),
-                                  Text('Remote Node',
+                                  Text(
+                                    'Remote Node',
                                     style: TextStyle(
-                                      color: !useLocal ? Colors.white : AppTheme.textMuted,
+                                      color: !useLocal
+                                          ? Colors.white
+                                          : AppTheme.textMuted,
                                       fontWeight: FontWeight.w600,
                                       fontSize: 13,
-                                    )),
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -309,26 +329,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       decoration: BoxDecoration(
                         color: AppTheme.successColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppTheme.successColor.withValues(alpha: 0.3)),
+                        border: Border.all(
+                          color: AppTheme.successColor.withValues(alpha: 0.3),
+                        ),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(children: [
-                            Icon(Icons.check_circle, color: AppTheme.successColor, size: 16),
-                            const SizedBox(width: 8),
-                            Text('Built-in Node', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600)),
-                          ]),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.check_circle,
+                                color: AppTheme.successColor,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Built-in Node',
+                                style: TextStyle(
+                                  color: AppTheme.textPrimary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
                           const SizedBox(height: 8),
                           Text(
                             'Desktop default. Runs fuego_walletd with --local '
                             '(embedded fuegod). Wallet RPC on 127.0.0.1:18189.',
-                            style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                            style: TextStyle(
+                              color: AppTheme.textSecondary,
+                              fontSize: 12,
+                            ),
                           ),
                           const SizedBox(height: 8),
                           Text(
                             'Requires bundled binaries. Syncs the chain on this machine.',
-                            style: TextStyle(color: AppTheme.textMuted, fontSize: 11),
+                            style: TextStyle(
+                              color: AppTheme.textMuted,
+                              fontSize: 11,
+                            ),
                           ),
                         ],
                       ),
@@ -339,22 +379,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       style: TextStyle(color: AppTheme.textSecondary),
                     ),
                     const SizedBox(height: 12),
-                    ...FuegoRPCService.defaultRemoteNodes.map((node) => RadioListTile<String>(
-                      title: Text(
-                        node,
-                        style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                    ...FuegoRPCService.defaultRemoteNodes.map(
+                      (node) => RadioListTile<String>(
+                        title: Text(
+                          node,
+                          style: const TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontSize: 13,
+                          ),
+                        ),
+                        value: node,
+                        groupValue: selectedNode,
+                        onChanged: (value) {
+                          setState(() {
+                            selectedNode = value!;
+                            customNodeController.clear();
+                          });
+                        },
+                        activeColor: AppTheme.primaryColor,
+                        contentPadding: EdgeInsets.zero,
                       ),
-                      value: node,
-                      groupValue: selectedNode,
-                      onChanged: (value) {
-                        setState(() {
-                          selectedNode = value!;
-                          customNodeController.clear();
-                        });
-                      },
-                      activeColor: AppTheme.primaryColor,
-                      contentPadding: EdgeInsets.zero,
-                    )),
+                    ),
                     const SizedBox(height: 12),
                     const Text(
                       'Or enter custom node:',
@@ -365,9 +410,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       controller: customNodeController,
                       decoration: InputDecoration(
                         hintText: 'node.example.com:18180',
-                        hintStyle: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.5)),
+                        hintStyle: TextStyle(
+                          color: AppTheme.textSecondary.withValues(alpha: 0.5),
+                        ),
                         enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha: 0.3)),
+                          borderSide: BorderSide(
+                            color: AppTheme.textSecondary.withValues(
+                              alpha: 0.3,
+                            ),
+                          ),
                         ),
                         focusedBorder: const OutlineInputBorder(
                           borderSide: BorderSide(color: AppTheme.primaryColor),
@@ -404,7 +455,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     if (useLocal) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: const Text('Starting built-in local node...'),
+                          content: const Text(
+                            'Starting built-in local node...',
+                          ),
                           backgroundColor: AppTheme.primaryColor,
                         ),
                       );
@@ -457,8 +510,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       });
 
                       // Keep WalletProvider node URL in sync with wallet proxy.
-                      final walletProvider =
-                          Provider.of<WalletProvider>(context, listen: false);
+                      final walletProvider = Provider.of<WalletProvider>(
+                        context,
+                        listen: false,
+                      );
                       await walletProvider.connectToNode(ep.walletBaseUrl);
 
                       if (mounted) {
@@ -509,7 +564,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 16),
               SelectableText(
                 address,
-                style: const TextStyle(color: AppTheme.textSecondary, fontFamily: 'monospace'),
+                style: const TextStyle(
+                  color: AppTheme.textSecondary,
+                  fontFamily: 'monospace',
+                ),
               ),
             ],
           ),
@@ -678,7 +736,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
+          Text(
+            title,
+            style: const TextStyle(
+              color: AppTheme.textPrimary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 4),
           Row(
             children: [
@@ -693,7 +757,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.copy, size: 18, color: AppTheme.textSecondary),
+                icon: const Icon(
+                  Icons.copy,
+                  size: 18,
+                  color: AppTheme.textSecondary,
+                ),
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: value));
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -754,9 +822,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   controller: hostController,
                   decoration: InputDecoration(
                     hintText: '207.244.247.64',
-                    hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.5)),
+                    hintStyle: TextStyle(
+                      color: AppTheme.textSecondary.withOpacity(0.5),
+                    ),
                     enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
+                      borderSide: BorderSide(
+                        color: AppTheme.textSecondary.withOpacity(0.3),
+                      ),
                     ),
                     focusedBorder: const OutlineInputBorder(
                       borderSide: BorderSide(color: AppTheme.primaryColor),
@@ -772,9 +844,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(
                     hintText: '18180',
-                    hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.5)),
+                    hintStyle: TextStyle(
+                      color: AppTheme.textSecondary.withOpacity(0.5),
+                    ),
                     enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
+                      borderSide: BorderSide(
+                        color: AppTheme.textSecondary.withOpacity(0.3),
+                      ),
                     ),
                     focusedBorder: const OutlineInputBorder(
                       borderSide: BorderSide(color: AppTheme.primaryColor),
@@ -854,9 +930,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               const SizedBox(width: 12),
-                const Text(
-                  'Fuego Wallet',
-                  style: TextStyle(color: AppTheme.textPrimary),
+              const Text(
+                'Fuego Wallet',
+                style: TextStyle(color: AppTheme.textPrimary),
               ),
             ],
           ),
@@ -894,10 +970,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 '• Cross-chain atomic swaps (12 chains)\n'
                 '• Built-in mining capabilities\n'
                 '• Advanced security features',
-                style: TextStyle(
-                  color: AppTheme.textSecondary,
-                  height: 1.5,
-                ),
+                style: TextStyle(color: AppTheme.textSecondary, height: 1.5),
               ),
             ],
           ),
@@ -941,9 +1014,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onTap: _showBackupPhraseDialog,
                 trailing: const Icon(Icons.chevron_right),
               ),
-              
+
               const SizedBox(height: 24),
-              
+
               // Alias Section
               _buildSectionHeader('Alias'),
               _buildSettingsTile(
@@ -961,7 +1034,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
 
               const SizedBox(height: 24),
-              
+
               // Security section
               _buildSectionHeader('Security'),
               _buildSettingsTile(
@@ -982,9 +1055,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 },
                 trailing: const Icon(Icons.chevron_right),
               ),
-              
+
               const SizedBox(height: 24),
-              
+
               // Network section
               _buildSectionHeader('Network'),
               _buildSettingsTile(
@@ -1006,30 +1079,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onTap: _showNodeSelectionDialog,
               ),
               _buildSettingsTile(
-                icon: walletProvider.networkConfig.isTestnet ? Icons.science : Icons.public,
+                icon: walletProvider.networkConfig.isTestnet
+                    ? Icons.science
+                    : Icons.public,
                 title: 'Network',
                 subtitle: walletProvider.networkConfig.name,
                 trailing: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
-                    color: walletProvider.networkConfig.isTestnet 
+                    color: walletProvider.networkConfig.isTestnet
                         ? Colors.orange.withOpacity(0.2)
                         : Colors.green.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: walletProvider.networkConfig.isTestnet 
-                          ? Colors.orange 
+                      color: walletProvider.networkConfig.isTestnet
+                          ? Colors.orange
                           : Colors.green,
                       width: 1,
                     ),
                   ),
                   child: Text(
-                    walletProvider.networkConfig.isTestnet ? 'TESTNET' : 'MAINNET',
+                    walletProvider.networkConfig.isTestnet
+                        ? 'TESTNET'
+                        : 'MAINNET',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
-                      color: walletProvider.networkConfig.isTestnet 
-                          ? Colors.orange 
+                      color: walletProvider.networkConfig.isTestnet
+                          ? Colors.orange
                           : Colors.green,
                     ),
                   ),
@@ -1052,9 +1132,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   // TODO: Show sync details
                 },
               ),
-              
+
               const SizedBox(height: 24),
-              
+
               // DEX Server section
               _buildSectionHeader('DEX (Fuego Native)'),
               _buildSettingsTile(
@@ -1078,15 +1158,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _buildSettingsTile(
                 icon: Icons.hub_outlined,
                 title: 'Cross-Chain Swap Settings',
-                subtitle: 'Configure xfg-swapd chain RPCs, keys and SPV servers',
+                subtitle:
+                    'Configure xfg-swapd chain RPCs, keys and SPV servers',
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const SwapSettingsScreen()),
                 ),
               ),
-              
+
               const SizedBox(height: 24),
-              
+
               // App section
               _buildSectionHeader('App'),
               _buildSettingsTile(
@@ -1105,9 +1186,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 },
                 trailing: const Icon(Icons.chevron_right),
               ),
-              
+
               const SizedBox(height: 32),
-              
+
               // Danger zone
               Container(
                 padding: const EdgeInsets.all(16),
@@ -1123,10 +1204,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: [
                     const Row(
                       children: [
-                        Icon(
-                          Icons.warning,
-                          color: AppTheme.errorColor,
-                        ),
+                        Icon(Icons.warning, color: AppTheme.errorColor),
                         SizedBox(width: 8),
                         Text(
                           'Danger Zone',
@@ -1143,7 +1221,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       width: double.infinity,
                       child: OutlinedButton.icon(
                         onPressed: _isLoading ? null : _showResetWalletDialog,
-                        icon: _isLoading 
+                        icon: _isLoading
                             ? const SizedBox(
                                 width: 16,
                                 height: 16,
@@ -1195,40 +1273,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(12)),
+      child: Material(
         color: AppTheme.cardColor,
         borderRadius: BorderRadius.circular(12),
-      ),
-      child: ListTile(
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: AppTheme.primaryColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
+        child: ListTile(
+          leading: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: AppTheme.primaryColor, size: 20),
           ),
-          child: Icon(
-            icon,
-            color: AppTheme.primaryColor,
-            size: 20,
+          title: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textPrimary,
+            ),
           ),
+          subtitle: Text(
+            subtitle,
+            style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+          ),
+          trailing: trailing,
+          onTap: onTap,
         ),
-        title: Text(
-          title,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: AppTheme.textPrimary,
-          ),
-        ),
-        subtitle: Text(
-          subtitle,
-          style: TextStyle(
-            fontSize: 14,
-            color: AppTheme.textSecondary,
-          ),
-        ),
-        trailing: trailing,
-        onTap: onTap,
       ),
     );
   }

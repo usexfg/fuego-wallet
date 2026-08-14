@@ -32,8 +32,9 @@ final _log = Logger('main');
 late final DaemonManager daemonManager = DaemonManager(config: _activeConfig);
 final Completer<void> _backendReady = Completer<void>();
 final SecurityService _securityService = SecurityService();
-final FuegoVaultService _vaultService =
-    FuegoVaultService(security: _securityService);
+final FuegoVaultService _vaultService = FuegoVaultService(
+  security: _securityService,
+);
 
 String? _daemonError;
 
@@ -111,6 +112,9 @@ Future<void> _startBackend() async {
     'chain=${endpoints.chainBaseUrl} proxy=${endpoints.proxyRunning}',
   );
 
+  // Keep chain client in sync with resolved endpoint
+  daemon.updateNode(endpoints.chainHost, newPort: endpoints.chainPort);
+
   if (!_backendReady.isCompleted) _backendReady.complete();
 }
 
@@ -120,6 +124,10 @@ Future<void> stopBackend() async {
 }
 
 String? get daemonError => _daemonError;
+
+void clearDaemonError() {
+  _daemonError = null;
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -144,14 +152,16 @@ Future<void> main() async {
     _log.warning('Vault probe failed (non-fatal)');
   }
 
-  runApp(DevicePreview(
-    enabled: !kReleaseMode,
-    builder: (context) => FuegoApp(
-      backendReady: _backendReady.future,
-      vaultService: _vaultService,
-      securityService: _securityService,
+  runApp(
+    DevicePreview(
+      enabled: !kReleaseMode,
+      builder: (context) => FuegoApp(
+        backendReady: _backendReady.future,
+        vaultService: _vaultService,
+        securityService: _securityService,
+      ),
     ),
-  ));
+  );
 
   _startBackend();
 }
@@ -222,9 +232,7 @@ class _FuegoAppState extends State<FuegoApp> with WidgetsBindingObserver {
         ],
         child: MultiBlocProvider(
           providers: [
-            BlocProvider<AuthCubit>(
-              create: (_) => AuthCubit()..initialize(),
-            ),
+            BlocProvider<AuthCubit>(create: (_) => AuthCubit()..initialize()),
             BlocProvider<WalletCubit>(
               create: (_) => WalletCubit(
                 daemon,
@@ -239,27 +247,29 @@ class _FuegoAppState extends State<FuegoApp> with WidgetsBindingObserver {
                   CdCubit(rpcService, backendReady: widget.backendReady),
             ),
             BlocProvider<HearthCubit>(
-              create: (_) => HearthCubit(hearth.FuegoDaemonClient(
-                host: nodeConnection.remoteHost,
-                networkConfig: _activeConfig,
-              )),
+              create: (_) => HearthCubit(
+                hearth.FuegoDaemonClient(
+                  host: nodeConnection.remoteHost,
+                  networkConfig: _activeConfig,
+                ),
+              ),
             ),
             BlocProvider<DexCubit>(
               create: (_) {
                 final dex = DexCubit();
                 // Always hit local wallet proxy once backend is up.
-                unawaited(widget.backendReady.then((_) {
-                  final ep = nodeConnection.lastEndpoints;
-                  final host = ep?.walletHost ?? '127.0.0.1';
-                  final port = ep?.walletPort ?? _backendPort;
-                  return dex.init(host: host, port: port);
-                }));
+                unawaited(
+                  widget.backendReady.then((_) {
+                    final ep = nodeConnection.lastEndpoints;
+                    final host = ep?.walletHost ?? '127.0.0.1';
+                    final port = ep?.walletPort ?? _backendPort;
+                    return dex.init(host: host, port: port);
+                  }),
+                );
                 return dex;
               },
             ),
-            BlocProvider<MiningCubit>(
-              create: (_) => MiningCubit(),
-            ),
+            BlocProvider<MiningCubit>(create: (_) => MiningCubit()),
           ],
           child: MaterialApp(
             title: 'Fuego',

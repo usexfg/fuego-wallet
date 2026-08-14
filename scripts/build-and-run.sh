@@ -57,116 +57,33 @@ fi
 
 cd ..
 
-print_status "Building Rust backend (fuego_walletd)..."
-cargo build --release --manifest-path rust-fuego-wallet/core/Cargo.toml || print_fail "cargo build failed"
+# ── Step 2: Build Rust wallet backend ──
+print_status "Step 2: Building Rust wallet backend..."
+cargo build --manifest-path rust-fuego-wallet/Cargo.toml --release --package rust_fuego_wallet
+print_success "Rust wallet backend built at rust-fuego-wallet/target/release/fuego_walletd"
 
-# ── Step 2: Build Flutter app ──
-print_status "Step 2: Building Flutter app..."
+# ── Step 3: Build Flutter app ──
+print_status "Step 3: Building Flutter app..."
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
     flutter build macos --release
     APP_PATH="build/macos/Build/Products/Release/fuego_wallet.app"
-    BIN_PATH="$APP_PATH/Contents/MacOS"
-    RES_PATH="$APP_PATH/Contents/Resources/bin"
-    mkdir -p "$BIN_PATH" "$RES_PATH"
 
-    # Bundle unified daemon into app (if the C++ build exists)
-    if [ -f "$ROOT/xfgo/build/src/unified" ]; then
-        print_status "Bundling unified daemon into app..."
-        cp "$ROOT/xfgo/build/src/unified" "$BIN_PATH/"
-        chmod +x "$BIN_PATH/unified"
-        print_success "Unified daemon bundled at: $BIN_PATH/unified"
-    else
-        print_status "Unified daemon not built (C++ xfgo build missing) — skipping (Rust walletd covers it)"
-    fi
-
-    # Bundle Rust walletd + fuegod — REQUIRED for local mode
-    print_status "Bundling Rust walletd + fuegod into app..."
-    WALLETD=""
-    for c in "$ROOT/rust-fuego-wallet/target/release/fuego_walletd" "$ROOT/rust-fuego-wallet/target/debug/fuego_walletd"; do
-        if [ -x "$c" ]; then WALLETD="$c"; break; fi
-    done
-    FUEGOD=""
-    for c in "$ROOT/rust-fuego-wallet/target/release/fuegod" "$ROOT/xfgo/build/src/fuegod" "$ROOT/rust-fuego-wallet/target/debug/fuegod"; do
-        if [ -x "$c" ]; then FUEGOD="$c"; break; fi
-    done
-    if [ -n "$WALLETD" ]; then
-        cp "$WALLETD" "$BIN_PATH/fuego_walletd"
-        cp "$WALLETD" "$RES_PATH/fuego_walletd"
-        chmod +x "$BIN_PATH/fuego_walletd" "$RES_PATH/fuego_walletd"
-        print_success "fuego_walletd bundled"
-    else
-        print_fail "fuego_walletd not built — run: cargo build --release --manifest-path rust-fuego-wallet/core/Cargo.toml"
-        exit 1
-    fi
-    if [ -n "$FUEGOD" ]; then
-        cp "$FUEGOD" "$BIN_PATH/fuegod"
-        cp "$FUEGOD" "$RES_PATH/fuegod"
-        chmod +x "$BIN_PATH/fuegod" "$RES_PATH/fuegod"
-        print_success "fuegod bundled"
-    else
-        print_fail "fuegod not built — bundle will fail in local mode"
-        exit 1
-    fi
-    SWAPD=""
-    for c in "$ROOT/xfgo/build/src/xfg-swapd" "$ROOT/xfgo/build/release/src/xfg-swapd"; do
-        if [ -x "$c" ]; then SWAPD="$c"; break; fi
-    done
-    if [ -n "$SWAPD" ]; then
-        cp "$SWAPD" "$BIN_PATH/xfg-swapd"
-        cp "$SWAPD" "$RES_PATH/xfg-swapd"
-        chmod +x "$BIN_PATH/xfg-swapd" "$RES_PATH/xfg-swapd"
-        print_success "xfg-swapd bundled"
-    else
-        print_warn "xfg-swapd not built — cross-chain swaps unavailable (build xfgo 'SwapDaemon' target)"
-    fi
-
-    # Bundle homebrew dylibs the C++ daemons link against so the app runs
-    # on machines without brew.
-    print_status "Bundling daemon dylibs into app..."
-    "$ROOT/scripts/bundle-macos-dylibs.sh" "$APP_PATH"
+    # Bundle unified daemon into app
+    print_status "Bundling unified daemon into app..."
+    cp xfgo/build/src/unified "$APP_PATH/Contents/MacOS/"
+    chmod +x "$APP_PATH/Contents/MacOS/unified"
+    print_success "Unified daemon bundled at: $APP_PATH/Contents/MacOS/unified"
 else
     flutter build linux --release
     APP_PATH="build/linux/x64/release/bundle"
-    if [ -f "$ROOT/xfgo/build/src/unified" ]; then
-        cp "$ROOT/xfgo/build/src/unified" "$APP_PATH/"
-        chmod +x "$APP_PATH/unified"
-        print_success "Unified daemon bundled at: $APP_PATH/unified"
-    fi
-    WALLETD=""
-    for c in "$ROOT/rust-fuego-wallet/target/release/fuego_walletd" "$ROOT/rust-fuego-wallet/target/debug/fuego_walletd"; do
-        if [ -x "$c" ]; then WALLETD="$c"; break; fi
-    done
-    FUEGOD=""
-    for c in "$ROOT/rust-fuego-wallet/target/release/fuegod" "$ROOT/xfgo/build/src/fuegod" "$ROOT/rust-fuego-wallet/target/debug/fuegod"; do
-        if [ -x "$c" ]; then FUEGOD="$c"; break; fi
-    done
-    if [ -n "$WALLETD" ]; then
-        cp "$WALLETD" "$APP_PATH/fuego_walletd" && chmod +x "$APP_PATH/fuego_walletd"
-    else
-        print_fail "fuego_walletd not built — run: cargo build --release --manifest-path rust-fuego-wallet/core/Cargo.toml"
-        exit 1
-    fi
-    if [ -n "$FUEGOD" ]; then
-        cp "$FUEGOD" "$APP_PATH/fuegod" && chmod +x "$APP_PATH/fuegod"
-    else
-        print_fail "fuegod not built — bundle will fail in local mode"
-        exit 1
-    fi
-    SWAPD=""
-    for c in "$ROOT/xfgo/build/src/xfg-swapd" "$ROOT/xfgo/build/release/src/xfg-swapd"; do
-        if [ -x "$c" ]; then SWAPD="$c"; break; fi
-    done
-    if [ -n "$SWAPD" ]; then
-        cp "$SWAPD" "$APP_PATH/xfg-swapd" && chmod +x "$APP_PATH/xfg-swapd"
-        print_success "xfg-swapd bundled"
-    else
-        print_warn "xfg-swapd not built — cross-chain swaps unavailable (build xfgo 'SwapDaemon' target)"
-    fi
+    cp xfgo/build/src/unified "$APP_PATH/"
+    chmod +x "$APP_PATH/unified"
+    print_success "Unified daemon bundled at: $APP_PATH/unified"
 fi
 
-# ── Step 3: Run app ──
-print_status "Step 3: Running app..."
+# ── Step 4: Run app ──
+print_status "Step 4: Running app..."
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
     echo ""
@@ -174,8 +91,8 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     echo "Run manually:"
     echo "  open \"$APP_PATH\""
     echo ""
-    echo "Or run fuego_walletd standalone to test local mode:"
-    echo "  $APP_PATH/Contents/MacOS/fuego_walletd -P 18189 serve --daemon-host 127.0.0.1 --daemon-port 18180 --local"
+    echo "Or run the unified daemon standalone to test:"
+    echo "  $APP_PATH/Contents/MacOS/unified --bind-port 18189 --container-file /tmp/fuego_wallet --container-password test123 --local"
     echo ""
     echo "Then test connectivity:"
     echo "  curl http://127.0.0.1:18189/health"
@@ -185,8 +102,8 @@ else
     echo "Run the app:"
     echo "  $APP_PATH/fuego_wallet"
     echo ""
-    echo "Or test fuego_walletd standalone:"
-    echo "  $APP_PATH/fuego_walletd -P 18189 serve --daemon-host 127.0.0.1 --daemon-port 18180 --local"
+    echo "Or test unified daemon standalone:"
+    echo "  $APP_PATH/unified --bind-port 18189 --container-file /tmp/fuego_wallet --container-password test123 --local"
 fi
 
 print_success "Build complete"

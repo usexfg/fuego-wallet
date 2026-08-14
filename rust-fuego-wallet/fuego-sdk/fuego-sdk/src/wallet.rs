@@ -1,5 +1,9 @@
 use crate::error::{Result, SdkError};
-use crate::scanner::UtxoScanner;
+use crate::scanner::{
+    CommitmentEntry, HistoryEntry, ScannerStateSnapshot, UtxoEntry, UtxoScanner, WalletKeys,
+};
+use crate::serialization::TransactionPrefix;
+use crate::transaction_builder::{BuiltTransaction, DecoyEntry};
 use crate::types::*;
 use crate::vault::WalletVault;
 use crate::chain::{ChainSpv, PaymentProof};
@@ -65,21 +69,98 @@ impl Wallet {
         self.scanner.height()
     }
 
-    pub fn scan_block(&self, block: &Block) -> Result<Vec<Transaction>> {
-        self.scanner.scan_block(block)
+    pub fn wallet_keys(&self) -> WalletKeys {
+        self.scanner.wallet_keys()
     }
 
-    pub fn build_transaction(&self, to: &Address, amount: u64, fee: u64) -> Result<Transaction> {
-        self.scanner.build_transaction(to, amount, fee)
+    pub fn scan_tx_prefix(
+        &self,
+        tx_hash: &[u8; 32],
+        prefix: &TransactionPrefix,
+        block_height: u64,
+    ) -> Result<(u64, u64)> {
+        self.scanner.scan_tx_prefix(tx_hash, prefix, block_height)
     }
 
-    pub fn build_alias_transaction(&mut self, alias: &str, fee: u64) -> Result<Transaction> {
-        self.scanner.build_alias_transaction(alias, fee)
+    pub fn attach_global_indices(&self, tx_hash: &[u8; 32], indices: &[u64]) {
+        self.scanner.attach_global_indices(tx_hash, indices);
     }
 
+    pub fn select_for_send(
+        &self,
+        total_needed: u64,
+        rng: &mut impl rand::RngCore,
+    ) -> Result<Vec<UtxoEntry>> {
+        self.scanner.select_for_send(total_needed, rng)
+    }
 
-    pub fn get_transactions(&self, limit: usize) -> Vec<Transaction> {
-        self.scanner.transaction_history(limit)
+    pub fn build_with_selection(
+        &self,
+        selected: &[UtxoEntry],
+        destinations: &[(Address, u64)],
+        fee: u64,
+        mixin: usize,
+        decoys: &[Vec<DecoyEntry>],
+        rng: &mut impl rand::RngCore,
+    ) -> Result<BuiltTransaction> {
+        self.scanner
+            .build_with_selection(selected, destinations, fee, mixin, decoys, rng)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn build_with_selection_ext(
+        &self,
+        selected: &[UtxoEntry],
+        destinations: &[(Address, u64)],
+        fee: u64,
+        mixin: usize,
+        decoys: &[Vec<DecoyEntry>],
+        unlock_time: u64,
+        extra_extra: &[u8],
+        rng: &mut impl rand::RngCore,
+    ) -> Result<BuiltTransaction> {
+        self.scanner.build_with_selection_ext(
+            selected,
+            destinations,
+            fee,
+            mixin,
+            decoys,
+            unlock_time,
+            extra_extra,
+            rng,
+        )
+    }
+
+    pub fn deposits(&self) -> Vec<CommitmentEntry> {
+        self.scanner.deposits()
+    }
+
+    pub fn heat_outputs(&self) -> Vec<CommitmentEntry> {
+        self.scanner.heat_outputs()
+    }
+
+    pub fn reserve_pending(&self, key_images: &[[u8; 32]]) {
+        self.scanner.reserve_pending(key_images);
+    }
+
+    pub fn snapshot_state(&self) -> ScannerStateSnapshot {
+        self.scanner.snapshot()
+    }
+
+    pub fn restore_state(&self, snapshot: &ScannerStateSnapshot) {
+        self.scanner.restore(snapshot);
+    }
+
+    pub fn get_transactions(&self, limit: usize) -> Vec<HistoryEntry> {
+        self.scanner.history(limit)
+    }
+
+    pub fn utxos(&self) -> Vec<UtxoEntry> {
+        self.scanner.utxos()
+    }
+
+    pub fn set_height(&self, height: u64) {
+        self.scanner.set_height(height);
     }
 
     pub fn add_guardian(&self, _address: Address) -> Result<()> {

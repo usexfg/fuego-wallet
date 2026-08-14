@@ -39,6 +39,7 @@ struct RpcErrorDetail {
 fn is_fuegod_method(method: &str) -> bool {
     matches!(method,
         "getinfo" | "getheight" | "getblockcount" | "on_getblockhash" | "getblock" |
+        "getcurrencyid" |
         "getlastblockheader" | "getblockheaderbyhash" | "getblockheaderbyheight" |
         "peers" | "feeaddress" | "getethereal" | "paymentid" |
         "gettransactions" | "sendrawtransaction" |
@@ -190,7 +191,7 @@ async fn proxy_to_fuegod(fuegod_url: &str, body: &serde_json::Value) -> Result<s
         }
         "getcdoffers" | "submitcd" | "cancelcd" | "estimate_cd_yield" |
         "cd::market_list" | "cd::sell" | "cd::buy" | "cd::cancel_listing" | "cd::apy" |
-        "getswapoffers" | "getswapprice" | "getswaptrades" |
+        "getcurrencyid" | "getswapoffers" | "getswapprice" | "getswaptrades" |
         "submitswap" | "cancelswap" | "requestswap" |
         "getactiveswaps" | "getswapstatus" | "verify_payment" | "htlc_create_hash_lock" | "htlc_build_script" |
         "initiate" | "accept" | "processswap" | "refundswap" |
@@ -220,7 +221,7 @@ async fn proxy_to_fuegod(fuegod_url: &str, body: &serde_json::Value) -> Result<s
 
 async fn handle_wallet_method(
     wallet: &Mutex<WalletService>,
-    fuegod_url: &str,
+    _fuegod_url: &str,
     method: &str,
     params: &serde_json::Value,
 ) -> Result<serde_json::Value, String> {
@@ -254,10 +255,13 @@ async fn handle_wallet_method(
             let txs = wallet.get_transactions(100).await;
             let items: Vec<serde_json::Value> = txs.iter().map(|tx| {
                 serde_json::json!({
-                    "transactionHash": hex::encode(tx.hash),
+                    "transactionHash": hex::encode(tx.tx_hash),
                     "fee": tx.fee,
-                    "blockIndex": 0,
-                    "amount": tx.outputs.iter().map(|o| o.amount as i64).sum::<i64>(),
+                    "blockIndex": tx.block_height,
+                    "amount": match tx.direction {
+                        fuego_sdk::scanner::HistoryDirection::Incoming => tx.amount as i64,
+                        fuego_sdk::scanner::HistoryDirection::Outgoing => -(tx.amount as i64),
+                    },
                     "transfers": [],
                 })
             }).collect();
@@ -267,24 +271,33 @@ async fn handle_wallet_method(
             let destinations = params.get("destinations")
                 .and_then(|d| d.as_array())
                 .ok_or("missing destinations")?;
-            let dest = destinations.first()
-                .ok_or("empty destinations")?;
-            let address = dest.get("address")
-                .and_then(|a| a.as_str())
-                .ok_or("missing address")?;
-            let amount = dest.get("amount")
-                .and_then(|a| a.as_u64())
-                .ok_or("missing amount")?;
+            let mut dests: Vec<(String, u64)> = Vec::with_capacity(destinations.len());
+            for dest in destinations {
+                let address = dest.get("address")
+                    .and_then(|a| a.as_str())
+                    .ok_or("missing address")?
+                    .to_string();
+                let amount = dest.get("amount")
+                    .and_then(|a| a.as_u64())
+                    .ok_or("missing amount")?;
+                dests.push((address, amount));
+            }
+            if dests.is_empty() {
+                return Err("empty destinations".into());
+            }
             let fee = params.get("fee")
                 .and_then(|f| f.as_u64())
-                .unwrap_or(100_000);
+                .unwrap_or(0);
+            let anonymity = params.get("anonymity")
+                .and_then(|a| a.as_u64())
+                .unwrap_or(0) as u32;
 
             let wallet = wallet.lock().await;
-            let tx_hash = wallet.send_to_address(address, amount, fee).await
+            let tx_hash = wallet.send_transaction(&dests, fee, anonymity).await
                 .map_err(|e| format!("send failed: {}", e))?;
             Ok(serde_json::json!({
-                "transactionHash": hex::encode(tx_hash),
-                "txHash": hex::encode(tx_hash),
+                "transactionHash": tx_hash,
+                "txHash": tx_hash,
             }))
         }
         "register_alias" => {
@@ -316,44 +329,82 @@ async fn handle_wallet_method(
                 "cds": cds,
             }))
         }
-        "cd::create" | "cd::claim" => {
-            Err("Use create_cd / claim_cd instead".into())
-        }
-        "create_cd" => {
+        "cd::create" | "create_cd" => {
             let amount = params.get("amount")
-                .and_then(|a| a.as_str())
+                .and_then(|a| a.as_u64())
+                .or_else(|| params.get("amount").and_then(|a| a.as_str()).and_then(|s| s.parse().ok()))
                 .ok_or("missing amount")?;
             let duration_blocks = params.get("duration_blocks")
                 .and_then(|d| d.as_u64())
                 .ok_or("missing duration_blocks")?;
-            
-            let fuegod_body = serde_json::json!({
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "create_cd",
-                "params": {
-                    "amount": amount,
-                    "duration_blocks": duration_blocks,
-                }
-            });
-            let result = proxy_to_fuegod(fuegod_url, &fuegod_body).await?;
-            Ok(result)
+            let wallet = wallet.lock().await;
+            let tx_hash = wallet.create_cd(amount, duration_blocks as u32).await
+                .map_err(|e| format!("create_cd failed: {}", e))?;
+            Ok(serde_json::json!({
+                "transactionHash": tx_hash,
+                "txHash": tx_hash,
+            }))
         }
-        "claim_cd" => {
-            let cd_id = params.get("cd_id")
-                .and_then(|c| c.as_str())
-                .ok_or("missing cd_id")?;
-            
-            let fuegod_body = serde_json::json!({
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "withdraw_cd",
-                "params": {
-                    "deposit_id": cd_id,
-                }
-            });
-            let result = proxy_to_fuegod(fuegod_url, &fuegod_body).await?;
-            Ok(result)
+        "cd::claim" | "claim_cd" => {
+            let wallet = wallet.lock().await;
+            let tx_hash = wallet.claim_cd().await
+                .map_err(|e| format!("claim_cd failed: {}", e))?;
+            Ok(serde_json::json!({
+                "transactionHash": tx_hash,
+                "txHash": tx_hash,
+            }))
+        }
+        "create_afk_lock" => {
+            let amount = params.get("amount")
+                .and_then(|a| a.as_u64())
+                .ok_or("missing amount")?;
+            let timeout_hours = params.get("timeout_hours")
+                .and_then(|t| t.as_u64())
+                .ok_or("missing timeout_hours")?;
+            let pair = params.get("pair")
+                .and_then(|p| p.as_u64())
+                .unwrap_or(0);
+            let wallet = wallet.lock().await;
+            let (lock_id, adaptor_point, pre_sig, hash_lock) =
+                wallet.create_afk_lock(amount, timeout_hours as u32, pair as u8).await
+                    .map_err(|e| format!("create_afk_lock failed: {}", e))?;
+            Ok(serde_json::json!({
+                "lockId": lock_id,
+                "adaptorPoint": adaptor_point,
+                "preSig": pre_sig,
+                "hashLock": hash_lock,
+            }))
+        }
+        "mint_heat" => {
+            let xfg_burned = params.get("xfg_burned")
+                .and_then(|a| a.as_u64())
+                .or_else(|| params.get("amount").and_then(|a| a.as_u64()))
+                .ok_or("missing xfg_burned")?;
+            let wallet = wallet.lock().await;
+            let tx_hash = wallet.mint_heat(xfg_burned).await
+                .map_err(|e| format!("mint_heat failed: {}", e))?;
+            Ok(serde_json::json!({
+                "transactionHash": tx_hash,
+                "txHash": tx_hash,
+            }))
+        }
+        "heat_cd" => {
+            let amount = params.get("amount")
+                .and_then(|a| a.as_u64())
+                .ok_or("missing amount")?;
+            let epochs = params.get("epochs")
+                .and_then(|e| e.as_u64())
+                .ok_or("missing epochs")?;
+            let banking_fee = params.get("banking_fee")
+                .and_then(|f| f.as_u64())
+                .unwrap_or(0);
+            let wallet = wallet.lock().await;
+            let tx_hash = wallet.heat_cd(amount, epochs as u32, banking_fee).await
+                .map_err(|e| format!("heat_cd failed: {}", e))?;
+            Ok(serde_json::json!({
+                "transactionHash": tx_hash,
+                "txHash": tx_hash,
+            }))
         }
         _ => Err(format!("unknown wallet method: {}", method)),
     }

@@ -1,4 +1,8 @@
-use fuego_crypto::{PublicKey, generate_key_derivation, derive_public_key, generate_key_image};
+//! JSON-based output scanning over fuegod `/gettransactions` responses.
+//! The live wallet path uses the SDK scanner over `/queryblockslite.bin`;
+//! these helpers exist for RPC-based tooling.
+
+use fuego_crypto::{PublicKey, derive_public_key, generate_key_derivation, generate_key_image, derive_secret_key};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -19,23 +23,44 @@ pub struct ScanResult {
 }
 
 /// Extract the tx public key from a transaction's extra field.
-/// Standard CryptoNote: tag 0x01 followed by 32 bytes.
+/// Standard CryptoNote: tag 0x01 (varint) followed by 32 bytes.
 fn extract_tx_public_key(extra_hex: &str) -> Option<[u8; 32]> {
     let bytes = hex::decode(extra_hex).ok()?;
-    for i in 0..bytes.len().saturating_sub(33) {
-        if bytes[i] == 0x01 {
-            let mut key = [0u8; 32];
-            key.copy_from_slice(&bytes[i + 1..i + 33]);
-            return Some(key);
+    let mut pos = 0usize;
+    while pos < bytes.len() {
+        // tags are single-byte varints for 0x00/0x01/0x02
+        match bytes[pos] {
+            0x01 => {
+                if pos + 33 > bytes.len() {
+                    return None;
+                }
+                let mut key = [0u8; 32];
+                key.copy_from_slice(&bytes[pos + 1..pos + 33]);
+                return Some(key);
+            }
+            0x00 => pos += 1,
+            0x02 => {
+                if pos + 1 >= bytes.len() {
+                    return None;
+                }
+                let len = bytes[pos + 1] as usize;
+                if pos + 2 + len > bytes.len() {
+                    return None;
+                }
+                pos += 2 + len;
+            }
+            _ => return None,
         }
     }
     None
 }
 
-/// Scan a batch of transactions for outputs belonging to our keys.
+/// Scan a batch of transactions for outputs belonging to our keys using the
+/// standard CryptoNote discovery rule: P == Hs(a·R || i) · G + B.
 pub fn scan_transactions(
     view_secret: &[u8; 32],
     spend_public: &[u8; 32],
+    spend_secret: &[u8; 32],
     transactions: &[serde_json::Value],
     block_height: u64,
 ) -> Vec<OwnedOutput> {
@@ -51,7 +76,7 @@ pub fn scan_transactions(
             None => continue,
         };
 
-        // Compute key derivation
+        // Compute key derivation: D = a * R
         let tx_pub_key = PublicKey(tx_pub);
         let derivation = match generate_key_derivation(&tx_pub_key, view_secret) {
             Some(d) => d,
@@ -67,28 +92,48 @@ pub fn scan_transactions(
                 .or_else(|| output.get("amount").and_then(|a| a.as_str()).and_then(|s| s.parse().ok()))
                 .unwrap_or(0);
 
-            // Derive expected public key for this output index
-            let expected = derive_public_key(&derivation, i as u64);
+            // P == Hs(D || i) * G + B
+            let expected = match derive_public_key(&derivation, i as u64, spend_public) {
+                Some(p) => p,
+                None => continue,
+            };
+            let actual = output.get("target")
+                .and_then(|t| t.get("key"))
+                .or_else(|| output.get("target"))
+                .and_then(|k| k.as_str())
+                .and_then(|s| hex::decode(s).ok());
+            let actual = match actual {
+                Some(v) if v.len() == 32 => {
+                    let mut k = [0u8; 32];
+                    k.copy_from_slice(&v);
+                    k
+                }
+                _ => continue,
+            };
 
-            // Check if it matches our spend public key
-            if expected.0 == *spend_public {
-                // Generate key image for spent detection
-                let spend_key = PublicKey(*spend_public);
-                let ki = generate_key_image(&spend_key, view_secret);
-
-                let tx_hash = tx_wrapper.get("tx_hash")
-                    .and_then(|h| h.as_str())
-                    .unwrap_or("")
-                    .to_string();
-
-                outputs.push(OwnedOutput {
-                    amount,
-                    output_index: i as u32,
-                    tx_hash,
-                    block_height,
-                    key_image: hex::encode(ki.0),
-                });
+            if expected.0 != actual {
+                continue;
             }
+
+            // x = b + Hs(D || i); I = x * H_p(P)
+            let secret = match derive_secret_key(&derivation, i as u64, spend_secret) {
+                Some(s) => s,
+                None => continue,
+            };
+            let ki = generate_key_image(&PublicKey(actual), &secret);
+
+            let tx_hash = tx_wrapper.get("tx_hash")
+                .and_then(|h| h.as_str())
+                .unwrap_or("")
+                .to_string();
+
+            outputs.push(OwnedOutput {
+                amount,
+                output_index: i as u32,
+                tx_hash,
+                block_height,
+                key_image: hex::encode(ki.0),
+            });
         }
     }
 

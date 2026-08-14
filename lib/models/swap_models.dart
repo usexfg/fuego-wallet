@@ -22,8 +22,10 @@ enum SwapPairSdk {
   final String displayName;
   const SwapPairSdk(this.id, this.ticker, this.displayName);
 
-  static SwapPairSdk fromId(int id) =>
-      SwapPairSdk.values.firstWhere((p) => p.id == id, orElse: () => SwapPairSdk.eth);
+  static SwapPairSdk fromId(int id) => SwapPairSdk.values.firstWhere(
+    (p) => p.id == id,
+    orElse: () => SwapPairSdk.eth,
+  );
 
   static SwapPairSdk? tryFromId(int id) {
     for (final p in SwapPairSdk.values) {
@@ -54,11 +56,23 @@ enum ChainTypeSdk {
   final String name;
   const ChainTypeSdk(this.id, this.symbol, this.name);
 
-  bool get isEvm => this == ChainTypeSdk.ethereum || this == ChainTypeSdk.arbitrum || this == ChainTypeSdk.base || this == ChainTypeSdk.bnb || this == ChainTypeSdk.polygon;
-  bool get isBtcFamily => this == ChainTypeSdk.bitcoinCash || this == ChainTypeSdk.komodo || this == ChainTypeSdk.decred || this == ChainTypeSdk.bitcoin || this == ChainTypeSdk.litecoin;
+  bool get isEvm =>
+      this == ChainTypeSdk.ethereum ||
+      this == ChainTypeSdk.arbitrum ||
+      this == ChainTypeSdk.base ||
+      this == ChainTypeSdk.bnb ||
+      this == ChainTypeSdk.polygon;
+  bool get isBtcFamily =>
+      this == ChainTypeSdk.bitcoinCash ||
+      this == ChainTypeSdk.komodo ||
+      this == ChainTypeSdk.decred ||
+      this == ChainTypeSdk.bitcoin ||
+      this == ChainTypeSdk.litecoin;
 
-  static ChainTypeSdk fromId(int id) =>
-      ChainTypeSdk.values.firstWhere((c) => c.id == id, orElse: () => ChainTypeSdk.fuego);
+  static ChainTypeSdk fromId(int id) => ChainTypeSdk.values.firstWhere(
+    (c) => c.id == id,
+    orElse: () => ChainTypeSdk.fuego,
+  );
 }
 
 /// Swap state machine states.
@@ -71,8 +85,10 @@ enum SwapStateSdk {
   completed,
   cancelled;
 
-  static SwapStateSdk fromString(String s) =>
-      SwapStateSdk.values.firstWhere((v) => v.name == s, orElse: () => SwapStateSdk.open);
+  static SwapStateSdk fromString(String s) => SwapStateSdk.values.firstWhere(
+    (v) => v.name == s,
+    orElse: () => SwapStateSdk.open,
+  );
 }
 
 /// Swap offer on the orderbook.
@@ -101,26 +117,27 @@ class SwapOfferSdk {
   String get pairLabel => pair.displayName;
 
   factory SwapOfferSdk.fromJson(Map<String, dynamic> j) => SwapOfferSdk(
-        offerId: j['offerId'] as String? ?? j['offer_id'] as String? ?? '',
-        makerPubKey: j['makerPubKey'] as String? ?? j['maker_pubkey'] as String? ?? '',
-        pair: SwapPairSdk.fromId(j['pair'] as int? ?? 0),
-        sellXfg: j['sellXfg'] as bool? ?? j['sell_xfg'] as bool? ?? true,
-        amount: j['amount'] as int? ?? 0,
-        rateNum: j['rateNum'] as int? ?? j['rate'] as int? ?? 0,
-        createdAt: j['createdAt'] as int? ?? j['created_at'] as int? ?? 0,
-        expiresAt: j['expiresAt'] as int? ?? j['expires_at'] as int? ?? 0,
-      );
+    offerId: j['offerId'] as String? ?? j['offer_id'] as String? ?? '',
+    makerPubKey:
+        j['makerPubKey'] as String? ?? j['maker_pubkey'] as String? ?? '',
+    pair: SwapPairSdk.fromId(j['pair'] as int? ?? 0),
+    sellXfg: j['sellXfg'] as bool? ?? j['sell_xfg'] as bool? ?? true,
+    amount: j['amount'] as int? ?? 0,
+    rateNum: j['rateNum'] as int? ?? j['rate'] as int? ?? 0,
+    createdAt: j['createdAt'] as int? ?? j['created_at'] as int? ?? 0,
+    expiresAt: j['expiresAt'] as int? ?? j['expires_at'] as int? ?? 0,
+  );
 
   Map<String, dynamic> toJson() => {
-        'offerId': offerId,
-        'makerPubKey': makerPubKey,
-        'pair': pair.id,
-        'sellXfg': sellXfg,
-        'amount': amount,
-        'rateNum': rateNum,
-        'createdAt': createdAt,
-        'expiresAt': expiresAt,
-      };
+    'offerId': offerId,
+    'makerPubKey': makerPubKey,
+    'pair': pair.id,
+    'sellXfg': sellXfg,
+    'amount': amount,
+    'rateNum': rateNum,
+    'createdAt': createdAt,
+    'expiresAt': expiresAt,
+  };
 }
 
 /// Active swap status.
@@ -146,15 +163,16 @@ class SwapStatusSdk {
   });
 
   factory SwapStatusSdk.fromJson(Map<String, dynamic> j) => SwapStatusSdk(
-        swapId: j['swapId'] as String? ?? j['swap_id'] as String? ?? '',
-        state: SwapStateSdk.fromString(j['state'] as String? ?? 'open'),
-        pair: SwapPairSdk.fromId(j['pair'] as int? ?? 0),
-        amount: j['amount'] as int? ?? 0,
-        makerPubkey: j['makerPubkey'] as String? ?? j['maker_pubkey'] as String? ?? '',
-        takerPubkey: j['takerPubkey'] as String? ?? j['taker_pubkey'] as String?,
-        createdAt: j['createdAt'] as int? ?? j['created_at'] as int? ?? 0,
-        updatedAt: j['updatedAt'] as int? ?? j['updated_at'] as int? ?? 0,
-      );
+    swapId: j['swapId'] as String? ?? j['swap_id'] as String? ?? '',
+    state: SwapStateSdk.fromString(j['state'] as String? ?? 'open'),
+    pair: SwapPairSdk.fromId(j['pair'] as int? ?? 0),
+    amount: j['amount'] as int? ?? 0,
+    makerPubkey:
+        j['makerPubkey'] as String? ?? j['maker_pubkey'] as String? ?? '',
+    takerPubkey: j['takerPubkey'] as String? ?? j['taker_pubkey'] as String?,
+    createdAt: j['createdAt'] as int? ?? j['created_at'] as int? ?? 0,
+    updatedAt: j['updatedAt'] as int? ?? j['updated_at'] as int? ?? 0,
+  );
 }
 
 /// Historical trade record.
@@ -176,13 +194,13 @@ class SwapTradeSdk {
   });
 
   factory SwapTradeSdk.fromJson(Map<String, dynamic> j) => SwapTradeSdk(
-        tradeId: j['tradeId'] as String? ?? j['trade_id'] as String? ?? '',
-        pair: SwapPairSdk.fromId(j['pair'] as int? ?? 0),
-        sellXfg: j['sellXfg'] as bool? ?? j['sell_xfg'] as bool? ?? true,
-        amount: j['amount'] as int? ?? 0,
-        price: j['price'] as int? ?? 0,
-        timestamp: j['timestamp'] as int? ?? 0,
-      );
+    tradeId: j['tradeId'] as String? ?? j['trade_id'] as String? ?? '',
+    pair: SwapPairSdk.fromId(j['pair'] as int? ?? 0),
+    sellXfg: j['sellXfg'] as bool? ?? j['sell_xfg'] as bool? ?? true,
+    amount: j['amount'] as int? ?? 0,
+    price: j['price'] as int? ?? 0,
+    timestamp: j['timestamp'] as int? ?? 0,
+  );
 }
 
 /// Price data for a trading pair.
@@ -206,14 +224,14 @@ class SwapPriceSdk {
   });
 
   factory SwapPriceSdk.fromJson(Map<String, dynamic> j) => SwapPriceSdk(
-        pair: SwapPairSdk.fromId(j['pair'] as int? ?? 0),
-        bid: j['bid']?.toString() ?? '0',
-        ask: j['ask']?.toString() ?? '0',
-        last: j['last']?.toString() ?? '0',
-        volume24h: j['volume_24h']?.toString() ?? j['volume24h']?.toString() ?? '0',
-        change24h: j['change_24h']?.toString() ?? j['change24h']?.toString() ?? '0',
-        status: j['status'] as String? ?? '',
-      );
+    pair: SwapPairSdk.fromId(j['pair'] as int? ?? 0),
+    bid: j['bid']?.toString() ?? '0',
+    ask: j['ask']?.toString() ?? '0',
+    last: j['last']?.toString() ?? '0',
+    volume24h: j['volume_24h']?.toString() ?? j['volume24h']?.toString() ?? '0',
+    change24h: j['change_24h']?.toString() ?? j['change24h']?.toString() ?? '0',
+    status: j['status'] as String? ?? '',
+  );
 }
 
 /// Orderbook level (bid or ask).
@@ -229,10 +247,10 @@ class OrderLevelSdk {
   });
 
   factory OrderLevelSdk.fromJson(Map<String, dynamic> j) => OrderLevelSdk(
-        price: j['price']?.toString() ?? '0',
-        amount: j['amount']?.toString() ?? '0',
-        count: j['count'] as int? ?? 0,
-      );
+    price: j['price']?.toString() ?? '0',
+    amount: j['amount']?.toString() ?? '0',
+    count: j['count'] as int? ?? j['orderCount'] as int? ?? 0,
+  );
 }
 
 /// Orderbook state snapshot.
@@ -249,18 +267,22 @@ class OrderBookStateSdk {
     required this.volume24h,
   });
 
-  factory OrderBookStateSdk.fromJson(Map<String, dynamic> j) => OrderBookStateSdk(
-        bids: (j['bids'] as List<dynamic>?)
-                ?.map((e) => OrderLevelSdk.fromJson(e as Map<String, dynamic>))
-                .toList() ??
-            [],
-        asks: (j['asks'] as List<dynamic>?)
-                ?.map((e) => OrderLevelSdk.fromJson(e as Map<String, dynamic>))
-                .toList() ??
-            [],
-        lastPrice: j['last_price']?.toString() ?? j['lastPrice']?.toString() ?? '0',
-        volume24h: j['volume_24h']?.toString() ?? j['volume24h']?.toString() ?? '0',
-      );
+  factory OrderBookStateSdk.fromJson(
+    Map<String, dynamic> j,
+  ) => OrderBookStateSdk(
+    bids:
+        (j['bids'] as List<dynamic>?)
+            ?.map((e) => OrderLevelSdk.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        [],
+    asks:
+        (j['asks'] as List<dynamic>?)
+            ?.map((e) => OrderLevelSdk.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        [],
+    lastPrice: j['last_price']?.toString() ?? j['lastPrice']?.toString() ?? '0',
+    volume24h: j['volume_24h']?.toString() ?? j['volume24h']?.toString() ?? '0',
+  );
 }
 
 /// HTLC hash lock result.
@@ -271,9 +293,9 @@ class HtlcHashLock {
   const HtlcHashLock({required this.preimage, required this.hash});
 
   factory HtlcHashLock.fromJson(Map<String, dynamic> j) => HtlcHashLock(
-        preimage: j['preimage'] as String? ?? '',
-        hash: j['hash'] as String? ?? '',
-      );
+    preimage: j['preimage'] as String? ?? '',
+    hash: j['hash'] as String? ?? '',
+  );
 }
 
 /// HTLC script build result.
@@ -285,10 +307,10 @@ class HtlcScript {
   const HtlcScript({required this.script, required this.ok, this.error});
 
   factory HtlcScript.fromJson(Map<String, dynamic> j) => HtlcScript(
-        script: j['script'] as String? ?? '',
-        ok: j['ok'] as bool? ?? false,
-        error: j['error'] as String?,
-      );
+    script: j['script'] as String? ?? '',
+    ok: j['ok'] as bool? ?? false,
+    error: j['error'] as String?,
+  );
 }
 
 /// Payment proof for cross-chain SPV verification.
@@ -324,37 +346,38 @@ class PaymentProofSdk {
   });
 
   factory PaymentProofSdk.fromJson(Map<String, dynamic> j) => PaymentProofSdk(
-        chain: ChainTypeSdk.fromId(j['chain_id'] as int? ?? 0),
-        txHash: j['tx_hash'] as String? ?? '',
-        amount: j['amount'] as int? ?? 0,
-        fromAddress: j['from_address'] as String? ?? '',
-        toAddress: j['to_address'] as String? ?? '',
-        confirmations: j['confirmations'] as int? ?? 0,
-        blockHeight: j['block_height'] as int? ?? 0,
-        blockHash: j['block_hash'] as String? ?? '',
-        merkleRoot: j['merkle_root'] as String? ?? '',
-        merkleProof: (j['merkle_proof'] as List<dynamic>?)
-                ?.map((e) => e.toString())
-                .toList() ??
-            [],
-        txIndex: j['tx_index'] as int? ?? 0,
-        totalTxs: j['total_txs'] as int? ?? 0,
-        verified: j['verified'] as bool? ?? false,
-      );
+    chain: ChainTypeSdk.fromId(j['chain_id'] as int? ?? 0),
+    txHash: j['tx_hash'] as String? ?? '',
+    amount: j['amount'] as int? ?? 0,
+    fromAddress: j['from_address'] as String? ?? '',
+    toAddress: j['to_address'] as String? ?? '',
+    confirmations: j['confirmations'] as int? ?? 0,
+    blockHeight: j['block_height'] as int? ?? 0,
+    blockHash: j['block_hash'] as String? ?? '',
+    merkleRoot: j['merkle_root'] as String? ?? '',
+    merkleProof:
+        (j['merkle_proof'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        [],
+    txIndex: j['tx_index'] as int? ?? 0,
+    totalTxs: j['total_txs'] as int? ?? 0,
+    verified: j['verified'] as bool? ?? false,
+  );
 
   Map<String, dynamic> toJson() => {
-        'chain_id': chain.id,
-        'tx_hash': txHash,
-        'amount': amount,
-        'from_address': fromAddress,
-        'to_address': toAddress,
-        'confirmations': confirmations,
-        'block_height': blockHeight,
-        'block_hash': blockHash,
-        'merkle_root': merkleRoot,
-        'merkle_proof': merkleProof,
-        'tx_index': txIndex,
-        'total_txs': totalTxs,
-        'verified': verified,
-      };
+    'chain_id': chain.id,
+    'tx_hash': txHash,
+    'amount': amount,
+    'from_address': fromAddress,
+    'to_address': toAddress,
+    'confirmations': confirmations,
+    'block_height': blockHeight,
+    'block_hash': blockHash,
+    'merkle_root': merkleRoot,
+    'merkle_proof': merkleProof,
+    'tx_index': txIndex,
+    'total_txs': totalTxs,
+    'verified': verified,
+  };
 }

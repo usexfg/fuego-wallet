@@ -115,32 +115,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 None => load_or_create_seed(&wallet_dir)?,
             };
 
-            let wallet_service = WalletService::new(seed, &actual_host, daemon_port)
+            let wallet_service = WalletService::new(seed, &daemon_url, wallet_dir.clone(), testnet)
                 .map_err(|e| format!("Failed to initialize SDK wallet: {}", e))?;
             let wallet_addr = wallet_service.address().await;
-            let sync_node = wallet_service.node.clone();
             let wallet = Arc::new(Mutex::new(wallet_service));
 
             log::info!("Wallet address: {}", wallet_addr);
 
-            // 3. Start background sync (100 blocks per batch, releases lock between)
-            tokio::spawn(async move {
-                log::info!("Starting background wallet sync...");
-                loop {
-                    match sync_node.lock().await.sync_batch(None, 100).await {
-                        Ok(0) => {
-                            tokio::time::sleep(std::time::Duration::from_secs(30)).await;
-                        }
-                        Ok(n) => {
-                            log::info!("Synced {} blocks", n);
-                        }
-                        Err(e) => {
-                            log::error!("Sync error: {}", e);
-                            tokio::time::sleep(std::time::Duration::from_secs(30)).await;
-                        }
-                    }
-                }
-            });
+            // 3. Start background sync (detached engine: never blocks the
+            // JSON-RPC handlers)
+            {
+                let service = wallet.clone();
+                tokio::spawn(async move {
+                    log::info!("Starting background wallet sync...");
+                    let engine = service.lock().await.sync_engine();
+                    engine.sync_loop().await;
+                });
+            }
 
             // 4. Start Axum server
             let bind = format!("{}:{}", cli.host, cli.port);

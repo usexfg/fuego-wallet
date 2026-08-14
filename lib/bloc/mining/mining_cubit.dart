@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../services/pool_mining_service.dart';
 
@@ -8,6 +9,7 @@ class MiningState {
   final int hashrate;
   final int sharesAccepted;
   final int sharesSubmitted;
+  final int coreCount;
   final String poolHost;
   final int poolPort;
   final String? error;
@@ -19,6 +21,7 @@ class MiningState {
     this.hashrate = 0,
     this.sharesAccepted = 0,
     this.sharesSubmitted = 0,
+    this.coreCount = 1,
     this.poolHost = 'loudmining.com',
     this.poolPort = 4200,
     this.error,
@@ -31,22 +34,23 @@ class MiningState {
     int? hashrate,
     int? sharesAccepted,
     int? sharesSubmitted,
+    int? coreCount,
     String? poolHost,
     int? poolPort,
     String? error,
     String? status,
-  }) =>
-      MiningState(
-        isMining: isMining ?? this.isMining,
-        isPoolMining: isPoolMining ?? this.isPoolMining,
-        hashrate: hashrate ?? this.hashrate,
-        sharesAccepted: sharesAccepted ?? this.sharesAccepted,
-        sharesSubmitted: sharesSubmitted ?? this.sharesSubmitted,
-        poolHost: poolHost ?? this.poolHost,
-        poolPort: poolPort ?? this.poolPort,
-        error: error,
-        status: status ?? this.status,
-      );
+  }) => MiningState(
+    isMining: isMining ?? this.isMining,
+    isPoolMining: isPoolMining ?? this.isPoolMining,
+    hashrate: hashrate ?? this.hashrate,
+    sharesAccepted: sharesAccepted ?? this.sharesAccepted,
+    sharesSubmitted: sharesSubmitted ?? this.sharesSubmitted,
+    coreCount: coreCount ?? this.coreCount,
+    poolHost: poolHost ?? this.poolHost,
+    poolPort: poolPort ?? this.poolPort,
+    error: error,
+    status: status ?? this.status,
+  );
 }
 
 class MiningCubit extends Cubit<MiningState> {
@@ -54,35 +58,64 @@ class MiningCubit extends Cubit<MiningState> {
   Timer? _refreshTimer;
   bool _poolAuthorized = false;
 
-  MiningCubit()
-      : _pool = PoolMiningService(),
-        super(const MiningState()) {
+  MiningCubit() : _pool = PoolMiningService(), super(const MiningState()) {
     _pool.onAuthorized = () {
       _poolAuthorized = true;
       if (!isClosed) emit(state.copyWith(status: 'mining'));
     };
   }
 
-  Future<void> startMining({required String walletAddress, String? poolHost, int? poolPort}) async {
+  List<int> get coreOptions {
+    final maxCores = Platform.numberOfProcessors.clamp(1, 64);
+    final options = <int>{1, 2, 4, 8, maxCores};
+    return options.where((value) => value <= maxCores).toList()..sort();
+  }
+
+  void setCoreCount(int cores) {
+    if (state.isMining || !coreOptions.contains(cores)) return;
+    emit(state.copyWith(coreCount: cores));
+  }
+
+  Future<void> startMining({
+    required String walletAddress,
+    String? poolHost,
+    int? poolPort,
+  }) async {
     if (state.isMining) return;
 
     _poolAuthorized = false;
     final host = poolHost ?? state.poolHost;
     final port = poolPort ?? state.poolPort;
-    emit(state.copyWith(poolHost: host, poolPort: port, status: 'connecting', error: null));
+    emit(
+      state.copyWith(
+        poolHost: host,
+        poolPort: port,
+        status: 'connecting',
+        error: null,
+      ),
+    );
 
     final ok = await _pool.start(
       walletAddress: walletAddress,
       poolHost: host,
       poolPort: port,
+      coreCount: state.coreCount,
     );
 
     if (ok) {
       emit(state.copyWith(isMining: true, status: 'connected', error: null));
       _refreshTimer?.cancel();
-      _refreshTimer = Timer.periodic(const Duration(seconds: 3), (_) => refreshStatus());
+      _refreshTimer = Timer.periodic(
+        const Duration(seconds: 3),
+        (_) => refreshStatus(),
+      );
     } else {
-      emit(state.copyWith(status: 'error', error: 'Failed to connect to ${host}:${port}'));
+      emit(
+        state.copyWith(
+          status: 'error',
+          error: 'Failed to connect to ${host}:${port}',
+        ),
+      );
     }
   }
 
@@ -98,12 +131,14 @@ class MiningCubit extends Cubit<MiningState> {
     if (!state.isMining) return;
     final h = _pool.hashrate;
     final shares = _pool.sharesAccepted;
-    emit(state.copyWith(
-      hashrate: h,
-      sharesAccepted: shares,
-      sharesSubmitted: shares,
-      status: _poolAuthorized ? 'mining' : 'connected',
-    ));
+    emit(
+      state.copyWith(
+        hashrate: h,
+        sharesAccepted: shares,
+        sharesSubmitted: shares,
+        status: _poolAuthorized ? 'mining' : 'connected',
+      ),
+    );
   }
 
   @override

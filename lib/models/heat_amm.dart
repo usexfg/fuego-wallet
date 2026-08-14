@@ -20,15 +20,15 @@ class HeatMetrics {
   });
 
   factory HeatMetrics.fromJson(Map<String, dynamic> json) => HeatMetrics(
-        supply: json['supply'] as String? ?? '0',
-        redemptionPrice: json['redemption_price'] as String? ?? '0',
-        treasury: json['treasury'] as String? ?? '0',
-        cdYield: json['cd_yield'] as String? ?? '0',
-        poolXfg: json['pool_xfg'] as String? ?? '0',
-        poolHeat: json['pool_heat'] as String? ?? '0',
-        piTarget: json['pi_target'] as String? ?? '0',
-        currentApy: (json['current_apy'] as num?)?.toDouble() ?? 0,
-      );
+    supply: json['supply'] as String? ?? '0',
+    redemptionPrice: json['redemption_price'] as String? ?? '0',
+    treasury: json['treasury'] as String? ?? '0',
+    cdYield: json['cd_yield'] as String? ?? '0',
+    poolXfg: json['pool_xfg'] as String? ?? '0',
+    poolHeat: json['pool_heat'] as String? ?? '0',
+    piTarget: json['pi_target'] as String? ?? '0',
+    currentApy: (json['current_apy'] as num?)?.toDouble() ?? 0,
+  );
 }
 
 class AmmQuote {
@@ -47,12 +47,12 @@ class AmmQuote {
   });
 
   factory AmmQuote.fromJson(Map<String, dynamic> json) => AmmQuote(
-        inputAmount: json['input_amount'] as String,
-        outputAmount: json['output_amount'] as String,
-        price: json['price'] as String,
-        fee: json['fee'] as String,
-        priceImpact: json['price_impact'] as String? ?? '0',
-      );
+    inputAmount: json['input_amount'] as String,
+    outputAmount: json['output_amount'] as String,
+    price: json['price'] as String,
+    fee: json['fee'] as String,
+    priceImpact: json['price_impact'] as String? ?? '0',
+  );
 }
 
 class PoolInfo {
@@ -60,20 +60,24 @@ class PoolInfo {
   final String heatReserve;
   final String spotPrice;
   final String totalLpShares;
+  final String volume24h;
 
   const PoolInfo({
     required this.xfgReserve,
     required this.heatReserve,
     required this.spotPrice,
     required this.totalLpShares,
+    this.volume24h = '0',
   });
 
   factory PoolInfo.fromJson(Map<String, dynamic> json) => PoolInfo(
-        xfgReserve: json['reserve_xfg'] as String? ?? '0',
-        heatReserve: json['reserve_heat'] as String? ?? '0',
-        spotPrice: json['spot_price'] as String? ?? '0',
-        totalLpShares: json['total_lp_shares'] as String? ?? '0',
-      );
+    xfgReserve: json['reserve_xfg'] as String? ?? '0',
+    heatReserve: json['reserve_heat'] as String? ?? '0',
+    spotPrice: json['spot_price'] as String? ?? '0',
+    totalLpShares: json['total_lp_shares'] as String? ?? '0',
+    volume24h:
+        json['volume_24h']?.toString() ?? json['volume24h']?.toString() ?? '0',
+  );
 }
 
 class LpPosition {
@@ -125,13 +129,17 @@ class OrderBookState {
 
   factory OrderBookState.fromJson(Map<String, dynamic> json) {
     final bidPrices = (json['bid_prices'] as List<dynamic>? ?? [])
-        .map((e) => (e as num).toDouble()).toList();
+        .map((e) => (e as num).toDouble())
+        .toList();
     final bidDepths = (json['bid_depths'] as List<dynamic>? ?? [])
-        .map((e) => (e as num).toDouble()).toList();
+        .map((e) => (e as num).toDouble())
+        .toList();
     final askPrices = (json['ask_prices'] as List<dynamic>? ?? [])
-        .map((e) => (e as num).toDouble()).toList();
+        .map((e) => (e as num).toDouble())
+        .toList();
     final askDepths = (json['ask_depths'] as List<dynamic>? ?? [])
-        .map((e) => (e as num).toDouble()).toList();
+        .map((e) => (e as num).toDouble())
+        .toList();
     return OrderBookState(
       clearingPrice: (json['clearing_price'] as num?)?.toDouble() ?? 0,
       bidPrices: bidPrices,
@@ -162,13 +170,13 @@ class FuegoPrice {
   });
 
   factory FuegoPrice.fromJson(Map<String, dynamic> json) => FuegoPrice(
-        reserveXfg: (json['reserve_xfg'] as num?)?.toDouble() ?? 0,
-        reserveHeat: (json['reserve_heat'] as num?)?.toDouble() ?? 0,
-        spotPrice: (json['spot_price'] as num?)?.toDouble() ?? 0,
-        xfgHeatRatio: json['xfg_heat_ratio'] as String? ?? '0',
-        xfgSpotUsd: json['xfg_spot_usd'] as String? ?? '0',
-        heatPegUsd: (json['heat_peg_usd'] as num?)?.toDouble() ?? 0,
-      );
+    reserveXfg: (json['reserve_xfg'] as num?)?.toDouble() ?? 0,
+    reserveHeat: (json['reserve_heat'] as num?)?.toDouble() ?? 0,
+    spotPrice: (json['spot_price'] as num?)?.toDouble() ?? 0,
+    xfgHeatRatio: json['xfg_heat_ratio'] as String? ?? '0',
+    xfgSpotUsd: json['xfg_spot_usd'] as String? ?? '0',
+    heatPegUsd: (json['heat_peg_usd'] as num?)?.toDouble() ?? 0,
+  );
 }
 
 class OrderBook {
@@ -187,21 +195,25 @@ class OrderBook {
     final asks = <OrderBookLevel>[];
     for (var i = 0; i < state.askPrices.length; i++) {
       cumulative += state.askDepths[i];
-      asks.add(OrderBookLevel(
-        price: state.askPrices[i],
-        amount: state.askDepths[i],
-        total: cumulative,
-      ));
+      asks.add(
+        OrderBookLevel(
+          price: state.askPrices[i],
+          amount: state.askDepths[i],
+          total: cumulative,
+        ),
+      );
     }
     cumulative = 0;
     final bids = <OrderBookLevel>[];
     for (var i = 0; i < state.bidPrices.length; i++) {
       cumulative += state.bidDepths[i];
-      bids.add(OrderBookLevel(
-        price: state.bidPrices[i],
-        amount: state.bidDepths[i],
-        total: cumulative,
-      ));
+      bids.add(
+        OrderBookLevel(
+          price: state.bidPrices[i],
+          amount: state.bidDepths[i],
+          total: cumulative,
+        ),
+      );
     }
     return OrderBook(
       asks: asks.reversed.toList(),

@@ -71,55 +71,55 @@ class WalletState extends Equatable {
     int? peerCount,
     int? scannedHeight,
     List<Subaddress>? subaddresses,
-  }) =>
-      WalletState(
-        isLoading: isLoading ?? this.isLoading,
-        isConnected: isConnected ?? this.isConnected,
-        isSyncing: isSyncing ?? this.isSyncing,
-        isUnlocked: isUnlocked ?? this.isUnlocked,
-        error: clearError ? null : (error ?? this.error),
-        balance: balance ?? this.balance,
-        unlockedBalance: unlockedBalance ?? this.unlockedBalance,
-        unlockedHeatBalance: unlockedHeatBalance ?? this.unlockedHeatBalance,
-        lockedHeatBalance: lockedHeatBalance ?? this.lockedHeatBalance,
-        address: address ?? this.address,
-        alias: alias ?? this.alias,
-        syncProgress: syncProgress ?? this.syncProgress,
-        isSynced: isSynced ?? this.isSynced,
-        transactions: transactions ?? this.transactions,
-        blockHeight: blockHeight ?? this.blockHeight,
-        peerCount: peerCount ?? this.peerCount,
-        scannedHeight: scannedHeight ?? this.scannedHeight,
-        subaddresses: subaddresses ?? this.subaddresses,
-      );
+  }) => WalletState(
+    isLoading: isLoading ?? this.isLoading,
+    isConnected: isConnected ?? this.isConnected,
+    isSyncing: isSyncing ?? this.isSyncing,
+    isUnlocked: isUnlocked ?? this.isUnlocked,
+    error: clearError ? null : (error ?? this.error),
+    balance: balance ?? this.balance,
+    unlockedBalance: unlockedBalance ?? this.unlockedBalance,
+    unlockedHeatBalance: unlockedHeatBalance ?? this.unlockedHeatBalance,
+    lockedHeatBalance: lockedHeatBalance ?? this.lockedHeatBalance,
+    address: address ?? this.address,
+    alias: alias ?? this.alias,
+    syncProgress: syncProgress ?? this.syncProgress,
+    isSynced: isSynced ?? this.isSynced,
+    transactions: transactions ?? this.transactions,
+    blockHeight: blockHeight ?? this.blockHeight,
+    peerCount: peerCount ?? this.peerCount,
+    scannedHeight: scannedHeight ?? this.scannedHeight,
+    subaddresses: subaddresses ?? this.subaddresses,
+  );
 
   double get balanceXfg => balance / atomicPerCoin;
   double get unlockedBalanceXfg => unlockedBalance / atomicPerCoin;
   double get unlockedHeatXfg => unlockedHeatBalance / atomicPerCoin;
   double get lockedHeatXfg => lockedHeatBalance / atomicPerCoin;
-  double get totalHeatXfg => (unlockedHeatBalance + lockedHeatBalance) / atomicPerCoin;
+  double get totalHeatXfg =>
+      (unlockedHeatBalance + lockedHeatBalance) / atomicPerCoin;
 
   @override
   List<Object?> get props => [
-        isLoading,
-        isConnected,
-        isSyncing,
-        isUnlocked,
-        error,
-        balance,
-        unlockedBalance,
-        unlockedHeatBalance,
-        lockedHeatBalance,
-        address,
-        alias,
-        syncProgress,
-        isSynced,
-        transactions,
-        blockHeight,
-        peerCount,
-        scannedHeight,
-        subaddresses,
-      ];
+    isLoading,
+    isConnected,
+    isSyncing,
+    isUnlocked,
+    error,
+    balance,
+    unlockedBalance,
+    unlockedHeatBalance,
+    lockedHeatBalance,
+    address,
+    alias,
+    syncProgress,
+    isSynced,
+    transactions,
+    blockHeight,
+    peerCount,
+    scannedHeight,
+    subaddresses,
+  ];
 }
 
 class WalletCubit extends Cubit<WalletState> {
@@ -137,11 +137,11 @@ class WalletCubit extends Cubit<WalletState> {
     FuegoVaultService? vault,
     Future<void>? backendReady,
     SecurityService? security,
-  })  : _rpcService = rpcService,
-        _vault = vault,
-        _backendReady = backendReady,
-        _security = security ?? SecurityService(),
-        super(const WalletState()) {
+  }) : _rpcService = rpcService,
+       _vault = vault,
+       _backendReady = backendReady,
+       _security = security ?? SecurityService(),
+       super(const WalletState()) {
     _init();
   }
 
@@ -151,12 +151,11 @@ class WalletCubit extends Cubit<WalletState> {
     if (_backendReady != null) {
       await _backendReady;
     }
-    if (_vault?.isUnlocked == true) {
-      emit(state.copyWith(isUnlocked: true, address: _vault!.address));
-      await refreshWallet();
-    } else {
-      emit(state.copyWith(isUnlocked: false));
-    }
+
+    // Read-only wallet data comes from walletd. The optional Flutter vault is
+    // only needed for local key operations and must not hide daemon state.
+    emit(state.copyWith(isUnlocked: true));
+    await refreshWallet();
     _startPolling();
   }
 
@@ -169,7 +168,7 @@ class WalletCubit extends Cubit<WalletState> {
   }
 
   Future<void> _pollStatus() async {
-    if (isClosed || !(_vault?.isUnlocked ?? false)) return;
+    if (isClosed) return;
     try {
       final info = await _daemon.getInfo();
       final peers = await _daemon.getPeerCount();
@@ -178,25 +177,30 @@ class WalletCubit extends Cubit<WalletState> {
       final progress = blockchainHeight > 0
           ? (walletHeight / blockchainHeight).clamp(0.0, 1.0)
           : 0.0;
-      emit(state.copyWith(
-        blockHeight: blockchainHeight,
-        peerCount: peers,
-        scannedHeight: walletHeight,
-        syncProgress: progress,
-        isSynced: progress >= 1.0,
-        isSyncing: progress < 1.0,
-        isConnected: true,
-      ));
+      emit(
+        state.copyWith(
+          blockHeight: blockchainHeight,
+          peerCount: peers,
+          scannedHeight: walletHeight,
+          syncProgress: progress,
+          isSynced: progress >= 1.0,
+          isSyncing: progress < 1.0,
+          isConnected: true,
+          isUnlocked: true,
+        ),
+      );
     } catch (_) {}
   }
 
   Future<void> onUnlocked() async {
     if (_vault == null || !_vault!.isUnlocked) return;
-    emit(state.copyWith(
-      isUnlocked: true,
-      address: _vault!.address,
-      clearError: true,
-    ));
+    emit(
+      state.copyWith(
+        isUnlocked: true,
+        address: _vault!.address,
+        clearError: true,
+      ),
+    );
     await refreshWallet();
   }
 
@@ -210,16 +214,6 @@ class WalletCubit extends Cubit<WalletState> {
   }
 
   Future<void> refreshWallet() async {
-    if (_vault != null && !_vault!.isUnlocked) {
-      emit(state.copyWith(
-        isLoading: false,
-        isSyncing: false,
-        isUnlocked: false,
-        error: 'Wallet locked',
-      ));
-      return;
-    }
-
     _log('[wallet] refreshWallet starting');
     emit(state.copyWith(isLoading: true, isSyncing: true, clearError: true));
 
@@ -262,7 +256,8 @@ class WalletCubit extends Cubit<WalletState> {
               batchSize: 500,
             );
             bal = scan['balance'] as int? ?? 0;
-            unlocked = scan['unlocked_balance'] as int? ??
+            unlocked =
+                scan['unlocked_balance'] as int? ??
                 scan['unlockedBalance'] as int? ??
                 bal;
             scannedH = scan['scanned_height'] as int? ?? scannedH;
@@ -312,24 +307,28 @@ class WalletCubit extends Cubit<WalletState> {
             ? (walletHeight / blockchainHeight).clamp(0.0, 1.0)
             : 0.0;
 
-        emit(state.copyWith(
-          isLoading: false,
-          isSyncing: progress < 1.0,
-          isConnected: true,
-          isUnlocked: _vault?.isUnlocked ?? true,
-          blockHeight: blockchainHeight,
-          address: addr.isNotEmpty ? addr : state.address,
-          balance: bal,
-          unlockedBalance: unlocked,
-          unlockedHeatBalance: unlockedHeat,
-          lockedHeatBalance: lockedHeat,
-          peerCount: peers,
-          transactions: txs,
-          syncProgress: progress,
-          isSynced: progress >= 1.0,
-          scannedHeight: scannedH,
-          clearError: true,
-        ));
+        emit(
+          state.copyWith(
+            isLoading: false,
+            isSyncing: progress < 1.0,
+            isConnected: true,
+            // Daemon-backed read access is available without the optional
+            // Flutter vault/PIN. The daemon is the source of wallet data here.
+            isUnlocked: true,
+            blockHeight: blockchainHeight,
+            address: addr.isNotEmpty ? addr : state.address,
+            balance: bal,
+            unlockedBalance: unlocked,
+            unlockedHeatBalance: unlockedHeat,
+            lockedHeatBalance: lockedHeat,
+            peerCount: peers,
+            transactions: txs,
+            syncProgress: progress,
+            isSynced: progress >= 1.0,
+            scannedHeight: scannedH,
+            clearError: true,
+          ),
+        );
         return;
       } catch (e) {
         if (attempt < 14) {
@@ -338,12 +337,14 @@ class WalletCubit extends Cubit<WalletState> {
       }
     }
 
-    emit(state.copyWith(
-      isLoading: false,
-      isSyncing: false,
-      isConnected: false,
-      error: 'Daemon not available',
-    ));
+    emit(
+      state.copyWith(
+        isLoading: false,
+        isSyncing: false,
+        isConnected: false,
+        error: 'Daemon not available',
+      ),
+    );
   }
 
   Future<String> getAddress() async {
@@ -405,8 +406,7 @@ class WalletCubit extends Cubit<WalletState> {
     if (fee < 0) {
       throw ArgumentError('Fee cannot be negative');
     }
-    final totalAtomic =
-        ((amount + fee) * atomicPerCoin).round();
+    final totalAtomic = ((amount + fee) * atomicPerCoin).round();
     if (totalAtomic > state.unlockedBalance) {
       throw StateError('Insufficient unlocked balance (including fee)');
     }

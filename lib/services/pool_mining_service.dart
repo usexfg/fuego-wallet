@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
@@ -29,6 +30,8 @@ class PoolMiningService {
   VoidCallback? onDisconnected;
   int _reconnectAttempts = 0;
   Timer? _mineTimer;
+  bool _batchBusy = false;
+  int _coreCount = 1;
 
   // Mining stats
   int _totalHashes = 0;
@@ -37,21 +40,28 @@ class PoolMiningService {
   bool get isMining => _mining;
   int get hashrate => _hashrate;
   int get sharesAccepted => _sharesAccepted;
+  int get coreCount => _coreCount;
 
   PoolMiningService({
     String poolHost = 'loudmining.com',
     int poolPort = 4200,
     String walletAddress = '',
-  })  : _poolHost = poolHost,
-        _poolPort = poolPort,
-        _walletAddress = walletAddress;
+  }) : _poolHost = poolHost,
+       _poolPort = poolPort,
+       _walletAddress = walletAddress;
 
-  Future<bool> start({required String walletAddress, String? poolHost, int? poolPort}) async {
+  Future<bool> start({
+    required String walletAddress,
+    String? poolHost,
+    int? poolPort,
+    int coreCount = 1,
+  }) async {
     if (_mining) return true;
 
     _walletAddress = walletAddress;
     if (poolHost != null) _poolHost = poolHost;
     if (poolPort != null) _poolPort = poolPort;
+    _coreCount = coreCount.clamp(1, 64);
 
     return _connect();
   }
@@ -59,15 +69,20 @@ class PoolMiningService {
   Future<bool> _connect() async {
     try {
       debugPrint('[pool] Connecting to $_poolHost:$_poolPort');
-      _socket = await Socket.connect(_poolHost, _poolPort,
-          timeout: const Duration(seconds: 10));
+      _socket = await Socket.connect(
+        _poolHost,
+        _poolPort,
+        timeout: const Duration(seconds: 10),
+      );
 
-      _socket!.listen(_onData,
-          onError: (e) => debugPrint('[pool] Socket error: $e'),
-          onDone: () {
-            debugPrint('[pool] Connection closed');
-            _handleDisconnect();
-          });
+      _socket!.listen(
+        _onData,
+        onError: (e) => debugPrint('[pool] Socket error: $e'),
+        onDone: () {
+          debugPrint('[pool] Connection closed');
+          _handleDisconnect();
+        },
+      );
 
       _mining = true;
       _authorized = false;
@@ -118,7 +133,9 @@ class PoolMiningService {
     if (_reconnectAttempts < 5) {
       _reconnectAttempts++;
       final delay = Duration(seconds: _reconnectAttempts * 3);
-      debugPrint('[pool] Reconnecting in ${delay.inSeconds}s (attempt $_reconnectAttempts/5)');
+      debugPrint(
+        '[pool] Reconnecting in ${delay.inSeconds}s (attempt $_reconnectAttempts/5)',
+      );
       Future.delayed(delay, () async {
         if (_walletAddress.isNotEmpty) {
           await _connect();
@@ -235,29 +252,47 @@ class PoolMiningService {
 
     // Mine in a timer-based loop to avoid blocking the UI
     _mineTimer = Timer.periodic(const Duration(milliseconds: 50), (_) {
-      _mineBatch();
+      unawaited(_mineBatch());
     });
 
-    _mineBatch();
+    unawaited(_mineBatch());
   }
 
-  void _mineBatch() {
+  Future<void> _mineBatch() async {
     if (_blob == null || _target == null || _jobId == null || !_mining) return;
+    if (_batchBusy) return;
+    _batchBusy = true;
 
     try {
-      final native = FuegoNative();
-      final blobBytes = Uint8List.fromList(_blob!);
-      final targetBytes = Uint8List.fromList(_target!);
-
-      // Try a batch of 1000 nonces
+      // Run one native hash batch per selected core in separate isolates so
+      // synchronous FFI work does not block the UI isolate.
+      const batchSize = 1000;
       final startNonce = _totalHashes;
-      final result = native.mineShare(blobBytes, targetBytes, startNonce, 1000);
-      _totalHashes += 1000;
+      final jobId = _jobId!;
+      final blob = Uint8List.fromList(_blob!);
+      final target = Uint8List.fromList(_target!);
+      final workers = List.generate(_coreCount, (index) {
+        return Isolate.run(() {
+          final native = FuegoNative();
+          return native.mineShare(
+            Uint8List.fromList(blob),
+            Uint8List.fromList(target),
+            startNonce + index * batchSize,
+            batchSize,
+          );
+        });
+      });
+      final results = await Future.wait(workers);
+      _totalHashes += batchSize * _coreCount;
 
-      if (result.$1) {
-        // Found a valid share!
-        debugPrint('[pool] Found share! nonce=${result.$2} hash=${_bytesToHex(result.$3)}');
-        _submitShare(result.$2, result.$3);
+      for (final result in results) {
+        if (result.$1 && _mining && _jobId == jobId) {
+          debugPrint(
+            '[pool] Found share! nonce=${result.$2} hash=${_bytesToHex(result.$3)}',
+          );
+          _submitShare(result.$2, result.$3);
+          break;
+        }
       }
 
       // Update hashrate every second
@@ -269,6 +304,8 @@ class PoolMiningService {
       }
     } catch (e) {
       debugPrint('[pool] Mining error: $e');
+    } finally {
+      _batchBusy = false;
     }
   }
 
@@ -283,7 +320,9 @@ class PoolMiningService {
       'params': {
         'id': _sessionId,
         'job_id': _jobId,
-        'nonce': _bytesToHex(Uint8List(4)..buffer.asByteData().setInt32(0, nonce, Endian.little)),
+        'nonce': _bytesToHex(
+          Uint8List(4)..buffer.asByteData().setInt32(0, nonce, Endian.little),
+        ),
         'result': _bytesToHex(hash),
       },
     };

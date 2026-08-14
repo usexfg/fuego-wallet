@@ -1,12 +1,22 @@
 use serde::{Serialize, Deserialize};
 use sha3::{Digest, Keccak256};
-use curve25519_dalek::{EdwardsPoint, Scalar, constants::ED25519_BASEPOINT_POINT};
-use curve25519_dalek::edwards::CompressedEdwardsY;
-use rand::{rngs::OsRng, RngCore};
+use rand::rngs::OsRng;
 use zeroize::Zeroize;
+
+pub mod ref10;
+pub mod ring;
+
+pub use ring::{
+    check_ring_signature, cn_fast_hash, derive_public_key as derive_public_key_full,
+    derive_secret_key, generate_key_derivation as generate_key_derivation_full,
+    generate_key_image as generate_key_image_full, generate_ring_signature, hash_to_ec,
+    hash_to_scalar, underive_public_key as underive_public_key_full, write_varint,
+};
 
 /// Fuego mainnet address prefix (CryptoNoteConfig.h:35).
 pub const ADDRESS_BASE58_PREFIX: u64 = 1753191;
+/// Fuego testnet address prefix (CryptoNoteConfig.h:452).
+pub const TESTNET_ADDRESS_BASE58_PREFIX: u64 = 1075740;
 
 // ── CryptoNote block-based Base58 (exact port of Base58.cpp) ───────
 
@@ -148,18 +158,19 @@ pub struct Address(pub String);
 impl Keypair {
     /// Generate a random Ed25519 keypair (matching C++ generate_keys).
     pub fn generate() -> Self {
-        let mut secret = [0u8; 32];
-        OsRng.fill_bytes(&mut secret);
+        let secret = ref10::random_scalar(&mut OsRng);
         Self::from_secret(secret)
     }
 
     /// Create keypair from a 32-byte secret.
     /// CryptoNote style: raw scalar mod l, no clamping at generation.
     pub fn from_secret(secret: [u8; 32]) -> Self {
-        let scalar = Scalar::from_bytes_mod_order(secret);
-        let point = ED25519_BASEPOINT_POINT * scalar;
+        let mut s = secret;
+        ref10::sc_reduce32(&mut s);
+        let mut point = ref10::GeP3::default();
+        ref10::ge_scalarmult_base(&mut point, &s);
         let mut pk = [0u8; 32];
-        pk.copy_from_slice(&point.compress().to_bytes());
+        ref10::ge_p3_tobytes(&mut pk, &point);
         Keypair { secret, public: pk }
     }
 
@@ -190,53 +201,38 @@ impl PublicKey {
 
 pub type KeyDerivation = [u8; 32];
 
-/// generate_key_derivation: derivation = 8 * (key1 * scalar2)
-/// Matching C++: ge_scalarmult + ge_mul8
+/// generate_key_derivation: derivation = 8 * (key1 * scalar2 mod l).
+/// Exact C++ semantics: sc_check on key2, ge_frombytes on key1.
 pub fn generate_key_derivation(key1: &PublicKey, secret2: &[u8; 32]) -> Option<KeyDerivation> {
-    let point = CompressedEdwardsY(key1.0).decompress()?;
-    let scalar = clamp_scalar(secret2);
-    let derivation = (point * scalar).mul_by_cofactor();
-    let mut result = [0u8; 32];
-    result.copy_from_slice(&derivation.compress().to_bytes());
-    Some(result)
+    generate_key_derivation_full(&key1.0, secret2)
 }
 
-/// Derive a public key: output = derivation + 8 * Hs(derivation || index) * G
-pub fn derive_public_key(derivation: &KeyDerivation, output_index: u64) -> PublicKey {
-    let scalar = derivation_to_scalar(derivation, output_index);
-    let point = ED25519_BASEPOINT_POINT * scalar;
-    let mut pk = [0u8; 32];
-    pk.copy_from_slice(&point.compress().to_bytes());
-    PublicKey(pk)
+/// Derive a one-time output key: P = Hs(D || varint(i)) * G + base.
+/// `base` is the recipient's spend public key.
+pub fn derive_public_key(derivation: &KeyDerivation, output_index: u64, base: &[u8; 32]) -> Option<PublicKey> {
+    derive_public_key_full(derivation, output_index, base).map(PublicKey)
 }
 
-/// Underive: key = output - 8 * Hs(point || derivation || index) * G
-pub fn underive_public_key(derivation: &KeyDerivation, output_index: u64, output_key: &PublicKey) -> PublicKey {
-    let scalar = derivation_to_scalar(derivation, output_index);
-    let subtrahend = ED25519_BASEPOINT_POINT * scalar;
-    let point = CompressedEdwardsY(output_key.0).decompress()
-        .unwrap_or(ED25519_BASEPOINT_POINT);
-    let recovered = point - subtrahend;
-    let mut pk = [0u8; 32];
-    pk.copy_from_slice(&recovered.compress().to_bytes());
-    PublicKey(pk)
+/// Underive: base = P - Hs(D || varint(i)) * G.
+pub fn underive_public_key(derivation: &KeyDerivation, output_index: u64, output_key: &PublicKey) -> Option<PublicKey> {
+    underive_public_key_full(derivation, output_index, &output_key.0).map(PublicKey)
 }
 
-/// Generate key image for ring signatures: KI = Hs(point) * secret
+/// Generate key image for ring signatures: KI = x * H_p(P).
 pub fn generate_key_image(key: &PublicKey, secret: &[u8; 32]) -> PublicKey {
-    let hash_point = hash_to_ec(&key.0);
-    let scalar = clamp_scalar(secret);
-    let ki = hash_point * scalar;
-    let mut result = [0u8; 32];
-    result.copy_from_slice(&ki.compress().to_bytes());
-    PublicKey(result)
+    PublicKey(generate_key_image_full(&key.0, secret))
 }
 
 // ── Fuego address generation (matching Base58::encode_addr) ────────
 
 pub fn make_address(spend_pub: &[u8; 32], view_pub: &[u8; 32]) -> Address {
+    make_address_with_prefix(spend_pub, view_pub, ADDRESS_BASE58_PREFIX)
+}
+
+/// Address generation with an explicit network prefix.
+pub fn make_address_with_prefix(spend_pub: &[u8; 32], view_pub: &[u8; 32], prefix: u64) -> Address {
     // Step 1: varint-encode the prefix
-    let mut buf = varint_encode(ADDRESS_BASE58_PREFIX);
+    let mut buf = varint_encode(prefix);
     // Step 2: append spend + view public keys (64 bytes)
     buf.extend_from_slice(spend_pub);
     buf.extend_from_slice(view_pub);
@@ -245,6 +241,38 @@ pub fn make_address(spend_pub: &[u8; 32], view_pub: &[u8; 32]) -> Address {
     buf.extend_from_slice(&hash[..ADDR_CHECKSUM_SIZE]);
     // Step 4: CryptoNote block-based base58 encode
     Address(cn_base58_encode(&buf))
+}
+
+/// Parse a Fuego address (optionally prefixed with "fire" or "TEST") into
+/// (spend pubkey, view pubkey). Validates base58, checksum and prefix tag.
+pub fn parse_address(address: &str) -> Option<([u8; 32], [u8; 32])> {
+    let stripped = address
+        .strip_prefix("fire")
+        .or_else(|| address.strip_prefix("TEST"))
+        .unwrap_or(address);
+    let decoded = cn_base58_decode(stripped)?;
+    if decoded.len() < 72 {
+        return None;
+    }
+    let payload = &decoded[..decoded.len() - ADDR_CHECKSUM_SIZE];
+    let checksum = &decoded[decoded.len() - ADDR_CHECKSUM_SIZE..];
+    let hash = Keccak256::digest(payload);
+    if &hash[..ADDR_CHECKSUM_SIZE] != checksum {
+        return None;
+    }
+    let (prefix, prefix_len) = varint_decode(payload);
+    if prefix != ADDRESS_BASE58_PREFIX && prefix != TESTNET_ADDRESS_BASE58_PREFIX {
+        return None;
+    }
+    let rest = &payload[prefix_len..];
+    if rest.len() != 64 {
+        return None;
+    }
+    let mut spend = [0u8; 32];
+    let mut view = [0u8; 32];
+    spend.copy_from_slice(&rest[..32]);
+    view.copy_from_slice(&rest[32..]);
+    Some((spend, view))
 }
 
 /// Validate a Fuego address string.
@@ -265,7 +293,7 @@ pub fn is_valid_address(address: &str) -> bool {
         return false;
     }
     let (prefix, _) = varint_decode(&decoded);
-    prefix == ADDRESS_BASE58_PREFIX
+    prefix == ADDRESS_BASE58_PREFIX || prefix == TESTNET_ADDRESS_BASE58_PREFIX
 }
 
 fn varint_decode(data: &[u8]) -> (u64, usize) {
@@ -284,31 +312,6 @@ fn varint_decode(data: &[u8]) -> (u64, usize) {
 }
 
 // ── Internal helpers ────────────────────────────────────────────────
-
-fn clamp_scalar(secret: &[u8; 32]) -> Scalar {
-    let mut bytes = *secret;
-    bytes[0] &= 248;
-    bytes[31] &= 127;
-    bytes[31] |= 64;
-    Scalar::from_bytes_mod_order(bytes)
-}
-
-fn derivation_to_scalar(derivation: &KeyDerivation, output_index: u64) -> Scalar {
-    let mut hasher = Keccak256::new();
-    hasher.update(derivation);
-    hasher.update(output_index.to_le_bytes());
-    let hash = hasher.finalize();
-    let mut bytes = [0u8; 32];
-    bytes.copy_from_slice(&hash);
-    clamp_scalar(&bytes)
-}
-
-fn hash_to_ec(data: &[u8]) -> EdwardsPoint {
-    let hash = Keccak256::digest(data);
-    let mut bytes = [0u8; 32];
-    bytes.copy_from_slice(&hash);
-    CompressedEdwardsY(bytes).decompress().unwrap_or(ED25519_BASEPOINT_POINT)
-}
 
 fn varint_encode(mut value: u64) -> Vec<u8> {
     let mut buf = Vec::new();

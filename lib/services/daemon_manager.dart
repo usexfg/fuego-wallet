@@ -32,6 +32,11 @@ class DaemonManager {
   Process? _walletd;
   Process? _swapd;
 
+  // ── External daemon detection (when user started daemons manually) ─
+  bool _walletdExternallyRunning = false;
+  bool _fuegodExternallyRunning = false;
+  bool _swapdExternallyRunning = false;
+
   // ── Binary paths ─────────────────────────────────────────────────
   String? _fuegodBin;
   String? _walletdBin;
@@ -261,22 +266,24 @@ class DaemonManager {
 
     // Proxy (walletd/unified) is the critical process. Embedded fuegod is
     // managed by --local and may not expose 18180 until fully synced.
-    final proxyAlive = _unified != null || _walletd != null;
+    final proxyAlive = _unified != null || _walletd != null || _walletdExternallyRunning;
     final proxyHealthy = proxyAlive && walletdOk;
 
     status.value = DaemonStatus(
       fuegodRunning: (_fuegod != null && fuegodOk) ||
           (_unified != null && proxyHealthy) ||
           (_walletd != null && proxyHealthy && fuegodOk) ||
-          (_walletd != null && proxyHealthy), // remote mode: chain is remote
-      walletdRunning: proxyHealthy,
-      swapdRunning: (_swapd != null || _unified != null) && swapdOk,
+          (_walletd != null && proxyHealthy) || // remote mode: chain is remote
+          (_walletdExternallyRunning && fuegodOk) ||
+          _fuegodExternallyRunning,
+      walletdRunning: proxyHealthy || _walletdExternallyRunning,
+      swapdRunning: (_swapd != null || _unified != null || _swapdExternallyRunning) && swapdOk,
       fuegodError: daemonErrors['fuegod'] ??
           (_fuegod != null && !fuegodOk ? fuegodHealth.error : null),
       walletdError: daemonErrors['walletd'] ??
           (proxyAlive && !walletdOk ? walletdHealth.error : null),
       swapdError: daemonErrors['swapd'] ??
-          (_swapd != null && !swapdOk ? swapdHealth.error : null),
+          ((_swapd != null || _swapdExternallyRunning) && !swapdOk ? swapdHealth.error : null),
     );
   }
 
@@ -307,19 +314,24 @@ class DaemonManager {
     errors.clear();
     daemonErrors.clear();
     _lastStartError = null;
+    _walletdExternallyRunning = false;
+    _fuegodExternallyRunning = false;
+    _swapdExternallyRunning = false;
     debugPrint('[daemon] === Starting daemons ===');
     debugPrint('[daemon] Mode: ${useLocalNode ? "LOCAL" : "REMOTE"}');
     debugPrint('[daemon] Chain target: $daemonHost:$daemonPort');
     debugPrint('[daemon] Testnet: $useTestnet');
     await _updateStatus();
 
+    String? walletdErr;
+    String? swapdErr;
+
     // ── 0. Try unified daemon first (desktop bundles) ──
     final unifiedBin = _findUnifiedBinary();
     if (unifiedBin != null) {
       debugPrint('[daemon] Found unified daemon: $unifiedBin');
-      String? unifiedErr;
       try {
-        unifiedErr = await _startUnified(
+        walletdErr = await _startUnified(
           unifiedBin,
           useLocalNode: useLocalNode,
           useTestnet: useTestnet,
@@ -327,22 +339,14 @@ class DaemonManager {
           daemonPort: daemonPort,
         );
       } catch (e) {
-        unifiedErr = e.toString();
+        walletdErr = e.toString();
         debugPrint('[daemon] Unified daemon crashed: $e');
       }
-      if (unifiedErr == null) {
+      if (walletdErr == null) {
         debugPrint('[daemon] Unified daemon started OK on port $walletdPort');
-        // Mark process handles so health getters report running.
-        await _updateStatus();
-        eventBus.start(
-          fuegodPort: useLocalNode ? fuegodPort : daemonPort,
-          walletdPort: walletdPort,
-          swapdPort: swapdPort,
-          fuegodHost: useLocalNode ? '127.0.0.1' : daemonHost,
-        );
-        return null;
+      } else {
+        debugPrint('[daemon] Unified daemon failed ($walletdErr), falling back...');
       }
-      debugPrint('[daemon] Unified daemon failed ($unifiedErr), falling back...');
     } else {
       debugPrint('[daemon] Unified daemon binary not found — using fuego_walletd');
     }
@@ -353,25 +357,25 @@ class DaemonManager {
     //         and break the remote path (this was the inverted-logic bug).
 
     // ── 2. fuego_walletd (wallet JSON-RPC proxy — required) ──
-    final walletdErr = await _startWalletd(
-      useLocalNode: useLocalNode,
-      useTestnet: useTestnet,
-      daemonHost: useLocalNode ? '127.0.0.1' : daemonHost,
-      daemonPort: useLocalNode ? fuegodPort : daemonPort,
-    );
-    if (walletdErr != null) {
-      errors.add('fuego_walletd: $walletdErr');
-      daemonErrors['walletd'] = walletdErr;
-      _lastStartError = 'walletd: $walletdErr';
-      await _updateStatus();
-      return _lastStartError;
+    if (walletdErr != null || unifiedBin == null) {
+      walletdErr = await _startWalletd(
+        useLocalNode: useLocalNode,
+        useTestnet: useTestnet,
+        daemonHost: useLocalNode ? '127.0.0.1' : daemonHost,
+        daemonPort: useLocalNode ? fuegodPort : daemonPort,
+      );
+      if (walletdErr != null) {
+        errors.add('fuego_walletd: $walletdErr');
+        daemonErrors['walletd'] = walletdErr;
+        _lastStartError = 'walletd: $walletdErr';
+      }
     }
 
     // ── 3. xfg-swapd (required for full stack; soft-fail with error recorded) ──
     if (startSwapd) {
       final chainHost = useLocalNode ? '127.0.0.1' : daemonHost;
       final chainPort = useLocalNode ? fuegodPort : daemonPort;
-      final swapdErr = await _startSwapd(
+      swapdErr = await _startSwapd(
         configPath: swapConfigPath,
         chainHost: chainHost,
         chainPort: chainPort,
@@ -387,6 +391,7 @@ class DaemonManager {
 
     await _updateStatus();
 
+    // Always start event bus so externally-started daemons are detected
     eventBus.start(
       fuegodPort: useLocalNode ? fuegodPort : daemonPort,
       walletdPort: walletdPort,
@@ -394,10 +399,21 @@ class DaemonManager {
       fuegodHost: useLocalNode ? '127.0.0.1' : daemonHost,
     );
 
-    return null;
+    return walletdErr;
   }
 
   Future<String?> _startFuegod({bool useTestnet = false}) async {
+    // Detect externally-started fuegod
+    final alreadyRunning = await _checkHealth(
+      'http://127.0.0.1:$fuegodPort/getinfo',
+      timeout: const Duration(seconds: 2),
+    );
+    if (alreadyRunning) {
+      _fuegodExternallyRunning = true;
+      debugPrint('[daemon] fuegod already running on port $fuegodPort');
+      return null;
+    }
+
     final binary = _findFuegodBinary();
     if (binary == null) return 'fuegod binary not found';
 
@@ -450,6 +466,15 @@ class DaemonManager {
     if (binary == null) {
       return 'fuego_walletd binary not found '
           '(searched app bundle + rust-fuego-wallet/target/{release,debug})';
+    }
+
+    // Detect externally-started walletd
+    final alreadyRunning = await _probeJsonRpcReady(walletdPort) ||
+        await _checkHealth('http://127.0.0.1:$walletdPort/health', timeout: const Duration(seconds: 2));
+    if (alreadyRunning) {
+      _walletdExternallyRunning = true;
+      debugPrint('[daemon] fuego_walletd already running on port $walletdPort');
+      return null;
     }
 
     final portErr = await _freePort(walletdPort);
@@ -555,19 +580,30 @@ class DaemonManager {
     String daemonHost = '127.0.0.1',
     int daemonPort = 18180,
   }) async {
-     debugPrint('[daemon] _startUnified: binary=$binary');
-   // Kill stale processes on ports the unified daemon binds: wallet proxy
-   // (18189), embedded fuegod RPC (18180), and P2P (10808). Leftover
-   // daemons from a previous app instance (e.g. a translocated copy of the
-   // app) hold these and make the new instance die with "Address already
-   // in use" → exit code 1.
-   for (final port in [walletdPort, daemonPort, 10808]) {
-     final portErr = await _freePort(port);
-     if (portErr != null) {
-       debugPrint('[daemon] Port $port error: $portErr');
-       return portErr;
-     }
-   }
+    debugPrint('[daemon] _startUnified: binary=$binary');
+
+    // Detect externally-started unified daemon
+    final alreadyRunning = await _probeJsonRpcReady(walletdPort) ||
+        await _checkHealth('http://127.0.0.1:$walletdPort/health', timeout: const Duration(seconds: 2));
+    if (alreadyRunning) {
+      _walletdExternallyRunning = true;
+      _fuegodExternallyRunning = true;
+      debugPrint('[daemon] Unified daemon already running on port $walletdPort');
+      return null;
+    }
+
+    // Kill stale processes on ports the unified daemon binds: wallet proxy
+    // (18189), embedded fuegod RPC (18180), and P2P (10808). Leftover
+    // daemons from a previous app instance (e.g. a translocated copy of the
+    // app) hold these and make the new instance die with "Address already
+    // in use" → exit code 1.
+    for (final port in [walletdPort, daemonPort, 10808]) {
+      final portErr = await _freePort(port);
+      if (portErr != null) {
+        debugPrint('[daemon] Port $port error: $portErr');
+        return portErr;
+      }
+    }
 
      // Unified daemon needs --container-file and --container-password
      final security = SecurityService();
@@ -704,6 +740,15 @@ class DaemonManager {
     int walletPort = 18189,
     bool useTestnet = false,
   }) async {
+    // Detect externally-started swapd
+    final alreadyRunning = await _probeJsonRpcReady(swapdPort) ||
+        await _checkHealth('http://127.0.0.1:$swapdPort/health', timeout: const Duration(seconds: 2));
+    if (alreadyRunning) {
+      _swapdExternallyRunning = true;
+      debugPrint('[daemon] xfg-swapd already running on port $swapdPort');
+      return null;
+    }
+
     final binary = _findSwapdBinary();
     if (binary == null) return 'xfg-swapd binary not found';
 
@@ -818,14 +863,18 @@ class DaemonManager {
   bool get fuegodRunning =>
       _unified != null ||
       _fuegod != null ||
-      (_walletd != null && status.value.fuegodRunning);
+      (_walletd != null && status.value.fuegodRunning) ||
+      _fuegodExternallyRunning;
   /// True when the local wallet proxy process handle is alive.
-  bool get walletdRunning => _unified != null || _walletd != null;
-  bool get swapdRunning => _unified != null || _swapd != null;
+  bool get walletdRunning =>
+      _unified != null || _walletd != null || _walletdExternallyRunning;
+  bool get swapdRunning =>
+      _unified != null || _swapd != null || _swapdExternallyRunning;
 
   bool get allRunning => walletdRunning;
   bool get anyRunning =>
-      _unified != null || _walletd != null || _fuegod != null || _swapd != null;
+      _unified != null || _walletd != null || _fuegod != null || _swapd != null ||
+      _walletdExternallyRunning || _fuegodExternallyRunning || _swapdExternallyRunning;
 }
 
 /// Snapshot of daemon health status.

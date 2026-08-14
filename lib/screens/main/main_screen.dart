@@ -32,7 +32,7 @@ class _MainScreenState extends State<MainScreen> {
     _NavItem(icon: Icons.account_balance_wallet, label: 'Wallet'),
     _NavItem(icon: Icons.swap_horiz, label: 'Hearth'),
     _NavItem(icon: Icons.savings, label: 'CDs'),
-    _NavItem(icon: Icons.storefront, label: 'DEX'),
+    _NavItem(icon: Icons.swap_calls, label: 'DEX'),
     _NavItem(icon: Icons.settings, label: 'Settings'),
   ];
 
@@ -45,43 +45,70 @@ class _MainScreenState extends State<MainScreen> {
           ValueListenableBuilder<DaemonHealthSnapshot>(
             valueListenable: app.daemonManager.eventBus.health,
             builder: (context, health, _) {
-              // Show bar if any daemon is down, or startup error exists
-              if (health.allHealthy && app.daemonError == null) return const SizedBox.shrink();
+              // If EventBus detects all daemons healthy, clear any stale startup error
+              if (health.allHealthy && app.daemonError != null) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) app.clearDaemonError();
+                });
+              }
+              // Show bar only if daemons are actually down
+              if (health.allHealthy) return const SizedBox.shrink();
               final hasStartupError = app.daemonError != null;
               final hasIssues = !health.allHealthy;
-              if (!hasStartupError && !hasIssues) return const SizedBox.shrink();
+              if (!hasStartupError && !hasIssues)
+                return const SizedBox.shrink();
 
               return GestureDetector(
-                onTap: () => setState(() => _showDaemonDetails = !_showDaemonDetails),
+                onTap: () =>
+                    setState(() => _showDaemonDetails = !_showDaemonDetails),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   color: AppTheme.errorColor.withValues(alpha: 0.12),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(children: [
-                        const Icon(Icons.error_outline, color: AppTheme.errorColor, size: 14),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: SelectableText(
-                            hasStartupError
-                                ? app.daemonError!
-                                : health.displayText,
-                            style: const TextStyle(color: AppTheme.errorColor, fontSize: 11),
-                            maxLines: 1,
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.error_outline,
+                            color: AppTheme.errorColor,
+                            size: 14,
                           ),
-                        ),
-                        Icon(
-                          _showDaemonDetails ? Icons.expand_less : Icons.expand_more,
-                          color: AppTheme.errorColor,
-                          size: 16,
-                        ),
-                      ]),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: SelectableText(
+                              hasStartupError
+                                  ? app.daemonError!
+                                  : health.displayText,
+                              style: const TextStyle(
+                                color: AppTheme.errorColor,
+                                fontSize: 11,
+                              ),
+                              maxLines: 1,
+                            ),
+                          ),
+                          Icon(
+                            _showDaemonDetails
+                                ? Icons.expand_less
+                                : Icons.expand_more,
+                            color: AppTheme.errorColor,
+                            size: 16,
+                          ),
+                        ],
+                      ),
                       if (_showDaemonDetails) ...[
                         const SizedBox(height: 6),
                         // Unified daemon status
-                        _daemonDetail('Unified', app.daemonManager.unifiedRunning ? null : 'not running'),
+                        _daemonDetail(
+                          'Unified',
+                          app.daemonManager.unifiedRunning
+                              ? null
+                              : 'not running',
+                        ),
                         // Individual daemon statuses
                         if (!health.fuegodRunning)
                           _daemonDetail('  fuegod', health.fuegodError),
@@ -94,7 +121,12 @@ class _MainScreenState extends State<MainScreen> {
                             padding: const EdgeInsets.only(top: 4),
                             child: Text(
                               'Tip: Check that unified binary exists next to the app, or set FUEGO_USE_LOCAL_NODE=0 for remote mode.',
-                              style: TextStyle(color: AppTheme.textMuted.withValues(alpha: 0.8), fontSize: 10),
+                              style: TextStyle(
+                                color: AppTheme.textMuted.withValues(
+                                  alpha: 0.8,
+                                ),
+                                fontSize: 10,
+                              ),
                             ),
                           ),
                         // Copy button for error reporting
@@ -102,18 +134,37 @@ class _MainScreenState extends State<MainScreen> {
                           padding: const EdgeInsets.only(top: 4),
                           child: GestureDetector(
                             onTap: () {
-                              final text = hasStartupError ? app.daemonError! : health.displayText;
+                              final text = hasStartupError
+                                  ? app.daemonError!
+                                  : health.displayText;
                               Clipboard.setData(ClipboardData(text: text));
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Status copied to clipboard'), duration: Duration(seconds: 1)),
+                                const SnackBar(
+                                  content: Text('Status copied to clipboard'),
+                                  duration: Duration(seconds: 1),
+                                ),
                               );
                             },
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.copy, size: 12, color: AppTheme.textMuted.withValues(alpha: 0.6)),
+                                Icon(
+                                  Icons.copy,
+                                  size: 12,
+                                  color: AppTheme.textMuted.withValues(
+                                    alpha: 0.6,
+                                  ),
+                                ),
                                 const SizedBox(width: 4),
-                                Text('Copy status', style: TextStyle(color: AppTheme.textMuted.withValues(alpha: 0.6), fontSize: 10)),
+                                Text(
+                                  'Copy status',
+                                  style: TextStyle(
+                                    color: AppTheme.textMuted.withValues(
+                                      alpha: 0.6,
+                                    ),
+                                    fontSize: 10,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -127,10 +178,7 @@ class _MainScreenState extends State<MainScreen> {
           ),
           // Main content
           Expanded(
-            child: IndexedStack(
-              index: _currentIndex,
-              children: _screens,
-            ),
+            child: IndexedStack(index: _currentIndex, children: _screens),
           ),
         ],
       ),
@@ -154,7 +202,10 @@ class _MainScreenState extends State<MainScreen> {
                 return GestureDetector(
                   onTap: () => setState(() => _currentIndex = i),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: isSelected
                           ? AppTheme.primaryColor.withOpacity(0.1)
@@ -166,7 +217,9 @@ class _MainScreenState extends State<MainScreen> {
                       children: [
                         Icon(
                           _navItems[i].icon,
-                          color: isSelected ? AppTheme.primaryColor : AppTheme.textMuted,
+                          color: isSelected
+                              ? AppTheme.primaryColor
+                              : AppTheme.textMuted,
                           size: 22,
                         ),
                         const SizedBox(height: 4),
@@ -174,8 +227,12 @@ class _MainScreenState extends State<MainScreen> {
                           _navItems[i].label,
                           style: TextStyle(
                             fontSize: 11,
-                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                            color: isSelected ? AppTheme.primaryColor : AppTheme.textMuted,
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.normal,
+                            color: isSelected
+                                ? AppTheme.primaryColor
+                                : AppTheme.textMuted,
                           ),
                         ),
                       ],
@@ -198,7 +255,10 @@ class _MainScreenState extends State<MainScreen> {
         children: [
           const Icon(Icons.circle, color: AppTheme.errorColor, size: 6),
           const SizedBox(width: 6),
-          Text('$name: ', style: const TextStyle(color: AppTheme.textMuted, fontSize: 10)),
+          Text(
+            '$name: ',
+            style: const TextStyle(color: AppTheme.textMuted, fontSize: 10),
+          ),
           Expanded(
             child: Text(
               error ?? 'binary not found or port conflict',

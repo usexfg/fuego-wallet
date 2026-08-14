@@ -8,8 +8,8 @@ import 'network_info.dart';
 import 'transaction.dart';
 
 class FuegoDaemonClient {
-  final String host;
-  final int port;
+  String host;
+  int port;
   final int walletPort;
   final http.Client _http;
 
@@ -20,21 +20,24 @@ class FuegoDaemonClient {
     http.Client? client,
   }) : _http = client ?? http.Client();
 
+  /// Update chain endpoint after connection resolution.
+  void updateNode(String newHost, {int? newPort}) {
+    host = newHost;
+    if (newPort != null) port = newPort;
+  }
+
   /// True when [host] is a loopback address suitable for key-bearing APIs.
   static bool isLocalHost(String host) {
     final h = host.trim().toLowerCase();
-    return h == '127.0.0.1' ||
-        h == 'localhost' ||
-        h == '::1' ||
-        h == '0.0.0.0';
+    return h == '127.0.0.1' || h == 'localhost' || h == '::1' || h == '0.0.0.0';
   }
 
   Uri _rest(String path, {bool useWallet = false}) => Uri(
-        scheme: 'http',
-        host: useWallet ? '127.0.0.1' : host,
-        port: useWallet ? walletPort : port,
-        path: path,
-      );
+    scheme: 'http',
+    host: useWallet ? '127.0.0.1' : host,
+    port: useWallet ? walletPort : port,
+    path: path,
+  );
 
   void _log(String message) {
     if (kDebugMode) {
@@ -47,7 +50,10 @@ class FuegoDaemonClient {
     Map<String, String>? query,
     bool useWallet = false,
   }) async {
-    final uri = _rest(path, useWallet: useWallet).replace(queryParameters: query);
+    final uri = _rest(
+      path,
+      useWallet: useWallet,
+    ).replace(queryParameters: query);
     _log('[daemon] GET $uri');
     final resp = await _http.get(uri).timeout(const Duration(seconds: 10));
     if (resp.statusCode != 200) {
@@ -107,14 +113,25 @@ class FuegoDaemonClient {
   }
 
   Future<int> getWalletHeight() async {
-    final r = await _post('/json_rpc', {
-      'jsonrpc': '2.0',
-      'id': 'fuego_core',
-      'method': 'get_height',
-      'params': {},
-    }, useWallet: true);
-    final result = r['result'] as Map<String, dynamic>? ?? r;
-    return (result['height'] as int?) ?? 0;
+    try {
+      final r = await _post('/json_rpc', {
+        'jsonrpc': '2.0',
+        'id': 'fuego_core',
+        'method': 'getStatus',
+        'params': {},
+      }, useWallet: true);
+      final result = r['result'] as Map<String, dynamic>? ?? r;
+      return (result['height'] as int?) ??
+          (result['scanned_height'] as int?) ??
+          (result['current_height'] as int?) ??
+          0;
+    } catch (_) {
+      final health = await _get('/health', useWallet: true);
+      final wallet = health['wallet'] as Map<String, dynamic>?;
+      return (health['scanned_height'] as int?) ??
+          (wallet?['height'] as int?) ??
+          0;
+    }
   }
 
   // ── Wallet operations (local walletd / backend only) ──
@@ -162,7 +179,10 @@ class FuegoDaemonClient {
     }, useWallet: true);
     final result = r['result'] as Map<String, dynamic>? ?? r;
     final available =
-        (result['availableBalance'] ?? result['available_balance'] ?? result['balance'] ?? 0)
+        (result['availableBalance'] ??
+                result['available_balance'] ??
+                result['balance'] ??
+                0)
             as int;
     final locked =
         (result['lockedAmount'] ?? result['locked_amount'] ?? 0) as int;
@@ -176,7 +196,7 @@ class FuegoDaemonClient {
       'method': 'sendTransaction',
       'params': {
         'destinations': [
-          {'amount': (req.amount * 1e7).toInt(), 'address': req.address}
+          {'amount': (req.amount * 1e7).toInt(), 'address': req.address},
         ],
         'fee': (req.fee * 1e7).toInt(),
         'anonymity': req.mixin,
@@ -196,10 +216,7 @@ class FuegoDaemonClient {
       'jsonrpc': '2.0',
       'id': 'fuego_core',
       'method': 'getTransactions',
-      'params': {
-        'blockCount': count,
-        'firstBlockIndex': 0,
-      },
+      'params': {'blockCount': count, 'firstBlockIndex': 0},
     }, useWallet: true);
     final result = r['result'] as Map<String, dynamic>? ?? r;
     final items = result['items'] as List<dynamic>? ?? [];

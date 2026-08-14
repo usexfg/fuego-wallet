@@ -93,11 +93,16 @@ impl EmbeddedNode {
         };
 
         let start = self.height();
-        if start >= target {
+        // Block heights are 0-indexed: a chain of `target` blocks has valid
+        // heights 0..=target-1. Clamp the sync window to the last existing
+        // block so we never ask the daemon for one past the tip (which the
+        // daemon rejects with "Too big height").
+        let last_existing = target.saturating_sub(1);
+        if start >= last_existing {
             return Ok(0);
         }
 
-        let end = std::cmp::min(start + max_blocks, target);
+        let end = std::cmp::min(start + max_blocks, last_existing);
 
         {
             let mut state = self.state.write().unwrap();
