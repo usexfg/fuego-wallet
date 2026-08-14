@@ -27,6 +27,11 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
     'BTC': 'Bitcoin', 'LTC': 'Litecoin', 'KMD': 'Komodo', 'BCH': 'Bitcoin Cash',
     'ETH': 'Ethereum', 'ARB': 'Arbitrum', 'BASE': 'Base', 'BNB': 'BNB Chain',
     'SOL': 'Solana', 'POLY': 'Polygon', 'DCR': 'Decred', 'XMR': 'Monero',
+    'XFG': 'Fuego',
+    'AVAX': 'Avalanche', 'BOB': 'BOB (Build on Bitcoin)', 'CRONOS': 'Cronos',
+    'DASH': 'Dash', 'DOGE': 'Dogecoin', 'MONAD': 'Monad', 'OP': 'Optimism',
+    'PLSX': 'PulseChain', 'RHC': 'RHC', 'UNI': 'Unichain', 'XPL': 'XPLA',
+    'ZANO': 'Zano', 'ZEC': 'Zcash',
   };
 
   static const Map<String, String> _chainDesc = {
@@ -57,6 +62,20 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
     'SOL': {'type': 'Non-EVM', 'connect': 'Solana JSON-RPC (public)', 'user': 'No setup needed — public RPC used by default.', 'htlc': 'On-chain HTLC program'},
     'DCR': {'type': 'UTXO', 'connect': 'Neutrino SPV (built-in) or dcrd RPC', 'user': 'No setup needed for SPV mode.', 'htlc': 'P2SH'},
     'XMR': {'type': 'CryptoNote', 'connect': 'monerod + monero-wallet-rpc', 'user': 'Run your own node (recommended) or use a remote node from monero.fail.', 'htlc': 'Ring signatures + adaptor sigs'},
+    'XFG': {'type': 'Native', 'connect': 'Embedded fuegod daemon', 'user': 'Built into the wallet — no setup needed.', 'htlc': 'Base chain'},
+    'AVAX': {'type': 'EVM', 'wired': 'false'},
+    'BOB': {'type': 'EVM L2', 'wired': 'false'},
+    'CRONOS': {'type': 'EVM', 'wired': 'false'},
+    'DASH': {'type': 'UTXO', 'wired': 'false'},
+    'DOGE': {'type': 'UTXO', 'wired': 'false'},
+    'MONAD': {'type': 'EVM', 'wired': 'false'},
+    'OP': {'type': 'EVM L2', 'wired': 'false'},
+    'PLSX': {'type': 'EVM', 'wired': 'false'},
+    'RHC': {'type': 'EVM', 'wired': 'false'},
+    'UNI': {'type': 'EVM L2', 'wired': 'false'},
+    'XPL': {'type': 'EVM', 'wired': 'false'},
+    'ZANO': {'type': 'CryptoNote', 'wired': 'false'},
+    'ZEC': {'type': 'UTXO', 'wired': 'false'},
   };
 
   static const Map<String, Color> _chainColors = {
@@ -64,6 +83,12 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
     'BCH': Color(0xFF8DC351), 'ETH': Color(0xFF627EEA), 'ARB': Color(0xFF28A0F0),
     'BASE': Color(0xFF0052FF), 'BNB': Color(0xFFF0B90B), 'POLY': Color(0xFF8247E5),
     'SOL': Color(0xFF9945FF), 'DCR': Color(0xFF2970FF), 'XMR': Color(0xFFFF6600),
+    'XFG': Color(0xFFD84315),
+    'AVAX': Color(0xFFE84142), 'BOB': Color(0xFFFF6D00), 'CRONOS': Color(0xFF002D74),
+    'DASH': Color(0xFF008CE7), 'DOGE': Color(0xFFC2A633), 'MONAD': Color(0xFF836EF9),
+    'OP': Color(0xFFFF0420), 'PLSX': Color(0xFF9C27B0), 'RHC': Color(0xFF6B7280),
+    'UNI': Color(0xFFFF007A), 'XPL': Color(0xFF4FA9E0), 'ZANO': Color(0xFF6A5AF9),
+    'ZEC': Color(0xFFF4B728),
   };
 
   static const Map<String, String> _chainIcons = {
@@ -78,7 +103,21 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
     'POLY': 'assets/coin icons/matic.png',
     'SOL': 'assets/coin icons/sol.png',
     'DCR': 'assets/coin icons/dcr.png',
-    'XMR': 'assets/coin icons/monero-xmr-logo.png',
+    'XMR': 'assets/coin icons/monero.png',
+    'XFG': 'assets/coin icons/xfg.png',
+    'AVAX': 'assets/coin icons/avax.png',
+    'BOB': 'assets/coin icons/bob.png',
+    'CRONOS': 'assets/coin icons/cronos.png',
+    'DASH': 'assets/coin icons/dash.png',
+    'DOGE': 'assets/coin icons/doge.png',
+    'MONAD': 'assets/coin icons/monad.png',
+    'OP': 'assets/coin icons/op.jpg',
+    'PLSX': 'assets/coin icons/plsx.png',
+    'RHC': 'assets/coin icons/rhc.png',
+    'UNI': 'assets/coin icons/uni.png',
+    'XPL': 'assets/coin icons/xpl.png',
+    'ZANO': 'assets/coin icons/zano.png',
+    'ZEC': 'assets/coin icons/zec.png',
   };
 
   @override
@@ -157,7 +196,7 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
       ClipRRect(
         borderRadius: BorderRadius.circular(4),
         child: Image.asset(
-          'assets/coin icons/fuego.png',
+          'assets/coin icons/xfg.png',
           width: 20, height: 20,
           errorBuilder: (_, __, ___) => Container(
             width: 20, height: 20,
@@ -696,7 +735,14 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
   void _showChainInfo() {
     final selected = context.read<DexCubit>().state.selectedPair.ticker;
     final entries = _chainInfo.entries.toList()
-      ..sort((a, b) => a.key == selected ? -1 : b.key == selected ? 1 : 0);
+      ..sort((a, b) {
+        if (a.key == selected) return -1;
+        if (b.key == selected) return 1;
+        final aComingSoon = a.value['wired'] == 'false' ? 1 : 0;
+        final bComingSoon = b.value['wired'] == 'false' ? 1 : 0;
+        if (aComingSoon != bComingSoon) return aComingSoon - bComingSoon;
+        return 0;
+      });
 
     showDialog<void>(
       context: context,
@@ -716,9 +762,10 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
             ...entries.map((e) {
               final info = e.value;
               final isSelected = e.key == selected;
+              final comingSoon = info['wired'] == 'false';
               final color = _chainColors[e.key] ?? AppTheme.primaryColor;
               final desc = _chainDesc[e.key] ?? '';
-              return Container(
+              final row = Container(
                 margin: const EdgeInsets.only(bottom: 8),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -751,17 +798,19 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(children: [
-                          Text('${e.key} — ${_chainNames[e.key]}',
+                          Flexible(child: Text('${e.key} — ${_chainNames[e.key]}',
                             style: TextStyle(color: isSelected ? color : AppTheme.textPrimary,
-                              fontSize: 13, fontWeight: FontWeight.w600)),
+                              fontSize: 13, fontWeight: FontWeight.w600))),
                           const SizedBox(width: 6),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                             decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(4)),
-                            child: Text(info['type']!, style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w600))),
+                            child: Text(info['type'] ?? '', style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w600))),
                         ]),
-                        const SizedBox(height: 2),
-                        Text(desc, style: const TextStyle(color: AppTheme.textMuted, fontSize: 10)),
+                        if (desc.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(desc, style: const TextStyle(color: AppTheme.textMuted, fontSize: 10)),
+                        ],
                       ],
                     )),
                     if (isSelected)
@@ -770,12 +819,33 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
                         decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(4)),
                         child: const Text('ACTIVE', style: TextStyle(color: AppTheme.primaryColor, fontSize: 9, fontWeight: FontWeight.w700))),
                   ]),
-                  const SizedBox(height: 8),
-                  _chainInfoRow('Connect', info['connect']!),
-                  _chainInfoRow('HTLC', info['htlc']!),
-                  _chainInfoRow('Setup', info['user']!),
+                  if (!comingSoon) ...[
+                    const SizedBox(height: 8),
+                    _chainInfoRow('Connect', info['connect'] ?? ''),
+                    _chainInfoRow('HTLC', info['htlc'] ?? ''),
+                    _chainInfoRow('Setup', info['user'] ?? ''),
+                  ],
                 ]),
               );
+
+              if (!comingSoon) return row;
+              return Stack(children: [
+                Opacity(opacity: 0.55, child: row),
+                Positioned.fill(
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppTheme.cardColor.withValues(alpha: 0.95),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppTheme.textMuted.withValues(alpha: 0.4)),
+                      ),
+                      child: const Text('COMING SOON',
+                        style: TextStyle(color: AppTheme.textMuted, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1)),
+                    ),
+                  ),
+                ),
+              ]);
             }),
           ])),
         ),
