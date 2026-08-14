@@ -52,6 +52,12 @@ class SwapDaemonClient {
     return result;
   }
 
+  /// XMR reserve proof via the daemon → the configured monero-wallet-rpc.
+  Future<String> getReserveProof({required String address, required String message}) async {
+    final result = await _rpc('get_reserve_proof', {'address': address, 'message': message}) as Map<String, dynamic>;
+    return result['signature'] as String;
+  }
+
   Future<List<SwapInfo>> listSwaps() async {
     final result = await _rpc('list_swaps') as Map<String, dynamic>;
     return (result['swaps'] as List<dynamic>).map((s) => SwapInfo.fromJson(s as Map<String, dynamic>)).toList();

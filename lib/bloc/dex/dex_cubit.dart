@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:http/http.dart' as http;
@@ -7,6 +8,7 @@ import '../../models/swap_models.dart';
 import '../../native/crypto/bindings/crypto_bindings.dart';
 import '../../services/bitcoin_reserve_proof.dart';
 import '../../services/reserve_proof_service.dart';
+import '../../services/security_service.dart';
 import '../../services/swap_daemon_client.dart';
 import '../../services/web3_multi_chain_service.dart';
 
@@ -236,9 +238,15 @@ class DexCubit extends Cubit<DexState> {
           p2pkhVersion: _btcP2pkhVersion(chain).$1,
           p2pkhVersion2: _btcP2pkhVersion(chain).$2,
         );
+      } else if (chain == ChainTypeSdk.monero) {
+        // XMR reserve proofs are produced by monero-wallet-rpc. Bridge via
+        // the local swap daemon: the user's XMR address is the taker input.
+        final xmrProof = await _xmrReserveProof(offerId: offerId, address: takerChainKey);
+        if (xmrProof == null) return;
+        proof = xmrProof;
       } else {
         emit(state.copyWith(isLoading: false,
-          error: 'Reserve proofs for ${chain.symbol} need the SwapXFG CLI for now (EVM, SOL and Bitcoin-family are supported in-app)'));
+          error: 'Reserve proofs for ${chain.symbol} are not supported in-app'));
         return;
       }
     }
@@ -367,30 +375,78 @@ class DexCubit extends Cubit<DexState> {
     }
   }
 
+  /// XMR reserve proof via the local swap daemon → the user's configured
+  /// monero-wallet-rpc (get_reserve_proof). The maker's verifyReserveProof
+  /// expects the "address:message:signature" layout.
+  Future<String?> _xmrReserveProof({required String offerId, required String address}) async {
+    if (_swapClient == null) {
+      emit(state.copyWith(error: 'Swap daemon not connected — cannot build XMR reserve proof'));
+      return null;
+    }
+    try {
+      final signature = await _swapClient!.getReserveProof(address: address, message: offerId);
+      return '$address:$offerId:$signature';
+    } catch (e) {
+      emit(state.copyWith(error: 'XMR reserve proof failed: $e'));
+      return null;
+    }
+  }
+
   // ── Taker identity ──
-  // Lazily generated Ed25519 keypair (session-scoped). The public key is sent
-  // as takerPubKey; the maker's SwapDaemon binds it as the expected peer key
-  // for the resulting AFK swap.
+  // Ed25519 keypair published as takerPubKey in /requestswap. Persisted in
+  // secure storage so an app restart between the request and the AFK fill
+  // does not strand the identity (the maker pre-binds the published key).
   String? _takerSecretKeyHex;
   String? _takerPublicKeyHexCache;
 
+  Future<void> _ensureTakerIdentity() async {
+    if (_takerPublicKeyHexCache != null) return;
+    try {
+      final stored = await SecurityService.readTakerSwapSecret();
+      if (stored != null && stored.length == 64) {
+        final pub = NativeCrypto.generatePublicKey(Uint8List.fromList(_hexToBytes(stored)));
+        if (pub != null) {
+          _takerSecretKeyHex = stored;
+          _takerPublicKeyHexCache = _bytesToHex(pub);
+          return;
+        }
+      }
+    } catch (e) {
+      debugPrint('DexCubit: taker identity load failed: $e');
+    }
+    final keys = NativeCrypto.generateKeys();
+    final priv = keys?['private_spend_key'];
+    final pub = keys?['public_spend_key'];
+    if (priv != null && pub != null) {
+      _takerSecretKeyHex = _bytesToHex(priv);
+      _takerPublicKeyHexCache = _bytesToHex(pub);
+      try {
+        await SecurityService.writeTakerSwapSecret(_takerSecretKeyHex!);
+      } catch (e) {
+        debugPrint('DexCubit: taker identity persist failed: $e');
+      }
+    } else {
+      _takerPublicKeyHexCache = '';
+    }
+  }
+
   String _takerPublicKeyHex() {
     if (_takerPublicKeyHexCache == null) {
-      final keys = NativeCrypto.generateKeys();
-      final priv = keys?['private_spend_key'];
-      final pub = keys?['public_spend_key'];
-      if (priv != null && pub != null) {
-        _takerSecretKeyHex = _bytesToHex(priv);
-        _takerPublicKeyHexCache = _bytesToHex(pub);
-      } else {
-        _takerPublicKeyHexCache = '';
-      }
+      _takerPublicKeyHexCache = '';
     }
     return _takerPublicKeyHexCache!;
   }
 
   static String _bytesToHex(List<int> bytes) =>
       bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+
+  static List<int> _hexToBytes(String hex) {
+    final out = <int>[];
+    for (var i = 0; i + 1 < hex.length; i += 2) {
+      out.add(int.parse(hex.substring(i, i + 2), radix: 16));
+    }
+    return out;
+  }
 
   Future<void> verifyPayment({required String txHash, required String fromAddress, required String toAddress, required int amount, int minConfirmations = 6}) async {
     emit(state.copyWith(isLoading: true, error: null));

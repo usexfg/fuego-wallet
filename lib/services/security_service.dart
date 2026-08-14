@@ -73,6 +73,17 @@ class SecurityService {
     await s.delete(key: key);
   }
 
+  // ── DEX taker identity ──
+  // The Ed25519 keypair published as takerPubKey in /requestswap. Persisted
+  // so a restart between requesting a fill and driving the AFK swap does
+  // not strand the identity (the maker pre-binds the published key).
+  static const _takerSwapKey = 'dex_taker_swap_secret';
+
+  static Future<String?> readTakerSwapSecret() => _read(_takerSwapKey);
+
+  static Future<void> writeTakerSwapSecret(String secretHex) =>
+      _write(_takerSwapKey, secretHex);
+
   // ── PIN ──────────────────────────────────────────────────────────────
 
   Future<bool> setPIN(String pin) async {

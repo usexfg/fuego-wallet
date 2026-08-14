@@ -472,7 +472,9 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
             ? '64-hex ETH key'
             : state.selectedChain == ChainTypeSdk.solana
                 ? 'SOL keypair hex'
-                : 'WIF private key',
+                : state.selectedChain == ChainTypeSdk.monero
+                    ? 'Your XMR address'
+                    : 'WIF private key',
         hintStyle: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.5)),
         enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha: 0.3))),
         focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: AppTheme.primaryColor))),
