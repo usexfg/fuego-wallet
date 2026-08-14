@@ -87,7 +87,7 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
       labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
       tabs: const [
         Tab(text: 'Orderbook'),
-        Tab(text: 'Take'),
+        Tab(text: 'Accept'),
         Tab(text: 'Direct'),
         Tab(text: 'History'),
       ],
