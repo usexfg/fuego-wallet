@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:http/http.dart' as http;
 import '../../models/swap_models.dart';
 import '../../native/crypto/bindings/crypto_bindings.dart';
+import '../../services/bitcoin_reserve_proof.dart';
 import '../../services/reserve_proof_service.dart';
 import '../../services/swap_daemon_client.dart';
 import '../../services/web3_multi_chain_service.dart';
@@ -227,9 +228,17 @@ class DexCubit extends Cubit<DexState> {
         proof = ReserveProofService.buildEvmProof(offerId: offerId, privateKeyHex: takerChainKey);
       } else if (chain == ChainTypeSdk.solana) {
         proof = await ReserveProofService.buildSolProof(offerId: offerId, privateKeyHex: takerChainKey);
+      } else if (chain.isBtcFamily) {
+        // Bitcoin signmessage proof from the taker's WIF key.
+        proof = BitcoinReserveProof.build(
+          wif: takerChainKey,
+          offerId: offerId,
+          p2pkhVersion: _btcP2pkhVersion(chain).$1,
+          p2pkhVersion2: _btcP2pkhVersion(chain).$2,
+        );
       } else {
         emit(state.copyWith(isLoading: false,
-          error: 'Reserve proofs for ${chain.symbol} need the SwapXFG CLI for now (EVM and SOL are supported in-app)'));
+          error: 'Reserve proofs for ${chain.symbol} need the SwapXFG CLI for now (EVM, SOL and Bitcoin-family are supported in-app)'));
         return;
       }
     }
@@ -343,6 +352,18 @@ class DexCubit extends Cubit<DexState> {
       case ChainTypeSdk.litecoin: return 'LTC';
       case ChainTypeSdk.polygon: return 'POLYGON';
       default: return 'SOL';
+    }
+  }
+
+  /// (prefix byte, optional second prefix byte) for P2PKH addresses.
+  static (int, int?) _btcP2pkhVersion(ChainTypeSdk chain) {
+    switch (chain) {
+      case ChainTypeSdk.bitcoin: return (0x00, null);
+      case ChainTypeSdk.bitcoinCash: return (0x00, null);
+      case ChainTypeSdk.litecoin: return (0x30, null);
+      case ChainTypeSdk.komodo: return (0x3c, null);
+      case ChainTypeSdk.decred: return (0x3f, 0x07);  // two-byte prefix 0x073f
+      default: return (0x00, null);
     }
   }
 

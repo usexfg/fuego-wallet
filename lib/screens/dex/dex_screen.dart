@@ -429,7 +429,11 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
       decoration: InputDecoration(
         labelText: 'Your ${state.selectedChain.symbol} private key (for reserve proof)',
         labelStyle: const TextStyle(color: AppTheme.textSecondary),
-        hintText: state.selectedChain.isEvm ? '64-hex ETH key' : 'SOL keypair hex',
+        hintText: state.selectedChain.isEvm
+            ? '64-hex ETH key'
+            : state.selectedChain == ChainTypeSdk.solana
+                ? 'SOL keypair hex'
+                : 'WIF private key',
         hintStyle: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.5)),
         enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha: 0.3))),
         focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: AppTheme.primaryColor))),
