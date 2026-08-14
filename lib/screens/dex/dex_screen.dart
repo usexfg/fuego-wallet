@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../bloc/dex/dex_cubit.dart';
 import '../../models/swap_models.dart';
 import '../../models/chain_info.dart';
+import 'peer_swap_screen.dart';
 import '../../models/candlestick.dart';
 import '../../services/price_history_service.dart';
 import '../../utils/theme.dart';
@@ -21,12 +22,13 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
   final _amountController = TextEditingController();
   final _rateController = TextEditingController();
   final _takerKeyController = TextEditingController();
+  final _xmrAddressController = TextEditingController();
   List<Candlestick>? _candles;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _loadPriceData();
     WidgetsBinding.instance.addPostFrameCallback((_) => context.read<DexCubit>().init());
   }
@@ -42,6 +44,7 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
     _amountController.dispose();
     _rateController.dispose();
     _takerKeyController.dispose();
+    _xmrAddressController.dispose();
     super.dispose();
   }
 
@@ -65,6 +68,7 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
         Expanded(child: TabBarView(controller: _tabController, children: [
           _buildOrderbook(state),
           _buildTradeForm(state),
+          const PeerSwapScreen(),
           _buildRecentTrades(state),
         ])),
       ]),
@@ -75,14 +79,17 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
     color: AppTheme.surfaceColor,
     child: TabBar(
       controller: _tabController,
+      isScrollable: true,
+      tabAlignment: TabAlignment.start,
       labelColor: AppTheme.primaryColor,
       unselectedLabelColor: AppTheme.textMuted,
       indicatorColor: AppTheme.primaryColor,
       labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
       tabs: const [
         Tab(text: 'Orderbook'),
-        Tab(text: 'Trade'),
-        Tab(text: 'Trades'),
+        Tab(text: 'Take'),
+        Tab(text: 'Direct'),
+        Tab(text: 'History'),
       ],
     ),
   );
@@ -363,21 +370,33 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
     const SizedBox(height: 12),
     // Taker key: the funded chain address's private key, used to build the
     // reserve proof (proof-of-funds) when taking an offer. Never persisted.
-    TextField(controller: _takerKeyController, obscureText: true,
-      decoration: InputDecoration(
-        labelText: 'Your ${state.selectedChain.symbol} private key (for reserve proof)',
-        labelStyle: const TextStyle(color: AppTheme.textSecondary),
-        hintText: state.selectedChain.isEvm
-            ? '64-hex ETH key'
-            : state.selectedChain == ChainTypeSdk.solana
-                ? 'SOL keypair hex'
-                : state.selectedChain == ChainTypeSdk.monero
-                    ? 'Your XMR address'
-                    : 'WIF private key',
-        hintStyle: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.5)),
-        enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha: 0.3))),
-        focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: AppTheme.primaryColor))),
-      style: const TextStyle(color: AppTheme.textPrimary)),
+    // Monero is the exception: no private key ever leaves the user's node —
+    // the wallet bridges the proof through monero-wallet-rpc, so only the
+    // user's XMR address is needed here.
+    if (state.selectedChain != ChainTypeSdk.monero)
+      TextField(controller: _takerKeyController, obscureText: true,
+        decoration: InputDecoration(
+          labelText: 'Your ${state.selectedChain.symbol} private key (for reserve proof)',
+          labelStyle: const TextStyle(color: AppTheme.textSecondary),
+          hintText: state.selectedChain.isEvm
+              ? '64-hex ETH key'
+              : state.selectedChain == ChainTypeSdk.solana
+                  ? 'SOL keypair hex'
+                  : 'WIF private key',
+          hintStyle: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.5)),
+          enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha: 0.3))),
+          focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: AppTheme.primaryColor))),
+        style: const TextStyle(color: AppTheme.textPrimary)),
+    if (state.selectedChain == ChainTypeSdk.monero)
+      TextField(controller: _xmrAddressController,
+        decoration: InputDecoration(
+          labelText: 'Your XMR address (never leaves your wallet — only a proof is sent)',
+          labelStyle: const TextStyle(color: AppTheme.textSecondary),
+          hintText: '4… (primary address)',
+          hintStyle: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.5)),
+          enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha: 0.3))),
+          focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: AppTheme.primaryColor))),
+        style: const TextStyle(color: AppTheme.textPrimary)),
     const SizedBox(height: 20),
     Row(children: [
       Expanded(child: ElevatedButton(onPressed: state.isLoading ? null : () => _submitOffer(state),
@@ -435,7 +454,38 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
     final amountXfg = double.tryParse(amountStr);
     final rate = double.tryParse(rateStr);
     if (amountXfg == null || rate == null || amountXfg <= 0 || rate <= 0) return;
-    context.read<DexCubit>().submitOffer(xfgAmount: (amountXfg * 1e7).toInt(), rateNum: (rate * 1e7).toInt(), makerPubKey: '', signature: '');
+    _showMakerCliDialog();
+  }
+
+  // Order MAKING needs wallet offer signing + the XFG pre-lock (a real
+  // transfer with unlock time), which the CLI wallet performs. The GUI gets
+  // this once the Rust wallet can build real XFG transactions.
+  void _showMakerCliDialog() {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(children: [
+          Icon(Icons.storefront, color: AppTheme.primaryColor, size: 20),
+          SizedBox(width: 8),
+          Text('Making orders needs the CLI (for now)',
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w700)),
+        ]),
+        content: const Text(
+          'Posting an order requires signing the offer and pre-locking XFG with the full '
+          'node wallet — that signing lives in the SwapXFG CLI today (fire_wallet + swapxfg).\n\n'
+          'Taking orders works right here in the wallet. Order making from the GUI arrives '
+          'when the Rust wallet gains real transaction building.\n\n'
+          'Command line: swapxfg → sign via fire_wallet → post your offer there.',
+          style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, height: 1.4),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx),
+            child: const Text('Got it', style: TextStyle(color: AppTheme.primaryColor))),
+        ],
+      ),
+    );
   }
 
   void _requestSwap(DexState state) async {
@@ -444,7 +494,10 @@ class _DexScreenState extends State<DexScreen> with SingleTickerProviderStateMix
     if (amountStr.isEmpty) return;
     final amountXfg = double.tryParse(amountStr);
     if (amountXfg == null || amountXfg <= 0) return;
-    final takerKey = _takerKeyController.text.trim();
+    final isMonero = state.selectedChain == ChainTypeSdk.monero;
+    final takerKey = isMonero
+        ? _xmrAddressController.text.trim()
+        : _takerKeyController.text.trim();
     context.read<DexCubit>().requestSwap(
       offerId: state.offers.first.offerId,
       amount: (amountXfg * 1e7).toInt(),

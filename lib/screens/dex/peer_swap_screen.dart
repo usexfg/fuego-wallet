@@ -85,7 +85,7 @@ class _PeerSwapScreenState extends State<PeerSwapScreen> {
             'This is for atomic swaps with a specific counterparty you already know. '
             'You must agree the amounts out-of-band and exchange endpoints first — '
             'there is no automatic liquidity and no asset picker here.\n\n'
-            'To fill an open offer from the orderbook, use the DEX tab instead.',
+            'To fill an open offer from the orderbook, use the Take tab.',
             style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, height: 1.4),
           ),
         ]),
