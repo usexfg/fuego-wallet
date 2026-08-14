@@ -20,7 +20,7 @@ impl WalletdProcess {
     pub async fn start(
         &mut self, daemon_host: &str, daemon_port: u16, container_file: &str,
     ) -> Result<String, String> {
-        let walletd_bin = crate::release::find_walletd()?;
+        let (_, walletd_bin) = crate::release::ensure_binaries().await?;
         log::info!("Starting walletd: {}", walletd_bin.display());
 
         let password = Self::container_password();

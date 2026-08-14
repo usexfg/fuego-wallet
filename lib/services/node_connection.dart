@@ -249,8 +249,10 @@ class NodeConnection {
   }
 
   /// Probe all seed candidates in parallel; pick the first reachable one in
-  /// preference order, or `null` when none answer.
-  Future<({String host, int port})?> _resolveReachableSeed() async {
+  /// preference order. When every probe fails (probes are flaky — a timeout
+  /// does not prove the node is down), fall back to the preferred seed so
+  /// remote mode still attempts a real connection instead of dead-ending.
+  Future<({String host, int port})> _resolveReachableSeed() async {
     final candidates = _seedCandidates();
     final results = await Future.wait(
       candidates.map((c) async {
@@ -267,8 +269,10 @@ class NodeConnection {
         return r.candidate;
       }
     }
-    debugPrint('[node] no seed answered probe');
-    return null;
+    debugPrint(
+      '[node] no seed answered probe — using preferred $_remoteHost:$_remotePort',
+    );
+    return (host: _remoteHost, port: _remotePort);
   }
 
   /// Start daemons for the current mode and point [rpcService] at the wallet proxy.
@@ -286,21 +290,6 @@ class NodeConnection {
 
     if (!local) {
       final seed = await _resolveReachableSeed();
-      if (seed == null) {
-        debugPrint('[node] no reachable seed node found');
-        rpcService.updateNode('127.0.0.1', port: walletPort);
-        final ep = ConnectionEndpoints(
-          mode: ConnectionMode.remote,
-          walletHost: '127.0.0.1',
-          walletPort: walletPort,
-          chainHost: _remoteHost,
-          chainPort: _remotePort,
-          proxyRunning: false,
-          error: 'No reachable Fuego seed node found',
-        );
-        _notify(ep);
-        return ep;
-      }
       _remoteHost = seed.host;
       _remotePort = seed.port;
     }

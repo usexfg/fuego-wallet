@@ -11,7 +11,7 @@ impl DaemonProcess {
     pub fn rpc_url(&self) -> String { format!("http://127.0.0.1:{}", self.port) }
 
     pub async fn start(&mut self, testnet: bool, data_dir: &str) -> Result<String, String> {
-        let fuegod = crate::release::find_fuegod()?;
+        let (fuegod, _) = crate::release::ensure_binaries().await?;
         std::fs::create_dir_all(data_dir).map_err(|e| format!("mkdir: {}", e))?;
 
         let port_str = self.port.to_string();
