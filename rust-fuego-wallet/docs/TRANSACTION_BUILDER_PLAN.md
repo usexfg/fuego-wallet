@@ -174,3 +174,30 @@ Same builder, new command bodies:
 Phases 1–6 (the core builder, which is what the user asked for): **~8–12 focused
 days**. Phase 7 (CDs/HEARTH/order-making) adds 2–4. Phase 8 is validation, not
 build time.
+
+---
+
+## Session handoff notes (for whoever picks this up)
+
+- **Source of truth for the C++ daemon code: `/Users/aejt/xfgo`** (fuego-suite @
+  origin/master, pushed). NOT `/Users/aejt/fuego`, NOT the DEXFG copies.
+- **Another agent is actively working both repos.** Expect working-tree churn in
+  `lib/screens/dex/*` (Flutter) and `src/CryptoNoteCore/*`, `src/Rpc/*` (C++).
+  Commit only your own hunks — filter with `git diff` + `git apply --cached`
+  (see git history for the pattern). Never fix their WIP.
+- The fuego-suite working tree has been link-broken by the other session's digm
+  work (`BancorCurve.cpp` reference, `Blockchain.cpp` digm symbols). For C++
+  verification of your files, use `clang++ -fsyntax-only` with the flags in
+  `build_presig/src/CMakeFiles/Rpc.dir/flags.make` instead of full builds until
+  their work lands. `build_presig/` is the tests-enabled build dir.
+- C++ build: `cmake -DUSE_VENDORED_SECP256K1=OFF -DBUILD_TESTS=ON`; swap tests run
+  from `build_presig/src/test_daemons/`.
+- Flutter verify: `flutter analyze <files>`; the repo lints at info-level noise
+  but must stay at 0 **errors**.
+- Cross-language verification pattern already proven in this session: Dart/REPL
+  output → C++ scratch harness using the production classes (`Secp256k1Signer`,
+  `Base58Std`, `keccak.c`) → compare. Reuse it for ring-signature gates (Phase 3).
+- Keys to grep when porting: `generate_ring_signature`, `check_ring_signature`
+  (crypto-ops.c), bucket picker (`WalletTransactionSender.cpp:1592+`),
+  tx serialization (`CryptoNoteSerialization.cpp`), `createDeposit` flow
+  (WalletLegacy.cpp).
