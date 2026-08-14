@@ -347,28 +347,35 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _miningControls(WalletState state) {
     return BlocBuilder<MiningCubit, MiningState>(
       builder: (context, mining) {
+        final miningCubit = context.read<MiningCubit>();
+        final miningSupported = miningCubit.isMiningSupported;
         final addr = state.address;
-        final canMine = addr != null && addr.isNotEmpty;
+        final canMine = miningSupported && addr != null && addr.isNotEmpty;
 
         String statusText;
         Color statusColor;
-        switch (mining.status) {
-          case 'connecting':
-            statusText =
-                'Connecting to ${mining.poolHost}:${mining.poolPort}...';
-            statusColor = Colors.orange;
-          case 'connected':
-            statusText = 'Connected — waiting for jobs';
-            statusColor = Colors.cyanAccent;
-          case 'mining':
-            statusText = 'Mining — ${mining.hashrate} H/s';
-            statusColor = AppTheme.successColor;
-          case 'error':
-            statusText = mining.error ?? 'Connection failed';
-            statusColor = AppTheme.errorColor;
-          default:
-            statusText = 'Pool Miner (${mining.poolHost}:${mining.poolPort})';
-            statusColor = AppTheme.textMuted;
+        if (!miningSupported) {
+          statusText = 'Pool mining unavailable on iOS';
+          statusColor = AppTheme.textMuted;
+        } else {
+          switch (mining.status) {
+            case 'connecting':
+              statusText =
+                  'Connecting to ${mining.poolHost}:${mining.poolPort}...';
+              statusColor = Colors.orange;
+            case 'connected':
+              statusText = 'Connected — waiting for jobs';
+              statusColor = Colors.cyanAccent;
+            case 'mining':
+              statusText = 'Mining — ${mining.hashrate} H/s';
+              statusColor = AppTheme.successColor;
+            case 'error':
+              statusText = mining.error ?? 'Connection failed';
+              statusColor = AppTheme.errorColor;
+            default:
+              statusText = 'Pool Miner (${mining.poolHost}:${mining.poolPort})';
+              statusColor = AppTheme.textMuted;
+          }
         }
 
         return Container(
@@ -431,45 +438,47 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  const Text(
-                    'Cores',
-                    style: TextStyle(color: AppTheme.textMuted, fontSize: 11),
-                  ),
-                  const SizedBox(width: 8),
-                  DropdownButtonHideUnderline(
-                    child: DropdownButton<int>(
-                      value: mining.coreCount,
-                      dropdownColor: AppTheme.cardColor,
-                      style: const TextStyle(
-                        color: AppTheme.textPrimary,
-                        fontSize: 11,
-                      ),
-                      isDense: true,
-                      items: context
-                          .read<MiningCubit>()
-                          .coreOptions
-                          .map(
-                            (cores) => DropdownMenuItem<int>(
-                              value: cores,
-                              child: Text('$cores'),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: mining.isMining
-                          ? null
-                          : (cores) {
-                              if (cores != null) {
-                                context.read<MiningCubit>().setCoreCount(cores);
-                              }
-                            },
+              if (miningSupported) ...[
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    const Text(
+                      'Cores',
+                      style: TextStyle(color: AppTheme.textMuted, fontSize: 11),
                     ),
-                  ),
-                ],
-              ),
+                    const SizedBox(width: 8),
+                    DropdownButtonHideUnderline(
+                      child: DropdownButton<int>(
+                        value: mining.coreCount,
+                        dropdownColor: AppTheme.cardColor,
+                        style: const TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 11,
+                        ),
+                        isDense: true,
+                        items: miningCubit.coreOptions
+                            .map(
+                              (cores) => DropdownMenuItem<int>(
+                                value: cores,
+                                child: Text('$cores'),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: mining.isMining
+                            ? null
+                            : (cores) {
+                                if (cores != null) {
+                                  context.read<MiningCubit>().setCoreCount(
+                                    cores,
+                                  );
+                                }
+                              },
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               if (mining.sharesAccepted > 0)
                 Padding(
                   padding: const EdgeInsets.only(top: 4),

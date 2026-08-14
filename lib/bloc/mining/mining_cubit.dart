@@ -65,6 +65,8 @@ class MiningCubit extends Cubit<MiningState> {
     };
   }
 
+  bool get isMiningSupported => !Platform.isIOS;
+
   List<int> get coreOptions {
     final maxCores = Platform.numberOfProcessors.clamp(1, 64);
     final options = <int>{1, 2, 4, 8, maxCores};
@@ -82,6 +84,15 @@ class MiningCubit extends Cubit<MiningState> {
     int? poolPort,
   }) async {
     if (state.isMining) return;
+    if (!isMiningSupported) {
+      emit(
+        state.copyWith(
+          status: 'unsupported',
+          error: 'On-device pool mining is unavailable on iOS',
+        ),
+      );
+      return;
+    }
 
     _poolAuthorized = false;
     final host = poolHost ?? state.poolHost;
