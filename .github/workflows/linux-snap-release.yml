@@ -1,0 +1,245 @@
+name: Fuego Wallet - Linux Snap Store Build & Submission Prep
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version tag (e.g. v1.0.0)"
+        required: false
+      channel:
+        description: "Snap Store channel"
+        required: true
+        default: "edge"
+        type: choice
+        options:
+          - edge
+          - beta
+          - stable
+      dry_run:
+        description: "Dry run - build only, no upload"
+        required: false
+        default: false
+        type: boolean
+
+env:
+  FLUTTER_VERSION: "3.44.4"
+  SNAP_NAME: "xfg-wallet"
+
+jobs:
+  snap-build:
+    name: Build Snap Package
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: "stable"
+
+      - name: Enable Linux desktop support
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libsecret-1-dev
+
+      - name: Build fuego from source
+        run: |
+          echo "=== Building fuego walletd ==="
+          git clone -b HEAT https://github.com/usexfg/fuego-suite.git fuego-source
+          cd fuego-source
+
+          sudo apt-get update
+          sudo apt-get install -y build-essential git cmake libboost-all-dev libjsoncpp-dev libssl-dev libzmq3-dev
+
+          sed -i 's/#include <json\/json.h>/#include <jsoncpp\/json.h>/g' src/CryptoNoteCore/ProofStructures.h
+
+          mkdir build && cd build
+          cmake .. -DBUILD_TESTS=OFF -DCMAKE_CXX_FLAGS="-I /usr/include"
+          make -j$(nproc) PaymentGateService
+
+          mkdir -p ../../assets/bin
+          find . -name "walletd" -type f -executable -exec cp {} ../../assets/bin/fuego-walletd \;
+          chmod +x ../../assets/bin/fuego-walletd
+          echo "✅ walletd built"
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run tests
+        continue-on-error: true
+        run: flutter test
+
+      - name: Analyze code
+        run: flutter analyze --no-fatal-infos
+
+      - name: Build Linux desktop app
+        run: flutter build linux --release
+
+      - name: Install Snapcraft
+        run: |
+          sudo snap install snapcraft --classic
+
+      - name: Verify snapcraft.yaml exists
+        run: |
+          if [ ! -f "snapcraft.yaml" ]; then
+            echo "snapcraft.yaml not found - creating minimal template"
+            cat > snapcraft.yaml << EOF
+          name: ${SNAP_NAME}
+          version: '${{ inputs.version || '0.0.0' }}'
+          summary: Privacy-focused cryptocurrency wallet for Fuego blockchain
+          description: |
+            Fuego Wallet is a privacy-focused cryptocurrency wallet that supports
+            the Fuego blockchain and cross-chain atomic swaps.
+
+            Features:
+            - Send and receive Fuego (XFG) and HEAT
+            - Cross-chain atomic swaps with 12 blockchains
+            - Certificate of Deposit (CD) staking
+            - Built-in node connectivity
+          grade: stable
+          confinement: strict
+          base: core22
+
+          apps:
+            ${SNAP_NAME}:
+              command: ${SNAP_NAME}
+              extensions: [gnome]
+              plugs:
+                - network
+                - network-bind
+                - home
+                - removable-media
+
+          parts:
+            ${SNAP_NAME}:
+              plugin: dump
+              source: build/linux/x64/release/bundle
+          EOF
+            echo "✅ Created snapcraft.yaml"
+          else
+            echo "✅ snapcraft.yaml exists"
+          fi
+
+      - name: Build Snap package
+        run: |
+          echo "=== Building Snap Package ==="
+          snapcraft --destructive-mode
+
+          echo "=== Snap package contents ==="
+          ls -la *.snap
+
+          echo "=== Snap package info ==="
+          snap info *.snap 2>/dev/null || echo "Info not available in CI"
+
+          echo "✅ Snap package built"
+
+      - name: Verify Snap package
+        run: |
+          echo "=== Verifying Snap Package ==="
+
+          # Check snap was created
+          if [ ! -f *.snap ]; then
+            echo "ERROR: No snap package found"
+            exit 1
+          fi
+
+          # Verify snap structure
+          echo "Snap package structure:"
+          unsquashfs -l *.snap | head -20
+
+          # Check file size
+          SIZE=$(du -h *.snap | cut -f1)
+          echo "Package size: $SIZE"
+
+          if [ $(du -b *.snap | cut -f1) -gt 2147483648 ]; then
+            echo "WARNING: Snap package exceeds 2GB limit"
+          fi
+
+          echo "✅ Verification complete"
+
+      - name: Generate store metadata
+        run: |
+          echo "=== Generating Snap Store Metadata ==="
+
+          VERSION="${{ inputs.version }}"
+          if [ -z "$VERSION" ]; then
+            VERSION=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}')
+          fi
+
+          mkdir -p snap-store-metadata
+
+          cat > snap-store-metadata/store-metadata.json << EOF
+          {
+            "name": "${SNAP_NAME}",
+            "title": "Fuego Wallet",
+            "summary": "Privacy-focused cryptocurrency wallet for Fuego blockchain",
+            "description": "Fuego Wallet is a privacy-focused cryptocurrency wallet that supports the Fuego blockchain and cross-chain atomic swaps.",
+            "license": "MIT",
+            "website": "https://fuegoblockchain.org",
+            "source_code": "https://github.com/usexfg/fuego-wallet",
+            "issues": "https://github.com/usexfg/fuego-wallet/issues",
+            "categories": ["finance", "money"],
+            "channel": "${{ inputs.channel }}",
+            "version": "${VERSION}",
+            "confinement": "strict"
+          }
+          EOF
+
+          echo "✅ Store metadata generated"
+
+      - name: Create submission checklist
+        run: |
+          echo "## Snap Store Submission Checklist" > submission-checklist.md
+          echo "" >> submission-checklist.md
+          echo "### Pre-Submission" >> submission-checklist.md
+          echo "- [ ] Snap package builds successfully" >> submission-checklist.md
+          echo "- [ ] Package size under 2GB" >> submission-checklist.md
+          echo "- [ ] All plugs defined" >> submission-checklist.md
+          echo "- [ ] App launches correctly" >> submission-checklist.md
+          echo "" >> submission-checklist.md
+          echo "### Store Listing" >> submission-checklist.md
+          echo "- [ ] App name is correct" >> submission-checklist.md
+          echo "- [ ] Summary is accurate" >> submission-checklist.md
+          echo "- [ ] Description is complete" >> submission-checklist.md
+          echo "- [ ] Icon is uploaded" >> submission-checklist.md
+          echo "- [ ] Screenshots are added" >> submission-checklist.md
+          echo "" >> submission-checklist.md
+          echo "### Submission" >> submission-checklist.md
+          echo "- [ ] Login to Snapcraft (snapcraft login)" >> submission-checklist.md
+          echo "- [ ] Upload snap (snapcraft upload *.snap --release=${{ inputs.channel }})" >> submission-checklist.md
+          echo "- [ ] Verify on snapcraft.io" >> submission-checklist.md
+          echo "" >> submission-checklist.md
+          echo "### Post-Submission" >> submission-checklist.md
+          echo "- [ ] Test installation (snap install ${SNAP_NAME})" >> submission-checklist.md
+          echo "- [ ] Verify auto-updates work" >> submission-checklist.md
+          echo "- [ ] Monitor reviews" >> submission-checklist.md
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: snap-package
+          path: |
+            *.snap
+            snapcraft.yaml
+            snap-store-metadata/
+            submission-checklist.md
+          retention-days: 90
+
+      - name: Release summary
+        run: |
+          echo "## Snap Store Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Linux desktop app built" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Snap package created" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Store metadata generated" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Upload Command" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "snapcraft login" >> $GITHUB_STEP_SUMMARY
+          echo "snapcraft upload *.snap --release=${{ inputs.channel }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY

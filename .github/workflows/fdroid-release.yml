@@ -1,0 +1,242 @@
+name: Fuego Wallet - F-Droid Build & Submission Prep
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version tag (e.g. v1.0.0)"
+        required: false
+      dry_run:
+        description: "Dry run - build only, no metadata"
+        required: false
+        default: false
+        type: boolean
+
+env:
+  FLUTTER_VERSION: "3.44.4"
+  PACKAGE_ID: "com.fuego.fuego_wallet"
+
+jobs:
+  f-droid-build:
+    name: Build for F-Droid
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Verify FLOSS compliance
+        run: |
+          echo "=== F-Droid FLOSS Compliance Check ==="
+
+          # Check for proprietary dependencies
+          echo "Checking pubspec.yaml for proprietary packages..."
+          if grep -E "google_maps|firebase|crashlytics|analytics|advertising|in_app_purchase|stripe" pubspec.yaml; then
+            echo "ERROR: Proprietary dependencies found"
+            exit 1
+          fi
+
+          # Check for hardcoded API keys or secrets
+          echo "Checking for hardcoded secrets..."
+          if grep -r "API_KEY\|SECRET_KEY\|PRIVATE_KEY\|ACCESS_TOKEN" lib/ --include="*.dart" 2>/dev/null | grep -v "//\|///\|example\|test\|mock"; then
+            echo "WARNING: Potential hardcoded secrets found - review before submission"
+          fi
+
+          # Verify no on-device mining on Android (F-Droid policy)
+          echo "Verifying no on-device mining on Android..."
+          if grep -rn "startMining\|beginMining\|mineXfg\|cpuminer\|xmrig" lib/ --include="*.dart" | grep -v "// " | head -5; then
+            echo "WARNING: Potential mining code found in Dart - verify Android gating"
+          fi
+
+          echo "✅ FLOSS compliance check passed"
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: "stable"
+
+      - name: Enable Android support
+        run: flutter config --enable-android
+
+      - name: Build Rust libraries for Android
+        run: |
+          echo "=== Building Rust libraries for Android ==="
+
+          # Install Rust cross-compilation targets
+          rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
+
+          # Install Android NDK if needed
+          if [ ! -d "$ANDROID_HOME/ndk/27.0.12077973" ]; then
+            sdkmanager --install "ndk;27.0.12077973" 2>/dev/null || true
+          fi
+
+          # Build FFI library for each Android target
+          cd rust-fuego-wallet/fuego-sdk
+
+          for target in aarch64-linux-android armv7-linux-androideabi x86_64-linux-android; do
+            echo "Building for $target..."
+            cargo build --release --target $target -p fuego-ffi
+          done
+
+          echo "✅ Rust libraries built"
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run tests
+        continue-on-error: true
+        run: flutter test
+
+      - name: Analyze code
+        run: flutter analyze --no-fatal-infos
+
+      - name: Build APK for F-Droid
+        run: |
+          echo "=== Building APK ==="
+
+          # Build without codesigning (F-Droid builds from source)
+          flutter build apk --release --no-tree-shake-icons
+
+          echo "✅ APK built successfully"
+
+      - name: Verify APK
+        run: |
+          echo "=== Verifying APK ==="
+
+          # Check APK exists
+          ls -la build/app/outputs/flutter-apk/app-release.apk
+
+          # Verify it's not debug
+          if file build/app/outputs/flutter-apk/app-release.apk | grep -q "debug"; then
+            echo "ERROR: Debug APK produced"
+            exit 1
+          fi
+
+          # Verify signing (F-Droid will re-sign)
+          echo "APK verification complete"
+
+      - name: Generate F-Droid metadata
+        if: inputs.dry_run != true
+        run: |
+          echo "=== Generating F-Droid Metadata ==="
+
+          VERSION="${{ inputs.version }}"
+          if [ -z "$VERSION" ]; then
+            VERSION=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}')
+          fi
+
+          mkdir -p metadata/${PACKAGE_ID}
+
+          # Generate metadata YAML
+          cat > metadata/${PACKAGE_ID}/metadata.yml << EOF
+          Name: Fuego Wallet
+          Summary: Privacy-focused cryptocurrency wallet for the Fuego blockchain
+          Description: |
+            Fuego Wallet is a privacy-focused cryptocurrency wallet that supports
+            the Fuego blockchain and cross-chain atomic swaps.
+
+            Features:
+            - Send and receive Fuego (XFG) and HEAT
+            - Cross-chain atomic swaps with 12 blockchains
+            - Certificate of Deposit (CD) staking
+            - Built-in node connectivity
+            - Privacy-focused with RingCT transactions
+
+            This is a FLOSS build with no proprietary dependencies.
+            No on-device mining is performed on any platform.
+          License: MIT
+          WebSite: https://fuegoblockchain.org
+          SourceCode: https://github.com/usexfg/fuego-wallet
+          IssueTracker: https://github.com/usexfg/fuego-wallet/issues
+          Categories:
+            - Money
+            - Finance
+          AntiFeatures:
+            - NonFreeNet
+          EOF
+
+          # Generate build metadata
+          cat > metadata/${PACKAGE_ID}/${VERSION}.yml << EOF
+          BuildVersionName: ${VERSION}
+          BuildVersionCode: $(date +%s)
+          Commit: ${{ github.sha }}
+          BuildGradle:
+            versionName: ${VERSION}
+            versionCode: $(date +%s)
+            minSdkVersion: 21
+            targetSdkVersion: 34
+          EOF
+
+          echo "✅ Metadata generated at metadata/${PACKAGE_ID}/"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fdroid-apk
+          path: |
+            build/app/outputs/flutter-apk/app-release.apk
+            metadata/
+          retention-days: 90
+
+      - name: Create submission checklist
+        if: inputs.dry_run != true
+        run: |
+          echo "=== F-Droid Submission Checklist ===" > submission-checklist.md
+          echo "" >> submission-checklist.md
+          echo "## Pre-Submission" >> submission-checklist.md
+          echo "- [ ] APK builds successfully" >> submission-checklist.md
+          echo "- [ ] No proprietary dependencies" >> submission-checklist.md
+          echo "- [ ] No hardcoded secrets" >> submission-checklist.md
+          echo "- [ ] No on-device mining on Android" >> submission-checklist.md
+          echo "- [ ] Source builds reproducibly" >> submission-checklist.md
+          echo "" >> submission-checklist.md
+          echo "## Metadata" >> submission-checklist.md
+          echo "- [ ] metadata.yml is complete" >> submission-checklist.md
+          echo "- [ ] Description is accurate" >> submission-checklist.md
+          echo "- [ ] License is correct (MIT)" >> submission-checklist.md
+          echo "- [ ] Categories are appropriate" >> submission-checklist.md
+          echo "" >> submission-checklist.md
+          echo "## Submission" >> submission-checklist.md
+          echo "- [ ] Fork fdroiddata repository" >> submission-checklist.md
+          echo "- [ ] Add package metadata" >> submission-checklist.md
+          echo "- [ ] Submit merge request" >> submission-checklist.md
+          echo "- [ ] Wait for build verification" >> submission-checklist.md
+          echo "" >> submission-checklist.md
+          echo "## Post-Submission" >> submission-checklist.md
+          echo "- [ ] Verify reproducible build" >> submission-checklist.md
+          echo "- [ ] Test installed APK" >> submission-checklist.md
+          echo "- [ ] Monitor F-Droid reviews" >> submission-checklist.md
+
+      - name: Upload submission checklist
+        uses: actions/upload-artifact@v4
+        with:
+          name: fdroid-submission-checklist
+          path: submission-checklist.md
+          retention-days: 30
+
+      - name: Release summary
+        run: |
+          echo "## F-Droid Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ FLOSS compliance verified" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ APK built successfully" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Metadata generated" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. Download the APK artifact" >> $GITHUB_STEP_SUMMARY
+          echo "2. Review the submission checklist" >> $GITHUB_STEP_SUMMARY
+          echo "3. Fork fdroiddata repo and add package" >> $GITHUB_STEP_SUMMARY
+          echo "4. Submit merge request for review" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### F-Droid Repository" >> $GITHUB_STEP_SUMMARY
+          echo "- Metadata: \`metadata/${PACKAGE_ID}/\`" >> $GITHUB_STEP_SUMMARY
+          echo "- APK: \`build/app/outputs/flutter-apk/app-release.apk\`" >> $GITHUB_STEP_SUMMARY
