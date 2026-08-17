@@ -1,0 +1,32 @@
+app-id: com.fuego.fuego_wallet
+runtime: org.gnome.Platform
+runtime-version: '46'
+sdk: org.gnome.Sdk
+command: fuego_wallet
+finish-args:
+  - --share=network
+  - --share=ipc
+  - --socket=x11
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  - --talk-name=org.kde.StatusNotifierWatcher
+  - --talk-name=org.freedesktop.Notifications
+  - --talk-name=org.freedesktop.portal.Desktop
+  - --talk-name=org.gnome.SettingsDaemon
+  - --talk-name=org.gnome.SettingsDaemon.MediaKeys
+  - --talk-name=org.gnome.SessionManager
+  - --own-name=com.fuego.fuego_wallet
+  - --env=GTK_USE_PORTAL=0
+  - --filesystem=home
+modules:
+  - name: fuego_wallet
+    buildsystem: simple
+    build-options:
+      env:
+        FLUTTER_ROOT: /usr
+    build-commands:
+      - cp -r build/linux/x64/release/bundle/* $FLATPAK_DEST/
+    sources:
+      - type: dir
+        path: ../
