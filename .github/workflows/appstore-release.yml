@@ -1,0 +1,320 @@
+name: App Store Release (iOS + macOS)
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform to build (ios, macos, or both)'
+        required: true
+        default: 'both'
+        type: choice
+        options:
+          - both
+          - ios
+          - macos
+      dry_run:
+        description: 'Dry run (skip signing and submission)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  FLUTTER_VERSION: '3.44.4'
+  RUST_VERSION: 'stable'
+  IOS_BUNDLE_ID: 'com.fuego.fuego_wallet'
+  IOS_SCHEME: 'Runner'
+  MACOS_BUNDLE_ID: 'com.fuego.fuego-wallet'
+  MACOS_SCHEME: 'Runner'
+
+jobs:
+  build-ios:
+    name: Build & Release iOS
+    runs-on: macos-latest
+    if: >-
+      github.event_name == 'release' ||
+      github.event.inputs.platform == 'both' ||
+      github.event.inputs.platform == 'ios'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosher/setup-flutter@v1
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: aarch64-apple-ios, x86_64-apple-ios
+
+      - name: Install Rust iOS targets
+        run: |
+          rustup target add aarch64-apple-ios
+          rustup target add x86_64-apple-ios
+
+      - name: Install dependencies
+        run: |
+          flutter pub get
+
+      - name: Clone fuego-suite for iOS daemon
+        run: |
+          git clone --branch HEAT --single-branch https://github.com/usexfg/fuego-suite.git /tmp/fuego-suite
+
+      - name: Build fuego_walletd for iOS
+        working-directory: /tmp/fuego-suite
+        run: |
+          cd fuego
+          export ANDROID_HOME=""  # prevent Android SDK detection
+          mkdir -p build/ios
+          cd build/ios
+          cmake ../.. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_GUI=OFF \
+            -DBUILD_TESTS=OFF \
+            -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
+            -DCMAKE_SYSTEM_PROCESSOR=aarch64
+          cmake --build . --target fuego_walletd -j$(sysctl -n hw.ncpu)
+
+      - name: Extract iOS version from pubspec.yaml
+        id: ios_version
+        run: |
+          VERSION=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Build iOS App
+        run: |
+          flutter build ios --release --no-codesign
+          # Copy daemon binary into app bundle
+          mkdir -p build/ios/iphoneos/fuego_wallet.app
+          cp /tmp/fuego-suite/fuego/build/ios/fuego_walletd \
+             build/ios/iphoneos/fuego_wallet.app/
+
+      - name: Import Code Signing Certificate
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        env:
+          DISTRIBUTION_CERTIFICATE_BASE64: ${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE_BASE64 }}
+          DISTRIBUTION_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          # Create temporary keychain
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Import certificate
+          CERTIFICATE_PATH=$RUNNER_TEMP/distribution_certificate.p12
+          echo -n "$DISTRIBUTION_CERTIFICATE_BASE64" | base64 --decode > "$CERTIFICATE_PATH"
+          security import "$CERTIFICATE_PATH" \
+            -P "$DISTRIBUTION_CERTIFICATE_PASSWORD" \
+            -A \
+            -t cert \
+            -f pkcs12 \
+            -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: \
+            -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+
+      - name: Import Provisioning Profile
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        env:
+          PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          PROFILE_PATH=$RUNNER_TEMP/profile.mobileprovision
+          echo -n "$PROVISIONING_PROFILE_BASE64" | base64 --decode > "$PROFILE_PATH"
+          UUID=$(security cms -D -i "$PROFILE_PATH" | plutil -extract UUID raw -)
+          PROFILE_DIR=~/Library/MobileDevice/Provisioning\ Profiles
+          mkdir -p "$PROFILE_DIR"
+          cp "$PROFILE_PATH" "$PROFILE_DIR/$UUID.mobileprovision"
+
+      - name: Archive iOS
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          xcodebuild archive \
+            -workspace ios/Runner.xcworkspace \
+            -scheme ${{ env.IOS_SCHEME }} \
+            -configuration Release \
+            -archivePath build/ios/archive/fuego_wallet.xcarchive \
+            -allowProvisioningUpdates
+
+      - name: Export IPA
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        env:
+          EXPORT_OPTIONS_BASE64: ${{ secrets.IOS_EXPORT_OPTIONS_BASE64 }}
+        run: |
+          EXPORT_OPTIONS_PATH=$RUNNER_TEMP/ExportOptions.plist
+          echo -n "$EXPORT_OPTIONS_BASE64" | base64 --decode > "$EXPORT_OPTIONS_PATH"
+          xcodebuild -exportArchive \
+            -archivePath build/ios/archive/fuego_wallet.xcarchive \
+            -exportOptionsPlist "$EXPORT_OPTIONS_PATH" \
+            -exportPath build/ios/output
+
+      - name: Upload IPA to TestFlight
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+        run: |
+          API_KEY_PATH=$RUNNER_TEMP/AuthKey.p8
+          echo -n "$APP_STORE_CONNECT_API_KEY_BASE64" | base64 --decode > "$API_KEY_PATH"
+          xcrun altool --upload-app \
+            --type ios \
+            --file build/ios/output/*.ipa \
+            --apiKey "$APP_STORE_CONNECT_API_KEY_ID" \
+            --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID" \
+            --apiKeyPath "$API_KEY_PATH"
+
+      - name: Cleanup Keychain
+        if: always()
+        run: |
+          security delete-keychain $RUNNER_TEMP/app-signing.keychain-db || true
+
+      - name: Upload iOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-release
+          path: build/ios/output/*.ipa
+          retention-days: 7
+          if-no-files-found: warn
+
+  build-macos:
+    name: Build & Release macOS
+    runs-on: macos-latest
+    if: >-
+      github.event_name == 'release' ||
+      github.event.inputs.platform == 'both' ||
+      github.event.inputs.platform == 'macos'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosher/setup-flutter@v1
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          flutter pub get
+
+      - name: Clone fuego-suite for macOS daemon
+        run: |
+          git clone --branch HEAT --single-branch https://github.com/usexfg/fuego-suite.git /tmp/fuego-suite
+
+      - name: Build fuego_walletd for macOS
+        working-directory: /tmp/fuego-suite
+        run: |
+          cd fuego
+          mkdir -p build/macos
+          cd build/macos
+          cmake ../.. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_GUI=OFF \
+            -DBUILD_TESTS=OFF
+          cmake --build . --target fuego_walletd -j$(sysctl -n hw.ncpu)
+
+      - name: Extract macOS version from pubspec.yaml
+        id: macos_version
+        run: |
+          VERSION=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Build macOS App
+        run: |
+          flutter build macos --release
+          # Copy daemon binary into app bundle
+          cp /tmp/fuego-suite/fuego/build/macos/fuego_walletd \
+             build/macos/Build/Products/Release/fuego_wallet.app/Contents/MacOS/
+
+      - name: Import Code Signing Certificate
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        env:
+          MACOS_CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          CERTIFICATE_PATH=$RUNNER_TEMP/certificate.p12
+          echo -n "$MACOS_CERTIFICATE_BASE64" | base64 --decode > "$CERTIFICATE_PATH"
+          security import "$CERTIFICATE_PATH" \
+            -P "$MACOS_CERTIFICATE_PASSWORD" \
+            -A \
+            -t cert \
+            -f pkcs12 \
+            -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: \
+            -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+
+      - name: Sign macOS App
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          APP_PATH=build/macos/Build/Products/Release/fuego_wallet.app
+          codesign --force --deep --sign "Developer ID Application: $APPLE_TEAM_ID" \
+            --options runtime \
+            --timestamp \
+            "$APP_PATH"
+
+      - name: Create DMG
+        run: |
+          APP_PATH=build/macos/Build/Products/Release/fuego_wallet.app
+          hdiutil create -volname "Fuego Wallet" \
+            -srcfolder "$APP_PATH" \
+            -ov -format UDZO \
+            build/macos/FuegoWallet.dmg
+
+      - name: Notarize macOS App
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          DMG_PATH=build/macos/FuegoWallet.dmg
+          xcrun notarytool submit "$DMG_PATH" \
+            --apple-id "$APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" \
+            --password "$APPLE_APP_PASSWORD" \
+            --wait
+          xcrun stapler staple "$DMG_PATH"
+
+      - name: Upload DMG to GitHub Release
+        if: github.event_name == 'release' && github.event.inputs.dry_run != 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          DMG_PATH=build/macos/FuegoWallet.dmg
+          VERSION=${{ github.event.release.tag_name }}
+          gh release upload "$VERSION" "$DMG_PATH" --clobber
+
+      - name: Cleanup Keychain
+        if: always()
+        run: |
+          security delete-keychain $RUNNER_TEMP/app-signing.keychain-db || true
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-release
+          path: build/macos/FuegoWallet.dmg
+          retention-days: 7
+          if-no-files-found: warn

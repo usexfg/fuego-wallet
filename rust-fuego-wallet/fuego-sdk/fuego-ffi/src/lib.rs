@@ -235,20 +235,27 @@ pub unsafe extern "C" fn fuego_generate_key_derivation(
     }
 }
 
-/// Derive public key from derivation. Returns 32-byte public key as hex string.
+/// Derive a one-time public key: P = Hs(D || varint(i)) * G + base.
+/// Returns 64-hex chars, or empty string on invalid base.
 #[no_mangle]
 pub unsafe extern "C" fn fuego_derive_public_key(
     derivation_ptr: *const u8,
     output_index: u64,
+    base_ptr: *const u8,
 ) -> *mut c_char {
-    if derivation_ptr.is_null() {
+    if derivation_ptr.is_null() || base_ptr.is_null() {
         return CString::new("").unwrap().into_raw();
     }
     let deriv_bytes = slice::from_raw_parts(derivation_ptr, 32);
+    let base_bytes = slice::from_raw_parts(base_ptr, 32);
     let mut derivation = [0u8; 32];
+    let mut base = [0u8; 32];
     derivation.copy_from_slice(deriv_bytes);
-    let pk = derive_public_key(&derivation, output_index);
-    CString::new(hex::encode(pk.0)).unwrap().into_raw()
+    base.copy_from_slice(base_bytes);
+    match derive_public_key(&derivation, output_index, &base) {
+        Some(pk) => CString::new(hex::encode(pk.0)).unwrap().into_raw(),
+        None => CString::new("").unwrap().into_raw(),
+    }
 }
 
 /// Generate key image. Returns 32-byte key image as hex string.
@@ -287,8 +294,10 @@ pub unsafe extern "C" fn fuego_underive_public_key(
     let mut output_key = [0u8; 32];
     derivation.copy_from_slice(deriv_bytes);
     output_key.copy_from_slice(ok_bytes);
-    let pk = underive_public_key(&derivation, output_index, &PublicKey(output_key));
-    CString::new(hex::encode(pk.0)).unwrap().into_raw()
+    match underive_public_key(&derivation, output_index, &PublicKey(output_key)) {
+        Some(pk) => CString::new(hex::encode(pk.0)).unwrap().into_raw(),
+        None => CString::new("").unwrap().into_raw(),
+    }
 }
 
 /// Sign a message with a secret key. Returns 64-byte Ed25519 signature as hex.
