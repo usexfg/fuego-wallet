@@ -110,8 +110,8 @@ class _MnemonicInputState extends State<MnemonicInput> {
         Text(
           'Enter your ${widget.expectedWordCount}-word seed phrase',
           style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
             color: AppTheme.textPrimary,
           ),
         ),

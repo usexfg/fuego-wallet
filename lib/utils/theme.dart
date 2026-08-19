@@ -35,9 +35,36 @@ class AppTheme {
 
   // Status colors (moved above for organization)
 
+  /// App-wide font for words: Saira (default) or Electrolize /
+  /// SourceSerif4 (bundled assets, OFL).
+  /// Switched at runtime via [AppTheme.fontFamily].
+  static String fontFamily = 'Saira';
+
+  /// Font used for all numeric displays (balances, prices, amounts,
+  /// hashrates, yields). Bundled Noto Sans, OFL.
+  static String numberFontFamily = 'NotoSans';
+
+  /// Base sizes are the Material defaults +2 for readability.
+  static const double baseSizeBump = 2.0;
+
+  /// Numeric text style helper: applies [numberFontFamily] to figures.
+  static TextStyle numericStyle({
+    double? fontSize,
+    Color color = textPrimary,
+    FontWeight fontWeight = FontWeight.w500,
+  }) {
+    return TextStyle(
+      fontFamily: numberFontFamily,
+      fontSize: fontSize,
+      color: color,
+      fontWeight: fontWeight,
+    );
+  }
+
   static ThemeData get darkTheme {
     return ThemeData(
       useMaterial3: true,
+      fontFamily: fontFamily,
       brightness: Brightness.dark,
       primaryColor: primaryColor,
       scaffoldBackgroundColor: backgroundColor,
@@ -59,8 +86,8 @@ class AppTheme {
         elevation: 0,
         titleTextStyle: TextStyle(
           color: textPrimary,
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
+          fontSize: 22,
+          fontWeight: FontWeight.w600,
         ),
         iconTheme: IconThemeData(color: textPrimary),
       ),
@@ -82,8 +109,8 @@ class AppTheme {
             borderRadius: BorderRadius.circular(12),
           ),
           textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),
@@ -96,8 +123,8 @@ class AppTheme {
             borderRadius: BorderRadius.circular(12),
           ),
           textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
+            fontSize: 18,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ),
@@ -106,8 +133,8 @@ class AppTheme {
           foregroundColor: accentColor,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           textStyle: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ),
@@ -156,27 +183,31 @@ class AppTheme {
         space: 1,
       ),
       textTheme: const TextTheme(
-        displayLarge:
-            TextStyle(color: textPrimary, fontWeight: FontWeight.bold),
-        displayMedium:
-            TextStyle(color: textPrimary, fontWeight: FontWeight.bold),
-        displaySmall:
-            TextStyle(color: textPrimary, fontWeight: FontWeight.bold),
-        headlineLarge:
-            TextStyle(color: textPrimary, fontWeight: FontWeight.bold),
-        headlineMedium:
-            TextStyle(color: textPrimary, fontWeight: FontWeight.w600),
-        headlineSmall:
-            TextStyle(color: textPrimary, fontWeight: FontWeight.w600),
-        titleLarge: TextStyle(color: textPrimary, fontWeight: FontWeight.w600),
-        titleMedium: TextStyle(color: textPrimary, fontWeight: FontWeight.w500),
-        titleSmall: TextStyle(color: textPrimary, fontWeight: FontWeight.w500),
-        bodyLarge: TextStyle(color: textPrimary),
-        bodyMedium: TextStyle(color: textPrimary),
-        bodySmall: TextStyle(color: textSecondary),
-        labelLarge: TextStyle(color: textPrimary, fontWeight: FontWeight.w500),
-        labelMedium: TextStyle(color: textSecondary),
-        labelSmall: TextStyle(color: textMuted),
+        displayLarge: TextStyle(
+            color: textPrimary, fontSize: 59, fontWeight: FontWeight.w600),
+        displayMedium: TextStyle(
+            color: textPrimary, fontSize: 47, fontWeight: FontWeight.w600),
+        displaySmall: TextStyle(
+            color: textPrimary, fontSize: 38, fontWeight: FontWeight.w600),
+        headlineLarge: TextStyle(
+            color: textPrimary, fontSize: 34, fontWeight: FontWeight.w600),
+        headlineMedium: TextStyle(
+            color: textPrimary, fontSize: 30, fontWeight: FontWeight.w500),
+        headlineSmall: TextStyle(
+            color: textPrimary, fontSize: 26, fontWeight: FontWeight.w500),
+        titleLarge: TextStyle(
+            color: textPrimary, fontSize: 24, fontWeight: FontWeight.w500),
+        titleMedium: TextStyle(
+            color: textPrimary, fontSize: 18, fontWeight: FontWeight.w500),
+        titleSmall: TextStyle(
+            color: textPrimary, fontSize: 16, fontWeight: FontWeight.w500),
+        bodyLarge: TextStyle(color: textPrimary, fontSize: 18),
+        bodyMedium: TextStyle(color: textPrimary, fontSize: 16),
+        bodySmall: TextStyle(color: textSecondary, fontSize: 14),
+        labelLarge: TextStyle(
+            color: textPrimary, fontSize: 16, fontWeight: FontWeight.w500),
+        labelMedium: TextStyle(color: textSecondary, fontSize: 14),
+        labelSmall: TextStyle(color: textMuted, fontSize: 13),
       ),
       iconTheme: const IconThemeData(color: textPrimary),
       chipTheme: ChipThemeData(
@@ -207,6 +238,7 @@ class AppTheme {
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
+      fontFamily: fontFamily,
       brightness: Brightness.light,
       primaryColor: primaryColor,
       scaffoldBackgroundColor: Colors.white,
@@ -228,8 +260,8 @@ class AppTheme {
         elevation: 1,
         titleTextStyle: TextStyle(
           color: Colors.black87,
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
+          fontSize: 22,
+          fontWeight: FontWeight.w600,
         ),
         iconTheme: IconThemeData(color: Colors.black87),
       ),
@@ -302,27 +334,31 @@ class AppTheme {
     ],
   );
 
-  // Text styles with enhanced colors
-  static const TextStyle balanceTextStyle = TextStyle(
-    fontSize: 32,
-    fontWeight: FontWeight.bold,
-    color: textPrimary,
-  );
+  // Text styles with enhanced colors.
+  // Numeric styles pin [numberFontFamily] (Noto Sans) for consistent figures.
+  static TextStyle get balanceTextStyle => TextStyle(
+        fontSize: 34,
+        fontWeight: FontWeight.w600,
+        color: textPrimary,
+        fontFamily: numberFontFamily,
+      );
 
-  static const TextStyle currencyTextStyle = TextStyle(
-    fontSize: 16,
-    fontWeight: FontWeight.w600,
-    color: accentColor,
-  );
+  static TextStyle get currencyTextStyle => TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.w500,
+        color: accentColor,
+        fontFamily: numberFontFamily,
+      );
 
-  static const TextStyle transactionAmountStyle = TextStyle(
-    fontSize: 18,
-    fontWeight: FontWeight.bold,
-    color: primaryColor,
-  );
+  static TextStyle get transactionAmountStyle => TextStyle(
+        fontSize: 20,
+        fontWeight: FontWeight.w600,
+        color: primaryColor,
+        fontFamily: numberFontFamily,
+      );
 
   static const TextStyle primaryButtonTextStyle = TextStyle(
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: FontWeight.w600,
     color: Colors.white,
   );

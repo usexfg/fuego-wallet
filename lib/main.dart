@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:logging/logging.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'bloc/app_bloc_observer.dart';
 import 'bloc/auth/auth_cubit.dart';
@@ -150,6 +151,15 @@ Future<void> main() async {
     await _vaultService.init();
   } catch (e) {
     _log.warning('Vault probe failed (non-fatal)');
+  }
+
+  // Apply persisted font preference before the first frame.
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    AppTheme.fontFamily = prefs.getString('app_font_family') ??
+        ((prefs.getBool('use_saira_font') ?? true) ? 'Saira' : 'Electrolize');
+  } catch (_) {
+    // Default (Saira) applies on failure.
   }
 
   runApp(

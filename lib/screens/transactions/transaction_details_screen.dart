@@ -41,7 +41,7 @@ class TransactionDetailsScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
+          Text(title, style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600)),
           const SizedBox(height: 4),
           SelectableText(value, style: const TextStyle(color: AppTheme.textSecondary, fontFamily: 'monospace')),
         ],

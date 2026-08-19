@@ -8,6 +8,7 @@ mod keystore;
 mod release;
 mod scanner;
 mod server;
+mod swapd;
 mod wallet_service;
 mod walletd;
 
@@ -53,6 +54,15 @@ enum Commands {
 
         #[arg(long)]
         local: bool,
+
+        /// Launch xfg-swapd alongside fuegod (uses <wallet_dir>/swap_config.json
+        /// unless overridden).
+        #[arg(long)]
+        swapd_config: Option<PathBuf>,
+
+        /// Skip the xfg-swapd auto-launch even if a config is found.
+        #[arg(long)]
+        no_swapd: bool,
     },
     Status,
 }
@@ -84,7 +94,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     std::fs::create_dir_all(&wallet_dir)?;
 
     match cli.command.unwrap_or(Commands::Status) {
-        Commands::Serve { daemon_host, daemon_port, testnet, local } => {
+        Commands::Serve { daemon_host, daemon_port, testnet, local, swapd_config, no_swapd } => {
             let (actual_host, actual_port, _daemon_guard) = if local {
                 log::info!("--local: starting embedded fuegod...");
                 let data_dir = wallet_dir.join("fuegod");
@@ -121,6 +131,39 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let wallet = Arc::new(Mutex::new(wallet_service));
 
             log::info!("Wallet address: {}", wallet_addr);
+
+            // 2.5 Launch xfg-swapd when a swap config is available (unified
+            // launcher; the GUI's Swap Settings screen writes the same config
+            // path, so both flows interoperate).
+            let mut _swapd_guard: Option<swapd::SwapdProcess> = None;
+            if !no_swapd {
+                let config = match &swapd_config {
+                    Some(p) => Some(p.clone()),
+                    None => swapd::find_swap_config(&wallet_dir),
+                };
+                match config {
+                    Some(cfg) => match swapd::SwapdProcess::start(&cfg, &actual_host, daemon_port, testnet) {
+                        Ok(proc) => {
+                            let ready = proc.wait_ready(std::time::Duration::from_secs(15)).await;
+                            if ready {
+                                log::info!(
+                                    "xfg-swapd started (config {}, rpc {})",
+                                    cfg.display(),
+                                    swapd::SWAPD_RPC_PORT
+                                );
+                            } else {
+                                log::warn!(
+                                    "xfg-swapd did not become ready within 15s (config {})",
+                                    cfg.display()
+                                );
+                            }
+                            _swapd_guard = Some(proc);
+                        }
+                        Err(e) => log::warn!("xfg-swapd not started: {}", e),
+                    },
+                    None => log::debug!("no swap config found; xfg-swapd not launched"),
+                }
+            }
 
             // 3. Start background sync (detached engine: never blocks the
             // JSON-RPC handlers)

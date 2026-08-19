@@ -1,4 +1,4 @@
-use fuego_crypto::{Keypair, PublicKey, make_address, generate_key_derivation, derive_public_key, underive_public_key, generate_key_image, cn_base58_encode};
+use fuego_crypto::{Keypair, PublicKey, make_address, generate_key_derivation, derive_public_key, underive_public_key, generate_key_image, cn_base58_encode, cn_fast_hash, generate_signature, check_signature};
 use fuego_vault::Vault;
 use fuego_sdk::types::SwapPair;
 use std::ffi::{CStr, CString};
@@ -300,7 +300,14 @@ pub unsafe extern "C" fn fuego_underive_public_key(
     }
 }
 
-/// Sign a message with a secret key. Returns 64-byte Ed25519 signature as hex.
+/// Sign a message with a 32-byte CryptoNote secret key (CryptoNote
+/// `generate_signature` over `cn_fast_hash(message)` — the same scheme the
+/// daemon uses for sign_message). Returns 64-byte signature as hex.
+///
+/// Note: ed25519_dalek-style signing is NOT used here — its clamped-scalar
+/// keying is inconsistent with the CryptoNote keypairs this library
+/// generates, and signatures produced by it cannot verify under the
+/// CryptoNote public key.
 #[no_mangle]
 pub unsafe extern "C" fn fuego_sign(
     secret_ptr: *const u8,
@@ -315,11 +322,16 @@ pub unsafe extern "C" fn fuego_sign(
     let mut sk = [0u8; 32];
     sk.copy_from_slice(sk_bytes);
     let kp = Keypair::from_secret(sk);
-    let sig = kp.sign(message);
-    CString::new(hex::encode(sig.to_bytes())).unwrap().into_raw()
+    let prefix_hash = cn_fast_hash(message);
+    let mut rng = rand::thread_rng();
+    match generate_signature(&prefix_hash, &kp.public, &sk, &mut rng) {
+        Some(sig) => CString::new(hex::encode(sig)).unwrap().into_raw(),
+        None => CString::new("").unwrap().into_raw(),
+    }
 }
 
-/// Verify an Ed25519 signature. Returns 1 if valid, 0 if invalid.
+/// Verify a CryptoNote signature over `cn_fast_hash(message)`.
+/// Returns 1 if valid, 0 if invalid.
 #[no_mangle]
 pub unsafe extern "C" fn fuego_verify(
     pubkey_ptr: *const u8,
@@ -337,9 +349,69 @@ pub unsafe extern "C" fn fuego_verify(
     let mut sig_arr = [0u8; 64];
     pk.copy_from_slice(pk_bytes);
     sig_arr.copy_from_slice(sig_bytes);
-    let pk = PublicKey(pk);
-    let sig = ed25519_dalek::Signature::from_bytes(&sig_arr);
-    pk.verify(message, &sig)
+    let prefix_hash = cn_fast_hash(message);
+    check_signature(&prefix_hash, &pk, &sig_arr)
+}
+
+/// `cn_fast_hash` (keccak256). Returns 32-byte hash as hex.
+/// Used for swap offer ids and offer/cancel signature hashes.
+#[no_mangle]
+pub unsafe extern "C" fn fuego_cn_fast_hash(data_ptr: *const u8, data_len: usize) -> *mut c_char {
+    if data_ptr.is_null() {
+        return CString::new("").unwrap().into_raw();
+    }
+    let data = slice::from_raw_parts(data_ptr, data_len);
+    let h = cn_fast_hash(data);
+    CString::new(hex::encode(h)).unwrap().into_raw()
+}
+
+/// CryptoNote `generate_signature(prefix_hash, pub, sec)` (Schnorr c/r).
+/// Returns 64-byte signature as hex, or "" on invalid secret key.
+#[no_mangle]
+pub unsafe extern "C" fn fuego_crypto_note_sign(
+    prefix_hash_ptr: *const u8,
+    pubkey_ptr: *const u8,
+    secret_ptr: *const u8,
+) -> *mut c_char {
+    if prefix_hash_ptr.is_null() || pubkey_ptr.is_null() || secret_ptr.is_null() {
+        return CString::new("").unwrap().into_raw();
+    }
+    let hash_bytes = slice::from_raw_parts(prefix_hash_ptr, 32);
+    let pub_bytes = slice::from_raw_parts(pubkey_ptr, 32);
+    let sec_bytes = slice::from_raw_parts(secret_ptr, 32);
+    let mut hash = [0u8; 32];
+    let mut pubkey = [0u8; 32];
+    let mut sec = [0u8; 32];
+    hash.copy_from_slice(hash_bytes);
+    pubkey.copy_from_slice(pub_bytes);
+    sec.copy_from_slice(sec_bytes);
+    let mut rng = rand::thread_rng();
+    match generate_signature(&hash, &pubkey, &sec, &mut rng) {
+        Some(sig) => CString::new(hex::encode(sig)).unwrap().into_raw(),
+        None => CString::new("").unwrap().into_raw(),
+    }
+}
+
+/// CryptoNote `check_signature(prefix_hash, pub, sig)`. Returns 1 if valid.
+#[no_mangle]
+pub unsafe extern "C" fn fuego_crypto_note_check(
+    prefix_hash_ptr: *const u8,
+    pubkey_ptr: *const u8,
+    signature_ptr: *const u8,
+) -> bool {
+    if prefix_hash_ptr.is_null() || pubkey_ptr.is_null() || signature_ptr.is_null() {
+        return false;
+    }
+    let hash_bytes = slice::from_raw_parts(prefix_hash_ptr, 32);
+    let pub_bytes = slice::from_raw_parts(pubkey_ptr, 32);
+    let sig_bytes = slice::from_raw_parts(signature_ptr, 64);
+    let mut hash = [0u8; 32];
+    let mut pubkey = [0u8; 32];
+    let mut sig = [0u8; 64];
+    hash.copy_from_slice(hash_bytes);
+    pubkey.copy_from_slice(pub_bytes);
+    sig.copy_from_slice(sig_bytes);
+    check_signature(&hash, &pubkey, &sig)
 }
 
 /// Base58-encode data (CryptoNote block-based encoding).

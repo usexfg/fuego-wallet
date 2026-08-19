@@ -47,11 +47,17 @@ class AmmQuote {
   });
 
   factory AmmQuote.fromJson(Map<String, dynamic> json) => AmmQuote(
-    inputAmount: json['input_amount'] as String,
-    outputAmount: json['output_amount'] as String,
-    price: json['price'] as String,
-    fee: json['fee'] as String,
-    priceImpact: json['price_impact'] as String? ?? '0',
+    inputAmount: json['input_amount']?.toString() ?? '0',
+    outputAmount:
+        json['output_amount']?.toString() ??
+        json['expected_output']?.toString() ??
+        '0',
+    price: json['price']?.toString() ?? '0',
+    fee: json['fee']?.toString() ?? '0',
+    priceImpact:
+        json['price_impact']?.toString() ??
+        (((json['price_impact_bps'] as num?)?.toDouble() ?? 0) / 10000)
+            .toString(),
   );
 }
 
@@ -71,13 +77,17 @@ class PoolInfo {
   });
 
   factory PoolInfo.fromJson(Map<String, dynamic> json) => PoolInfo(
-    xfgReserve: json['reserve_xfg'] as String? ?? '0',
-    heatReserve: json['reserve_heat'] as String? ?? '0',
-    spotPrice: json['spot_price'] as String? ?? '0',
-    totalLpShares: json['total_lp_shares'] as String? ?? '0',
+    xfgReserve: _wholeAmount(json['reserve_xfg']),
+    heatReserve: _wholeAmount(json['reserve_heat']),
+    spotPrice: _wholeAmount(json['spot_price']),
+    totalLpShares: json['total_lp_shares']?.toString() ?? '0',
     volume24h:
         json['volume_24h']?.toString() ?? json['volume24h']?.toString() ?? '0',
   );
+
+  static String _wholeAmount(Object? value) {
+    return value?.toString() ?? '0';
+  }
 }
 
 class LpPosition {
@@ -128,20 +138,24 @@ class OrderBookState {
   });
 
   factory OrderBookState.fromJson(Map<String, dynamic> json) {
+    double atomicAmount(Object? value) => value is num
+        ? value.toDouble()
+        : double.tryParse(value?.toString() ?? '') ?? 0;
+
     final bidPrices = (json['bid_prices'] as List<dynamic>? ?? [])
-        .map((e) => (e as num).toDouble())
+        .map(atomicAmount)
         .toList();
     final bidDepths = (json['bid_depths'] as List<dynamic>? ?? [])
-        .map((e) => (e as num).toDouble())
+        .map(atomicAmount)
         .toList();
     final askPrices = (json['ask_prices'] as List<dynamic>? ?? [])
-        .map((e) => (e as num).toDouble())
+        .map(atomicAmount)
         .toList();
     final askDepths = (json['ask_depths'] as List<dynamic>? ?? [])
-        .map((e) => (e as num).toDouble())
+        .map(atomicAmount)
         .toList();
     return OrderBookState(
-      clearingPrice: (json['clearing_price'] as num?)?.toDouble() ?? 0,
+      clearingPrice: atomicAmount(json['clearing_price']),
       bidPrices: bidPrices,
       bidDepths: bidDepths,
       askPrices: askPrices,
@@ -169,14 +183,20 @@ class FuegoPrice {
     required this.heatPegUsd,
   });
 
-  factory FuegoPrice.fromJson(Map<String, dynamic> json) => FuegoPrice(
-    reserveXfg: (json['reserve_xfg'] as num?)?.toDouble() ?? 0,
-    reserveHeat: (json['reserve_heat'] as num?)?.toDouble() ?? 0,
-    spotPrice: (json['spot_price'] as num?)?.toDouble() ?? 0,
-    xfgHeatRatio: json['xfg_heat_ratio'] as String? ?? '0',
-    xfgSpotUsd: json['xfg_spot_usd'] as String? ?? '0',
-    heatPegUsd: (json['heat_peg_usd'] as num?)?.toDouble() ?? 0,
-  );
+  factory FuegoPrice.fromJson(Map<String, dynamic> json) {
+    double atomicAmount(Object? value) => value is num
+        ? value.toDouble()
+        : double.tryParse(value?.toString() ?? '') ?? 0;
+
+    return FuegoPrice(
+      reserveXfg: atomicAmount(json['reserve_xfg']),
+      reserveHeat: atomicAmount(json['reserve_heat']),
+      spotPrice: atomicAmount(json['spot_price']),
+      xfgHeatRatio: json['xfg_heat_ratio']?.toString() ?? '0',
+      xfgSpotUsd: json['xfg_spot_usd']?.toString() ?? '0',
+      heatPegUsd: atomicAmount(json['heat_peg_usd']),
+    );
+  }
 }
 
 class OrderBook {

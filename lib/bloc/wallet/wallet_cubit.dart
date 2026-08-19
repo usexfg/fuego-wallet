@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../core/core.dart';
+import '../../models/heat_amm.dart';
 import '../../models/subaddress.dart';
 import '../../services/fuego_rpc_service.dart';
 import '../../services/fuego_vault_service.dart';
@@ -286,7 +287,7 @@ class WalletCubit extends Cubit<WalletState> {
           txs = await _daemon.getTransactions(count: 50);
         } catch (_) {}
 
-        // Fetch HEAT balance
+        // Fetch ΗΞΔŦ balance
         int unlockedHeat = 0;
         int lockedHeat = 0;
         if (_rpcService != null) {
@@ -425,7 +426,7 @@ class WalletCubit extends Cubit<WalletState> {
     return txHash;
   }
 
-  /// Send HEAT to another address. Requires verified PIN.
+  /// Send ΗΞΔŦ to another address. Requires verified PIN.
   Future<String> sendHeat({
     required String address,
     required double amount,
@@ -448,7 +449,7 @@ class WalletCubit extends Cubit<WalletState> {
     }
     final totalAtomic = ((amount + fee) * atomicPerCoin).round();
     if (totalAtomic > state.unlockedHeatBalance) {
-      throw StateError('Insufficient unlocked HEAT balance (including fee)');
+      throw StateError('Insufficient unlocked ΗΞΔŦ balance (including fee)');
     }
 
     if (_rpcService == null) {
@@ -466,6 +467,43 @@ class WalletCubit extends Cubit<WalletState> {
     unawaited(refreshWallet());
     return txHash;
   }
+
+  /// Mint ΗΞΔŦ by burning XFG. Amount in display units.
+  Future<Map<String, dynamic>> mintHeat({
+    required double xfgAmount,
+    required String pin,
+  }) async {
+    if (!state.isUnlocked && !(_vault?.isUnlocked ?? false)) {
+      throw StateError('Wallet is locked');
+    }
+    final pinOk = await _security.verifyPIN(pin);
+    if (!pinOk) {
+      throw StateError('Invalid PIN');
+    }
+    if (xfgAmount <= 0) {
+      throw ArgumentError('Amount must be positive');
+    }
+    final totalAtomic = (xfgAmount * atomicPerCoin).round();
+    if (totalAtomic > state.unlockedBalance) {
+      throw StateError('Insufficient unlocked XFG balance');
+    }
+    if (_rpcService == null) {
+      throw StateError('Wallet RPC service not available');
+    }
+    // heat_minted = xfg_burned (1:1 at launch, server validates ratio)
+    final result = await _rpcService!.heatMint(
+      xfgBurned: totalAtomic,
+      heatMinted: totalAtomic,
+      fee: 0,
+      mixin: 4,
+    );
+    unawaited(refreshWallet());
+    return result;
+  }
+
+  /// Fetch ΗΞΔŦ metrics: supply, redemption price (TWAP), treasury, CD yield
+  Future<HeatMetrics> getHeatMetrics() async =>
+      HeatMetrics.fromJson(await _daemon.getHeatMetricsRaw());
 
   Future<void> refreshTransactions() async {
     try {

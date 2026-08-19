@@ -7,10 +7,10 @@ pub mod ref10;
 pub mod ring;
 
 pub use ring::{
-    check_ring_signature, cn_fast_hash, derive_public_key as derive_public_key_full,
+    check_ring_signature, check_signature, cn_fast_hash, derive_public_key as derive_public_key_full,
     derive_secret_key, generate_key_derivation as generate_key_derivation_full,
-    generate_key_image as generate_key_image_full, generate_ring_signature, hash_to_ec,
-    hash_to_scalar, underive_public_key as underive_public_key_full, write_varint,
+    generate_key_image as generate_key_image_full, generate_ring_signature, generate_signature,
+    hash_to_ec, hash_to_scalar, underive_public_key as underive_public_key_full, write_varint,
 };
 
 /// Fuego mainnet address prefix (CryptoNoteConfig.h:35).

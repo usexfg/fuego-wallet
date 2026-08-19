@@ -1,5 +1,5 @@
 class Candlestick {
-  final int time;     // unix seconds
+  final int time; // unix seconds
   final double open;
   final double high;
   final double low;
@@ -16,22 +16,32 @@ class Candlestick {
   });
 
   factory Candlestick.fromJson(Map<String, dynamic> json) {
+    final time = _number(json['period_start'] ?? json['t'] ?? json['time']);
     return Candlestick(
-      time: (json['period_start'] as num).toInt(),
-      open: (json['open'] as num).toDouble(),
-      high: (json['high'] as num).toDouble(),
-      low: (json['low'] as num).toDouble(),
-      close: (json['close'] as num).toDouble(),
-      volume: (json['volume'] as num?)?.toDouble() ?? 0,
+      time: time.toInt(),
+      open: _number(json['open'] ?? json['o']),
+      high: _number(json['high'] ?? json['h']),
+      low: _number(json['low'] ?? json['l']),
+      close: _number(json['close'] ?? json['c']),
+      volume: _number(json['volume'] ?? json['v'], required: false),
     );
   }
 
+  static double _number(Object? value, {bool required = true}) {
+    final parsed = value is num
+        ? value.toDouble()
+        : double.tryParse(value?.toString() ?? '');
+    if (parsed != null) return parsed;
+    if (!required) return 0;
+    throw const FormatException('Invalid OHLCV value');
+  }
+
   Map<String, dynamic> toChartJson() => {
-        'time': time,
-        'open': open,
-        'high': high,
-        'low': low,
-        'close': close,
-        'volume': volume,
-      };
+    'time': time,
+    'open': open,
+    'high': high,
+    'low': low,
+    'close': close,
+    'volume': volume,
+  };
 }

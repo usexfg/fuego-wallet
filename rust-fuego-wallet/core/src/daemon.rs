@@ -69,20 +69,6 @@ impl DaemonClient {
             .ok_or("missing count".into())
     }
 
-    pub async fn get_genesis_hash(&self) -> Result<[u8; 32], String> {
-        let resp = self
-            .json_rpc::<serde_json::Value>("getcurrencyid", serde_json::json!({}))
-            .await?;
-        let hex_value = resp
-            .get("currency_id_blob")
-            .and_then(|v| v.as_str())
-            .ok_or("missing currency_id_blob")?;
-        let bytes = hex::decode(hex_value).map_err(|e| format!("invalid genesis hash: {e}"))?;
-        bytes
-            .try_into()
-            .map_err(|_| "genesis hash must be 32 bytes".to_string())
-    }
-
     pub async fn get_block_hash(&self, height: u64) -> Result<String, String> {
         self.json_rpc::<String>("on_getblockhash", serde_json::json!([height])).await
     }
@@ -194,6 +180,26 @@ impl DaemonClient {
         let reserve_heat = val.get("reserve_heat").and_then(|v| v.as_u64()).unwrap_or(0);
         let spot_price = val.get("spot_price").and_then(|v| v.as_u64()).unwrap_or(0);
         Ok((reserve_xfg, reserve_heat, spot_price))
+    }
+
+    /// /estimate_cd_yield — interest a CD would pay today.
+    pub async fn estimate_cd_yield(
+        &self,
+        amount: u64,
+        creation_height: u32,
+    ) -> Result<u64, String> {
+        let val = self
+            .json_rpc::<serde_json::Value>(
+                "estimate_cd_yield",
+                serde_json::json!({
+                    "amount": amount,
+                    "creation_height": creation_height,
+                }),
+            )
+            .await?;
+        val.get("estimated_interest")
+            .and_then(|v| v.as_u64())
+            .ok_or_else(|| format!("bad estimate_cd_yield response: {}", val))
     }
 
     /// /is_key_image_spent (JSON-RPC). Returns an error if the daemon does

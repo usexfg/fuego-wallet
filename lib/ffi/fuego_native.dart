@@ -183,15 +183,18 @@ class FuegoNative {
     return hex;
   }
 
-  /// Derive public key from derivation.
-  String derivePublicKey(List<int> derivation, int outputIndex) {
-    assert(derivation.length == 32);
+  /// Derive a one-time public key: P = Hs(D || varint(index)) * G + base.
+  /// Returns 64 hex chars, or empty string on invalid base.
+  String derivePublicKey(List<int> derivation, int outputIndex, List<int> base) {
+    assert(derivation.length == 32 && base.length == 32);
     final derivPtr = _allocBytes(derivation);
+    final basePtr = _allocBytes(base);
     final fn = _lib.lookupFunction<_DerivePubKeyNative, _DerivePubKeyDart>('fuego_derive_public_key');
-    final result = fn(derivPtr, outputIndex);
+    final result = fn(derivPtr, outputIndex, basePtr);
     final hex = result.toDartString();
     _freeString(result);
     calloc.free(derivPtr);
+    calloc.free(basePtr);
     return hex;
   }
 
@@ -247,6 +250,51 @@ class FuegoNative {
     final result = fn(pkPtr, msgPtr, message.length, sigPtr);
     calloc.free(pkPtr);
     calloc.free(msgPtr);
+    calloc.free(sigPtr);
+    return result;
+  }
+
+  /// cn_fast_hash (keccak256). Returns 32-byte hash as hex.
+  String cnFastHash(List<int> data) {
+    final dataPtr = _allocBytes(data);
+    final fn =
+        _lib.lookupFunction<_CnFastHashNative, _CnFastHashDart>('fuego_cn_fast_hash');
+    final result = fn(dataPtr, data.length);
+    final hex = result.toDartString();
+    _freeString(result);
+    calloc.free(dataPtr);
+    return hex;
+  }
+
+  /// CryptoNote Schnorr (c, r) signature over a 32-byte prefix hash.
+  /// Returns 64-byte signature as hex, or '' on failure.
+  String cryptoNoteSign(List<int> prefixHash, List<int> pubkey, List<int> secret) {
+    assert(prefixHash.length == 32 && pubkey.length == 32 && secret.length == 32);
+    final hPtr = _allocBytes(prefixHash);
+    final pkPtr = _allocBytes(pubkey);
+    final skPtr = _allocBytes(secret);
+    final fn = _lib.lookupFunction<_CryptoNoteSignNative, _CryptoNoteSignDart>(
+        'fuego_crypto_note_sign');
+    final result = fn(hPtr, pkPtr, skPtr);
+    final hex = result.toDartString();
+    _freeString(result);
+    calloc.free(hPtr);
+    calloc.free(pkPtr);
+    calloc.free(skPtr);
+    return hex;
+  }
+
+  /// Verify a CryptoNote Schnorr (c, r) signature over a 32-byte prefix hash.
+  bool cryptoNoteCheck(List<int> prefixHash, List<int> pubkey, List<int> signature) {
+    assert(prefixHash.length == 32 && pubkey.length == 32 && signature.length == 64);
+    final hPtr = _allocBytes(prefixHash);
+    final pkPtr = _allocBytes(pubkey);
+    final sigPtr = _allocBytes(signature);
+    final fn = _lib.lookupFunction<_CryptoNoteCheckNative, _CryptoNoteCheckDart>(
+        'fuego_crypto_note_check');
+    final result = fn(hPtr, pkPtr, sigPtr);
+    calloc.free(hPtr);
+    calloc.free(pkPtr);
     calloc.free(sigPtr);
     return result;
   }
@@ -392,8 +440,8 @@ typedef _VaultLoadDart = FuegoBytes Function(Pointer<Utf8>);
 typedef _GenKeyDerivNative = Pointer<Utf8> Function(Pointer<Uint8>, Pointer<Uint8>);
 typedef _GenKeyDerivDart = Pointer<Utf8> Function(Pointer<Uint8>, Pointer<Uint8>);
 
-typedef _DerivePubKeyNative = Pointer<Utf8> Function(Pointer<Uint8>, Int64);
-typedef _DerivePubKeyDart = Pointer<Utf8> Function(Pointer<Uint8>, int);
+typedef _DerivePubKeyNative = Pointer<Utf8> Function(Pointer<Uint8>, Int64, Pointer<Uint8>);
+typedef _DerivePubKeyDart = Pointer<Utf8> Function(Pointer<Uint8>, int, Pointer<Uint8>);
 
 typedef _GenKeyImageNative = Pointer<Utf8> Function(Pointer<Uint8>, Pointer<Uint8>);
 typedef _GenKeyImageDart = Pointer<Utf8> Function(Pointer<Uint8>, Pointer<Uint8>);
@@ -406,6 +454,15 @@ typedef _SignDart = Pointer<Utf8> Function(Pointer<Uint8>, Pointer<Uint8>, int);
 
 typedef _VerifyNative = Bool Function(Pointer<Uint8>, Pointer<Uint8>, Int32, Pointer<Uint8>);
 typedef _VerifyDart = bool Function(Pointer<Uint8>, Pointer<Uint8>, int, Pointer<Uint8>);
+
+typedef _CnFastHashNative = Pointer<Utf8> Function(Pointer<Uint8>, Int32);
+typedef _CnFastHashDart = Pointer<Utf8> Function(Pointer<Uint8>, int);
+
+typedef _CryptoNoteSignNative = Pointer<Utf8> Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>);
+typedef _CryptoNoteSignDart = Pointer<Utf8> Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>);
+
+typedef _CryptoNoteCheckNative = Bool Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>);
+typedef _CryptoNoteCheckDart = bool Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>);
 
 typedef _Base58EncodeNative = Pointer<Utf8> Function(Pointer<Uint8>, Int32);
 typedef _Base58EncodeDart = Pointer<Utf8> Function(Pointer<Uint8>, int);

@@ -67,18 +67,18 @@ class WalletProvider extends ChangeNotifier {
   bool get isWalletSynced => _wallet?.synced ?? false;
   double get syncProgress => _wallet?.syncProgress ?? 0.0;
 
-  /// Spend key for burn / advanced ops — always requires PIN verification.
-  Future<String?> getPrivateKeyForBurn(String pin) async {
+  /// Spend key for burn / advanced ops — requires the wallet password.
+  Future<String?> getPrivateKeyForBurn(String password) async {
     try {
-      final isValidPin = await _securityService.verifyPIN(pin);
-      if (!isValidPin) {
-        throw Exception('Invalid PIN');
+      final keys = await _securityService.getWalletKeys(password);
+      if (keys != null) {
+        return keys['spendKey'];
       }
-      final keys = await _securityService.getWalletKeys(pin);
-      if (keys == null) {
-        throw Exception('Wallet keys not found');
+      final v = _vault;
+      if (v != null && v.isUnlocked) {
+        return v.deriveKeypair(0)['secret'] as String?;
       }
-      return keys['spendKey'];
+      throw Exception('Wallet keys not found');
     } catch (e) {
       _logger.severe('Failed to get private key (auth)');
       _setError('Failed to get private key');
@@ -87,7 +87,7 @@ class WalletProvider extends ChangeNotifier {
   }
 
   /// Removed insecure unauthenticated access — use [getPrivateKeyForBurn].
-  @Deprecated('Use getPrivateKeyForBurn(pin) — unauthenticated access removed')
+  @Deprecated('Use getPrivateKeyForBurn(password) — unauthenticated access removed')
   String? getPrivateKey() {
     _setError('PIN required to access private keys');
     return null;
@@ -119,8 +119,9 @@ class WalletProvider extends ChangeNotifier {
   }
 
   Future<bool> createWallet({
-    required String pin,
+    required String password,
     String? mnemonic,
+    String? name,
     FuegoVaultService? vault,
   }) async {
     _setLoading(true);
@@ -134,7 +135,7 @@ class WalletProvider extends ChangeNotifier {
       if (!SecurityService.validateMnemonic(phrase)) {
         throw Exception('Invalid mnemonic phrase');
       }
-      await v.createNew(pin: pin, mnemonic: phrase);
+      await v.createNew(password: password, mnemonic: phrase, name: name);
       _isUnlocked = true;
       await refreshWallet();
       _setLoading(false);
@@ -148,7 +149,8 @@ class WalletProvider extends ChangeNotifier {
 
   Future<bool> restoreWallet({
     required String mnemonic,
-    required String pin,
+    required String password,
+    String? name,
     FuegoVaultService? vault,
   }) async {
     _setLoading(true);
@@ -161,7 +163,7 @@ class WalletProvider extends ChangeNotifier {
       if (!SecurityService.validateMnemonic(mnemonic)) {
         throw Exception('Invalid mnemonic phrase');
       }
-      await v.restoreFromMnemonic(mnemonic: mnemonic, pin: pin);
+      await v.restoreFromMnemonic(mnemonic: mnemonic, password: password, name: name);
       _isUnlocked = true;
       await refreshWallet();
       _setLoading(false);
@@ -173,7 +175,48 @@ class WalletProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> unlockWallet(String pin, {FuegoVaultService? vault}) async {
+  /// Decrypt and activate a saved wallet file with that wallet's password.
+  Future<bool> switchWallet({required String id, required String password}) async {
+    _setLoading(true);
+    _clearError();
+    try {
+      final v = _vault;
+      if (v == null) {
+        throw StateError('Vault service required to switch wallet');
+      }
+      await v.switchWallet(id, password);
+      await refreshWallet();
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      return false;
+    }
+  }
+
+  /// Delete a saved wallet file (refuses to remove the last one). Removal
+  /// is a device-level action gated by the app PIN at the UI layer.
+  Future<bool> removeWallet({required String id}) async {
+    _setLoading(true);
+    _clearError();
+    try {
+      final v = _vault;
+      if (v == null) {
+        throw StateError('Vault service required to remove wallet');
+      }
+      await v.removeWallet(id);
+      await refreshWallet();
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      return false;
+    }
+  }
+
+  Future<bool> unlockWallet(String password, {FuegoVaultService? vault}) async {
     _setLoading(true);
     _clearError();
     try {
@@ -181,9 +224,9 @@ class WalletProvider extends ChangeNotifier {
       if (v == null) {
         throw StateError('Vault service required to unlock wallet');
       }
-      final ok = await v.unlockWithPin(pin);
+      final ok = await v.unlockActive(password);
       if (!ok) {
-        throw Exception('Invalid PIN');
+        throw Exception('Invalid password');
       }
       _isUnlocked = true;
       await refreshWallet();

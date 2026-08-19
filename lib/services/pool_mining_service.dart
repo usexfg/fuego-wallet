@@ -299,7 +299,7 @@ class PoolMiningService {
       if (_miningStartTime != null) {
         final elapsed = DateTime.now().difference(_miningStartTime!).inSeconds;
         if (elapsed > 0) {
-          _hashrate = (_totalHashes / elapsed).round();
+          _hashrate = (_totalHashes / elapsed / 1000).round();
         }
       }
     } catch (e) {
@@ -336,7 +336,7 @@ class PoolMiningService {
     if (_miningStartTime != null && _mining) {
       final elapsed = DateTime.now().difference(_miningStartTime!).inSeconds;
       if (elapsed > 0) {
-        _hashrate = (_totalHashes / elapsed).round();
+        _hashrate = (_totalHashes / elapsed / 1000).round();
       }
     }
   }

@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../bloc/hearth/hearth_cubit.dart';
-import '../../../models/candlestick.dart';
 import '../../../models/heat_amm.dart';
-import '../../../services/price_history_service.dart';
 import '../../../utils/hearth_theme.dart';
-import '../../../widgets/fuego_chart.dart';
+import '../../../utils/theme.dart';
 import 'liquidity_dialogs.dart';
 
 class HearthScreen extends StatefulWidget {
@@ -21,7 +19,6 @@ class _HearthScreenState extends State<HearthScreen>
   final _amountController = TextEditingController();
   final _priceController = TextEditingController();
   bool _sellXfg = true;
-  List<Candlestick>? _candles;
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnim;
@@ -40,7 +37,6 @@ class _HearthScreenState extends State<HearthScreen>
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
     context.read<HearthCubit>().loadPool();
-    _loadPriceData();
     _amountController.addListener(_updateUsd);
   }
 
@@ -65,11 +61,6 @@ class _HearthScreenState extends State<HearthScreen>
     } else {
       setState(() => _amountUsd = '\$${(val * heatPegUsd).toStringAsFixed(2)}');
     }
-  }
-
-  Future<void> _loadPriceData() async {
-    final candles = await PriceHistoryService().loadAll();
-    if (mounted) setState(() => _candles = candles);
   }
 
   @override
@@ -102,29 +93,6 @@ class _HearthScreenState extends State<HearthScreen>
                       child: SingleChildScrollView(
                         child: Column(
                           children: [
-                            if (_candles != null && _candles!.isNotEmpty)
-                              SizedBox(
-                                height: screenH * 0.30,
-                                child: FuegoChart(
-                                  candles: _candles!,
-                                  pair: 'XFG/HEAT',
-                                  lineColor: HearthTheme.chartLine,
-                                  bgColor: HearthTheme.bgPure,
-                                ),
-                              ),
-                            if (_candles == null || _candles!.isEmpty)
-                              Container(
-                                height: screenH * 0.30,
-                                color: HearthTheme.bgPure,
-                                child: const Center(
-                                  child: Text(
-                                    'No chart data',
-                                    style: TextStyle(
-                                      color: HearthTheme.textMuted,
-                                    ),
-                                  ),
-                                ),
-                              ),
                             if (state.pool != null)
                               _buildPoolStats(state.pool!),
                             if (state.pool != null) _buildHeatPriceBar(state),
@@ -191,7 +159,7 @@ class _HearthScreenState extends State<HearthScreen>
             _priceUp ? HearthTheme.bidPrimary : HearthTheme.askPrimary,
           ),
           const Spacer(),
-          // Center: XFG priced in HEAT
+          // Center: XFG priced in ΗΞΔŦ
           Text(
             '1 XFG ≈ ${spotNum.toStringAsFixed(1)} HΞ∆T',
             style: HearthTheme.mono(
@@ -1088,6 +1056,7 @@ class _HearthScreenState extends State<HearthScreen>
               ),
             ],
           ),
+          const SizedBox(height: 12),
         ],
       ),
     );

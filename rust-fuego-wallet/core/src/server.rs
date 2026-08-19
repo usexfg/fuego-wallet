@@ -39,7 +39,6 @@ struct RpcErrorDetail {
 fn is_fuegod_method(method: &str) -> bool {
     matches!(method,
         "getinfo" | "getheight" | "getblockcount" | "on_getblockhash" | "getblock" |
-        "getcurrencyid" |
         "getlastblockheader" | "getblockheaderbyhash" | "getblockheaderbyheight" |
         "peers" | "feeaddress" | "getethereal" | "paymentid" |
         "gettransactions" | "sendrawtransaction" |
@@ -191,7 +190,7 @@ async fn proxy_to_fuegod(fuegod_url: &str, body: &serde_json::Value) -> Result<s
         }
         "getcdoffers" | "submitcd" | "cancelcd" | "estimate_cd_yield" |
         "cd::market_list" | "cd::sell" | "cd::buy" | "cd::cancel_listing" | "cd::apy" |
-        "getcurrencyid" | "getswapoffers" | "getswapprice" | "getswaptrades" |
+        "getswapoffers" | "getswapprice" | "getswaptrades" |
         "submitswap" | "cancelswap" | "requestswap" |
         "getactiveswaps" | "getswapstatus" | "verify_payment" | "htlc_create_hash_lock" | "htlc_build_script" |
         "initiate" | "accept" | "processswap" | "refundswap" |
@@ -239,6 +238,20 @@ async fn handle_wallet_method(
             let wallet = wallet.lock().await;
             Ok(serde_json::json!({
                 "address": wallet.address().await,
+            }))
+        }
+        "getHealth" => {
+            let wallet = wallet.lock().await;
+            let status = wallet.sync_status();
+            Ok(serde_json::json!({
+                "wallet": {
+                    "ok": true,
+                    "height": wallet.height().await,
+                    "syncing": status.is_syncing,
+                },
+                "swap": {
+                    "ok": crate::swapd::swapd_healthy(crate::swapd::SWAPD_RPC_PORT).await,
+                },
             }))
         }
         "getStatus" | "get_height" => {
@@ -374,6 +387,34 @@ async fn handle_wallet_method(
                 "preSig": pre_sig,
                 "hashLock": hash_lock,
             }))
+        }
+        "send_heat" => {
+            let address = params.get("address")
+                .and_then(|a| a.as_str())
+                .ok_or("missing address")?;
+            let amount = params.get("amount")
+                .and_then(|a| a.as_u64())
+                .ok_or("missing amount")?;
+            let wallet = wallet.lock().await;
+            let tx_hash = wallet.send_heat(address, amount).await
+                .map_err(|e| format!("send_heat failed: {}", e))?;
+            Ok(serde_json::json!({
+                "transactionHash": tx_hash,
+                "txHash": tx_hash,
+            }))
+        }
+        "get_tx_proof" | "getTxProof" => {
+            let tx_hash = params.get("tx_hash")
+                .and_then(|t| t.as_str())
+                .or_else(|| params.get("txid").and_then(|t| t.as_str()))
+                .ok_or("missing tx_hash")?;
+            let address = params.get("address")
+                .and_then(|a| a.as_str())
+                .ok_or("missing address")?;
+            let wallet = wallet.lock().await;
+            let proof = wallet.get_tx_proof(tx_hash, address).await
+                .map_err(|e| format!("get_tx_proof failed: {}", e))?;
+            Ok(serde_json::json!({ "signature": proof }))
         }
         "mint_heat" => {
             let xfg_burned = params.get("xfg_burned")
@@ -561,6 +602,7 @@ async fn health_check(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     Json(serde_json::json!({
         "status": if fuegod_ok { "ok" } else { "degraded" },
         "fuego": fuegod_ok,
+        "swap": crate::swapd::swapd_healthy(crate::swapd::SWAPD_RPC_PORT).await,
         "wallet": {
             "address": wallet.address().await,
             "balance": wallet.balance().await,

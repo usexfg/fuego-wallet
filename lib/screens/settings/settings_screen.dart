@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../bloc/wallet/wallet_cubit.dart';
 import '../../main.dart' as app;
 import '../../providers/wallet_provider.dart';
@@ -15,6 +16,16 @@ import '../main/main_screen.dart';
 import 'swap_settings_screen.dart';
 import 'alias_registration_screen.dart';
 import 'network_selection_screen.dart';
+import 'wallets_screen.dart';
+
+/// Bundled word-font families selectable in Settings > App Font.
+/// Numbers always render in Noto Sans ([AppTheme.numberFontFamily]).
+const List<({String family, String label, String? note})> fontOptions = [
+  (family: 'Saira', label: 'Saira', note: 'Sans-serif · default'),
+  (family: 'NotoSans', label: 'Noto Sans', note: 'Sans-serif · numbers font'),
+  (family: 'SourceSerif4', label: 'Source Serif 4', note: 'Serif text'),
+  (family: 'Electrolize', label: 'Electrolize', note: 'Monospace'),
+];
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -30,6 +41,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _fuegodHost = '207.244.247.64';
   int _fuegodPort = 18180;
   bool _fuegodConfigured = true;
+  String _fontFamily = 'Saira';
 
   /// Desktop default = local, mobile default = remote (from [NodeConnection]).
   bool _useLocalNode = app.useLocalNode;
@@ -46,12 +58,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadSettings() async {
     final biometricEnabled = await _securityService.isBiometricEnabled();
     final ep = app.nodeConnection.lastEndpoints;
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString('app_font_family');
+    final family = saved ??
+        ((prefs.getBool('use_saira_font') ?? true) ? 'Saira' : 'Electrolize');
+    // Legacy boolean preference (Saira vs Electrolize) handled above.
+    final validFamily =
+        fontOptions.any((f) => f.family == family) ? family : 'Saira';
+    AppTheme.fontFamily = validFamily;
     setState(() {
       _biometricEnabled = biometricEnabled;
       _useLocalNode = app.nodeConnection.useLocalNode;
       _fuegodHost = ep?.chainHost ?? app.nodeConnection.remoteHost;
       _fuegodPort = ep?.chainPort ?? app.nodeConnection.remotePort;
       _fuegodConfigured = ep?.proxyRunning == true || ep?.error == null;
+      _fontFamily = validFamily;
     });
   }
 
@@ -73,6 +94,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     await _securityService.setBiometricEnabled(enabled);
+    if (enabled) {
+      try {
+        await context.read<FuegoVaultService>().ensureBiometricEnvelope();
+      } catch (_) {}
+    }
     setState(() {
       _biometricEnabled = enabled;
     });
@@ -92,6 +118,225 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: AppTheme.errorColor),
+    );
+  }
+
+  Future<void> _setFontFamily(String family) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('app_font_family', family);
+    AppTheme.fontFamily = family;
+    setState(() {
+      _fontFamily = family;
+    });
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Font will update on next app launch'),
+        ),
+      );
+    }
+  }
+
+  void _showFontPickerDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: AppTheme.cardColor,
+          title: const Text(
+            'App Font',
+            style: TextStyle(color: AppTheme.textPrimary),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final option in fontOptions)
+                RadioListTile<String>(
+                  value: option.family,
+                  groupValue: _fontFamily,
+                  onChanged: (value) {
+                    if (value != null) {
+                      _setFontFamily(value);
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  title: Text(
+                    option.label,
+                    style: const TextStyle(color: AppTheme.textPrimary),
+                  ),
+                  subtitle: option.note != null
+                      ? Text(
+                          option.note!,
+                          style: const TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 13,
+                          ),
+                        )
+                      : null,
+                  activeColor: AppTheme.primaryColor,
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _showChangePINDialog() async {
+    // Self-heal: many installs predate PIN setup entirely. When no PIN has
+    // ever been set, don't demand a current PIN — just set one.
+    final hasPin = await _securityService.hasPIN();
+    if (!mounted) return;
+
+    final oldPinController = TextEditingController();
+    final newPinController = TextEditingController();
+    final confirmPinController = TextEditingController();
+    String? oldPinError;
+    String? newPinError;
+    bool isLoading = false;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: AppTheme.cardColor,
+              title: Text(
+                hasPin ? 'Change PIN' : 'Set PIN',
+                style: const TextStyle(color: AppTheme.textPrimary),
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (hasPin) ...[
+                      TextField(
+                        controller: oldPinController,
+                        obscureText: true,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: 'Current PIN',
+                          errorText: oldPinError,
+                          border: const OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                    TextField(
+                      controller: newPinController,
+                      obscureText: true,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: 'New PIN',
+                        errorText: newPinError,
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: confirmPinController,
+                      obscureText: true,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Confirm new PIN',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isLoading
+                      ? null
+                      : () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          setDialogState(() {
+                            oldPinError = null;
+                            newPinError = null;
+                          });
+
+                          final oldPin = oldPinController.text.trim();
+                          final newPin = newPinController.text.trim();
+                          final confirmPin = confirmPinController.text.trim();
+
+                          if (hasPin &&
+                              (oldPin.isEmpty || oldPin.length < 4)) {
+                            setDialogState(() {
+                              oldPinError = 'PIN must be at least 4 digits';
+                            });
+                            return;
+                          }
+                          if (newPin.length < 4) {
+                            setDialogState(() {
+                              newPinError = 'New PIN must be at least 4 digits';
+                            });
+                            return;
+                          }
+                          if (newPin != confirmPin) {
+                            setDialogState(() {
+                              newPinError = 'PINs do not match';
+                            });
+                            return;
+                          }
+
+                          setDialogState(() => isLoading = true);
+
+                          if (hasPin) {
+                            final verified =
+                                await _securityService.verifyPIN(oldPin);
+                            if (!verified) {
+                              setDialogState(() {
+                                isLoading = false;
+                                oldPinError = 'Incorrect current PIN';
+                              });
+                              return;
+                            }
+                          }
+
+                          // The app PIN never touches wallet material —
+                          // wallet files keep their own passwords, so a PIN
+                          // change needs no re-encryption.
+                          await _securityService.setPIN(newPin);
+                          if (context.mounted) {
+                            Navigator.of(context).pop();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  hasPin
+                                      ? 'PIN updated successfully'
+                                      : 'PIN set successfully',
+                                ),
+                                backgroundColor: AppTheme.successColor,
+                              ),
+                            );
+                          }
+                        },
+                  child: isLoading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Update PIN'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -176,7 +421,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
 
     try {
-      await _securityService.clearWalletData();
+      final vault = context.read<FuegoVaultService>();
+      await vault.wipe();
 
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
@@ -541,8 +787,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  /// Deterministic QR version for a payload length (binary mode, level L).
+  /// The auto-detection path in qr_flutter 4.1.x can hang or throw on some
+  /// inputs; choosing the version explicitly keeps QR generation O(1).
+  int _qrVersionForLength(int length) {
+    const capacities = <int>[
+      0, // version 0 is unused
+      17, 32, 53, 78, 106, 134, 154, 192, 230, 271, // 1..10
+      321, 367, 425, 458, 520, 586, 644, 718, 792, 858, // 11..20
+      929, 1003, 1091, 1171, 1273, 1367, 1465, 1528, 1628, 1732, // 21..30
+      1840, 1952, 2068, 2188, 2303, 2431, 2563, 2699, 2809, 2953, // 31..40
+    ];
+    for (int v = 1; v <= 40; v++) {
+      if (length <= capacities[v]) return v;
+    }
+    return 40;
+  }
+
   void _showAddressDialog(String? address) {
     if (address == null || address.isEmpty) return;
+
+    final qrVersion = _qrVersionForLength(address.length);
 
     showDialog(
       context: context,
@@ -555,11 +820,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               Container(
                 color: Colors.white,
-                child: QrImageView(
-                  data: address,
-                  version: QrVersions.auto,
-                  size: 200.0,
-                ),
+                padding: const EdgeInsets.all(8),
+                child: _buildQrSafely(address, qrVersion),
               ),
               const SizedBox(height: 16),
               SelectableText(
@@ -591,36 +853,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  /// QR rendering with a hard failure fallback: an explicit version avoids
+  /// the auto-detection path (qr_flutter 4.1.x auto can hang or throw), and
+  /// errorStateBuilder guarantees the dialog renders even if generation
+  /// fails.
+  Widget _buildQrSafely(String address, int version) {
+    return QrImageView(
+      data: address,
+      version: version,
+      errorCorrectionLevel: QrErrorCorrectLevel.L,
+      size: 200.0,
+      errorStateBuilder: (_, __) => const SizedBox(
+        width: 200,
+        height: 200,
+        child: Center(child: Icon(Icons.qr_code_2, size: 96)),
+      ),
+    );
+  }
+
   Future<void> _showBackupPhraseDialog() async {
-    final hasPIN = await _securityService.hasPIN();
-    if (!hasPIN) {
+    final vault = context.read<FuegoVaultService>();
+    if (vault.activeWallet == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('No PIN set — please set a PIN in Security first'),
+          content: Text('No wallet on this device yet'),
           backgroundColor: AppTheme.errorColor,
         ),
       );
       return;
     }
 
-    final pinController = TextEditingController();
-    final pin = await showDialog<String>(
+    final passwordController = TextEditingController();
+    final password = await showDialog<String>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.cardColor,
         title: const Text(
-          'Confirm PIN',
+          'Wallet Password',
           style: TextStyle(color: AppTheme.textPrimary),
         ),
         content: TextField(
-          controller: pinController,
+          controller: passwordController,
           obscureText: true,
-          keyboardType: TextInputType.number,
-          maxLength: 12,
+          maxLength: 64,
           decoration: const InputDecoration(
-            labelText: 'Enter PIN to view backup secrets',
+            labelText: 'Enter this wallet\'s password to view backup secrets',
             counterText: '',
           ),
         ),
@@ -630,35 +909,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.of(ctx).pop(pinController.text),
+            onPressed: () => Navigator.of(ctx).pop(passwordController.text),
             child: const Text('Unlock'),
           ),
         ],
       ),
     );
-    pinController.dispose();
-    if (pin == null || pin.isEmpty || !mounted) return;
+    passwordController.dispose();
+    if (password == null || password.isEmpty || !mounted) return;
 
-    final ok = await _securityService.verifyPIN(pin);
-    if (!ok) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Invalid PIN'),
-          backgroundColor: AppTheme.errorColor,
-        ),
-      );
-      return;
-    }
-
-    final vault = context.read<FuegoVaultService>();
     if (!vault.isUnlocked) {
-      final unlocked = await vault.unlockWithPin(pin);
+      final unlocked = await vault.unlockActive(password);
       if (!unlocked) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Could not unlock vault'),
+            content: Text('Invalid password'),
             backgroundColor: AppTheme.errorColor,
           ),
         );
@@ -673,14 +939,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     String viewSec = '';
 
     try {
-      // Prefer PIN-encrypted mnemonic from secure storage
-      final storedSeed = await _securityService.getWalletSeed(pin);
-      if (storedSeed != null && SecurityService.validateMnemonic(storedSeed)) {
-        mnemonic = storedSeed;
+      // Prefer the ACTIVE wallet's seed from the unlocked vault so the
+      // backup always matches the wallet currently in use. Fall back to
+      // the PIN-encrypted seed in secure storage.
+      final seed = vault.getSeed();
+      if (seed != null && seed.length == 64) {
+        mnemonic = bip39.entropyToMnemonic(seed);
       } else {
-        final seed = vault.getSeed();
-        if (seed != null && seed.length == 64) {
-          mnemonic = bip39.entropyToMnemonic(seed);
+        final storedSeed = await _securityService.getWalletSeed(password);
+        if (storedSeed != null && SecurityService.validateMnemonic(storedSeed)) {
+          mnemonic = storedSeed;
         }
       }
       final spendKeys = vault.deriveKeypair(0);
@@ -950,6 +1218,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 8),
               Text(
+                'Privacy Bank & Purchasing Power Chain',
+                style: TextStyle(
+                  color: AppTheme.primaryColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
                 'A privacy-focused cryptocurrency wallet for Fuego (XFG)',
                 style: TextStyle(color: AppTheme.textSecondary),
               ),
@@ -964,7 +1241,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 8),
               Text(
                 '• Private transactions with ring signatures\n'
-                '• HEAT stablecoin mint & redeem\n'
+                '• ΗΞΔŦ flatcoin — mint or sell\n'
                 '• Certificates of Deposit earning yield\n'
                 '• Built-in unified daemon (fuegod + walletd + xfg-swapd)\n'
                 '• Cross-chain atomic swaps (12 chains)\n'
@@ -1005,13 +1282,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 icon: Icons.account_balance_wallet,
                 title: 'Wallet Address',
                 subtitle: _truncateAddress(state.address ?? 'Not available'),
-                onTap: () => _showAddressDialog(state.address),
+                onTap: () => WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _showAddressDialog(state.address);
+                }),
               ),
               _buildSettingsTile(
                 icon: Icons.key,
                 title: 'Backup Phrase',
                 subtitle: 'View your wallet backup phrase',
                 onTap: _showBackupPhraseDialog,
+                trailing: const Icon(Icons.chevron_right),
+              ),
+              _buildSettingsTile(
+                icon: Icons.account_balance_wallet_outlined,
+                title: 'Wallets',
+                subtitle: 'Switch, add, or import saved wallets',
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const WalletsScreen(),
+                    ),
+                  );
+                },
                 trailing: const Icon(Icons.chevron_right),
               ),
 
@@ -1050,9 +1342,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 icon: Icons.lock_reset,
                 title: 'Change PIN',
                 subtitle: 'Update your wallet PIN',
-                onTap: () {
-                  // TODO: Implement PIN change flow
-                },
+                onTap: _showChangePINDialog,
                 trailing: const Icon(Icons.chevron_right),
               ),
 
@@ -1170,6 +1460,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
               // App section
               _buildSectionHeader('App'),
+              _buildSettingsTile(
+                icon: Icons.font_download,
+                title: 'App Font',
+                subtitle:
+                    fontOptions.firstWhere((f) => f.family == _fontFamily).label,
+                onTap: _showFontPickerDialog,
+                trailing: const Icon(Icons.chevron_right),
+              ),
               _buildSettingsTile(
                 icon: Icons.info,
                 title: 'About',

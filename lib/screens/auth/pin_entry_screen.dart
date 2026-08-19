@@ -331,8 +331,8 @@ class _PinEntryScreenState extends State<PinEntryScreen>
                       const Text(
                         'Welcome Back',
                         style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 30,
+                          fontWeight: FontWeight.w600,
                           color: AppTheme.textPrimary,
                         ),
                       ),

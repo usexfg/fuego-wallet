@@ -286,6 +286,12 @@ class FuegoDaemonClient {
     return await _get('/status');
   }
 
+  /// Fetch raw ΗΞΔŦ metrics (supply, TWAP redemption price, treasury, CD
+  /// yield) from the daemon's `/heat_metrics` endpoint.
+  Future<Map<String, dynamic>> getHeatMetricsRaw() async {
+    return await _get('/heat_metrics');
+  }
+
   /// Scan blockchain for outputs belonging to our keys.
   ///
   /// **Security:** always targets the local backend (`127.0.0.1:walletPort`).

@@ -299,10 +299,11 @@ class _PinInputWidgetState extends State<PinInputWidget>
         child: Center(
           child: Text(
             number,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w600,
+            style: TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.w500,
               color: AppTheme.textPrimary,
+              fontFamily: AppTheme.numberFontFamily,
             ),
           ),
         ),

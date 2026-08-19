@@ -66,12 +66,23 @@ pub struct BuildDestination {
 }
 
 /// A commitment destination: minted HEAT or a term-locked CD. The commit
-/// key is derived by the builder from the tx secret key and the wallet's
-/// view key (depositSecret = Hs(D || outputIndex), D = 8*(r*V)).
+/// key is derived by the builder from the tx secret key and the given view
+/// key (depositSecret = Hs(D || outputIndex), D = 8*(r*V)). `view_pub`
+/// defaults to the wallet's own view key (mint/CD); HEAT transfers pass the
+/// recipient's view key so only the recipient can spend the output.
 #[derive(Debug, Clone)]
 pub struct BuildCommitmentDestination {
     pub amount: u64,
     pub term: u32,
+    pub view_pub: Option<[u8; 32]>,
+}
+
+/// Deterministic tx secret key recovery: r = Hs(viewSecret || inputsHash),
+/// the inverse of deterministic_tx_key — used to produce tx proofs for
+/// previously sent transactions.
+pub fn recover_tx_secret(inputs: &[TxInput], view_secret: &[u8; 32]) -> [u8; 32] {
+    let (r, _r_pub) = deterministic_tx_key(view_secret, inputs);
+    r
 }
 
 /// HEAT_BILL_DENOMINATIONS (CryptoNoteConfig.h), largest first.
@@ -512,7 +523,14 @@ pub fn build_mixed_output_transaction(
     let mut outputs = Vec::with_capacity(commitment_destinations.len() + key_destinations.len());
     let mut out_index = 0usize;
     for cdest in commitment_destinations {
-        let deposit_secret = derive_deposit_secret(&tx_derivation, out_index as u32);
+        let dest_view = cdest.view_pub.as_ref().unwrap_or(view_pub);
+        let dest_derivation = if dest_view == view_pub {
+            tx_derivation
+        } else {
+            generate_key_derivation(dest_view, &txkey)
+                .ok_or_else(|| SdkError::Crypto("dest tx key derivation failed".into()))?
+        };
+        let deposit_secret = derive_deposit_secret(&dest_derivation, out_index as u32);
         let ck = derive_commitment_keys(&deposit_secret);
         out_index += 1;
         outputs.push(TxOutput {
@@ -616,6 +634,7 @@ pub fn build_mint_transaction(
         .map(|b| BuildCommitmentDestination {
             amount: *b,
             term: crate::serialization::HEAT_TERM,
+            view_pub: None,
         })
         .collect();
 
@@ -720,7 +739,14 @@ pub fn build_commitment_spend_transaction(
     let tx_derivation = generate_key_derivation(view_pub, &txkey)
         .ok_or_else(|| SdkError::Crypto("commitment derivation failed".into()))?;
     for cdest in commitment_destinations {
-        let deposit_secret = derive_deposit_secret(&tx_derivation, out_index as u32);
+        let dest_view = cdest.view_pub.as_ref().unwrap_or(view_pub);
+        let dest_derivation = if dest_view == view_pub {
+            tx_derivation
+        } else {
+            generate_key_derivation(dest_view, &txkey)
+                .ok_or_else(|| SdkError::Crypto("dest tx key derivation failed".into()))?
+        };
+        let deposit_secret = derive_deposit_secret(&dest_derivation, out_index as u32);
         let ck = derive_commitment_keys(&deposit_secret);
         out_index += 1;
         outputs.push(TxOutput {

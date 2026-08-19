@@ -146,90 +146,117 @@ impl BtcRpcClient {
 
 /// Decode a raw Bitcoin block to find a transaction's index and merkle path.
 /// Returns (tx_index, total_txs, merkle_path).
+///
+/// Fail-closed: every offset advance is bounds-checked and tx_count is
+/// capped — a forged block from the RPC must yield Err, never a panic/OOM.
 fn decode_block_merkle(block_bytes: &[u8], target_txid: &str) -> Result<(u32, u32, Vec<String>)> {
     use sha2::{Sha256, Digest};
+
+    const MAX_TX_COUNT: u64 = 1_000_000;
 
     if block_bytes.len() < 80 {
         return Err(SdkError::Serialization("Block too short".into()));
     }
 
     // Skip 80-byte block header
-    let mut offset = 80;
+    let mut offset = 80usize;
+
+    let advance = |off: &mut usize, n: usize| -> Result<()> {
+        *off = off
+            .checked_add(n)
+            .ok_or_else(|| SdkError::Serialization("Block offset overflow".into()))?;
+        if *off > block_bytes.len() {
+            return Err(SdkError::Serialization("Block truncated".into()));
+        }
+        Ok(())
+    };
 
     // Read varint for tx count
     let (tx_count, new_offset) = read_varint(block_bytes, offset)?;
     offset = new_offset;
+    if tx_count > MAX_TX_COUNT {
+        return Err(SdkError::Serialization("tx_count exceeds sanity cap".into()));
+    }
 
     // Collect all transaction hashes in internal byte order
     let mut tx_hashes: Vec<Vec<u8>> = Vec::with_capacity(tx_count as usize);
     let mut target_index: Option<u32> = None;
 
     for i in 0..tx_count {
-        if offset >= block_bytes.len() {
-            return Err(SdkError::Serialization("Block truncated".into()));
-        }
-
         let tx_start = offset;
 
-        // Read tx version (4 bytes LE)
-        offset += 4;
+        // Version (4 bytes LE)
+        advance(&mut offset, 4)?;
 
-        // Skip segwit marker if present
-        if block_bytes[offset] == 0x00 {
-            offset += 1;
+        // Segwit marker+flag? (BIP144: version 00 01)
+        let mut segwit = false;
+        if offset < block_bytes.len() && block_bytes[offset] == 0x00 {
+            let marker = offset;
+            advance(&mut offset, 1)?;
             if offset < block_bytes.len() && block_bytes[offset] == 0x01 {
-                offset += 1; // segwit marker
+                segwit = true;
+                advance(&mut offset, 1)?;
+            } else {
+                // Not segwit — undo the marker read.
+                offset = marker + 1;
             }
         }
 
-        // Count inputs
+        // Inputs
         let (input_count, new_offset) = read_varint(block_bytes, offset)?;
         offset = new_offset;
-
-        // Skip all inputs
+        let inputs_start = offset;
         for _ in 0..input_count {
-            // prev tx hash (32 bytes)
-            offset += 32;
-            // prev output index (4 bytes)
-            offset += 4;
-            // script length
+            advance(&mut offset, 32)?; // prev tx hash
+            advance(&mut offset, 4)?; // prev output index
             let (script_len, new_offset) = read_varint(block_bytes, offset)?;
             offset = new_offset;
-            // script
-            offset += script_len as usize;
-            // sequence (4 bytes)
-            offset += 4;
+            advance(&mut offset, script_len as usize)?; // script
+            advance(&mut offset, 4)?; // sequence
         }
+        let inputs_end = offset;
 
-        // Count outputs
+        // Outputs
         let (output_count, new_offset) = read_varint(block_bytes, offset)?;
         offset = new_offset;
-
-        // Skip all outputs
+        let outputs_start = offset;
         for _ in 0..output_count {
-            // amount (8 bytes)
-            offset += 8;
-            // script length
+            advance(&mut offset, 8)?; // amount
             let (script_len, new_offset) = read_varint(block_bytes, offset)?;
             offset = new_offset;
-            // script
-            offset += script_len as usize;
+            advance(&mut offset, script_len as usize)?; // script
         }
+        let outputs_end = offset;
 
-        // Skip witness data if segwit
-        if tx_start < block_bytes.len() && block_bytes[tx_start] == 0x00 {
-            // Already consumed marker, check if there's actual witness data
+        // Witness data (segwit only): per input, item count + item lens + items
+        if segwit {
+            for _ in 0..input_count {
+                let (item_count, new_offset) = read_varint(block_bytes, offset)?;
+                offset = new_offset;
+                for _ in 0..item_count {
+                    let (item_len, new_offset) = read_varint(block_bytes, offset)?;
+                    offset = new_offset;
+                    advance(&mut offset, item_len as usize)?;
+                }
+            }
         }
 
         // Locktime (4 bytes)
-        offset += 4;
+        let locktime_start = offset;
+        advance(&mut offset, 4)?;
+        let tx_end = offset;
 
-        // Compute tx hash (double SHA-256 of the raw tx)
-        let raw_tx = &block_bytes[tx_start..offset];
-        let first = Sha256::digest(raw_tx);
+        // txid: dsha256 of the serialization WITHOUT witness (BIP144);
+        // for non-segwit that is the whole tx.
+        let mut txid_bytes: Vec<u8> = Vec::new();
+        txid_bytes.extend_from_slice(&block_bytes[tx_start..tx_start + 4]); // version
+        txid_bytes.extend_from_slice(&block_bytes[inputs_start..inputs_end]);
+        txid_bytes.extend_from_slice(&block_bytes[outputs_start..outputs_end]);
+        txid_bytes.extend_from_slice(&block_bytes[locktime_start..tx_end]);
+        let first = Sha256::digest(&txid_bytes);
         let tx_hash = Sha256::digest(first);
 
-        // Check if this is our target tx (compare in reversed byte order)
+        // Compare in reversed (display) byte order.
         let display_hash: Vec<u8> = tx_hash.iter().rev().cloned().collect();
         let display_hex = hex::encode(&display_hash);
 
@@ -243,8 +270,8 @@ fn decode_block_merkle(block_bytes: &[u8], target_txid: &str) -> Result<(u32, u3
     let tx_index = target_index
         .ok_or_else(|| SdkError::Network(format!("Transaction {target_txid} not found in block")))?;
 
-    // Build merkle path by pairing hashes level by level
-    let mut current_level = tx_hashes.clone();
+    // Build merkle path by pairing hashes level by level (internal order).
+    let mut current_level = tx_hashes;
     let mut merkle_path = Vec::new();
     let mut idx = tx_index;
 

@@ -113,20 +113,45 @@ class SwapOfferSdk {
     required this.expiresAt,
   });
 
-  double get rate => rateNum > 0 ? amount / rateNum : 0;
+  double get xfgPerCounterparty => rateNum / 1e7;
+  double get counterpartyPerXfg =>
+      xfgPerCounterparty > 0 ? 1 / xfgPerCounterparty : 0;
+  double get rate => counterpartyPerXfg;
   String get pairLabel => pair.displayName;
 
-  factory SwapOfferSdk.fromJson(Map<String, dynamic> j) => SwapOfferSdk(
-    offerId: j['offerId'] as String? ?? j['offer_id'] as String? ?? '',
-    makerPubKey:
-        j['makerPubKey'] as String? ?? j['maker_pubkey'] as String? ?? '',
-    pair: SwapPairSdk.fromId(j['pair'] as int? ?? 0),
-    sellXfg: j['sellXfg'] as bool? ?? j['sell_xfg'] as bool? ?? true,
-    amount: j['amount'] as int? ?? 0,
-    rateNum: j['rateNum'] as int? ?? j['rate'] as int? ?? 0,
-    createdAt: j['createdAt'] as int? ?? j['created_at'] as int? ?? 0,
-    expiresAt: j['expiresAt'] as int? ?? j['expires_at'] as int? ?? 0,
+  SwapOfferSdk copyWith({String? makerPubKey}) => SwapOfferSdk(
+    offerId: offerId,
+    makerPubKey: makerPubKey ?? this.makerPubKey,
+    pair: pair,
+    sellXfg: sellXfg,
+    amount: amount,
+    rateNum: rateNum,
+    createdAt: createdAt,
+    expiresAt: expiresAt,
   );
+
+  factory SwapOfferSdk.fromJson(Map<String, dynamic> j) {
+    return SwapOfferSdk(
+      offerId: j['offerId']?.toString() ?? j['offer_id']?.toString() ?? '',
+      makerPubKey:
+          j['makerPubKey']?.toString() ?? j['maker_pubkey']?.toString() ?? '',
+      pair: SwapPairSdk.fromId(_intValue(j['pair'])),
+      sellXfg:
+          j['sellXfg'] as bool? ??
+          j['sell_xfg'] as bool? ??
+          j['isSell'] as bool? ??
+          true,
+      amount: _intValue(j['amount'] ?? j['xfgAmount'] ?? j['xfg_amount']),
+      rateNum: _intValue(j['rateNum'] ?? j['rate_num'] ?? j['rate']),
+      createdAt: _intValue(j['createdAt'] ?? j['created_at'] ?? j['timestamp']),
+      expiresAt: _intValue(j['expiresAt'] ?? j['expires_at']),
+    );
+  }
+
+  static int _intValue(Object? value) {
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? 0;
+  }
 
   Map<String, dynamic> toJson() => {
     'offerId': offerId,
@@ -223,15 +248,31 @@ class SwapPriceSdk {
     this.status = '',
   });
 
-  factory SwapPriceSdk.fromJson(Map<String, dynamic> j) => SwapPriceSdk(
-    pair: SwapPairSdk.fromId(j['pair'] as int? ?? 0),
-    bid: j['bid']?.toString() ?? '0',
-    ask: j['ask']?.toString() ?? '0',
-    last: j['last']?.toString() ?? '0',
-    volume24h: j['volume_24h']?.toString() ?? j['volume24h']?.toString() ?? '0',
-    change24h: j['change_24h']?.toString() ?? j['change24h']?.toString() ?? '0',
-    status: j['status'] as String? ?? '',
+  factory SwapPriceSdk.fromJson(
+    Map<String, dynamic> j, {
+    SwapPairSdk? pairOverride,
+  }) => SwapPriceSdk(
+    pair: pairOverride ?? SwapPairSdk.fromId(_intValue(j['pair'])),
+    bid: _firstString(j, const ['bid', 'compositeRate', 'twap']),
+    ask: _firstString(j, const ['ask', 'compositeRate', 'twap']),
+    last: _firstString(j, const ['last', 'compositeRate', 'twap', 'seedRate']),
+    volume24h: _firstString(j, const ['volume_24h', 'volume24h']),
+    change24h: _firstString(j, const ['change_24h', 'change24h']),
+    status: j['status']?.toString() ?? '',
   );
+
+  static int _intValue(Object? value) {
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  static String _firstString(Map<String, dynamic> json, List<String> keys) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value != null && value.toString().isNotEmpty) return value.toString();
+    }
+    return '0';
+  }
 }
 
 /// Orderbook level (bid or ask).

@@ -38,8 +38,8 @@ class MnemonicDisplay extends StatelessWidget {
               const Text(
                 'Seed Phrase',
                 style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
                   color: AppTheme.textPrimary,
                 ),
               ),

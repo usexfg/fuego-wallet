@@ -99,4 +99,45 @@ flutter:
     - assets/charts/
     - assets/coin icons/
 
+  fonts:
+    - family: Saira
+      fonts:
+        - asset: assets/fonts/Saira/static/Saira-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Saira/static/Saira-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Saira/static/Saira-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Saira/static/Saira-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Saira/static/Saira-Light.ttf
+          weight: 300
+    - family: NotoSans
+      fonts:
+        - asset: assets/fonts/NotoSans/NotoSans-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/NotoSans/NotoSans-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/NotoSans/NotoSans-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/NotoSans/NotoSans-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/NotoSans/NotoSans-Light.ttf
+          weight: 300
+    - family: SourceSerif4
+      fonts:
+        - asset: assets/fonts/Source_Serif_4/static/SourceSerif4-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Source_Serif_4/static/SourceSerif4-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Source_Serif_4/static/SourceSerif4-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Source_Serif_4/static/SourceSerif4-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Source_Serif_4/static/SourceSerif4-Light.ttf
+          weight: 300
+    - family: Electrolize
+      fonts:
+        - asset: assets/fonts/Electrolize-Regular.ttf
+
 dependency_overrides:

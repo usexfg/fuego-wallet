@@ -32,8 +32,8 @@ class _NetworkSelectionScreenState extends State<NetworkSelectionScreen> {
             const Text(
               'Choose Network',
               style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
+                fontSize: 26,
+                fontWeight: FontWeight.w600,
                 color: AppTheme.textPrimary,
               ),
             ),

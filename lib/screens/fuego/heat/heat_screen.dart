@@ -39,7 +39,7 @@ class _HeatScreenState extends State<HeatScreen> {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title: const Text('HEAT Stablecoin'),
+        title: const Text('ΗΞΔŦ Stablecoin'),
         backgroundColor: AppTheme.surfaceColor,
         actions: [
           IconButton(
@@ -117,9 +117,9 @@ class _HeatScreenState extends State<HeatScreen> {
           children: [
             const Text('Supply', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.textMuted)),
             const SizedBox(height: 8),
-            Text(_metrics!.supply, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+            Text(_metrics!.supply, style: TextStyle(fontSize: 26, fontWeight: FontWeight.w600, color: AppTheme.textPrimary, fontFamily: AppTheme.numberFontFamily)),
             const SizedBox(height: 4),
-            Text('HEAT in circulation', style: const TextStyle(color: AppTheme.textSecondary)),
+            Text('ΗΞΔŦ in circulation', style: const TextStyle(color: AppTheme.textSecondary)),
           ],
         ),
       ),
@@ -161,7 +161,7 @@ class _HeatScreenState extends State<HeatScreen> {
             Row(
               children: [
                 Expanded(child: _metricColumn('XFG', _metrics!.poolXfg, AppTheme.primaryColor)),
-                Expanded(child: _metricColumn('HEAT', _metrics!.poolHeat, AppTheme.accentColor)),
+                Expanded(child: _metricColumn('ΗΞΔŦ', _metrics!.poolHeat, AppTheme.accentColor)),
               ],
             ),
           ],
@@ -184,7 +184,7 @@ class _HeatScreenState extends State<HeatScreen> {
           ).then((_) => _loadMetrics());
         },
         icon: const Icon(Icons.local_fire_department),
-        label: const Text('Mint HEAT', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        label: const Text('Mint ΗΞΔŦ', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         style: ElevatedButton.styleFrom(
           backgroundColor: AppTheme.primaryColor,
           foregroundColor: Colors.white,
@@ -197,7 +197,7 @@ class _HeatScreenState extends State<HeatScreen> {
   Widget _metricColumn(String label, String value, Color color) {
     return Column(
       children: [
-        Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
+        Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: color, fontFamily: AppTheme.numberFontFamily)),
         const SizedBox(height: 2),
         Text(label, style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
       ],

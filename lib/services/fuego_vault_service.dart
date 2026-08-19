@@ -8,15 +8,62 @@ import 'package:path_provider/path_provider.dart';
 import '../ffi/fuego_native.dart';
 import 'security_service.dart';
 
-/// HD wallet vault via native FFI.
+/// A saved wallet on this device. Only public metadata — no secrets.
+class WalletEntry {
+  final String id;
+  final String name;
+  final String file;
+  final int createdAt;
+  final String address;
+
+  const WalletEntry({
+    required this.id,
+    required this.name,
+    required this.file,
+    required this.createdAt,
+    this.address = '',
+  });
+
+  WalletEntry copyWith({String? name, String? address, String? file}) =>
+      WalletEntry(
+        id: id,
+        name: name ?? this.name,
+        file: file ?? this.file,
+        createdAt: createdAt,
+        address: address ?? this.address,
+      );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'file': file,
+    'createdAt': createdAt,
+    'address': address,
+  };
+
+  factory WalletEntry.fromJson(Map<String, dynamic> j) => WalletEntry(
+    id: j['id'] as String? ?? '',
+    name: j['name'] as String? ?? 'Wallet',
+    file: j['file'] as String? ?? '',
+    createdAt: (j['createdAt'] as num?)?.toInt() ?? 0,
+    address: j['address'] as String? ?? '',
+  );
+}
+
+/// HD wallet vault via native FFI — multi-wallet edition.
 ///
-/// Vault bytes are encrypted at rest with a PIN-derived key. Secrets are only
-/// available after [unlockWithPin] or [unlockWithBiometricKey]. Never auto-creates
-/// an unlocked vault on cold start.
+/// Each wallet is stored as its own encrypted file (`fuego_vault_<id>.enc`)
+/// tracked in a plain registry (`fuego_wallets.json`). Every wallet file is
+/// encrypted with its OWN password — the app PIN never touches wallet
+/// material. Biometric envelopes use a random device-bound key. Secrets are
+/// only available after [unlockActive], [switchWallet] or
+/// [unlockWithBiometricKey]. Never auto-creates an unlocked vault on cold
+/// start.
 class FuegoVaultService {
   static const _vaultFileName = 'fuego_vault.enc';
   static const _legacyVaultFileName = 'fuego_vault.bin';
   static const _metaFileName = 'fuego_vault.meta';
+  static const _registryFileName = 'fuego_wallets.json';
 
   final SecurityService _security;
   FuegoNative? _native;
@@ -26,6 +73,8 @@ class FuegoVaultService {
   String? _viewSecretKey;
   bool _unlocked = false;
   bool _existsOnDisk = false;
+  String? _activeId;
+  List<WalletEntry> _wallets = [];
 
   FuegoVaultService({SecurityService? security})
       : _security = security ?? SecurityService();
@@ -42,75 +91,216 @@ class FuegoVaultService {
   String? get spendPublicKey => _unlocked ? _spendPublicKey : null;
   String? get viewSecretKey => _unlocked ? _viewSecretKey : null;
 
-  /// Probe disk only — does not load or generate secrets.
-  Future<void> init() async {
-    final dir = await getApplicationDocumentsDirectory();
-    final enc = File('${dir.path}/$_vaultFileName');
-    final legacy = File('${dir.path}/$_legacyVaultFileName');
-    _existsOnDisk = await enc.exists() || await legacy.exists();
+  /// Saved wallets in creation order. Read-only view.
+  List<WalletEntry> get wallets => List.unmodifiable(_wallets);
+  String? get activeWalletId => _activeId;
+  WalletEntry? get activeWallet {
+    if (_activeId == null) return null;
+    for (final w in _wallets) {
+      if (w.id == _activeId) return w;
+    }
+    return null;
   }
 
-  /// Create a new vault from secure entropy, encrypt with [pin], store keys.
-  Future<String> createNew({required String pin, String? mnemonic}) async {
+  /// Probe disk only — does not load or generate secrets. Loads the wallet
+  /// registry and migrates a legacy single-file vault if present.
+  Future<void> init() async {
+    final dir = await getApplicationDocumentsDirectory();
+    final regFile = File('${dir.path}/$_registryFileName');
+    if (await regFile.exists()) {
+      try {
+        final data = json.decode(await regFile.readAsString())
+            as Map<String, dynamic>;
+        _activeId = data['active'] as String?;
+        _wallets = (data['wallets'] as List<dynamic>? ?? [])
+            .map((e) => WalletEntry.fromJson(e as Map<String, dynamic>))
+            .where((e) => e.id.isNotEmpty && e.file.isNotEmpty)
+            .toList();
+      } catch (_) {
+        _wallets = [];
+        _activeId = null;
+      }
+    }
+
+    // Migrate a pre-multi-wallet single-file vault into the registry.
+    if (_wallets.isEmpty) {
+      final enc = File('${dir.path}/$_vaultFileName');
+      final legacy = File('${dir.path}/$_legacyVaultFileName');
+      if (await enc.exists() || await legacy.exists()) {
+        _wallets = [
+          WalletEntry(
+            id: 'legacy',
+            name: 'Main Wallet',
+            file: await enc.exists() ? _vaultFileName : _legacyVaultFileName,
+            createdAt: 0,
+          ),
+        ];
+        _activeId = 'legacy';
+        await _saveRegistry();
+      }
+    }
+
+    if (_activeId == null || activeWallet == null) {
+      _activeId = _wallets.isNotEmpty ? _wallets.first.id : null;
+    }
+    _existsOnDisk = _wallets.isNotEmpty;
+  }
+
+  Future<void> _saveRegistry() async {
+    final dir = await getApplicationDocumentsDirectory();
+    final data = {'active': _activeId, 'wallets': _wallets.map((w) => w.toJson()).toList()};
+    await File('${dir.path}/$_registryFileName')
+        .writeAsString(json.encode(data), flush: true);
+  }
+
+  WalletEntry _requireEntry(String id) {
+    for (final w in _wallets) {
+      if (w.id == id) return w;
+    }
+    throw StateError('Wallet not found');
+  }
+
+  /// Create a NEW wallet file (does not replace existing wallets), encrypt
+  /// with its own [password], set as active, and return the seed phrase.
+  Future<String> createNew({
+    required String password,
+    String? mnemonic,
+    String? name,
+  }) async {
     final phrase = mnemonic ?? SecurityService.generateMnemonic();
     if (!SecurityService.validateMnemonic(phrase)) {
       throw ArgumentError('Invalid BIP39 mnemonic');
     }
-    await _security.setPIN(pin);
-    await _security.storeWalletSeed(phrase, pin);
+    await _security.storeWalletSeed(phrase, password);
 
     final seed32 = SecurityService.mnemonicToVaultSeed(phrase);
     final bytes = _ffi.vaultFromSeed(seed32);
     if (bytes.isEmpty) {
-      // Fallback if FFI seed path fails — generate and require backup of seed
       throw StateError('Failed to create vault from seed via FFI');
     }
-    await _persistEncrypted(bytes, pin);
+
+    final id = DateTime.now().microsecondsSinceEpoch.toString();
+    final file = 'fuego_vault_$id.enc';
+    await _persistEncrypted(file, bytes, password);
     await _loadInMemory(bytes);
-    await _storeDerivedKeys(pin);
-    await _maybeStoreBiometricUnwrap(pin);
+    await _storeDerivedKeys(password);
+    await ensureBiometricEnvelope();
+
+    final entry = WalletEntry(
+      id: id,
+      name: name ?? 'Wallet ${_wallets.length + 1}',
+      file: file,
+      createdAt: DateTime.now().millisecondsSinceEpoch,
+      address: _cachedAddress ?? '',
+    );
+    _wallets = [..._wallets, entry];
+    _activeId = id;
     _existsOnDisk = true;
+    await _saveRegistry();
     return phrase;
   }
 
-  /// Restore vault from BIP39 mnemonic.
+  /// Restore vault from BIP39 mnemonic (creates a new wallet file).
   Future<void> restoreFromMnemonic({
     required String mnemonic,
-    required String pin,
+    required String password,
+    String? name,
   }) async {
     if (!SecurityService.validateMnemonic(mnemonic)) {
       throw ArgumentError('Invalid BIP39 mnemonic');
     }
-    await createNew(pin: pin, mnemonic: mnemonic.trim());
+    await createNew(password: password, mnemonic: mnemonic.trim(), name: name);
   }
 
-  /// Unlock encrypted vault with PIN.
-  Future<bool> unlockWithPin(String pin) async {
-    final ok = await _security.verifyPIN(pin);
-    if (!ok) return false;
+  /// Unlock the ACTIVE wallet's encrypted vault with its password.
+  Future<bool> unlockActive(String password) async {
+    final entry = activeWallet;
+    if (entry == null) return false;
 
     final dir = await getApplicationDocumentsDirectory();
-    final encFile = File('${dir.path}/$_vaultFileName');
+    final encFile = File('${dir.path}/${entry.file}');
     final legacy = File('${dir.path}/$_legacyVaultFileName');
 
     Uint8List plain;
-    if (await encFile.exists()) {
-      final payload = await encFile.readAsString();
-      plain = await _security.decryptBytesWithPin(payload, pin);
-    } else if (await legacy.exists()) {
-      // One-time migration of plaintext legacy vault
-      plain = await legacy.readAsBytes();
-      await _persistEncrypted(plain, pin);
-      try {
-        await legacy.delete();
-      } catch (_) {}
-    } else {
-      throw StateError('No vault on disk');
+    try {
+      if (await encFile.exists()) {
+        final payload = await encFile.readAsString();
+        plain = await _security.decryptBytesWithPin(payload, password);
+      } else if (entry.file == _legacyVaultFileName && await legacy.exists()) {
+        // One-time migration of plaintext legacy vault
+        plain = await legacy.readAsBytes();
+        await _persistEncrypted(_vaultFileName, plain, password);
+        try {
+          await legacy.delete();
+        } catch (_) {}
+        _wallets = _wallets
+            .map((w) => w.id == entry.id ? w.copyWith(file: _vaultFileName) : w)
+            .toList();
+        await _saveRegistry();
+      } else {
+        throw StateError('No vault file on disk');
+      }
+    } catch (e) {
+      debugPrint('Vault unlock failed');
+      return false;
     }
 
     await _loadInMemory(plain);
-    await _maybeStoreBiometricUnwrap(pin);
+    await _updateEntryAddress(entry, password);
     return true;
+  }
+
+  /// Switch the active wallet to [id], decrypting it with that wallet's
+  /// password. Keeps secure-storage seed/keys in sync with the new wallet.
+  Future<bool> switchWallet(String id, String password) async {
+    if (id == _activeId && isUnlocked) return true;
+    final entry = _requireEntry(id);
+
+    final dir = await getApplicationDocumentsDirectory();
+    final encFile = File('${dir.path}/${entry.file}');
+    if (!await encFile.exists()) {
+      throw StateError('No vault file on disk for ${entry.name}');
+    }
+    final payload = await encFile.readAsString();
+    final plain = await _security.decryptBytesWithPin(payload, password);
+
+    await _loadInMemory(plain);
+    _activeId = id;
+    await _updateEntryAddress(entry, password);
+    await _storeDerivedKeys(password);
+    final seed = getSeed();
+    if (seed != null) {
+      await _security.storeWalletSeed(seed, password);
+    }
+    await ensureBiometricEnvelope();
+    await _saveRegistry();
+    return true;
+  }
+
+  /// Remove a saved wallet file. Refuses to remove the last wallet.
+  /// If the removed wallet was active, locks the vault and marks the next
+  /// wallet as active (it stays locked until unlocked with its password).
+  Future<void> removeWallet(String id) async {
+    if (_wallets.length <= 1) {
+      throw StateError('Cannot remove the last wallet');
+    }
+    final entry = _requireEntry(id);
+
+    final dir = await getApplicationDocumentsDirectory();
+    for (final name in [entry.file, '${entry.file}.bio']) {
+      final f = File('${dir.path}/$name');
+      if (await f.exists()) {
+        await f.delete();
+      }
+    }
+
+    final wasActive = _activeId == id;
+    _wallets = _wallets.where((w) => w.id != id).toList();
+    if (wasActive) {
+      lock();
+      _activeId = _wallets.first.id;
+    }
+    await _saveRegistry();
   }
 
   /// Unlock using biometric-gated unwrap key (after [authenticateWithBiometrics]).
@@ -118,13 +308,16 @@ class FuegoVaultService {
     final key = await _security.getVaultUnwrapKey();
     if (key == null) return false;
 
+    final entry = activeWallet;
+    if (entry == null) return false;
+
     final dir = await getApplicationDocumentsDirectory();
-    final encFile = File('${dir.path}/$_vaultFileName');
+    final encFile = File('${dir.path}/${entry.file}');
     if (!await encFile.exists()) return false;
 
     final payload = await encFile.readAsString();
     // Payload is PIN-encrypted; for biometric we store a second envelope.
-    final bioFile = File('${dir.path}/$_vaultFileName.bio');
+    final bioFile = File('${dir.path}/${entry.file}.bio');
     if (await bioFile.exists()) {
       final bioPayload = await bioFile.readAsString();
       final plain = await _security.decryptBytesWithKey(bioPayload, key);
@@ -165,15 +358,25 @@ class FuegoVaultService {
     _unlocked = false;
   }
 
-  /// Delete vault from disk and clear secure wallet material.
+  /// Delete ALL wallet files and the registry from disk and clear secure
+  /// wallet material.
   Future<void> wipe() async {
     lock();
     final dir = await getApplicationDocumentsDirectory();
+    for (final entry in _wallets) {
+      for (final name in [entry.file, '${entry.file}.bio']) {
+        final f = File('${dir.path}/$name');
+        if (await f.exists()) {
+          await f.delete();
+        }
+      }
+    }
     for (final name in [
       _vaultFileName,
       '$_vaultFileName.bio',
       _legacyVaultFileName,
       _metaFileName,
+      _registryFileName,
     ]) {
       final f = File('${dir.path}/$name');
       if (await f.exists()) {
@@ -181,6 +384,8 @@ class FuegoVaultService {
       }
     }
     await _security.clearWalletData();
+    _wallets = [];
+    _activeId = null;
     _existsOnDisk = false;
   }
 
@@ -239,15 +444,29 @@ class FuegoVaultService {
     }
   }
 
-  Future<void> _persistEncrypted(Uint8List plain, String pin) async {
-    final dir = await getApplicationDocumentsDirectory();
-    final enc = await _security.encryptBytesWithPin(plain, pin);
-    await File('${dir.path}/$_vaultFileName').writeAsString(enc, flush: true);
+  Future<void> _updateEntryAddress(WalletEntry entry, String pin) async {
+    final addr = _cachedAddress ?? '';
+    if (addr.isEmpty || entry.address == addr) return;
+    _wallets = _wallets
+        .map((w) => w.id == entry.id ? w.copyWith(address: addr) : w)
+        .toList();
+    await _saveRegistry();
+  }
 
-    // Biometric re-entry envelope using PIN-derived key bytes as unwrap key
-    final keyBytes = await _security.extractDataKeyBytes(pin);
-    final bio = await _security.encryptBytesWithKey(plain, keyBytes);
-    await File('${dir.path}/$_vaultFileName.bio').writeAsString(bio, flush: true);
+  Future<void> _persistEncrypted(
+    String fileName,
+    Uint8List plain,
+    String password,
+  ) async {
+    final dir = await getApplicationDocumentsDirectory();
+    final enc = await _security.encryptBytesWithPin(plain, password);
+    await File('${dir.path}/$fileName').writeAsString(enc, flush: true);
+
+    // Biometric re-entry envelope using a random device-bound key (never
+    // derived from the wallet password or the app PIN).
+    final bioKey = await _security.getOrCreateBioKey();
+    final bio = await _security.encryptBytesWithKey(plain, bioKey);
+    await File('${dir.path}/$fileName.bio').writeAsString(bio, flush: true);
   }
 
   Future<void> _loadInMemory(Uint8List bytes) async {
@@ -261,7 +480,7 @@ class FuegoVaultService {
     // Intentionally no logging of address/keys
   }
 
-  Future<void> _storeDerivedKeys(String pin) async {
+  Future<void> _storeDerivedKeys(String password) async {
     final spend = deriveKeypair(0);
     final view = deriveKeypair(1);
     final spendSecret = spend['secret'] as String? ?? '';
@@ -272,14 +491,25 @@ class FuegoVaultService {
     await _security.storeWalletKeys(
       viewKey: viewSecret,
       spendKey: spendSecret,
-      pin: pin,
+      pin: password,
     );
   }
 
-  Future<void> _maybeStoreBiometricUnwrap(String pin) async {
-    if (await _security.isBiometricEnabled()) {
-      final keyBytes = await _security.extractDataKeyBytes(pin);
-      await _security.storeVaultUnwrapKey(keyBytes);
+  /// Ensure the device-bound biometric unwrap key exists and the active
+  /// wallet's biometric envelope is current. Never derived from any wallet
+  /// password or PIN. Safe to call after enabling biometrics.
+  Future<void> ensureBiometricEnvelope() async {
+    if (!await _security.isBiometricEnabled()) return;
+    final bioKey = await _security.getOrCreateBioKey();
+
+    // Refresh the active wallet's biometric envelope if we hold plaintext.
+    final entry = activeWallet;
+    final bytes = _vaultBytes;
+    if (entry != null && bytes != null) {
+      final dir = await getApplicationDocumentsDirectory();
+      final bio = await _security.encryptBytesWithKey(bytes, bioKey);
+      await File('${dir.path}/${entry.file}.bio')
+          .writeAsString(bio, flush: true);
     }
   }
 }

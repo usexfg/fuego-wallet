@@ -4,8 +4,8 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:http/http.dart' as http;
+import '../../ffi/fuego_native.dart';
 import '../../models/swap_models.dart';
-import '../../native/crypto/bindings/crypto_bindings.dart';
 import '../../services/bitcoin_reserve_proof.dart';
 import '../../services/reserve_proof_service.dart';
 import '../../services/security_service.dart';
@@ -22,6 +22,11 @@ class DexState {
   final SwapPairSdk selectedPair;
   final ChainTypeSdk selectedChain;
   final List<SwapOfferSdk> offers;
+
+  /// The offer the user tapped FILL on (or null until one is chosen).
+  /// Bound to /requestswap so the request targets the tapped offer, not
+  /// whichever offer happens to be first in the list.
+  final SwapOfferSdk? selectedOffer;
   final List<SwapTradeSdk> recentTrades;
   final SwapPriceSdk? price;
   final OrderBookStateSdk? orderbook;
@@ -45,6 +50,7 @@ class DexState {
     this.selectedPair = SwapPairSdk.eth,
     this.selectedChain = ChainTypeSdk.ethereum,
     this.offers = const [],
+    this.selectedOffer,
     this.recentTrades = const [],
     this.price,
     this.orderbook,
@@ -67,6 +73,7 @@ class DexState {
     SwapPairSdk? selectedPair,
     ChainTypeSdk? selectedChain,
     List<SwapOfferSdk>? offers,
+    SwapOfferSdk? selectedOffer,
     List<SwapTradeSdk>? recentTrades,
     SwapPriceSdk? price,
     OrderBookStateSdk? orderbook,
@@ -87,6 +94,7 @@ class DexState {
     selectedPair: selectedPair ?? this.selectedPair,
     selectedChain: selectedChain ?? this.selectedChain,
     offers: offers ?? this.offers,
+    selectedOffer: selectedOffer ?? this.selectedOffer,
     recentTrades: recentTrades ?? this.recentTrades,
     price: price ?? this.price,
     orderbook: orderbook ?? this.orderbook,
@@ -115,8 +123,13 @@ class DexCubit extends Cubit<DexState> {
 
   void configure(String host, {int port = 18189}) =>
       _baseUrl = 'http://$host:$port';
-  void configureSwapDaemon({String host = '127.0.0.1', int port = 18902}) =>
-      _swapClient = SwapDaemonClient(host: host, port: port);
+  void configureSwapDaemon({
+    String host = '127.0.0.1',
+    int port = 18902,
+  }) => _swapClient = SwapDaemonClient(
+    host: host,
+    port: port,
+  );
 
   void configureWeb3({
     String ethRpcUrl = '',
@@ -159,9 +172,10 @@ class DexCubit extends Cubit<DexState> {
           .get(Uri.parse('$_baseUrl/getinfo'))
           .timeout(const Duration(seconds: 5));
       if (resp.statusCode == 200) {
-        emit(state.copyWith(isConnected: true, error: null));
-        await loadOffers();
-        await loadPrice();
+        emit(
+          state.copyWith(isConnected: true, error: null),
+        );
+        await Future.wait([loadOffers(), loadPrice()]);
       }
     } catch (e) {
       emit(state.copyWith(error: 'Cannot connect to fuegod: $e'));
@@ -285,14 +299,38 @@ class DexCubit extends Cubit<DexState> {
     }
   }
 
+  Future<List<SwapOfferSdk>> _loadOffersFromFuegod() async {
+    final results = await Future.wait(
+      SwapPairSdk.values.map((pair) async {
+        try {
+          return await _rpc('getswapoffers', {'pair': pair.id});
+        } catch (e) {
+          debugPrint('DexCubit: ${pair.ticker} offers failed: $e');
+          return <String, dynamic>{};
+        }
+      }),
+    );
+    return results
+        .expand((result) => result['offers'] as List<dynamic>? ?? const [])
+        .map((offer) => SwapOfferSdk.fromJson(offer as Map<String, dynamic>))
+        .where((offer) => offer.offerId.isNotEmpty)
+        .toList();
+  }
+
   Future<void> loadOffers() async {
     if (_baseUrl.isEmpty) return;
     try {
-      final r = await _rpc('getswapoffers', {'pair': state.selectedPair.id});
-      final offersList = (r['offers'] as List<dynamic>? ?? [])
-          .map((o) => SwapOfferSdk.fromJson(o as Map<String, dynamic>))
+      final allOffers = await _loadOffersFromFuegod();
+      final selected = allOffers
+          .where((offer) => offer.pair == state.selectedPair)
           .toList();
-      emit(state.copyWith(offers: offersList, error: null));
+      emit(
+        state.copyWith(
+          offers: selected,
+          isLoading: false,
+          error: null,
+        ),
+      );
     } catch (e) {
       debugPrint('DexCubit: loadOffers failed: $e');
     }
@@ -302,7 +340,11 @@ class DexCubit extends Cubit<DexState> {
     if (_baseUrl.isEmpty) return;
     try {
       final r = await _rpc('getswapprice', {'pair': state.selectedPair.id});
-      emit(state.copyWith(price: SwapPriceSdk.fromJson(r)));
+      emit(
+        state.copyWith(
+          price: SwapPriceSdk.fromJson(r, pairOverride: state.selectedPair),
+        ),
+      );
     } catch (e) {
       debugPrint('DexCubit: loadPrice failed: $e');
     }
@@ -337,6 +379,18 @@ class DexCubit extends Cubit<DexState> {
     }
   }
 
+  /// Remember the offer the user tapped FILL on; /requestswap must target
+  /// exactly this offer (H11: `offers.first` was orderbook-order dependent).
+  void selectOffer(SwapOfferSdk offer) {
+    emit(
+      state.copyWith(
+        selectedOffer: offer,
+        selectedPair: offer.pair,
+        selectedChain: _chainForPair(offer.pair),
+      ),
+    );
+  }
+
   Future<void> loadActiveSwaps() async {
     if (_baseUrl.isEmpty) return;
     try {
@@ -350,23 +404,125 @@ class DexCubit extends Cubit<DexState> {
     }
   }
 
+  /// Sign an offer/cancel payload with the persisted maker identity and
+  /// return (sigHash, signature, makerPubKey). Empty strings on failure.
+  /// For cancels the payload is `cancel:<offerId>` (matches
+  /// SwapOfferRelay::handleCancelMessage).
+  Future<(String, String, String)> _signOffer(String payload) async {
+    await _ensureMakerIdentity();
+    final pub = makerPublicKeyHex();
+    final sec = _makerSecretKeyHex;
+    if (pub.isEmpty || sec == null) return ('', '', '');
+    try {
+      final sigHash = _native.cnFastHash(utf8.encode(payload));
+      if (sigHash.isEmpty) return ('', '', '');
+      final sig = _native.cryptoNoteSign(
+        _hexToBytes(sigHash),
+        _hexToBytes(pub),
+        _hexToBytes(sec),
+      );
+      return (sigHash, sig, pub);
+    } catch (e) {
+      debugPrint('DexCubit: offer signing failed: $e');
+      return ('', '', '');
+    }
+  }
+
+  /// Sign the canonical offer digest — must match the fuegod relay's
+  /// `offerCanonicalHash` exactly:
+  ///   offerId ‖ u8(pair) ‖ u64LE(xfgAmount) ‖ u64LE(rateNum)
+  ///   ‖ u8(isSoftOrder) ‖ u32LE(ttlBlocks) ‖ u8(allowedSlippagePct)
+  ///   ‖ u64LE(timestamp)
+  /// The relay validates `generate_signature(that hash)` — signing any other
+  /// byte layout produces offers that are rejected.
+  @visibleForTesting
+  static List<int> canonicalOfferBytesForTest({
+    required String offerId,
+    required int pair,
+    required int xfgAmount,
+    required int rateNum,
+    required int ttlBlocks,
+    required int timestamp,
+    bool isSoftOrder = false,
+    int slippagePct = 0,
+  }) {
+    final out = <int>[];
+    out.addAll(utf8.encode(offerId));
+    out.add(pair & 0xFF);
+    out.addAll(_leU64(xfgAmount));
+    out.addAll(_leU64(rateNum));
+    out.add(isSoftOrder ? 0x01 : 0x00);
+    out.addAll(_leU32(ttlBlocks));
+    out.add(slippagePct & 0xFF);
+    out.addAll(_leU64(timestamp));
+    return out;
+  }
+
+  static List<int> _leU32(int v) {
+    final b = ByteData(4)..setUint32(0, v & 0xFFFFFFFF, Endian.little);
+    return b.buffer.asUint8List().toList();
+  }
+
+  static List<int> _leU64(int v) {
+    final b = ByteData(8)..setUint64(0, v, Endian.little);
+    return b.buffer.asUint8List().toList();
+  }
+
   Future<void> submitOffer({
     required int xfgAmount,
     required int rateNum,
-    required String makerPubKey,
-    required String signature,
-    int ttlBlocks = 1440,
+    int ttlBlocks = 720,
   }) async {
     emit(state.copyWith(isLoading: true, lastResult: null, error: null));
     try {
+      // Offer id: hash of a unique seed. The relay validates the signature
+      // over the canonical field digest (below), so the id itself only
+      // needs uniqueness.
+      final timestamp =
+          DateTime.now().millisecondsSinceEpoch ~/ 1000; // seconds
+      final seed = '${state.selectedPair.id}:$xfgAmount:$rateNum:$timestamp';
+      final offerId = _native.cnFastHash(utf8.encode(seed));
+      if (offerId.isEmpty) {
+        emit(state.copyWith(isLoading: false, error: 'Offer signing failed'));
+        return;
+      }
+      await _ensureMakerIdentity();
+      final pub = makerPublicKeyHex();
+      final sec = _makerSecretKeyHex;
+      if (pub.isEmpty || sec == null) {
+        emit(state.copyWith(isLoading: false, error: 'Maker identity missing'));
+        return;
+      }
+      final sigData = canonicalOfferBytesForTest(
+        offerId: offerId,
+        pair: state.selectedPair.id,
+        xfgAmount: xfgAmount,
+        rateNum: rateNum,
+        ttlBlocks: ttlBlocks,
+        timestamp: timestamp,
+      );
+      final sigHash = _native.cnFastHash(sigData);
+      final signature = _native.cryptoNoteSign(
+        _hexToBytes(sigHash),
+        _hexToBytes(pub),
+        _hexToBytes(sec),
+      );
+      if (signature.isEmpty) {
+        emit(state.copyWith(isLoading: false, error: 'Offer signing failed'));
+        return;
+      }
       final r = await _post('/submitswap', {
-        'offerId': DateTime.now().millisecondsSinceEpoch.toRadixString(16),
+        'offerId': offerId,
         'xfgAmount': xfgAmount,
         'rateNum': rateNum,
         'pair': state.selectedPair.id,
-        'makerPubKey': makerPubKey,
+        'makerPubKey': pub,
         'signature': signature,
         'ttlBlocks': ttlBlocks,
+        'isSoftOrder': false,
+        // The canonical hash covers the timestamp — the relay honors the
+        // client-signed value.
+        'timestamp': timestamp,
       });
       emit(
         state.copyWith(
@@ -380,13 +536,14 @@ class DexCubit extends Cubit<DexState> {
     }
   }
 
-  Future<void> cancelOffer({
-    required String offerId,
-    required String makerPubKey,
-    required String signature,
-  }) async {
+  Future<void> cancelOffer({required String offerId}) async {
     emit(state.copyWith(isLoading: true, lastResult: null, error: null));
     try {
+      final (_, signature, makerPubKey) = await _signOffer('cancel:$offerId');
+      if (signature.isEmpty || makerPubKey.isEmpty) {
+        emit(state.copyWith(isLoading: false, error: 'Cancel signing failed'));
+        return;
+      }
       final r = await _post('/cancelswap', {
         'offerId': offerId,
         'makerPubKey': makerPubKey,
@@ -559,6 +716,7 @@ class DexCubit extends Cubit<DexState> {
         hashLock: hashLock,
         preSig: preSig,
         ctrAddress: ctrAddress,
+        expectedPeerPubkey: state.selectedOffer?.makerPubKey ?? '',
       );
       return;
     }
@@ -578,6 +736,7 @@ class DexCubit extends Cubit<DexState> {
     String hashLock = '',
     String preSig = '',
     String ctrAddress = '',
+    String expectedPeerPubkey = '',
   }) async {
     if (_swapClient == null) {
       emit(state.copyWith(error: 'Swap daemon not connected'));
@@ -607,6 +766,9 @@ class DexCubit extends Cubit<DexState> {
         hashLock: hashLock,
         preSig: preSig,
         ctrAddress: ctrAddress,
+        // Pin the daemon's peer connection to the offer's maker key so a
+        // relay-supplied endpoint cannot redirect the fill (H13).
+        expectedPeerPubkey: expectedPeerPubkey,
       );
       final accept = await _swapClient!.acceptSwap(swapId);
       emit(
@@ -703,30 +865,32 @@ class DexCubit extends Cubit<DexState> {
   // does not strand the identity (the maker pre-binds the published key).
   String? _takerSecretKeyHex;
   String? _takerPublicKeyHexCache;
+  final FuegoNative _native = FuegoNative();
 
   Future<void> _ensureTakerIdentity() async {
     if (_takerPublicKeyHexCache != null) return;
     try {
       final stored = await SecurityService.readTakerSwapSecret();
       if (stored != null && stored.length == 64) {
-        final pub = NativeCrypto.generatePublicKey(
+        final kp = _native.keypairFromSecret(
           Uint8List.fromList(_hexToBytes(stored)),
         );
-        if (pub != null) {
+        final pub = kp['public'];
+        if (pub is String && pub.length == 64) {
           _takerSecretKeyHex = stored;
-          _takerPublicKeyHexCache = _bytesToHex(pub);
+          _takerPublicKeyHexCache = pub;
           return;
         }
       }
     } catch (e) {
       debugPrint('DexCubit: taker identity load failed: $e');
     }
-    final keys = NativeCrypto.generateKeys();
-    final priv = keys?['private_spend_key'];
-    final pub = keys?['public_spend_key'];
-    if (priv != null && pub != null) {
-      _takerSecretKeyHex = _bytesToHex(priv);
-      _takerPublicKeyHexCache = _bytesToHex(pub);
+    final keys = _native.keypairGenerate();
+    final priv = keys['secret'];
+    final pub = keys['public'];
+    if (priv is String && pub is String) {
+      _takerSecretKeyHex = priv;
+      _takerPublicKeyHexCache = pub;
       try {
         await SecurityService.writeTakerSwapSecret(_takerSecretKeyHex!);
       } catch (e) {
@@ -744,8 +908,54 @@ class DexCubit extends Cubit<DexState> {
     return _takerPublicKeyHexCache!;
   }
 
-  static String _bytesToHex(List<int> bytes) =>
-      bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+  // ── Maker identity ──
+  // Keypair that signs /submitswap and /cancelswap (CryptoNote Schnorr
+  // signatures over cn_fast_hash of the payload). Persisted so offers can
+  // be cancelled from a later session.
+  String? _makerSecretKeyHex;
+  String? _makerPublicKeyHexCache;
+
+  Future<void> _ensureMakerIdentity() async {
+    if (_makerPublicKeyHexCache != null) return;
+    try {
+      final stored = await SecurityService.readMakerSwapSecret();
+      if (stored != null && stored.length == 64) {
+        final kp = _native.keypairFromSecret(
+          Uint8List.fromList(_hexToBytes(stored)),
+        );
+        final pub = kp['public'];
+        if (pub is String && pub.length == 64) {
+          _makerSecretKeyHex = stored;
+          _makerPublicKeyHexCache = pub;
+          return;
+        }
+      }
+    } catch (e) {
+      debugPrint('DexCubit: maker identity load failed: $e');
+    }
+    final keys = _native.keypairGenerate();
+    final priv = keys['secret'];
+    final pub = keys['public'];
+    if (priv is String && pub is String) {
+      _makerSecretKeyHex = priv;
+      _makerPublicKeyHexCache = pub;
+      try {
+        await SecurityService.writeMakerSwapSecret(_makerSecretKeyHex!);
+      } catch (e) {
+        debugPrint('DexCubit: maker identity persist failed: $e');
+      }
+    } else {
+      _makerPublicKeyHexCache = '';
+    }
+  }
+
+  /// Public key of the maker identity ('' if not yet ensured).
+  String makerPublicKeyHex() {
+    if (_makerPublicKeyHexCache == null) {
+      _makerPublicKeyHexCache = '';
+    }
+    return _makerPublicKeyHexCache!;
+  }
 
   static List<int> _hexToBytes(String hex) {
     final out = <int>[];

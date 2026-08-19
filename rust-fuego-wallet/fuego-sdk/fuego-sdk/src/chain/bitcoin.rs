@@ -88,17 +88,21 @@ impl ChainSpv for BitcoinChain {
             current = Sha256::digest(first).to_vec();
         }
 
-        // The reconstructed root is in internal byte order; the merkle_root
-        // from the block header is also in internal byte order. Compare directly.
+        // The reconstructed root is in internal byte order; bitcoind returns
+        // the header's merkleroot in DISPLAY byte order. Reverse the header
+        // value before comparing.
         let root_hex = hex::encode(&current);
-
-        // Also reverse the header merkle_root for comparison if it's in display order.
-        // Block headers store merkle_root in internal order, so direct comparison is correct.
-        Ok(root_hex == header.merkle_root)
+        let header_root_internal = Self::reverse_hex_bytes(&header.merkle_root)?;
+        Ok(root_hex == header_root_internal)
     }
 
     async fn get_confirmations(&self, tx_hash: &str) -> Result<u32> {
         let tx = self.rpc.get_raw_transaction(tx_hash).await?;
+        // bitcoind (and forks) report `confirmations` directly. Fall back to
+        // block-height arithmetic for nodes that expose `blockheight`.
+        if let Some(confirmations) = tx.get("confirmations").and_then(|v| v.as_u64()) {
+            return Ok(confirmations as u32);
+        }
         let current_height = self.get_height().await?;
         if let Some(block_height) = tx.get("blockheight").and_then(|v| v.as_u64()) {
             if current_height >= block_height {
@@ -108,6 +112,7 @@ impl ChainSpv for BitcoinChain {
                 Ok(0)
             }
         } else {
+            // Unconfirmed.
             Ok(0)
         }
     }
@@ -160,7 +165,35 @@ impl ChainSpv for BitcoinChain {
             total_txs: proof.total_txs,
         };
 
-        self.verify_merkle(&merkle, &header)
+        if !self.verify_merkle(&merkle, &header)? {
+            return Ok(false);
+        }
+
+        // Verify the on-chain amount + recipient, not just existence.
+        // Iron law: verifyLock must check amount and recipient.
+        let tx = self.rpc.get_raw_transaction(&proof.tx_hash).await?;
+        let vouts = tx
+            .get("vout")
+            .and_then(|v| v.as_array())
+            .ok_or_else(|| SdkError::Network("RPC response missing vout".into()))?;
+        let mut pays_expected = false;
+        for vout in vouts {
+            let value_sat = vout
+                .get("value")
+                .and_then(|v| v.as_f64())
+                .map(|v| (v * 1e8).round() as u64);
+            let addresses: Vec<&str> = vout
+                .get("scriptPubKey")
+                .and_then(|s| s.get("addresses"))
+                .and_then(|a| a.as_array())
+                .map(|a| a.iter().filter_map(|x| x.as_str()).collect())
+                .unwrap_or_default();
+            if value_sat == Some(proof.amount) && addresses.iter().any(|a| *a == proof.to_address) {
+                pays_expected = true;
+                break;
+            }
+        }
+        Ok(pays_expected)
     }
 }
 

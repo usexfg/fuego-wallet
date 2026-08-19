@@ -2,22 +2,22 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import '../models/network_config.dart';
 import '../models/heat_amm.dart';
-
 class FuegoDaemonClient {
   final Dio _dio;
   String _baseUrl;
   NetworkConfig _networkConfig;
 
-  FuegoDaemonClient({
-    String host = 'localhost',
-    NetworkConfig? networkConfig,
-  })  : _networkConfig = networkConfig ?? NetworkConfig.mainnet,
-        _baseUrl = 'http://$host:${networkConfig?.daemonRpcPort ?? NetworkConfig.mainnet.daemonRpcPort}',
-        _dio = Dio(BaseOptions(
+  FuegoDaemonClient({String host = 'localhost', NetworkConfig? networkConfig})
+    : _networkConfig = networkConfig ?? NetworkConfig.mainnet,
+      _baseUrl =
+          'http://$host:${networkConfig?.daemonRpcPort ?? NetworkConfig.mainnet.daemonRpcPort}',
+      _dio = Dio(
+        BaseOptions(
           connectTimeout: const Duration(seconds: 30),
           receiveTimeout: const Duration(seconds: 30),
           headers: {'Content-Type': 'application/json'},
-        ));
+        ),
+      );
 
   NetworkConfig get networkConfig => _networkConfig;
 
@@ -25,15 +25,15 @@ class FuegoDaemonClient {
     _baseUrl = 'http://$host:${port ?? _networkConfig.daemonRpcPort}';
   }
 
-  // ── HEAT Stablecoin ──
+  // ── ΗΞΔŦ Stablecoin ──
 
-  /// Get HEAT metrics: supply, redemption price, treasury, CD yield
+  /// Get ΗΞΔŦ metrics: supply, redemption price, treasury, CD yield
   Future<HeatMetrics> getHeatMetrics() async {
     final result = await _daemonGet('/heat_metrics');
     return HeatMetrics.fromJson(result);
   }
 
-  /// Mint HEAT by burning XFG. Amount in atomic units.
+  /// Mint ΗΞΔŦ by burning XFG. Amount in atomic units.
   Future<Map<String, dynamic>> mintHeat(int xfgAmount) async {
     return _jsonRpc('mint_heat', {'amount': xfgAmount});
   }
@@ -45,10 +45,13 @@ class FuegoDaemonClient {
     required bool sellXfg,
     required String amount,
   }) async {
-    final result = await _daemonGet('/amm_quote', queryParameters: {
-      'input_amount': amount,
-      'direction': sellXfg ? '0' : '1',
-    });
+    final result = await _daemonGet(
+      '/amm_quote',
+      queryParameters: {
+        'input_amount': amount,
+        'direction': sellXfg ? '0' : '1',
+      },
+    );
     return AmmQuote.fromJson(result);
   }
 
@@ -111,13 +114,14 @@ class FuegoDaemonClient {
 
   /// Get real orderbook depth from fuegod
   Future<OrderBookState> getOrderbookState({int depth = 20}) async {
-    final result = await _daemonGet('/get_orderbook_state', queryParameters: {
-      'depth': depth.toString(),
-    });
+    final result = await _daemonGet(
+      '/get_orderbook_state',
+      queryParameters: {'depth': depth.toString()},
+    );
     return OrderBookState.fromJson(result);
   }
 
-  /// Get live XFG/HEAT price, HEAT peg USD, reserves from fuegod
+  /// Get live XFG/ΗΞΔŦ price, ΗΞΔŦ peg USD, reserves from fuegod
   Future<FuegoPrice> getFuegoPrice() async {
     final result = await _daemonGet('/get_fuego_price');
     return FuegoPrice.fromJson(result);
@@ -129,7 +133,9 @@ class FuegoDaemonClient {
   // ── Private helpers ──
 
   Future<Map<String, dynamic>> _jsonRpc(
-      String method, Map<String, dynamic> params) async {
+    String method,
+    Map<String, dynamic> params,
+  ) async {
     try {
       final response = await _dio.post(
         '$_baseUrl/json_rpc',

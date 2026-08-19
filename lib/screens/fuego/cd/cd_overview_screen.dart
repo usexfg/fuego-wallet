@@ -29,10 +29,11 @@ class CdOverviewScreen extends StatelessWidget {
                     ),
                     child: Text(
                       '${state.apy!.currentApy.toStringAsFixed(1)}% APY',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppTheme.successColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                        fontFamily: AppTheme.numberFontFamily,
                       ),
                     ),
                   ),
@@ -279,8 +280,8 @@ class _MarketBucket extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Text(amount, style: const TextStyle(
-                  color: AppTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 14)),
+                Text(amount, style: TextStyle(
+                  color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 16, fontFamily: AppTheme.numberFontFamily)),
                 const Spacer(),
                 Text('${listings.length} ${listings.length == 1 ? 'CD' : 'CDs'}',
                   style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
@@ -453,8 +454,8 @@ class _UserCdCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 Text(cd.coin, style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
                 const Spacer(),
-                Text(cd.amount, style: const TextStyle(
-                  fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+                Text(cd.amount, style: TextStyle(
+                  fontSize: 18, fontWeight: FontWeight.w600, color: AppTheme.textPrimary, fontFamily: AppTheme.numberFontFamily)),
               ],
             ),
             const SizedBox(height: 6),

@@ -148,21 +148,62 @@ impl ChainSpv for EvmChain {
             return Ok(false);
         }
 
-        let merkle = MerkleProof {
-            chain: self.chain,
-            tx_hash: proof.tx_hash.clone(),
-            block_height: proof.block_height,
-            block_hash: proof.block_hash.clone(),
-            merkle_path: proof.merkle_proof.clone(),
-            tx_index: proof.tx_index,
-            total_txs: proof.total_txs,
-        };
+        // Verify the receipt exists in the claimed block and succeeded.
+        let receipt = self.rpc.get_transaction_receipt(&proof.tx_hash).await?;
+        if receipt.block_hash != proof.block_hash {
+            return Ok(false);
+        }
+        if receipt.block_number != proof.block_height {
+            return Ok(false);
+        }
+        // Reverted transactions must never verify.
+        if receipt.status != "0x1" {
+            return Ok(false);
+        }
 
-        self.verify_merkle(&merkle, &header)
+        // Verify the on-chain amount + sender + recipient (iron law:
+        // verifyLock checks amount and recipient). Addresses are compared
+        // case-insensitively; RPCs vary in checksum casing.
+        let tx = self.rpc.get_transaction_by_hash(&proof.tx_hash).await?;
+        if tx.block_number != Some(proof.block_height) {
+            return Ok(false);
+        }
+        if !tx.to.eq_ignore_ascii_case(&proof.to_address) {
+            return Ok(false);
+        }
+        if !proof.from_address.is_empty() && !tx.from.eq_ignore_ascii_case(&proof.from_address) {
+            return Ok(false);
+        }
+        let value_wei = crate::chain::evm_rpc::parse_hex_u64_public(&tx.value);
+        if value_wei != Some(proof.amount) {
+            return Ok(false);
+        }
+
+        // Wrong-network RPC detection: the chain id must match the adapter's
+        // expected chain id for this ChainType.
+        let chain_id = self.rpc.get_chain_id().await?;
+        if chain_id != expected_chain_id(self.chain) {
+            return Ok(false);
+        }
+
+        Ok(true)
     }
 }
 
 // ── Receipt / Transaction types ────────────────────────────────────
+
+/// Expected EVM chain id per ChainType — catches an adapter pointed at the
+/// wrong network or a lying RPC.
+fn expected_chain_id(chain: ChainType) -> u64 {
+    match chain {
+        ChainType::Ethereum => 1,
+        ChainType::Arbitrum => 42161,
+        ChainType::Base => 8453,
+        ChainType::Bnb => 56,
+        ChainType::Polygon => 137,
+        _ => 0,
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct EvmReceipt {

@@ -1,15 +1,13 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../bloc/dex/dex_cubit.dart';
 import '../../models/swap_models.dart';
 import '../../models/chain_info.dart';
 import 'peer_swap_screen.dart';
-import '../../models/candlestick.dart';
-import '../../services/price_history_service.dart';
 import '../../utils/theme.dart';
-import '../../widgets/fuego_chart.dart';
 
 class DexScreen extends StatefulWidget {
   const DexScreen({super.key});
@@ -24,21 +22,14 @@ class _DexScreenState extends State<DexScreen>
   final _rateController = TextEditingController();
   final _takerKeyController = TextEditingController();
   final _xmrAddressController = TextEditingController();
-  List<Candlestick>? _candles;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
-    _loadPriceData();
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => context.read<DexCubit>().init(),
     );
-  }
-
-  Future<void> _loadPriceData() async {
-    final candles = await PriceHistoryService().loadAll();
-    if (mounted) setState(() => _candles = candles);
   }
 
   @override
@@ -57,15 +48,6 @@ class _DexScreenState extends State<DexScreen>
     return BlocBuilder<DexCubit, DexState>(
       builder: (context, state) => Column(
         children: [
-          // Top half: chart + pair bar — fixed, never scrolls
-          if (_candles != null && _candles!.isNotEmpty)
-            SizedBox(
-              height: screenH * 0.35,
-              child: FuegoChart(
-                candles: _candles!,
-                pair: 'XFG/${state.selectedPair.ticker}',
-              ),
-            ),
           _buildPairBar(state),
           if (state.error != null)
             Padding(
@@ -509,10 +491,11 @@ class _DexScreenState extends State<DexScreen>
             const SizedBox(width: 12),
             Text(
               '\$${p.last}',
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppTheme.primaryColor,
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                fontFamily: AppTheme.numberFontFamily,
               ),
             ),
           ] else
@@ -623,6 +606,9 @@ class _DexScreenState extends State<DexScreen>
         : age.inMinutes > 0
         ? '${age.inMinutes}m'
         : '${age.inSeconds}s';
+    final mine =
+        o.makerPubKey.isNotEmpty &&
+        o.makerPubKey == context.read<DexCubit>().makerPublicKeyHex();
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
@@ -663,28 +649,197 @@ class _DexScreenState extends State<DexScreen>
             style: const TextStyle(color: AppTheme.textMuted, fontSize: 9),
           ),
           const SizedBox(width: 8),
-          GestureDetector(
-            onTap: () => _fillOffer(o),
+          if (mine)
+            GestureDetector(
+              onTap: () => _cancelOffer(o),
+              child: const Text(
+                'CANCEL',
+                style: TextStyle(
+                  color: AppTheme.errorColor,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            )
+          else
+            GestureDetector(
+              onTap: () => _fillOffer(o),
+              child: const Text(
+                'FILL',
+                style: TextStyle(
+                  color: AppTheme.successColor,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _cancelOffer(SwapOfferSdk offer) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.cardColor,
+        title: const Text(
+          'Cancel offer?',
+          style: TextStyle(color: AppTheme.textPrimary),
+        ),
+        content: Text(
+          'Remove your offer for ${(offer.amount / 1e7).toStringAsFixed(2)} '
+          'XFG @ ${offer.rate.toStringAsFixed(4)}?',
+          style: const TextStyle(color: AppTheme.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('No'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
             child: const Text(
-              'FILL',
+              'Cancel Offer',
+              style: TextStyle(color: AppTheme.errorColor),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final cubit = context.read<DexCubit>();
+    await cubit.cancelOffer(offerId: offer.offerId);
+    if (!mounted) return;
+    final st = cubit.state;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(st.error ?? (st.lastResult ?? 'Offer cancelled')),
+        backgroundColor: st.error != null
+            ? AppTheme.errorColor
+            : AppTheme.successColor,
+      ),
+    );
+  }
+
+  void _fillOffer(SwapOfferSdk offer) {
+    _amountController.text = (offer.amount / 1e7).toStringAsFixed(4);
+    _rateController.text = offer.rateNum > 0
+        ? offer.rate.toStringAsFixed(4)
+        : '';
+    // Record the tapped offer so REQUEST SWAP targets exactly this offer.
+    context.read<DexCubit>().selectOffer(offer);
+    _tabController.animateTo(1);
+  }
+
+  Future<void> _showOfferDetails(SwapOfferSdk offer) async {
+    final action = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppTheme.cardColor,
+        title: Row(
+          children: [
+            ClipOval(
+              child: Image.asset(
+                ChainInfo.icons[offer.sellXfg ? 'XFG' : offer.pair.ticker] ??
+                    '',
+                width: 28,
+                height: 28,
+                errorBuilder: (_, __, ___) => Container(
+                  width: 28,
+                  height: 28,
+                  color:
+                      ChainInfo.colors[offer.pair.ticker] ??
+                      AppTheme.primaryColor,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                offer.sellXfg
+                    ? 'Sell XFG → ${offer.pair.ticker}'
+                    : 'Buy XFG ← ${offer.pair.ticker}',
+                style: const TextStyle(color: AppTheme.textPrimary),
+              ),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            children: [
+              _offerDetailRow('Pair', offer.pairLabel),
+              _offerDetailRow(
+                'Remaining',
+                '${(offer.amount / 1e7).toStringAsFixed(4)} XFG',
+              ),
+              _offerDetailRow(
+                'Rate',
+                '${offer.rate.toStringAsFixed(6)} ${offer.pair.ticker}/XFG',
+              ),
+              _offerDetailRow(
+                'XFG per ${offer.pair.ticker}',
+                offer.xfgPerCounterparty.toStringAsFixed(8),
+              ),
+              if (offer.makerPubKey.isNotEmpty)
+                _offerDetailRow('Maker', offer.makerPubKey, selectable: true),
+              _offerDetailRow('Offer ID', offer.offerId, selectable: true),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: offer.offerId));
+              Navigator.pop(dialogContext, 'copy');
+            },
+            child: const Text('Copy ID'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, 'accept'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.successColor,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Accept offer'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || action != 'accept') return;
+    _fillOffer(offer);
+  }
+
+  Widget _offerDetailRow(
+    String label,
+    String value, {
+    bool selectable = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 112,
+            child: Text(
+              label,
+              style: const TextStyle(color: AppTheme.textMuted, fontSize: 11),
+            ),
+          ),
+          Expanded(
+            child: SelectableText(
+              value,
               style: TextStyle(
-                color: AppTheme.successColor,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
+                color: AppTheme.textPrimary,
+                fontSize: 11,
+                fontFamily: selectable ? 'monospace' : null,
               ),
             ),
           ),
         ],
       ),
     );
-  }
-
-  void _fillOffer(SwapOfferSdk offer) {
-    _amountController.clear();
-    _rateController.text = offer.rateNum > 0
-        ? offer.rate.toStringAsFixed(4)
-        : '';
-    _tabController.animateTo(1);
   }
 
   // ── Trade Form ───────────────────────────────────────────────────
@@ -891,7 +1046,11 @@ class _DexScreenState extends State<DexScreen>
         const Spacer(),
         Text(
           value,
-          style: const TextStyle(color: AppTheme.textPrimary, fontSize: 11),
+          style: TextStyle(
+            color: AppTheme.textPrimary,
+            fontSize: 13,
+            fontFamily: AppTheme.numberFontFamily,
+          ),
         ),
       ],
     ),
@@ -992,59 +1151,39 @@ class _DexScreenState extends State<DexScreen>
     final rate = double.tryParse(rateStr);
     if (amountXfg == null || rate == null || amountXfg <= 0 || rate <= 0)
       return;
-    _showMakerCliDialog();
-  }
 
-  // Order MAKING needs wallet offer signing + the XFG pre-lock (a real
-  // transfer with unlock time), which the CLI wallet performs. The GUI gets
-  // this once the Rust wallet can build real XFG transactions.
-  void _showMakerCliDialog() {
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.cardColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
-          children: [
-            Icon(Icons.storefront, color: AppTheme.primaryColor, size: 20),
-            SizedBox(width: 8),
-            Text(
-              'Making orders needs the CLI (for now)',
-              style: TextStyle(
-                color: AppTheme.textPrimary,
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-        content: const Text(
-          'Posting an order requires signing the offer and pre-locking XFG with the full '
-          'node wallet — that signing lives in the SwapXFG CLI today (fire_wallet + swapxfg).\n\n'
-          'Taking orders works right here in the wallet. Order making from the GUI arrives '
-          'when the Rust wallet gains real transaction building.\n\n'
-          'Command line: swapxfg → sign via fire_wallet → post your offer there.',
-          style: TextStyle(
-            color: AppTheme.textSecondary,
-            fontSize: 13,
-            height: 1.4,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text(
-              'Got it',
-              style: TextStyle(color: AppTheme.primaryColor),
-            ),
-          ),
-        ],
+    final xfgAtomic = (amountXfg * 1e7).round();
+    // Form rate = counterparty token per XFG; wire rateNum = XFG per token
+    // (matches the orderbook convention used by /getswapprice and the
+    // composite price oracle), both scaled by 1e7.
+    final rateNum = (1e7 / rate).round();
+
+    final cubit = context.read<DexCubit>();
+    await cubit.submitOffer(xfgAmount: xfgAtomic, rateNum: rateNum);
+    if (!mounted) return;
+    final st = cubit.state;
+    final msg = st.error != null
+        ? 'Offer failed: ${st.error}'
+        : (st.lastResult ?? 'Offer submitted');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: st.error != null
+            ? AppTheme.errorColor
+            : AppTheme.successColor,
       ),
     );
+    if (st.error == null) {
+      _amountController.clear();
+      _rateController.clear();
+    }
   }
 
   void _requestSwap(DexState state) async {
-    if (state.offers.isEmpty) return;
+    final offer =
+        state.selectedOffer ??
+        (state.offers.isNotEmpty ? state.offers.first : null);
+    if (offer == null) return;
     final amountStr = _amountController.text.trim();
     if (amountStr.isEmpty) return;
     final amountXfg = double.tryParse(amountStr);
@@ -1054,12 +1193,15 @@ class _DexScreenState extends State<DexScreen>
         ? _xmrAddressController.text.trim()
         : _takerKeyController.text.trim();
     context.read<DexCubit>().requestSwap(
-      offerId: state.offers.first.offerId,
+      offerId: offer.offerId,
       amount: (amountXfg * 1e7).toInt(),
       takerPubKey: '',
       proofOfFunds: '',
       takerChainKey: takerKey,
     );
+    // Don't let the counterparty chain key linger in the widget for the
+    // rest of the session.
+    if (!isMonero) _takerKeyController.clear();
   }
 
   // ── Chain Info Dialog ────────────────────────────────────────────

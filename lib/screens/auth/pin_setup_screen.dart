@@ -111,12 +111,12 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
       if (widget.isRestore) {
         success = await walletProvider.restoreWallet(
           mnemonic: widget.mnemonic,
-          pin: _firstPin,
+          password: _firstPin,
           vault: vault,
         );
       } else {
         success = await walletProvider.createWallet(
-          pin: _firstPin,
+          password: _firstPin,
           mnemonic: widget.mnemonic,
           vault: vault,
         );
@@ -223,8 +223,8 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
           const Text(
             'Create Your PIN',
             style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
+              fontSize: 26,
+              fontWeight: FontWeight.w600,
               color: AppTheme.textPrimary,
             ),
           ),
@@ -291,8 +291,8 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
           const Text(
             'Confirm Your PIN',
             style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
+              fontSize: 26,
+              fontWeight: FontWeight.w600,
               color: AppTheme.textPrimary,
             ),
           ),
@@ -344,8 +344,8 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
           const Text(
             'Security Options',
             style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
+              fontSize: 26,
+              fontWeight: FontWeight.w600,
               color: AppTheme.textPrimary,
             ),
           ),

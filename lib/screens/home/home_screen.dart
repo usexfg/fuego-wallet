@@ -7,7 +7,7 @@ import '../../bloc/mining/mining_cubit.dart';
 import '../../utils/theme.dart';
 import '../transactions/transaction_details_screen.dart';
 import '../transactions/send_screen.dart';
-import '../transactions/send_heat_screen.dart';
+import '../transactions/mint_heat_screen.dart';
 import '../transactions/receive_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -121,10 +121,11 @@ class _HomeScreenState extends State<HomeScreen> {
               _showBalance
                   ? state.balanceXfg.toStringAsFixed(decimalPlaces)
                   : '••••••••',
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white,
                 fontSize: 36,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w600,
+                fontFamily: AppTheme.numberFontFamily,
               ),
             ),
           ),
@@ -135,11 +136,15 @@ class _HomeScreenState extends State<HomeScreen> {
               _showBalance
                   ? '${state.unlockedBalanceXfg.toStringAsFixed(decimalPlaces)} available'
                   : '••••••••',
-              style: const TextStyle(color: Colors.white60, fontSize: 13),
+              style: TextStyle(
+                color: Colors.white60,
+                fontSize: 15,
+                fontFamily: AppTheme.numberFontFamily,
+              ),
             ),
           ),
           const SizedBox(height: 12),
-          // HEAT balance row
+          // ΗΞΔŦ balance row
           if (state.totalHeatXfg > 0)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -151,7 +156,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
-                    'HEAT',
+                    'ΗΞΔŦ',
                     style: TextStyle(
                       color: AppTheme.accentColor,
                       fontSize: 11,
@@ -169,10 +174,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                 decimalPlaces,
                               )
                             : '••••••••',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          fontFamily: AppTheme.numberFontFamily,
                         ),
                       ),
                     ),
@@ -192,10 +198,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 }),
                 const SizedBox(width: 16),
-                _actionBtn('Send HEAT', Icons.arrow_upward, () {
+                _actionBtn('Mint ΗΞΔŦ', Icons.arrow_upward, () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (context) => const SendHeatScreen(),
+                      builder: (context) => const MintHeatScreen(),
                     ),
                   );
                 }, color: AppTheme.accentColor),
@@ -238,8 +244,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     '@$alias',
                     style: const TextStyle(
                       color: AppTheme.primaryColor,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 SelectableText(
@@ -353,6 +359,7 @@ class _HomeScreenState extends State<HomeScreen> {
         final canMine = miningSupported && addr != null && addr.isNotEmpty;
 
         String statusText;
+        String? miningHashrate;
         Color statusColor;
         if (!miningSupported) {
           statusText = 'Pool mining unavailable on iOS';
@@ -367,8 +374,9 @@ class _HomeScreenState extends State<HomeScreen> {
               statusText = 'Connected — waiting for jobs';
               statusColor = Colors.cyanAccent;
             case 'mining':
-              statusText = 'Mining — ${mining.hashrate} H/s';
+              statusText = 'Mining — ';
               statusColor = AppTheme.successColor;
+              miningHashrate = '${mining.hashrate} H/s';
             case 'error':
               statusText = mining.error ?? 'Connection failed';
               statusColor = AppTheme.errorColor;
@@ -404,9 +412,21 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      statusText,
-                      style: TextStyle(color: statusColor, fontSize: 12),
+                    child: Text.rich(
+                      TextSpan(
+                        style: TextStyle(color: statusColor, fontSize: 14),
+                        children: [
+                          TextSpan(text: statusText),
+                          if (miningHashrate != null)
+                            TextSpan(
+                              text: miningHashrate,
+                              style: TextStyle(
+                                fontFamily: AppTheme.numberFontFamily,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                   ElevatedButton(

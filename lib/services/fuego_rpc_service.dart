@@ -252,7 +252,7 @@ class FuegoRPCService {
     }
   }
 
-  // ── HEAT Methods ──
+  // ── ΗΞΔŦ Methods ──
 
   Future<Map<String, dynamic>> heatMint({
     required int xfgBurned,
@@ -268,7 +268,7 @@ class FuegoRPCService {
       });
       return response;
     } catch (e) {
-      throw FuegoRPCException('Failed to mint HEAT: $e');
+      throw FuegoRPCException('Failed to mint ΗΞΔŦ: $e');
     }
   }
 
@@ -286,7 +286,7 @@ class FuegoRPCService {
       });
       return response['tx_hash'] as String? ?? '';
     } catch (e) {
-      throw FuegoRPCException('Failed to send HEAT: $e');
+      throw FuegoRPCException('Failed to send ΗΞΔŦ: $e');
     }
   }
 
@@ -297,7 +297,7 @@ class FuegoRPCService {
       final lockedHeat = (response['lockedHeatBalance'] ?? 0) as int;
       return (unlockedHeat: unlockedHeat, lockedHeat: lockedHeat);
     } catch (e) {
-      throw FuegoRPCException('Failed to get HEAT balance: $e');
+      throw FuegoRPCException('Failed to get ΗΞΔŦ balance: $e');
     }
   }
 

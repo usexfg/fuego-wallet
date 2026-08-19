@@ -22,6 +22,7 @@ class _SendScreenState extends State<SendScreen> {
 
   bool _isLoading = false;
   String? _errorMessage;
+  bool _isHeat = false; // false = XFG, true = ΗΞΔŦ
 
   bool _isResolvingAlias = false;
   String? _resolvedAddress;
@@ -115,23 +116,34 @@ class _SendScreenState extends State<SendScreen> {
     final address = _addressController.text.trim();
     final amountStr = _amountController.text.trim();
     final amount = double.tryParse(amountStr) ?? 0;
-    const fee = 0.008;
+    final coin = _isHeat ? 'ΗΞΔŦ' : 'XFG';
+    final fee = _isHeat ? 0.001 : 0.008;
     final total = amount + fee;
-    final totalAtomic = (total * 1e7).round();
 
-    if (totalAtomic > wallet.unlockedBalance) {
-      setState(() {
-        _errorMessage =
-            'Insufficient unlocked balance (need ${total.toStringAsFixed(7)} XFG including fee)';
-      });
-      return;
+    if (_isHeat) {
+      if (total > wallet.unlockedHeatXfg) {
+        setState(() {
+          _errorMessage =
+              'Insufficient $coin balance (need ${total.toStringAsFixed(7)} $coin including fee)';
+        });
+        return;
+      }
+    } else {
+      final totalAtomic = (total * 1e7).round();
+      if (totalAtomic > wallet.unlockedBalance) {
+        setState(() {
+          _errorMessage =
+              'Insufficient unlocked balance (need ${total.toStringAsFixed(7)} $coin including fee)';
+        });
+        return;
+      }
     }
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.cardColor,
-        title: const Text('Confirm Send', style: TextStyle(color: AppTheme.textPrimary)),
+        title: Text('Confirm Send $coin', style: const TextStyle(color: AppTheme.textPrimary)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -140,11 +152,11 @@ class _SendScreenState extends State<SendScreen> {
                 ? '${address.substring(0, 15)}...${address.substring(address.length - 10)}'
                 : address),
             const SizedBox(height: 8),
-            _confirmRow('Amount', '${amount.toStringAsFixed(7)} XFG'),
+            _confirmRow('Amount', '${amount.toStringAsFixed(7)} $coin'),
             const SizedBox(height: 8),
-            _confirmRow('Fee', '${fee.toStringAsFixed(7)} XFG'),
+            _confirmRow('Fee', '${fee.toStringAsFixed(7)} $coin'),
             const Divider(color: AppTheme.textMuted),
-            _confirmRow('Total', '${total.toStringAsFixed(7)} XFG', bold: true),
+            _confirmRow('Total', '${total.toStringAsFixed(7)} $coin', bold: true),
           ],
         ),
         actions: [
@@ -213,8 +225,9 @@ class _SendScreenState extends State<SendScreen> {
         Text(label, style: TextStyle(color: AppTheme.textMuted, fontSize: 13)),
         Text(value, style: TextStyle(
           color: bold ? AppTheme.textPrimary : AppTheme.textSecondary,
-          fontWeight: bold ? FontWeight.bold : FontWeight.normal,
-          fontSize: 13,
+          fontWeight: bold ? FontWeight.w600 : FontWeight.normal,
+          fontSize: 15,
+          fontFamily: AppTheme.numberFontFamily,
         )),
       ],
     );
@@ -230,14 +243,26 @@ class _SendScreenState extends State<SendScreen> {
 
     try {
       final cubit = context.read<WalletCubit>();
+      final amount = double.tryParse(_amountController.text.trim()) ?? 0;
+      final address = _addressController.text.trim();
+      String txHash;
 
-      final txHash = await cubit.sendTransaction(
-        address: _addressController.text.trim(),
-        amount: double.tryParse(_amountController.text.trim()) ?? 0,
-        fee: 0.008,
-        pin: pin,
-        mixin: 7,
-      );
+      if (_isHeat) {
+        txHash = await cubit.sendHeat(
+          address: address,
+          amount: amount,
+          fee: 0.001,
+          pin: pin,
+        );
+      } else {
+        txHash = await cubit.sendTransaction(
+          address: address,
+          amount: amount,
+          fee: 0.008,
+          pin: pin,
+          mixin: 7,
+        );
+      }
 
       if (txHash.isNotEmpty && mounted) {
         _showSuccessDialog(txHash);
@@ -349,8 +374,9 @@ class _SendScreenState extends State<SendScreen> {
 
   void _setMaxAmount() {
     final state = context.read<WalletCubit>().state;
-    final availableBalance = state.unlockedBalanceXfg;
-    final maxAmount = (availableBalance - 0.01).clamp(0.0, availableBalance);
+    final availableBalance = _isHeat ? state.unlockedHeatXfg : state.unlockedBalanceXfg;
+    final fee = _isHeat ? 0.001 : 0.01;
+    final maxAmount = (availableBalance - fee).clamp(0.0, availableBalance);
     _amountController.text = maxAmount.toStringAsFixed(7);
   }
 
@@ -358,13 +384,14 @@ class _SendScreenState extends State<SendScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Send XFG'),
+        title: Text(_isHeat ? 'Send ΗΞΔŦ' : 'Send XFG'),
         elevation: 0,
         backgroundColor: Colors.transparent,
       ),
       body: BlocBuilder<WalletCubit, WalletState>(
         builder: (context, state) {
-          final availableBalance = state.unlockedBalanceXfg;
+          final availableBalance = _isHeat ? state.unlockedHeatXfg : state.unlockedBalanceXfg;
+          final coin = _isHeat ? 'ΗΞΔŦ' : 'XFG';
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(24),
@@ -373,6 +400,63 @@ class _SendScreenState extends State<SendScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Coin selector toggle
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: AppTheme.surfaceColor,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setState(() => _isHeat = false),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: !_isHeat ? AppTheme.primaryColor : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                'XFG',
+                                style: TextStyle(
+                                  color: !_isHeat ? Colors.white : AppTheme.textSecondary,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setState(() => _isHeat = true),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: _isHeat ? AppTheme.primaryColor : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                'ΗΞΔŦ',
+                                style: TextStyle(
+                                  color: _isHeat ? Colors.white : AppTheme.textSecondary,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
                   // Available balance
                   Container(
                     width: double.infinity,
@@ -394,11 +478,12 @@ class _SendScreenState extends State<SendScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              '${availableBalance.toStringAsFixed(7)} XFG',
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
+                              '${availableBalance.toStringAsFixed(7)} $coin',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w600,
                                 color: AppTheme.textPrimary,
+                                fontFamily: AppTheme.numberFontFamily,
                               ),
                             ),
                             TextButton(
@@ -493,9 +578,9 @@ class _SendScreenState extends State<SendScreen> {
                     controller: _amountController,
                     focusNode: _amountFocusNode,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: '0.0000000',
-                      suffixText: 'XFG',
+                      suffixText: coin,
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
@@ -557,9 +642,9 @@ class _SendScreenState extends State<SendScreen> {
                                 valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                               ),
                             )
-                          : const Text(
-                              'Send Transaction',
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          : Text(
+                              'Send $coin',
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                             ),
                     ),
                   ),

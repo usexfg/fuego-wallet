@@ -53,25 +53,28 @@ pub fn generate_key_image(pub_key: &PublicKey, secret: &SecretKey) -> PublicKey 
     PublicKey(fc::generate_key_image(&pk, &secret.0).0)
 }
 
-/// Sign message
+/// Sign message — CryptoNote `generate_signature` over `cn_fast_hash(message)`,
+/// consistent with the CryptoNote keypairs produced by [Keypair::from_secret].
+/// (ed25519_dalek signing would key from a clamped SHA-512 scalar and can
+/// never verify under the CryptoNote public key.)
 pub fn sign(keypair: &Keypair, message: &[u8]) -> Vec<u8> {
-    let kp = fc::Keypair {
-        secret: keypair.secret.0,
-        public: keypair.public.0,
-    };
-    let sig = kp.sign(message);
-    sig.to_bytes().to_vec()
+    let prefix_hash = fc::cn_fast_hash(message);
+    let mut rng = rand::thread_rng();
+    match fc::generate_signature(&prefix_hash, &keypair.public.0, &keypair.secret.0, &mut rng) {
+        Some(sig) => sig.to_vec(),
+        None => Vec::new(),
+    }
 }
 
-/// Verify signature
+/// Verify signature — CryptoNote `check_signature` over
+/// `cn_fast_hash(message)`.
 pub fn verify(pub_key: &PublicKey, message: &[u8], signature: &[u8]) -> bool {
-    let pk = fc::PublicKey(pub_key.0);
     let sig_bytes: [u8; 64] = match signature.try_into() {
         Ok(b) => b,
         Err(_) => return false,
     };
-    let sig = ed25519_dalek::Signature::from_bytes(&sig_bytes);
-    pk.verify(message, &sig)
+    let prefix_hash = fc::cn_fast_hash(message);
+    fc::check_signature(&prefix_hash, &pub_key.0, &sig_bytes)
 }
 
 /// Compute hash

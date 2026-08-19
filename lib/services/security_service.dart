@@ -84,6 +84,17 @@ class SecurityService {
   static Future<void> writeTakerSwapSecret(String secretHex) =>
       _write(_takerSwapKey, secretHex);
 
+  // ── DEX maker identity ──
+  // The keypair that signs /submitswap and /cancelswap offers (CryptoNote
+  // Schnorr signatures over the offer hash). Persisted so offers posted in
+  // one session can be cancelled in another.
+  static const _makerSwapKey = 'dex_maker_swap_secret';
+
+  static Future<String?> readMakerSwapSecret() => _read(_makerSwapKey);
+
+  static Future<void> writeMakerSwapSecret(String secretHex) =>
+      _write(_makerSwapKey, secretHex);
+
   // ── PIN ──────────────────────────────────────────────────────────────
 
   Future<bool> setPIN(String pin) async {
@@ -238,6 +249,16 @@ class SecurityService {
     final v = await _read(_vaultUnwrapKey);
     if (v == null || v.isEmpty) return null;
     return base64Decode(v);
+  }
+
+  /// Random device-bound key for biometric vault envelopes. Created once
+  /// and reused; never derived from any PIN/password.
+  Future<List<int>> getOrCreateBioKey() async {
+    final existing = await getVaultUnwrapKey();
+    if (existing != null && existing.isNotEmpty) return existing;
+    final key = _secureRandomBytes(32);
+    await storeVaultUnwrapKey(key);
+    return key;
   }
 
   Future<void> clearVaultUnwrapKey() async {

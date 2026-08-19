@@ -509,3 +509,262 @@ pub fn derive_deposit_secret(derivation: &[u8; 32], output_index: u32) -> [u8; 3
     pre[32..].copy_from_slice(&output_index.to_le_bytes());
     cn_fast_hash(&pre)
 }
+
+// ---------------------------------------------------------------- tx proofs
+// Port of crypto.cpp generate_tx_proof / check_tx_proof: a signature proving
+// knowledge of the tx secret key r with R = r*G and D = r*A (raw, no
+// cofactor — matches WalletLegacy::getTxProof via scalarmultKey).
+
+/// crypto.cpp generate_tx_proof. `d` must equal r*A without the cofactor.
+pub fn generate_tx_proof(
+    prefix_hash: &[u8; 32],
+    r: &[u8; 32],
+    r_pub: &[u8; 32],
+    a: &[u8; 32],
+    d: &[u8; 32],
+    rng: &mut impl rand::RngCore,
+) -> Option<[u8; 64]> {
+    let mut r_p3 = GeP3::default();
+    let mut a_p3 = GeP3::default();
+    let mut d_p3 = GeP3::default();
+    if !ge_frombytes_vartime(&mut r_p3, r_pub)
+        || !ge_frombytes_vartime(&mut a_p3, a)
+        || !ge_frombytes_vartime(&mut d_p3, d)
+    {
+        return None;
+    }
+    debug_assert!(sc_check(r));
+
+    // k, X = k*G, Y = k*A
+    let k = random_scalar(rng);
+    let mut x_p3 = GeP3::default();
+    ge_scalarmult_base(&mut x_p3, &k);
+    let mut y_p2 = GeP2::default();
+    ge_scalarmult(&mut y_p2, &k, &a_p3);
+
+    // c = Hs(prefix || D || X || Y)
+    let mut buf = Vec::with_capacity(128);
+    buf.extend_from_slice(prefix_hash);
+    buf.extend_from_slice(d);
+    let mut x_b = [0u8; 32];
+    ge_p3_tobytes(&mut x_b, &x_p3);
+    let mut y_b = [0u8; 32];
+    ge_tobytes(&mut y_b, &y_p2);
+    buf.extend_from_slice(&x_b);
+    buf.extend_from_slice(&y_b);
+    let c = hash_to_scalar(&buf);
+
+    // sig.r = k - c*r
+    let mut sig_r = [0u8; 32];
+    sc_mulsub(&mut sig_r, &c, r, &k);
+
+    let mut sig = [0u8; 64];
+    sig[..32].copy_from_slice(&c);
+    sig[32..].copy_from_slice(&sig_r);
+    Some(sig)
+}
+
+/// crypto.cpp check_tx_proof.
+pub fn check_tx_proof(
+    prefix_hash: &[u8; 32],
+    r_pub: &[u8; 32],
+    a: &[u8; 32],
+    d: &[u8; 32],
+    sig: &[u8; 64],
+) -> bool {
+    let mut r_p3 = GeP3::default();
+    let mut a_p3 = GeP3::default();
+    let mut d_p3 = GeP3::default();
+    if !ge_frombytes_vartime(&mut r_p3, r_pub)
+        || !ge_frombytes_vartime(&mut a_p3, a)
+        || !ge_frombytes_vartime(&mut d_p3, d)
+    {
+        return false;
+    }
+    let c: [u8; 32] = sig[..32].try_into().unwrap();
+    let sr: [u8; 32] = sig[32..].try_into().unwrap();
+    if !sc_check(&c) || !sc_check(&sr) {
+        return false;
+    }
+
+    // X = c*R + sr*G
+    let mut cr_p2 = GeP2::default();
+    ge_scalarmult(&mut cr_p2, &c, &r_p3);
+    let mut sg_p3 = GeP3::default();
+    ge_scalarmult_base(&mut sg_p3, &sr);
+    let mut cr_b = [0u8; 32];
+    ge_tobytes(&mut cr_b, &cr_p2);
+    let mut cr_p3 = GeP3::default();
+    if !ge_frombytes_vartime(&mut cr_p3, &cr_b) {
+        return false;
+    }
+    let mut sg_cached = GeCached::default();
+    ge_p3_to_cached(&mut sg_cached, &sg_p3);
+    let mut x_p11 = GeP1P1::default();
+    ge_add(&mut x_p11, &cr_p3, &sg_cached);
+    let mut x_p2 = GeP2::default();
+    ge_p1p1_to_p2(&mut x_p2, &x_p11);
+
+    // Y = c*D + sr*A
+    let mut cd_p2 = GeP2::default();
+    ge_scalarmult(&mut cd_p2, &c, &d_p3);
+    let mut sa_p2 = GeP2::default();
+    ge_scalarmult(&mut sa_p2, &sr, &a_p3);
+    let mut cd_b = [0u8; 32];
+    let mut sa_b = [0u8; 32];
+    ge_tobytes(&mut cd_b, &cd_p2);
+    ge_tobytes(&mut sa_b, &sa_p2);
+    let mut cd_p3 = GeP3::default();
+    let mut sa_p3 = GeP3::default();
+    if !ge_frombytes_vartime(&mut cd_p3, &cd_b)
+        || !ge_frombytes_vartime(&mut sa_p3, &sa_b)
+    {
+        return false;
+    }
+    let mut sa_cached = GeCached::default();
+    ge_p3_to_cached(&mut sa_cached, &sa_p3);
+    let mut y_p11 = GeP1P1::default();
+    ge_add(&mut y_p11, &cd_p3, &sa_cached);
+    let mut y_p2 = GeP2::default();
+    ge_p1p1_to_p2(&mut y_p2, &y_p11);
+
+    // c2 = Hs(prefix || D || X || Y); verify c2 == c.
+    let mut buf = Vec::with_capacity(128);
+    buf.extend_from_slice(prefix_hash);
+    buf.extend_from_slice(d);
+    let mut x_b = [0u8; 32];
+    ge_tobytes(&mut x_b, &x_p2);
+    let mut y_b = [0u8; 32];
+    ge_tobytes(&mut y_b, &y_p2);
+    buf.extend_from_slice(&x_b);
+    buf.extend_from_slice(&y_b);
+    let c2 = hash_to_scalar(&buf);
+
+    let mut diff = [0u8; 32];
+    sc_sub(&mut diff, &c2, &c);
+    !sc_isnonzero(&diff)
+}
+
+/// Raw r*A (no cofactor multiply) — the D used by tx proofs
+/// (WalletLegacy::getTxProof via scalarmultKey).
+pub fn raw_scalarmult_key(a: &[u8; 32], r: &[u8; 32]) -> Option<[u8; 32]> {
+    let mut a_p3 = GeP3::default();
+    if !ge_frombytes_vartime(&mut a_p3, a) {
+        return None;
+    }
+    let mut p2 = GeP2::default();
+    ge_scalarmult(&mut p2, r, &a_p3);
+    let mut out = [0u8; 32];
+    ge_tobytes(&mut out, &p2);
+    Some(out)
+}
+
+/// CryptoNote `generate_signature(prefix_hash, pub, sec)` — the Schnorr
+/// (c, r) signature used for swap offers and cancellations
+/// (`src/crypto/crypto.cpp`). Ported byte-for-byte:
+///   buf = prefix_hash ‖ pubkey;  k = random scalar;  comm = (k·G)
+///   c   = Hs(buf ‖ comm);        r   = k − c·sec
+/// Signature layout: [c (32)] [r (32)].
+pub fn generate_signature(
+    prefix_hash: &[u8; 32],
+    pubkey: &[u8; 32],
+    sec: &[u8; 32],
+    rng: &mut impl rand::RngCore,
+) -> Option<[u8; 64]> {
+    if !sc_check(sec) {
+        return None;
+    }
+    let mut buf = [0u8; 96];
+    buf[..32].copy_from_slice(prefix_hash);
+    buf[32..64].copy_from_slice(pubkey);
+    let k = random_scalar(rng);
+    let mut tmp3 = GeP3::default();
+    ge_scalarmult_base(&mut tmp3, &k);
+    let mut comm = [0u8; 32];
+    ge_p3_tobytes(&mut comm, &tmp3);
+    buf[64..].copy_from_slice(&comm);
+    let c = hash_to_scalar(&buf);
+    let mut sig = [0u8; 64];
+    sig[..32].copy_from_slice(&c);
+    let mut r = [0u8; 32];
+    sc_mulsub(&mut r, &c, sec, &k); // r = k − c·sec
+    sig[32..].copy_from_slice(&r);
+    Some(sig)
+}
+
+/// CryptoNote `check_signature(prefix_hash, pub, sig)` — verifies the
+/// Schnorr (c, r) signature. Ported byte-for-byte:
+///   L = r·G + c·pub;  c' = Hs(prefix_hash ‖ pub ‖ L);  accept iff c' == c.
+pub fn check_signature(prefix_hash: &[u8; 32], pubkey: &[u8; 32], sig: &[u8; 64]) -> bool {
+    let mut p3 = GeP3::default();
+    if !ge_frombytes_vartime(&mut p3, pubkey) {
+        return false;
+    }
+    let c: [u8; 32] = match sig[..32].try_into() {
+        Ok(v) => v,
+        Err(_) => return false,
+    };
+    let r: [u8; 32] = match sig[32..].try_into() {
+        Ok(v) => v,
+        Err(_) => return false,
+    };
+    if !sc_check(&c) || !sc_check(&r) {
+        return false;
+    }
+    let mut buf = [0u8; 96];
+    buf[..32].copy_from_slice(prefix_hash);
+    buf[32..64].copy_from_slice(pubkey);
+    let mut p2 = GeP2::default();
+    ge_double_scalarmult_base_vartime(&mut p2, &c, &p3, &r); // L = r·G + c·pub
+    let mut comm = [0u8; 32];
+    ge_tobytes(&mut comm, &p2);
+    buf[64..].copy_from_slice(&comm);
+    let c2 = hash_to_scalar(&buf);
+    let mut diff = [0u8; 32];
+    sc_sub(&mut diff, &c2, &c);
+    !sc_isnonzero(&diff)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn generate_check_round_trip() {
+        let mut rng = rand::thread_rng();
+        let sec = random_scalar(&mut rng);
+        let mut pub_p3 = GeP3::default();
+        ge_scalarmult_base(&mut pub_p3, &sec);
+        let mut pubkey = [0u8; 32];
+        ge_p3_tobytes(&mut pubkey, &pub_p3);
+
+        let prefix_hash: [u8; 32] = {
+            let mut h = [0u8; 32];
+            for (i, b) in h.iter_mut().enumerate() {
+                *b = i as u8;
+            }
+            h
+        };
+
+        let sig = generate_signature(&prefix_hash, &pubkey, &sec, &mut rng).unwrap();
+        assert!(check_signature(&prefix_hash, &pubkey, &sig));
+
+        // Tampered signature must fail.
+        let mut bad = sig;
+        bad[0] ^= 0x01;
+        assert!(!check_signature(&prefix_hash, &pubkey, &bad));
+
+        // Wrong message must fail.
+        let mut other_hash = prefix_hash;
+        other_hash[31] ^= 0x80;
+        assert!(!check_signature(&other_hash, &pubkey, &sig));
+
+        // Wrong key must fail.
+        let sec2 = random_scalar(&mut rng);
+        let mut pub_p3_2 = GeP3::default();
+        ge_scalarmult_base(&mut pub_p3_2, &sec2);
+        let mut pubkey2 = [0u8; 32];
+        ge_p3_tobytes(&mut pubkey2, &pub_p3_2);
+        assert!(!check_signature(&prefix_hash, &pubkey2, &sig));
+    }
+}

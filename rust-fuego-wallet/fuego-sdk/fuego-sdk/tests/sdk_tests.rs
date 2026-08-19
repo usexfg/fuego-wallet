@@ -81,8 +81,8 @@ fn test_key_derivation_different_index() {
     let spend = crypto::generate_keypair();
     let view = crypto::generate_keypair();
     let d0 = crypto::generate_key_derivation(&view.public, &spend.secret).unwrap();
-    let d1 = crypto::derive_public_key(&d0, 0);
-    let d2 = crypto::derive_public_key(&d0, 1);
+    let d1 = crypto::derive_public_key(&d0, 0, &spend.public).unwrap();
+    let d2 = crypto::derive_public_key(&d0, 1, &spend.public).unwrap();
     assert_ne!(d1.0, d2.0);
 }
 
@@ -369,8 +369,7 @@ fn test_wallet_transaction_history_empty() {
 #[test]
 fn test_wallet_insufficient_funds() {
     let wallet = Wallet::generate().unwrap();
-    let addr = wallet.primary_address();
-    let result = wallet.build_transaction(&addr, 1000, 10);
+    let result = wallet.select_for_send(1000, &mut rand::thread_rng());
     assert!(matches!(result, Err(SdkError::InsufficientFunds { .. })));
 }
 
@@ -396,18 +395,24 @@ fn test_wallet_builder() {
 }
 
 #[test]
-fn test_scan_empty_block() {
+fn test_scan_foreign_prefix() {
+    use fuego_sdk::serialization::{KeyInput, OutputTarget, TransactionPrefix, TxInput, TxOutput};
+
     let wallet = Wallet::generate().unwrap();
-    let block = Block {
-        header: BlockHeader {
-            height: 1,
-            hash: [1u8; 32],
-            prev_hash: [0u8; 32],
-            timestamp: 1000,
-            tx_count: 0,
-        },
-        transactions: Vec::new(),
+    let mut extra = vec![0x01u8];
+    extra.extend_from_slice(&[9u8; 32]);
+    let prefix = TransactionPrefix {
+        version: 1,
+        unlock_time: 0,
+        inputs: vec![TxInput::Key(KeyInput {
+            amount: 100,
+            offsets: vec![1, 2],
+            key_image: [7u8; 32],
+        })],
+        outputs: vec![TxOutput { amount: 100, target: OutputTarget::Key([8u8; 32]) }],
+        extra,
     };
-    let found = wallet.scan_block(&block).unwrap();
-    assert!(found.is_empty());
+    let (received, spent) = wallet.scan_tx_prefix(&[5u8; 32], &prefix, 1).unwrap();
+    assert_eq!(received, 0);
+    assert_eq!(spent, 0);
 }

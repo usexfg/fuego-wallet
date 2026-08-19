@@ -42,11 +42,11 @@ class _SplashScreenState extends State<SplashScreen>
       final info = await PackageInfo.fromPlatform();
       setState(() {
         _versionString =
-            'Fuego Wallet v${info.version} • Fuego Suite 𝞶𝟏.𝟏𝟏.𝟎𝟏 ≋ΗΞΔΤ𝖜𝖆𝙫𝖊≋';
+            'Fuego Wallet v${info.version} • Privacy Bank & Purchasing Power Chain';
       });
     } catch (_) {
       setState(() {
-        _versionString = 'Fuego Wallet v5.11.0 • Fuego Suite 𝞶𝟏.𝟏𝟏.𝟎𝟏 ≋ΗΞΔΤ𝖜𝖆𝙫𝖊≋';
+        _versionString = 'Fuego Wallet v5.11.0 • Privacy Bank & Purchasing Power Chain';
       });
     }
   }

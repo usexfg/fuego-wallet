@@ -54,12 +54,18 @@ class FuegoOutputScanner {
         if (amount == null) continue;
         final amountInt = amount is int ? amount : int.tryParse(amount.toString()) ?? 0;
 
-        // Derive expected public key for this output index
-        final expectedKeyHex = _ffi.derivePublicKey(derivation, i);
-        final expectedKey = _hexToBytes(expectedKeyHex);
+        // Actual output key from the transaction (target.key hex).
+        final target = output['target'] as Map<String, dynamic>?;
+        final outKeyHex = target?['key'] as String? ?? '';
+        if (outKeyHex.length != 64) continue;
 
-        // Check if it matches our spend public key
-        if (_bytesEqual(expectedKey, spendPk)) {
+        // Standard CryptoNote discovery: P == Hs(D || i) * G + B, where B is
+        // our spend public key.
+        final expectedKeyHex = _ffi.derivePublicKey(derivation, i, spendPk);
+        if (expectedKeyHex.isEmpty) continue;
+
+        // Check if it matches the transaction's output key.
+        if (outKeyHex.toLowerCase() == expectedKeyHex.toLowerCase()) {
           // Generate key image for spent detection
           final keyImageHex = _ffi.generateKeyImage(spendPk, viewSk);
 

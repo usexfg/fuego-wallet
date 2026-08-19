@@ -65,7 +65,11 @@ impl EvmRpcClient {
             return Err(SdkError::Network(format!("Transaction {tx_hash} not found")));
         }
 
-        let status = receipt["status"].as_str().unwrap_or("0x1").to_string();
+        // Fail closed: a missing status field must not be treated as success.
+        let status = receipt["status"]
+            .as_str()
+            .ok_or_else(|| SdkError::Network(format!("Receipt for {tx_hash} missing status")))?
+            .to_string();
         if status != "0x1" && status != "0x0" {
             return Err(SdkError::Network(format!(
                 "Unexpected receipt status for {tx_hash}: {status}"
@@ -154,6 +158,12 @@ impl EvmRpcClient {
 fn parse_hex_u64(hex_str: &str) -> Option<u64> {
     let clean = hex_str.trim_start_matches("0x");
     u64::from_str_radix(clean, 16).ok()
+}
+
+/// Public wrapper for `parse_hex_u64` (used by the EVM adapter to compare
+/// the on-chain tx value in wei against the proof amount).
+pub fn parse_hex_u64_public(hex_str: &str) -> Option<u64> {
+    parse_hex_u64(hex_str)
 }
 
 fn parse_hex_u128(hex_str: &str) -> Option<u128> {

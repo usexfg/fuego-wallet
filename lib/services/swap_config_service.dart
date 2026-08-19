@@ -24,7 +24,10 @@ class SwapConfigService {
 
   String configPathSync() {
     if (_configPath != null) return _configPath!;
-    _configPath = '${Directory.systemTemp.path}/swap_config.json';
+    // Deliberately not system temp: this file holds chain private keys and
+    // the XFG spend key. World-readable temp dirs are unacceptable.
+    final dir = Directory(Platform.resolvedExecutable).parent.path;
+    _configPath = '$dir/swap_config.json';
     return _configPath!;
   }
 
@@ -96,7 +99,18 @@ class SwapConfigService {
     }
 
     final path = await configPath();
-    await File(path).writeAsString(const JsonEncoder.withIndent('  ').convert(config));
+    // The config contains chain private keys + the XFG spend key. Restrict
+    // to the owning user on POSIX platforms; never write to a shared temp
+    // dir (configPathSync's /tmp fallback is dead code — do not use it).
+    final file = File(path);
+    await file.writeAsString(const JsonEncoder.withIndent('  ').convert(config));
+    if (!kIsWeb && (Platform.isMacOS || Platform.isLinux)) {
+      try {
+        await Process.run('chmod', ['600', path]);
+      } catch (_) {
+        // Non-fatal: the write still succeeded; perms stay umask-dependent.
+      }
+    }
     return path;
   }
 

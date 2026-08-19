@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../models/heat_amm.dart';
 import '../../services/fuego_daemon_client.dart';
@@ -31,16 +32,15 @@ class HearthState {
     FuegoPrice? fuegoPrice,
     OrderType? orderType,
     String? error,
-  }) =>
-      HearthState(
-        isLoading: isLoading ?? this.isLoading,
-        pool: pool ?? this.pool,
-        quote: quote,
-        orderBook: orderBook ?? this.orderBook,
-        fuegoPrice: fuegoPrice ?? this.fuegoPrice,
-        orderType: orderType ?? this.orderType,
-        error: error,
-      );
+  }) => HearthState(
+    isLoading: isLoading ?? this.isLoading,
+    pool: pool ?? this.pool,
+    quote: quote,
+    orderBook: orderBook ?? this.orderBook,
+    fuegoPrice: fuegoPrice ?? this.fuegoPrice,
+    orderType: orderType ?? this.orderType,
+    error: error,
+  );
 }
 
 class HearthCubit extends Cubit<HearthState> {
@@ -62,12 +62,14 @@ class HearthCubit extends Cubit<HearthState> {
       final orderBook = orderbookState.isEmpty
           ? null
           : OrderBook.fromDaemon(orderbookState);
-      emit(state.copyWith(
-        isLoading: false,
-        pool: pool,
-        orderBook: orderBook,
-        fuegoPrice: fuegoPrice,
-      ));
+      emit(
+        state.copyWith(
+          isLoading: false,
+          pool: pool,
+          orderBook: orderBook,
+          fuegoPrice: fuegoPrice,
+        ),
+      );
     } catch (e) {
       emit(state.copyWith(isLoading: false, error: e.toString()));
     }
@@ -91,7 +93,11 @@ class HearthCubit extends Cubit<HearthState> {
     required String inputAmount,
     required String minOutput,
   }) {
-    return _daemon.swap(sellXfg: sellXfg, inputAmount: inputAmount, minOutput: minOutput);
+    return _daemon.swap(
+      sellXfg: sellXfg,
+      inputAmount: inputAmount,
+      minOutput: minOutput,
+    );
   }
 
   Future<Map<String, dynamic>> placeLimitOrder({
@@ -99,7 +105,11 @@ class HearthCubit extends Cubit<HearthState> {
     required String amount,
     required String price,
   }) {
-    return _daemon.placeLimitOrder(sellXfg: sellXfg, amount: amount, price: price);
+    return _daemon.placeLimitOrder(
+      sellXfg: sellXfg,
+      amount: amount,
+      price: price,
+    );
   }
 
   Future<Map<String, dynamic>> addLiquidity({
@@ -114,6 +124,15 @@ class HearthCubit extends Cubit<HearthState> {
     required String minXfg,
     required String minHeat,
   }) {
-    return _daemon.removeLiquidity(shares: shares, minXfg: minXfg, minHeat: minHeat);
+    return _daemon.removeLiquidity(
+      shares: shares,
+      minXfg: minXfg,
+      minHeat: minHeat,
+    );
+  }
+
+  @override
+  Future<void> close() {
+    return super.close();
   }
 }

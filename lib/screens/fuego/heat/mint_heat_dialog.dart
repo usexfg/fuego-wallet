@@ -30,7 +30,7 @@ class _MintHeatDialogState extends State<MintHeatDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       backgroundColor: AppTheme.cardColor,
-      title: const Text('Mint HEAT', style: TextStyle(color: AppTheme.textPrimary)),
+      title: const Text('Mint ΗΞΔŦ', style: TextStyle(color: AppTheme.textPrimary)),
       content: _txHash != null ? _buildSuccess() : _buildForm(),
       actions: _txHash != null
           ? [
@@ -56,7 +56,7 @@ class _MintHeatDialogState extends State<MintHeatDialog> {
                 ),
                 child: _submitting
                     ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('Burn XFG → Mint HEAT'),
+                    : const Text('Burn XFG → Mint ΗΞΔŦ'),
               ),
             ],
     );
@@ -68,7 +68,7 @@ class _MintHeatDialogState extends State<MintHeatDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Burn XFG to mint HEAT at the PI redemption price.',
+          const Text('Burn XFG to mint ΗΞΔŦ at the PI redemption price.',
               style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
           const SizedBox(height: 12),
           TextField(
@@ -89,7 +89,7 @@ class _MintHeatDialogState extends State<MintHeatDialog> {
             ],
           ),
           const SizedBox(height: 8),
-          const Text('HEAT received depends on PI redemption price',
+          const Text('ΗΞΔŦ received depends on PI redemption price',
               style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
           if (_error != null)
             Padding(
@@ -107,12 +107,15 @@ class _MintHeatDialogState extends State<MintHeatDialog> {
       children: [
         const Icon(Icons.check_circle, color: AppTheme.successColor, size: 48),
         const SizedBox(height: 12),
-        const Text('HEAT Minted!', style: TextStyle(
+        const Text('ΗΞΔŦ Minted!', style: TextStyle(
             color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         if (_heatReceived != null)
-          Text('$_heatReceived HEAT received',
-              style: const TextStyle(color: AppTheme.successColor, fontSize: 16)),
+          Text('$_heatReceived ΗΞΔŦ received',
+              style: TextStyle(
+                  color: AppTheme.successColor,
+                  fontSize: 18,
+                  fontFamily: AppTheme.numberFontFamily)),
         const SizedBox(height: 4),
         Text('TX: ${_txHash!.substring(0, _txHash!.length > 16 ? 16 : _txHash!.length)}...',
             style: const TextStyle(color: AppTheme.textMuted, fontSize: 11, fontFamily: 'monospace')),
