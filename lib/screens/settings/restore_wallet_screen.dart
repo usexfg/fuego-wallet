@@ -44,12 +44,23 @@ class _RestoreWalletScreenState extends State<RestoreWalletScreen> {
   /// Self-heal: if no app PIN has ever been set, walk through PIN creation
   /// instead of demanding verification of a PIN that doesn't exist.
   Future<void> _determineMode() async {
-    final hasPin = await SecurityService().hasPIN();
-    if (!mounted) return;
-    setState(() {
-      _needsPinSetup = !hasPin;
-      _modeReady = true;
-    });
+    try {
+      final hasPin = await SecurityService().hasPIN().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () => false,
+      );
+      if (!mounted) return;
+      setState(() {
+        _needsPinSetup = !hasPin;
+        _modeReady = true;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _needsPinSetup = true;
+        _modeReady = true;
+      });
+    }
   }
 
   @override

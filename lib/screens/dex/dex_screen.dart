@@ -1,13 +1,16 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../bloc/dex/dex_cubit.dart';
+import '../../models/candlestick.dart';
 import '../../models/swap_models.dart';
 import '../../models/chain_info.dart';
 import 'peer_swap_screen.dart';
+import '../../services/price_history_service.dart';
 import '../../utils/theme.dart';
+import '../../widgets/fuego_chart.dart';
 
 class DexScreen extends StatefulWidget {
   const DexScreen({super.key});
@@ -22,14 +25,21 @@ class _DexScreenState extends State<DexScreen>
   final _rateController = TextEditingController();
   final _takerKeyController = TextEditingController();
   final _xmrAddressController = TextEditingController();
+  List<Candlestick>? _candles;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _loadPriceData();
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => context.read<DexCubit>().init(),
     );
+  }
+
+  Future<void> _loadPriceData() async {
+    final candles = await PriceHistoryService().loadAll();
+    if (mounted) setState(() => _candles = candles);
   }
 
   @override
@@ -48,6 +58,26 @@ class _DexScreenState extends State<DexScreen>
     return BlocBuilder<DexCubit, DexState>(
       builder: (context, state) => Column(
         children: [
+          // Top: chart
+          if (_candles != null && _candles!.isNotEmpty)
+            SizedBox(
+              height: screenH * 0.35,
+              child: FuegoChart(
+                candles: _candles!,
+                pair: 'XFG/${state.selectedPair.ticker}',
+              ),
+            ),
+          if (_candles == null || _candles!.isEmpty)
+            Container(
+              height: screenH * 0.35,
+              color: AppTheme.surfaceColor,
+              child: const Center(
+                child: Text(
+                  'No chart data',
+                  style: TextStyle(color: AppTheme.textMuted),
+                ),
+              ),
+            ),
           _buildPairBar(state),
           if (state.error != null)
             Padding(

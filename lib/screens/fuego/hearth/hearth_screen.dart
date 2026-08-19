@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../bloc/hearth/hearth_cubit.dart';
+import '../../../models/candlestick.dart';
 import '../../../models/heat_amm.dart';
+import '../../../services/price_history_service.dart';
 import '../../../utils/hearth_theme.dart';
 import '../../../utils/theme.dart';
+import '../../../widgets/fuego_chart.dart';
 import 'liquidity_dialogs.dart';
 
 class HearthScreen extends StatefulWidget {
@@ -19,6 +22,7 @@ class _HearthScreenState extends State<HearthScreen>
   final _amountController = TextEditingController();
   final _priceController = TextEditingController();
   bool _sellXfg = true;
+  List<Candlestick>? _candles;
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnim;
@@ -38,6 +42,12 @@ class _HearthScreenState extends State<HearthScreen>
     );
     context.read<HearthCubit>().loadPool();
     _amountController.addListener(_updateUsd);
+    _loadPriceData();
+  }
+
+  Future<void> _loadPriceData() async {
+    final candles = await PriceHistoryService().loadAll();
+    if (mounted) setState(() => _candles = candles);
   }
 
   String _amountUsd = '';
@@ -92,9 +102,32 @@ class _HearthScreenState extends State<HearthScreen>
                     Expanded(
                       child: SingleChildScrollView(
                         child: Column(
-                          children: [
-                            if (state.pool != null)
-                              _buildPoolStats(state.pool!),
+children: [
+                    if (_candles != null && _candles!.isNotEmpty)
+                      SizedBox(
+                        height: screenH * 0.30,
+                        child: FuegoChart(
+                          candles: _candles!,
+                          pair: 'XFG/ΗΞΔŦ',
+                          lineColor: HearthTheme.chartLine,
+                          bgColor: HearthTheme.bgPure,
+                        ),
+                      ),
+                    if (_candles == null || _candles!.isEmpty)
+                      Container(
+                        height: screenH * 0.30,
+                        color: HearthTheme.bgPure,
+                        child: const Center(
+                          child: Text(
+                            'No chart data',
+                            style: TextStyle(
+                              color: HearthTheme.textMuted,
+                            ),
+                          ),
+                        ),
+                      ),
+                    if (state.pool != null)
+                      _buildPoolStats(state.pool!),
                             if (state.pool != null) _buildHeatPriceBar(state),
                             const SizedBox(height: 16),
                             _buildTabSection(state),
