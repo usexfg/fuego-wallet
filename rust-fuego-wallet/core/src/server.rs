@@ -56,7 +56,7 @@ fn is_fuegod_method(method: &str) -> bool {
         "getdeposits" | "get_block_range" | "get_maturing_deposits" |
         "rollover_deposit" | "get_fee_pool_info" | "get_epoch_history" |
         "get_treasury_info" | "get_alias" | "get_alias_by_address" | "get_all_aliases" |
-        "mint_heat" | "swap" | "add_liq" | "remove_liq" | "place_limit_order" |
+        "mint_heat" |
         "create_cd" | "withdraw_cd" | "create_deposit" | "withdraw_deposit"
     )
 }
@@ -66,7 +66,7 @@ fn is_wallet_method(method: &str) -> bool {
         "getBalance" | "getAddresses" | "getAddress" | "getTransactions" |
         "sendTransaction" | "getStatus" | "register_alias" | "create_cd" | "claim_cd" |
         "create_integrated" | "list_cds" | "cd::list" | "cd::create" | "cd::claim" |
-        "mint_heat"
+        "mint_heat" | "swap" | "add_liq" | "remove_liq" | "place_limit_order"
     )
 }
 
@@ -201,7 +201,6 @@ async fn proxy_to_fuegod(fuegod_url: &str, body: &serde_json::Value) -> Result<s
         "heat_metrics" | "amm_quote" | "amm_pool_info" |
         "get_orderbook_info" | "get_orderbook_estimates" |
         "get_fuego_price" |
-        "swap" | "add_liq" | "remove_liq" | "place_limit_order" |
         "create_cd" | "withdraw_cd" | "create_deposit" | "withdraw_deposit" => {
             client.post(format!("{}/{}", fuegod_url, method))
                 .json(&params).send().await
@@ -435,6 +434,105 @@ async fn handle_wallet_method(
             let wallet = wallet.lock().await;
             let tx_hash = wallet.mint_heat(xfg_burned).await
                 .map_err(|e| format!("mint_heat failed: {}", e))?;
+            Ok(serde_json::json!({
+                "transactionHash": tx_hash,
+                "txHash": tx_hash,
+            }))
+        }
+        "swap" => {
+            let direction_raw = params.get("direction")
+                .and_then(|d| d.as_str())
+                .unwrap_or("");
+            let direction = match direction_raw {
+                "heat_to_xfg" | "1" => 1u8,
+                _ => 0u8,
+            };
+            let input_amount = params.get("input_amount")
+                .and_then(|v| v.as_str())
+                .and_then(|s| s.parse::<u64>().ok())
+                .or_else(|| params.get("input_amount").and_then(|v| v.as_u64()))
+                .ok_or("missing input_amount")?;
+            let min_output = params.get("min_output")
+                .and_then(|v| v.as_str())
+                .and_then(|s| s.parse::<u64>().ok())
+                .or_else(|| params.get("min_output").and_then(|v| v.as_u64()))
+                .unwrap_or(0);
+            let wallet = wallet.lock().await;
+            let tx_hash = wallet.amm_swap(direction, input_amount, min_output).await
+                .map_err(|e| format!("swap failed: {}", e))?;
+            Ok(serde_json::json!({
+                "transactionHash": tx_hash,
+                "txHash": tx_hash,
+            }))
+        }
+        "add_liq" => {
+            let xfg_amount = params.get("xfg_amount")
+                .and_then(|v| v.as_str())
+                .and_then(|s| s.parse::<u64>().ok())
+                .or_else(|| params.get("xfg_amount").and_then(|v| v.as_u64()))
+                .ok_or("missing xfg_amount")?;
+            let heat_amount = params.get("heat_amount")
+                .and_then(|v| v.as_str())
+                .and_then(|s| s.parse::<u64>().ok())
+                .or_else(|| params.get("heat_amount").and_then(|v| v.as_u64()))
+                .ok_or("missing heat_amount")?;
+            let wallet = wallet.lock().await;
+            let tx_hash = wallet.lp_add(xfg_amount, heat_amount).await
+                .map_err(|e| format!("add_liq failed: {}", e))?;
+            Ok(serde_json::json!({
+                "transactionHash": tx_hash,
+                "txHash": tx_hash,
+            }))
+        }
+        "remove_liq" => {
+            let shares = params.get("shares")
+                .and_then(|v| v.as_str())
+                .and_then(|s| s.parse::<u64>().ok())
+                .or_else(|| params.get("shares").and_then(|v| v.as_u64()))
+                .ok_or("missing shares")?;
+            let min_xfg = params.get("min_xfg")
+                .and_then(|v| v.as_str())
+                .and_then(|s| s.parse::<u64>().ok())
+                .or_else(|| params.get("min_xfg").and_then(|v| v.as_u64()))
+                .unwrap_or(0);
+            let min_heat = params.get("min_heat")
+                .and_then(|v| v.as_str())
+                .and_then(|s| s.parse::<u64>().ok())
+                .or_else(|| params.get("min_heat").and_then(|v| v.as_u64()))
+                .unwrap_or(0);
+            let wallet = wallet.lock().await;
+            let tx_hash = wallet.lp_remove(shares, min_xfg, min_heat).await
+                .map_err(|e| format!("remove_liq failed: {}", e))?;
+            Ok(serde_json::json!({
+                "transactionHash": tx_hash,
+                "txHash": tx_hash,
+            }))
+        }
+        "place_limit_order" => {
+            let side_raw = params.get("side").and_then(|s| s.as_str()).unwrap_or("sell");
+            let side = match side_raw {
+                "buy" | "0" => 0u8,
+                _ => 1u8,
+            };
+            let amount = params.get("amount")
+                .and_then(|v| v.as_str())
+                .and_then(|s| s.parse::<u64>().ok())
+                .or_else(|| params.get("amount").and_then(|v| v.as_u64()))
+                .ok_or("missing amount")?;
+            // price arrives as a human HEAT-per-XFG decimal; convert to
+            // chain atomics (price * COIN) like spot_price scaling.
+            let price_atomic = params.get("price")
+                .and_then(|v| v.as_str())
+                .and_then(|s| (s.parse::<f64>().ok().map(|p| (p * 10_000_000f64).round() as u64)))
+                .or_else(|| params.get("price").and_then(|v| v.as_u64()))
+                .ok_or("missing price")?;
+            let expiration = params.get("ttlBlocks")
+                .and_then(|v| v.as_u64())
+                .or_else(|| params.get("expiration").and_then(|v| v.as_u64()))
+                .unwrap_or(8640) as u32;
+            let wallet = wallet.lock().await;
+            let tx_hash = wallet.place_limit_order(side, amount, price_atomic, expiration).await
+                .map_err(|e| format!("place_limit_order failed: {}", e))?;
             Ok(serde_json::json!({
                 "transactionHash": tx_hash,
                 "txHash": tx_hash,

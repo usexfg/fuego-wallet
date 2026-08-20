@@ -182,6 +182,18 @@ impl DaemonClient {
         Ok((reserve_xfg, reserve_heat, spot_price))
     }
 
+    /// /amm_pool_info — full Hearth pool state including LP share supply.
+    pub async fn amm_pool_full(&self) -> Result<(u64, u64, u64, u64), String> {
+        let val = self
+            .json_rpc::<serde_json::Value>("amm_pool_info", serde_json::json!({}))
+            .await?;
+        let reserve_xfg = val.get("reserve_xfg").and_then(|v| v.as_u64()).unwrap_or(0);
+        let reserve_heat = val.get("reserve_heat").and_then(|v| v.as_u64()).unwrap_or(0);
+        let total_lp_shares = val.get("total_lp_shares").and_then(|v| v.as_u64()).unwrap_or(0);
+        let spot_price = val.get("spot_price").and_then(|v| v.as_u64()).unwrap_or(0);
+        Ok((reserve_xfg, reserve_heat, total_lp_shares, spot_price))
+    }
+
     /// /estimate_cd_yield — interest a CD would pay today.
     pub async fn estimate_cd_yield(
         &self,
