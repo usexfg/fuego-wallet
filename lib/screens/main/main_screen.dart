@@ -44,7 +44,7 @@ class _MainScreenState extends State<MainScreen> {
           // Daemon status bar — driven by EventBus health
           ValueListenableBuilder<DaemonHealthSnapshot>(
             valueListenable: app.daemonManager.eventBus.health,
-            builder: (context, health, _) {
+            builder: (context, DaemonHealthSnapshot health, _) {
               // If EventBus detects all daemons healthy, clear any stale startup error
               if (health.allHealthy && app.daemonError != null) {
                 WidgetsBinding.instance.addPostFrameCallback((_) {

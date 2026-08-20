@@ -200,9 +200,7 @@ class DaemonEventBus {
     } catch (_) {}
   }
 
-   Future<void> _pollWalletd() async {
-     try {
-Future<void> _pollWalletd() async {
+  Future<void> _pollWalletd() async {
     try {
       // ── Direct HTTP GET /health (Rust proxy) ──
       try {

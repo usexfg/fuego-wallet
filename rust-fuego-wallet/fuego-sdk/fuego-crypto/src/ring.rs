@@ -29,6 +29,15 @@ pub fn hash_to_scalar(data: &[u8]) -> [u8; 32] {
     h
 }
 
+/// `secret_key_to_public_key`: pub = scalar * G.
+pub fn secret_key_to_public_key(sec: &[u8; 32]) -> [u8; 32] {
+    let mut pub_p3 = GeP3::default();
+    ge_scalarmult_base(&mut pub_p3, sec);
+    let mut pub_key = [0u8; 32];
+    ge_p3_tobytes(&mut pub_key, &pub_p3);
+    pub_key
+}
+
 /// CryptoNote LEB128 varint (Common/Varint.h write_varint).
 pub fn write_varint(mut value: u64, out: &mut Vec<u8>) {
     while value >= 0x80 {

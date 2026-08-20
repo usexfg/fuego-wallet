@@ -71,7 +71,11 @@ pub const TX_EXTRA_TAG_PADDING: u8 = 0x00;
 pub const TX_EXTRA_TAG_PUBKEY: u8 = 0x01;
 pub const TX_EXTRA_TAG_NONCE: u8 = 0x02;
 pub const TX_EXTRA_HEAT_MINT_AUTH: u8 = 0xF5;
+pub const TX_EXTRA_AMM_SWAP_AUTH: u8 = 0xF6;
+pub const TX_EXTRA_AMM_LP_ADD_AUTH: u8 = 0xF7;
+pub const TX_EXTRA_AMM_LP_REM_AUTH: u8 = 0xF8;
 pub const TX_EXTRA_HEAT_SEND_AUTH: u8 = 0xF9;
+pub const TX_EXTRA_LIMIT_DEPOSIT: u8 = 0xFB;
 pub const TX_EXTRA_TREASURY_FUND: u8 = 0xFF;
 
 pub const TX_VERSION_1: u8 = 1;
@@ -79,6 +83,16 @@ pub const TX_VERSION_2: u8 = 2;
 
 /// HEAT_TERM (CryptoNoteConfig.h): outputs with this term are HEAT.
 pub const HEAT_TERM: u32 = 0xFFFF_FFFF;
+
+/// DEPOSIT_TERM_LP (CryptoNoteConfig.h): LP share marker term for Hearth
+/// liquidity positions.
+pub const DEPOSIT_TERM_LP: u32 = 0xFFFF_FFFD;
+
+/// DEPOSIT_TERM_POOL_XFG (CryptoNoteConfig.h): 'POLX' — pool receives XFG.
+pub const DEPOSIT_TERM_POOL_XFG: u32 = 0x504F_4C58;
+
+/// DEPOSIT_TERM_POOL_HEAT (CryptoNoteConfig.h): 'POLH' — pool receives HEAT.
+pub const DEPOSIT_TERM_POOL_HEAT: u32 = 0x504F_4C48;
 
 /// MembershipProof size: FUEGO_MEMBERSHIP_N(4) * 2 scalars * 32 bytes.
 pub const AMOUNT_PROOF_LEN: usize = 256;
@@ -492,6 +506,72 @@ pub fn add_treasury_fund_extra(extra: &mut Vec<u8>, asset: u8, amount: u64) {
     extra.push(TX_EXTRA_TREASURY_FUND);
     extra.push(asset);
     extra.extend_from_slice(&amount.to_le_bytes());
+}
+
+/// TransactionExtra.cpp addAmmSwapAuthToExtra: 0xF6 || direction u8 ||
+/// inputAmount u64 LE || outputAmount u64 LE || minOutput u64 LE.
+pub fn add_amm_swap_auth_extra(
+    extra: &mut Vec<u8>,
+    direction: u8,
+    input_amount: u64,
+    output_amount: u64,
+    min_output: u64,
+) {
+    extra.push(TX_EXTRA_AMM_SWAP_AUTH);
+    extra.push(direction);
+    extra.extend_from_slice(&input_amount.to_le_bytes());
+    extra.extend_from_slice(&output_amount.to_le_bytes());
+    extra.extend_from_slice(&min_output.to_le_bytes());
+}
+
+/// TransactionExtra.cpp addLpAddAuthToExtra: 0xF7 || amountXfg u64 LE ||
+/// amountHeat u64 LE || lpShares u64 LE.
+pub fn add_lp_add_auth_extra(
+    extra: &mut Vec<u8>,
+    amount_xfg: u64,
+    amount_heat: u64,
+    lp_shares: u64,
+) {
+    extra.push(TX_EXTRA_AMM_LP_ADD_AUTH);
+    extra.extend_from_slice(&amount_xfg.to_le_bytes());
+    extra.extend_from_slice(&amount_heat.to_le_bytes());
+    extra.extend_from_slice(&lp_shares.to_le_bytes());
+}
+
+/// TransactionExtra.cpp addLpRemoveAuthToExtra: 0xF8 || lpSharesBurned u64
+/// LE || minXfg u64 LE || minHeat u64 LE.
+pub fn add_lp_remove_auth_extra(
+    extra: &mut Vec<u8>,
+    lp_shares_burned: u64,
+    min_xfg: u64,
+    min_heat: u64,
+) {
+    extra.push(TX_EXTRA_AMM_LP_REM_AUTH);
+    extra.extend_from_slice(&lp_shares_burned.to_le_bytes());
+    extra.extend_from_slice(&min_xfg.to_le_bytes());
+    extra.extend_from_slice(&min_heat.to_le_bytes());
+}
+
+/// TransactionExtra.cpp addLimitDepositToExtra: 0xFB || side u8 ||
+/// amount varint || targetPrice varint || expiration varint ||
+/// orderId (32 bytes) || addressHash (32 bytes).
+/// The consensus parser reads amount/price/expiration as base-128 varints.
+pub fn add_limit_deposit_extra(
+    extra: &mut Vec<u8>,
+    side: u8,
+    amount: u64,
+    target_price: u64,
+    expiration: u32,
+    order_id: &[u8; 32],
+    address_hash: &[u8; 32],
+) {
+    extra.push(TX_EXTRA_LIMIT_DEPOSIT);
+    extra.push(side);
+    write_varint(amount, extra);
+    write_varint(target_price, extra);
+    write_varint(expiration as u64, extra);
+    extra.extend_from_slice(order_id);
+    extra.extend_from_slice(address_hash);
 }
 
 // ---------------------------------------------------------------- daemon RPC
