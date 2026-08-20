@@ -124,14 +124,20 @@ class DaemonEventBus {
 
         if (resp.statusCode == 200) {
           final data = jsonDecode(body) as Map<String, dynamic>;
-          if (data.containsKey('daemon')) {
-            final ok = data['daemon'] as bool? ?? false;
-            if (ok) {
+          // Rust walletd reports the embedded chain as `daemon` (newer
+          // builds) or `fuego` (older builds). Accept both.
+          final daemonOk = data.containsKey('daemon')
+              ? data['daemon'] as bool? ?? false
+              : (data.containsKey('fuego')
+                  ? data['fuego'] as bool? ?? false
+                  : null);
+          if (daemonOk != null) {
+            if (daemonOk) {
               blockInfo.value = data;
               _emit(eventBlock, data);
             }
-            _updateHealth(fuegodOk: ok,
-                fuegodError: ok ? null : 'daemon embedded in unified: offline');
+            _updateHealth(fuegodOk: daemonOk,
+                fuegodError: daemonOk ? null : 'daemon embedded in unified: offline');
             return;
           }
           debugPrint('[EventBus] fuegod unified GET /health 200 but no daemon key');

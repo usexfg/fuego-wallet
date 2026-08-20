@@ -900,6 +900,7 @@ name = "fuego-ffi"
 version = "0.1.0"
 dependencies = [
  "bincode",
+ "cc",
  "ed25519-dalek",
  "fuego-crypto",
  "fuego-sdk",

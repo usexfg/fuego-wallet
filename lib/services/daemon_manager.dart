@@ -46,6 +46,10 @@ class DaemonManager {
   final List<String> errors = [];
   final ValueNotifier<DaemonStatus> status = ValueNotifier(DaemonStatus());
 
+  /// Mode of the last [startAll] — used to interpret walletd health
+  /// (local mode requires an embedded fuegod; remote does not).
+  bool _useLocalNode = true;
+
   /// Bounded stderr buffer captured during unified daemon startup
   /// (release mode) so failures surface the real cause, not just the
   /// exit code (e.g. "Address already in use").
@@ -269,17 +273,23 @@ class DaemonManager {
     final proxyAlive = _unified != null || _walletd != null || _walletdExternallyRunning;
     final proxyHealthy = proxyAlive && walletdOk;
 
+    // Local mode: the chain IS the embedded fuegod — it must answer on the
+    // fuegod port. Remote mode: chain is the seed node, walletd healthy is
+    // enough.
+    final chainOk = _useLocalNode ? fuegodOk : true;
+
     status.value = DaemonStatus(
       fuegodRunning: (_fuegod != null && fuegodOk) ||
           (_unified != null && proxyHealthy) ||
-          (_walletd != null && proxyHealthy && fuegodOk) ||
-          (_walletd != null && proxyHealthy) || // remote mode: chain is remote
+          (_walletd != null && proxyHealthy && chainOk) ||
           (_walletdExternallyRunning && fuegodOk) ||
           _fuegodExternallyRunning,
       walletdRunning: proxyHealthy || _walletdExternallyRunning,
       swapdRunning: (_swapd != null || _unified != null || _swapdExternallyRunning) && swapdOk,
       fuegodError: daemonErrors['fuegod'] ??
-          (_fuegod != null && !fuegodOk ? fuegodHealth.error : null),
+          ((_fuegod != null || (_useLocalNode && _walletd != null)) && !fuegodOk
+              ? fuegodHealth.error
+              : null),
       walletdError: daemonErrors['walletd'] ??
           (proxyAlive && !walletdOk ? walletdHealth.error : null),
       swapdError: daemonErrors['swapd'] ??
@@ -317,6 +327,7 @@ class DaemonManager {
     _walletdExternallyRunning = false;
     _fuegodExternallyRunning = false;
     _swapdExternallyRunning = false;
+    _useLocalNode = useLocalNode;
     debugPrint('[daemon] === Starting daemons ===');
     debugPrint('[daemon] Mode: ${useLocalNode ? "LOCAL" : "REMOTE"}');
     debugPrint('[daemon] Chain target: $daemonHost:$daemonPort');
@@ -472,9 +483,21 @@ class DaemonManager {
     final alreadyRunning = await _probeJsonRpcReady(walletdPort) ||
         await _checkHealth('http://127.0.0.1:$walletdPort/health', timeout: const Duration(seconds: 2));
     if (alreadyRunning) {
-      _walletdExternallyRunning = true;
-      debugPrint('[daemon] fuego_walletd already running on port $walletdPort');
-      return null;
+      // In local mode the walletd must be running with an embedded fuegod.
+      // A stale walletd from a previous app instance (older binary, remote
+      // args, or a dead embedded daemon) answers /health with fuego:false
+      // and leaves the chain port 18180 dead — killing the whole stack
+      // (swapd, mining, balances). Verify the embedded daemon before reuse.
+      if (useLocalNode && !await _walletdEmbeddedFuegodOk(walletdPort)) {
+        debugPrint('[daemon] walletd on $walletdPort is stale '
+            '(embedded fuegod offline) — killing and restarting');
+        final killErr = await _freePort(walletdPort);
+        if (killErr != null) return killErr;
+      } else {
+        _walletdExternallyRunning = true;
+        debugPrint('[daemon] fuego_walletd already running on port $walletdPort');
+        return null;
+      }
     }
 
     final portErr = await _freePort(walletdPort);
@@ -551,6 +574,31 @@ class DaemonManager {
       }
     }
     return 'fuego_walletd not ready after ${maxAttempts * 2}s';
+  }
+
+  /// True when a walletd on [port] reports a healthy embedded fuegod
+  /// (`daemon:true` / `fuego:true` in GET /health). False when the health
+  /// body is missing the keys or reports the embedded chain offline —
+  /// used to detect stale walletd processes in local mode.
+  Future<bool> _walletdEmbeddedFuegodOk(int port) async {
+    try {
+      final client = HttpClient()..connectionTimeout = const Duration(seconds: 2);
+      final req = await client.getUrl(Uri.parse('http://127.0.0.1:$port/health'));
+      final resp = await req.close().timeout(const Duration(seconds: 2));
+      final body = await resp.transform(utf8.decoder).join();
+      client.close(force: true);
+      if (resp.statusCode != 200) return false;
+      final data = jsonDecode(body);
+      if (data is Map<String, dynamic>) {
+        final daemon = data['daemon'];
+        if (daemon is bool) return daemon;
+        final fuego = data['fuego'];
+        if (fuego is bool) return fuego;
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<bool> _probeJsonRpcReady(int port) async {

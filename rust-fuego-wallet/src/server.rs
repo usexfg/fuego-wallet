@@ -450,6 +450,7 @@ async fn health_check(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     Json(serde_json::json!({
         "status": if fuegod_ok { "ok" } else { "degraded" },
         "fuego": fuegod_ok,
+        "daemon": fuegod_ok,
         "walletd": walletd_ok,
     }))
 }

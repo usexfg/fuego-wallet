@@ -446,6 +446,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     String selectedNode = FuegoRPCService.defaultRemoteNodes.first;
     bool useLocal = _useLocalNode;
 
+    // The dialog's StatefulBuilder shadows `setState` inside its builder;
+    // after the dialog is popped the builder state is defunct and calling
+    // its setState throws. Capture the screen-level setState for updates
+    // that happen after the dialog closes (post-await continuation).
+    final screenSetState = setState;
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -694,7 +700,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onPressed: () async {
                     Navigator.of(context).pop();
 
-                    setState(() {
+                    screenSetState(() {
                       _useLocalNode = useLocal;
                     });
 
@@ -711,7 +717,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         useTestnet: app.useTestnet,
                       );
                       if (!mounted) return;
-                      setState(() {
+                      screenSetState(() {
                         _fuegodHost = ep.chainHost;
                         _fuegodPort = ep.chainPort;
                         _fuegodConfigured = ep.proxyRunning;
@@ -749,7 +755,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         useTestnet: app.useTestnet,
                       );
                       if (!mounted) return;
-                      setState(() {
+                      screenSetState(() {
                         _fuegodHost = ep.chainHost;
                         _fuegodPort = ep.chainPort;
                         _fuegodConfigured = ep.proxyRunning;

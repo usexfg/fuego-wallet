@@ -711,6 +711,7 @@ async fn health_check(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     Json(serde_json::json!({
         "status": if fuegod_ok { "ok" } else { "degraded" },
         "fuego": fuegod_ok,
+        "daemon": fuegod_ok,
         "swap": crate::swapd::swapd_healthy(crate::swapd::SWAPD_RPC_PORT).await,
         "wallet": {
             "address": wallet.address().await,
