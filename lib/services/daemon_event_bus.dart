@@ -109,43 +109,35 @@ class DaemonEventBus {
 
   Future<void> _pollFuegod() async {
     try {
-      // ── Unified mode: JSON-RPC getHealth on walletdPort ──
+      // ── Unified mode: HTTP GET /health on walletdPort ──
       // Each branch creates its own HttpClient so a closed client
       // is never reused after an exception.
       try {
         final client = HttpClient()..connectionTimeout = const Duration(seconds: 3);
-        final req = await client.postUrl(
-            Uri.parse('http://127.0.0.1:$walletdPort/json_rpc'));
-        req.headers.contentType = ContentType.json;
-        req.write(jsonEncode({
-          'jsonrpc': '2.0',
-          'id': 1,
-          'method': 'getHealth',
-          'params': <String, dynamic>{},
-        }));
+        final req = await client.getUrl(
+            Uri.parse('http://127.0.0.1:$walletdPort/health'));
         final resp = await req.close().timeout(const Duration(seconds: 3));
         final body = await resp.transform(utf8.decoder).join();
         client.close(force: true);
 
-        debugPrint('[EventBus] fuegod unified GET 200 body=$body');
+        debugPrint('[EventBus] fuegod unified GET /health body=$body');
 
         if (resp.statusCode == 200) {
           final data = jsonDecode(body) as Map<String, dynamic>;
-          final result = data['result'] as Map<String, dynamic>? ?? {};
-          if (result.containsKey('daemon')) {
-            final ok = result['daemon'] as bool? ?? false;
+          if (data.containsKey('daemon')) {
+            final ok = data['daemon'] as bool? ?? false;
             if (ok) {
-              blockInfo.value = result;
-              _emit(eventBlock, result);
+              blockInfo.value = data;
+              _emit(eventBlock, data);
             }
             _updateHealth(fuegodOk: ok,
                 fuegodError: ok ? null : 'daemon embedded in unified: offline');
             return;
           }
-          debugPrint('[EventBus] fuegod unified GET 200 but no daemon key in result=$result');
+          debugPrint('[EventBus] fuegod unified GET /health 200 but no daemon key');
         }
       } catch (e) {
-        debugPrint('[EventBus] fuegod unified GET failed: $e');
+        debugPrint('[EventBus] fuegod unified GET /health failed: $e');
       }
 
       // ── Standalone architecture: direct getinfo on fuegod port ──
@@ -210,102 +202,62 @@ class DaemonEventBus {
 
    Future<void> _pollWalletd() async {
      try {
-       // ── JSON-RPC getHealth (unified daemon on walletdPort) ──
-       try {
-         final client = HttpClient()..connectionTimeout = const Duration(seconds: 3);
-         final req = await client.postUrl(
-             Uri.parse('http://127.0.0.1:$walletdPort/json_rpc'));
-         req.headers.contentType = ContentType.json;
-         req.write(jsonEncode({
-           'jsonrpc': '2.0',
-           'id': 1,
-           'method': 'getHealth',
-           'params': <String, dynamic>{},
-         }));
-         final resp = await req.close().timeout(const Duration(seconds: 3));
-         final body = await resp.transform(utf8.decoder).join();
-         client.close(force: true);
+Future<void> _pollWalletd() async {
+    try {
+      // ── Direct HTTP GET /health (Rust proxy) ──
+      try {
+        final client = HttpClient()..connectionTimeout = const Duration(seconds: 3);
+        final req = await client.getUrl(
+            Uri.parse('http://127.0.0.1:$walletdPort/health'));
+        final resp = await req.close().timeout(const Duration(seconds: 3));
+        final body = await resp.transform(utf8.decoder).join();
+        client.close(force: true);
 
-         debugPrint('[EventBus] walletd GET 200 body=$body');
+        debugPrint('[EventBus] walletd GET /health body=$body');
 
         if (resp.statusCode == 200) {
           final data = jsonDecode(body) as Map<String, dynamic>;
-          final result = data['result'] as Map<String, dynamic>? ?? {};
-          // Only treat as authoritative when the response really carries
-          // wallet health. The Rust walletd answers "unknown method:
-          // getHealth" with HTTP 200 — in that case fall through to /health.
-          if (result.containsKey('wallet')) {
-            _updateHealth(walletdOk: result['wallet'] as bool? ?? false, walletdData: result);
-            return;
-          }
-          debugPrint('[EventBus] walletd getHealth returned no "wallet" key — falling through to /health');
+          _updateHealth(walletdOk: true, walletdData: data);
+          return;
+        } else {
+          _updateHealth(walletdOk: false, walletdError: 'HTTP ${resp.statusCode}');
+          return;
         }
-       } catch (e) {
-         debugPrint('[EventBus] walletd JSON-RPC failed: $e');
-       }
+      } catch (e) {
+        debugPrint('[EventBus] walletd GET /health failed: $e');
+      }
 
-       // ── Fall back to GET /health (Rust proxy) ──
-       try {
-         final client = HttpClient()..connectionTimeout = const Duration(seconds: 3);
-         final req = await client.getUrl(
-             Uri.parse('http://127.0.0.1:$walletdPort/health'));
-         final resp = await req.close().timeout(const Duration(seconds: 3));
+      _updateHealth(walletdOk: false, walletdError: 'Connection refused');
+    } catch (_) {}
+  }
+
+  Future<void> _pollSwapd() async {
+    try {
+      // ── Unified daemon: swapd health via GET /health on walletdPort ──
+      try {
+        final client = HttpClient()..connectionTimeout = const Duration(seconds: 3);
+        final req = await client.getUrl(
+            Uri.parse('http://127.0.0.1:$walletdPort/health'));
+        final resp = await req.close().timeout(const Duration(seconds: 3));
          final body = await resp.transform(utf8.decoder).join();
          client.close(force: true);
 
-         debugPrint('[EventBus] walletd GET /health 200 body=$body');
-
-         if (resp.statusCode == 200) {
-           final data = jsonDecode(body) as Map<String, dynamic>;
-           _updateHealth(walletdOk: true, walletdData: data);
-           return;
-         } else {
-           _updateHealth(walletdOk: false, walletdError: 'HTTP ${resp.statusCode}');
-           return;
-         }
-       } catch (e) {
-         debugPrint('[EventBus] walletd GET /health failed: $e');
-       }
-
-       _updateHealth(walletdOk: false, walletdError: 'Connection refused');
-     } catch (_) {}
-   }
-
-   Future<void> _pollSwapd() async {
-     try {
-       // ── Unified daemon: swapd health via getHealth on walletdPort ──
-       try {
-         final client = HttpClient()..connectionTimeout = const Duration(seconds: 3);
-         final req = await client.postUrl(
-             Uri.parse('http://127.0.0.1:$walletdPort/json_rpc'));
-         req.headers.contentType = ContentType.json;
-         req.write(jsonEncode({
-           'jsonrpc': '2.0',
-           'id': 1,
-           'method': 'getHealth',
-           'params': <String, dynamic>{},
-         }));
-         final resp = await req.close().timeout(const Duration(seconds: 3));
-         final body = await resp.transform(utf8.decoder).join();
-         client.close(force: true);
-
-         debugPrint('[EventBus] swapd unified GET 200 body=$body');
+         debugPrint('[EventBus] swapd unified GET /health body=$body');
 
           if (resp.statusCode == 200) {
             final data = jsonDecode(body) as Map<String, dynamic>;
-            final result = data['result'] as Map<String, dynamic>? ?? {};
-            if (result.containsKey('swap')) {
-              final swapOk = result['swap'] as bool? ?? false;
+            if (data.containsKey('swap')) {
+              final swapOk = data['swap'] as bool? ?? false;
               _updateHealth(swapdOk: swapOk);
               if (swapOk) {
-                _emit(eventSwap, result);
+                _emit(eventSwap, data);
               }
               return;
             }
-            debugPrint('[EventBus] swapd getHealth returned no "swap" key — falling through to /health');
+            debugPrint('[EventBus] swapd unified GET /health no "swap" key');
           }
        } catch (e) {
-         debugPrint('[EventBus] swapd unified GET failed: $e');
+         debugPrint('[EventBus] swapd unified GET /health failed: $e');
        }
 
         // ── Standalone xfg-swapd: GET /health (or /status) on swapdPort ──

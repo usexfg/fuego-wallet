@@ -214,7 +214,7 @@ class _SplashScreenState extends State<SplashScreen>
                           AnimatedTextKit(
                             animatedTexts: [
                               TypewriterAnimatedText(
-                                'Fuego Wallet',
+                                'Fuego (XFG) Wallet',
                                 textStyle: const TextStyle(
                                   fontSize: 28,
                                   fontWeight: FontWeight.bold,
@@ -229,7 +229,7 @@ class _SplashScreenState extends State<SplashScreen>
                           const SizedBox(height: 16),
                           // Brand
                           Text(
-                            'Ħ⋲⟑鲂₮Ħ￦⨂',
+                            'HEATWAVE v1.11.0 (Suite) Release',
                             style: TextStyle(
                               fontSize: 20,
                               color: AppTheme.primaryColor,
@@ -239,7 +239,7 @@ class _SplashScreenState extends State<SplashScreen>
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            '𑫐r᱀≶≸𝕱𝔦𝖗𝒆',
+                            'feat HEARTH Floor | DeXFG',
                             style: TextStyle(
                               fontSize: 14,
                               color: AppTheme.textSecondary,
@@ -260,7 +260,7 @@ class _SplashScreenState extends State<SplashScreen>
                               ),
                             ),
                             child: Text(
-                              'XFG ⇄ HΞ∆T',
+                              'XFG + ΗΞΔŦ',
                               style: TextStyle(
                                 fontSize: 13,
                                 color: AppTheme.primaryColor,
@@ -351,7 +351,7 @@ class _SplashScreenState extends State<SplashScreen>
                       const SizedBox(height: 8),
                     ],
                     Text(
-                      'Based on CryptoNote Protocol',
+                      'Based upon the CryptoNote protocol',
                       style: TextStyle(
                         fontSize: 12,
                         color: AppTheme.textMuted,
@@ -369,9 +369,9 @@ class _SplashScreenState extends State<SplashScreen>
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          'Secure • Untraceable • Decentralized',
+                          'Sovereign • Untraceable • Purchasing Power',
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 12,
                             color: AppTheme.textMuted,
                             fontWeight: FontWeight.w400,
                           ),

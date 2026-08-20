@@ -5,7 +5,6 @@ import '../../../models/candlestick.dart';
 import '../../../models/heat_amm.dart';
 import '../../../services/price_history_service.dart';
 import '../../../utils/hearth_theme.dart';
-import '../../../utils/theme.dart';
 import '../../../widgets/fuego_chart.dart';
 import 'liquidity_dialogs.dart';
 
@@ -62,7 +61,7 @@ class _HearthScreenState extends State<HearthScreen>
     if (_sellXfg) {
       final spot =
           double.tryParse(
-            context.read<HearthCubit>().state.pool?.spotPrice ?? '',
+            context.read<HearthCubit>().state.pool?.price ?? '',
           ) ??
           0;
       setState(
@@ -146,7 +145,7 @@ children: [
     const heatPegUsd = 1.58;
     const xfgHeatRatio = 0.1;
     final heatUsd = heatPegUsd;
-    final spot = state.pool?.spotPrice;
+    final spot = state.pool?.price;
     final spotNum =
         (spot != null &&
             double.tryParse(spot) != null &&
@@ -204,7 +203,7 @@ children: [
           const Spacer(),
           // HΞ∆T-denominated (right of center)
           _metricChip(
-            _formatVol(state.pool?.volume24h),
+            _formatVol(state.pool?.epochSwapFees.toString()),
             HearthTheme.textSecondary,
           ),
           const SizedBox(width: 8),
@@ -251,11 +250,11 @@ children: [
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          _poolStat('XFG Res', pool.xfgReserve),
+          _poolStat('XFG Res', pool.xfgBalance),
           _poolDivider(),
-          _poolStat('HΞ∆T Res', pool.heatReserve),
+          _poolStat('HΞ∆T Res', pool.heatBalance),
           _poolDivider(),
-          _poolStat('LP Shares', pool.totalLpShares),
+          _poolStat('LP Shares', pool.heatTotalSupply),
         ],
       ),
     );
@@ -282,7 +281,7 @@ children: [
 
   Widget _buildHeatPriceBar(HearthState state) {
     const xfgHeatRatio = 0.1;
-    final spot = state.pool?.spotPrice;
+    final spot = state.pool?.price;
     final spotNum =
         (spot != null &&
             double.tryParse(spot) != null &&
@@ -424,7 +423,7 @@ children: [
   // ───────────────────── ORDER BOOK ─────────────────────
 
   Widget _buildOrderBookTab(HearthState state) {
-    if (state.orderBook == null) {
+    if (state.orderBookState == null) {
       return const Center(
         child: Text(
           'No order book data',
@@ -432,12 +431,12 @@ children: [
         ),
       );
     }
-    final book = state.orderBook!;
+    final book = state.orderBookState!;
     final maxTotal = book.asks.isNotEmpty
-        ? book.asks.map((e) => e.total).reduce((a, b) => a > b ? a : b)
+        ? book.asks.map((e) => double.tryParse(e.amount) ?? 0).reduce((a, b) => a > b ? a : b)
         : 1.0;
     final maxBidTotal = book.bids.isNotEmpty
-        ? book.bids.map((e) => e.total).reduce((a, b) => a > b ? a : b)
+        ? book.bids.map((e) => double.tryParse(e.amount) ?? 0).reduce((a, b) => a > b ? a : b)
         : 1.0;
     final globalMax = maxTotal > maxBidTotal ? maxTotal : maxBidTotal;
 
@@ -497,7 +496,8 @@ children: [
   }
 
   Widget _depthRow(OrderBookLevel level, bool isBid, double globalMax) {
-    final pct = globalMax > 0 ? (level.total / globalMax).clamp(0.0, 1.0) : 0.0;
+    final amount = double.tryParse(level.amount) ?? 0.0;
+    final pct = globalMax > 0 ? (amount / globalMax).clamp(0.0, 1.0) : 0.0;
     final color = isBid ? HearthTheme.bidPrimary : HearthTheme.askPrimary;
     final depthColor = isBid ? HearthTheme.bidDepth : HearthTheme.askDepth;
     return Stack(
@@ -517,7 +517,7 @@ children: [
             children: [
               Expanded(
                 child: Text(
-                  level.price.toStringAsFixed(4),
+                  level.price,
                   style: HearthTheme.mono(
                     size: 12,
                     weight: FontWeight.w600,
@@ -527,7 +527,7 @@ children: [
               ),
               Expanded(
                 child: Text(
-                  level.amount.toStringAsFixed(2),
+                  level.amount,
                   style: HearthTheme.mono(
                     size: 11,
                     color: HearthTheme.textSecondary,
@@ -537,7 +537,7 @@ children: [
               ),
               Expanded(
                 child: Text(
-                  level.total.toStringAsFixed(2),
+                  '${level.orderCount}',
                   style: HearthTheme.mono(
                     size: 11,
                     color: HearthTheme.textMuted,
@@ -552,8 +552,8 @@ children: [
     );
   }
 
-  Widget _spreadBar(OrderBook book, HearthState state) {
-    final spot = book.lastPrice;
+  Widget _spreadBar(OrderBookState book, HearthState state) {
+    final spot = book.bestAsk?.price ?? book.spread;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: const BoxDecoration(
@@ -567,7 +567,7 @@ children: [
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            spot.toStringAsFixed(4),
+            spot,
             style: HearthTheme.mono(
               size: 14,
               weight: FontWeight.w700,
@@ -575,14 +575,6 @@ children: [
             ),
           ),
           const SizedBox(width: 8),
-          if (state.fuegoPrice != null)
-            Text(
-              '≈ \$${(spot * state.fuegoPrice!.heatPegUsd).toStringAsFixed(4)}',
-              style: HearthTheme.mono(
-                size: 11,
-                color: HearthTheme.textSecondary,
-              ),
-            ),
         ],
       ),
     );
@@ -836,7 +828,7 @@ children: [
             ),
             decoration: InputDecoration(
               border: InputBorder.none,
-              hintText: state.pool?.spotPrice ?? '0.00',
+              hintText: state.pool?.price ?? '0.00',
               hintStyle: HearthTheme.mono(size: 15, color: HearthTheme.textDim),
               contentPadding: EdgeInsets.zero,
             ),
@@ -893,9 +885,11 @@ children: [
         onPressed: () {
           final cubit = context.read<HearthCubit>();
           final q = cubit.state.quote!;
+          final input = _amountController.text.trim();
+          if (input.isEmpty) return;
           cubit.executeSwap(
             sellXfg: _sellXfg,
-            inputAmount: q.inputAmount,
+            inputAmount: input,
             minOutput: q.outputAmount,
           );
         },
@@ -914,9 +908,9 @@ children: [
   }
 
   Widget _quoteDisplay(AmmQuote quote, HearthState state) {
-    final heatAmount = _sellXfg ? quote.outputAmount : quote.inputAmount;
+    final heatAmount = _sellXfg ? quote.outputAmount : _amountController.text.trim();
     final heatVal = double.tryParse(heatAmount) ?? 0;
-    final heatPegUsd = state.fuegoPrice?.heatPegUsd ?? 0;
+    const heatPegUsd = 1.58;
     final usd = heatVal * heatPegUsd;
     return Container(
       padding: const EdgeInsets.all(10),
@@ -963,7 +957,7 @@ children: [
             children: [
               Text('Price Impact', style: HearthTheme.label(size: 9)),
               Text(
-                '${quote.priceImpact}%',
+                '${(int.tryParse(quote.priceImpactBps) ?? 0) / 100}%',
                 style: HearthTheme.mono(
                   size: 10,
                   color: HearthTheme.textSecondary,

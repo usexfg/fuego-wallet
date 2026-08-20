@@ -561,7 +561,7 @@ class DaemonManager {
       req.write(jsonEncode({
         'jsonrpc': '2.0',
         'id': 1,
-        'method': 'getHealth',
+        'method': 'getinfo',
         'params': <String, dynamic>{},
       }));
       final resp = await req.close().timeout(const Duration(seconds: 2));
@@ -706,14 +706,8 @@ class DaemonManager {
 
       try {
         final client = HttpClient()..connectionTimeout = const Duration(seconds: 2);
-        final req = await client.postUrl(Uri.parse('http://127.0.0.1:$walletdPort/json_rpc'));
-        req.headers.contentType = ContentType.json;
-        req.write(jsonEncode({
-          'jsonrpc': '2.0',
-          'id': 1,
-          'method': 'getHealth',
-          'params': <String, dynamic>{},
-        }));
+        final req = await client.getUrl(
+            Uri.parse('http://127.0.0.1:$walletdPort/health'));
         final resp = await req.close().timeout(const Duration(seconds: 2));
         await resp.drain<void>();
         client.close(force: true);

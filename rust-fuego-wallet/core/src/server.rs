@@ -65,7 +65,8 @@ fn is_wallet_method(method: &str) -> bool {
     matches!(method,
         "getBalance" | "getAddresses" | "getAddress" | "getTransactions" |
         "sendTransaction" | "getStatus" | "register_alias" | "create_cd" | "claim_cd" |
-        "create_integrated" | "list_cds" | "cd::list" | "cd::create" | "cd::claim"
+        "create_integrated" | "list_cds" | "cd::list" | "cd::create" | "cd::claim" |
+        "mint_heat"
     )
 }
 
@@ -198,12 +199,22 @@ async fn proxy_to_fuegod(fuegod_url: &str, body: &serde_json::Value) -> Result<s
         "rollover_deposit" | "get_fee_pool_info" | "get_epoch_history" |
         "get_treasury_info" | "get_alias" | "get_alias_by_address" | "get_all_aliases" |
         "heat_metrics" | "amm_quote" | "amm_pool_info" |
-        "get_orderbook_state" | "get_orderbook_info" | "get_orderbook_estimates" |
+        "get_orderbook_info" | "get_orderbook_estimates" |
         "get_fuego_price" |
-        "mint_heat" | "swap" | "add_liq" | "remove_liq" | "place_limit_order" |
+        "swap" | "add_liq" | "remove_liq" | "place_limit_order" |
         "create_cd" | "withdraw_cd" | "create_deposit" | "withdraw_deposit" => {
             client.post(format!("{}/{}", fuegod_url, method))
                 .json(&params).send().await
+                .map_err(|e| sanitize_error(&format!("fuego daemon: {}", e)))?
+        }
+        // fuegod exposes the orderbook at /getorderbook (pair + depth);
+        // the walletd method name is get_orderbook_state.
+        "get_orderbook_state" => {
+            let pair = params.get("pair").and_then(|v| v.as_u64()).unwrap_or(0);
+            let depth = params.get("depth").and_then(|v| v.as_u64()).unwrap_or(20);
+            client.post(format!("{}/getorderbook", fuegod_url))
+                .json(&serde_json::json!({ "pair": pair, "depth": depth }))
+                .send().await
                 .map_err(|e| sanitize_error(&format!("fuego daemon: {}", e)))?
         }
         _ => {
@@ -671,6 +682,7 @@ pub async fn run_server(
         .route("/get_fuego_price", get(fuegod_get))
         // Orderbook REST proxy
         .route("/get_orderbook_state", get(fuegod_get))
+        .route("/getorderbook", get(fuegod_get))
         .route("/get_orderbook_info", get(fuegod_get))
         .route("/get_orderbook_estimates", get(fuegod_get))
         // DEX/swap REST proxy (GET)

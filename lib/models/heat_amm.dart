@@ -1,244 +1,278 @@
+/// Models for the Hearth AMM / orderbook subsystem.
+///
+/// Field names and types match the fuego-suite C++ response structs exactly.
+/// See: CoreRpcServerCommandsDefinitions.h lines 2448-2497 (HeatMetrics),
+///      CoreRpcServerCommandsDefinitions.h lines 1613-1653 (PoolInfo),
+///      CoreRpcServerCommandsDefinitions.h lines 1047-1087 (OrderBookState),
+///      CoreRpcServerCommandsDefinitions.h lines 2500+ (AmmQuote).
+
+/// Response to `/get_heat_metrics`
+/// C++: COMMAND_RPC_GET_HEAT_METRICS (CoreRpcServerCommandsDefinitions.h:2448-2497)
 class HeatMetrics {
-  final String supply;
-  final String redemptionPrice;
-  final String treasury;
-  final String cdYield;
-  final String poolXfg;
-  final String poolHeat;
-  final String piTarget;
-  final double currentApy;
+  final int heatSupply;
+  final int heatOnDeposit;
+  final int burnedXfg;
+  final int totalBurnedXfg;
+  final int redemptionPriceNum;
+  final int redemptionPriceDenom;
+  final int redemptionRateNum;
+  final int redemptionRateDenom;
+  final int treasuryBalance;
+  final int treasuryCounterXfg;
+  final int swfBurnedXfgPendingHeat;
+  final int swfHeatBalance;
+  final int epochSwapFees;
+  final int vaultHeatCdFeePool;
+  final int vaultHeatLpReserve;
+  final int vaultHeatGeneral;
+  final int vaultHeatSwf;
+  final int vaultXfgCdFeePool;
+  final int vaultXfgLpReserve;
+  final int vaultXfgGeneral;
+  final String status;
 
   const HeatMetrics({
-    required this.supply,
-    required this.redemptionPrice,
-    required this.treasury,
-    required this.cdYield,
-    required this.poolXfg,
-    required this.poolHeat,
-    required this.piTarget,
-    required this.currentApy,
+    required this.heatSupply,
+    required this.heatOnDeposit,
+    required this.burnedXfg,
+    required this.totalBurnedXfg,
+    required this.redemptionPriceNum,
+    required this.redemptionPriceDenom,
+    required this.redemptionRateNum,
+    required this.redemptionRateDenom,
+    required this.treasuryBalance,
+    required this.treasuryCounterXfg,
+    required this.swfBurnedXfgPendingHeat,
+    required this.swfHeatBalance,
+    required this.epochSwapFees,
+    required this.vaultHeatCdFeePool,
+    required this.vaultHeatLpReserve,
+    required this.vaultHeatGeneral,
+    required this.vaultHeatSwf,
+    required this.vaultXfgCdFeePool,
+    required this.vaultXfgLpReserve,
+    required this.vaultXfgGeneral,
+    required this.status,
   });
 
-  factory HeatMetrics.fromJson(Map<String, dynamic> json) => HeatMetrics(
-    supply: json['supply'] as String? ?? '0',
-    redemptionPrice: json['redemption_price'] as String? ?? '0',
-    treasury: json['treasury'] as String? ?? '0',
-    cdYield: json['cd_yield'] as String? ?? '0',
-    poolXfg: json['pool_xfg'] as String? ?? '0',
-    poolHeat: json['pool_heat'] as String? ?? '0',
-    piTarget: json['pi_target'] as String? ?? '0',
-    currentApy: (json['current_apy'] as num?)?.toDouble() ?? 0,
-  );
-}
-
-class AmmQuote {
-  final String inputAmount;
-  final String outputAmount;
-  final String price;
-  final String fee;
-  final String priceImpact;
-
-  const AmmQuote({
-    required this.inputAmount,
-    required this.outputAmount,
-    required this.price,
-    required this.fee,
-    required this.priceImpact,
-  });
-
-  factory AmmQuote.fromJson(Map<String, dynamic> json) => AmmQuote(
-    inputAmount: json['input_amount']?.toString() ?? '0',
-    outputAmount:
-        json['output_amount']?.toString() ??
-        json['expected_output']?.toString() ??
-        '0',
-    price: json['price']?.toString() ?? '0',
-    fee: json['fee']?.toString() ?? '0',
-    priceImpact:
-        json['price_impact']?.toString() ??
-        (((json['price_impact_bps'] as num?)?.toDouble() ?? 0) / 10000)
-            .toString(),
-  );
-}
-
-class PoolInfo {
-  final String xfgReserve;
-  final String heatReserve;
-  final String spotPrice;
-  final String totalLpShares;
-  final String volume24h;
-
-  const PoolInfo({
-    required this.xfgReserve,
-    required this.heatReserve,
-    required this.spotPrice,
-    required this.totalLpShares,
-    this.volume24h = '0',
-  });
-
-  factory PoolInfo.fromJson(Map<String, dynamic> json) => PoolInfo(
-    xfgReserve: _wholeAmount(json['reserve_xfg']),
-    heatReserve: _wholeAmount(json['reserve_heat']),
-    spotPrice: _wholeAmount(json['spot_price']),
-    totalLpShares: json['total_lp_shares']?.toString() ?? '0',
-    volume24h:
-        json['volume_24h']?.toString() ?? json['volume24h']?.toString() ?? '0',
-  );
-
-  static String _wholeAmount(Object? value) {
-    return value?.toString() ?? '0';
+  factory HeatMetrics.fromJson(Map<String, dynamic> json) {
+    return HeatMetrics(
+      heatSupply: _u64(json['heat_supply']),
+      heatOnDeposit: _u64(json['heat_on_deposit']),
+      burnedXfg: _u64(json['burned_xfg']),
+      totalBurnedXfg: _u64(json['total_burned_xfg']),
+      redemptionPriceNum: _u64(json['redemption_price_num']),
+      redemptionPriceDenom: _u64(json['redemption_price_denom']),
+      redemptionRateNum: _u64(json['redemption_rate_num']),
+      redemptionRateDenom: _u64(json['redemption_rate_denom']),
+      treasuryBalance: _u64(json['treasury_balance']),
+      treasuryCounterXfg: _u64(json['treasury_counter_xfg']),
+      swfBurnedXfgPendingHeat: _u64(json['swf_burned_xfg_pending_heat']),
+      swfHeatBalance: _u64(json['swf_heat_balance']),
+      epochSwapFees: _u64(json['epoch_swap_fees']),
+      vaultHeatCdFeePool: _u64(json['vault_heat_cd_fee_pool']),
+      vaultHeatLpReserve: _u64(json['vault_heat_lp_reserve']),
+      vaultHeatGeneral: _u64(json['vault_heat_general']),
+      vaultHeatSwf: _u64(json['vault_heat_swf']),
+      vaultXfgCdFeePool: _u64(json['vault_xfg_cd_fee_pool']),
+      vaultXfgLpReserve: _u64(json['vault_xfg_lp_reserve']),
+      vaultXfgGeneral: _u64(json['vault_xfg_general']),
+      status: json['status'] as String? ?? '',
+    );
   }
+
+  /// Redemption price as a human-readable double (num/denom).
+  double get redemptionPriceValue =>
+      redemptionPriceDenom != 0 ? redemptionPriceNum / redemptionPriceDenom : 0.0;
+
+  /// Redemption price as a display string (num/denom).
+  String get redemptionPrice => redemptionPriceValue.toStringAsFixed(6);
+
+  /// Redemption rate as a human-readable double.
+  double get redemptionRate =>
+      redemptionRateDenom != 0 ? redemptionRateNum / redemptionRateDenom : 0.0;
+
+  /// Price per XFG in HEAT (num/denom).
+  /// When denom == 0, price is undefined.
+  String get formattedRedemptionPrice {
+    if (redemptionPriceDenom == 0) return '—';
+    return '${(redemptionPriceNum / redemptionPriceDenom).toStringAsFixed(6)} HEAT/XFG';
+  }
+
+  /// CD yield (APY) as a percent double. C++ does not populate
+  /// redemption_rate_* yet, so this is 0 until the daemon fills it.
+  double get currentApy => redemptionRate * 100;
+
+  /// HEAT in circulation (atomic units) as a display string.
+  String get supply => heatSupply.toString();
+
+  /// Treasury balance (atomic units) as a display string.
+  String get treasury => treasuryBalance.toString();
+
+  /// CD yield as a display string.
+  String get cdYield => '${currentApy.toStringAsFixed(2)}%';
+
+  /// XFG LP reserve (atomic units) as a display string.
+  String get poolXfg => vaultXfgLpReserve.toString();
+
+  /// HEAT LP reserve (atomic units) as a display string.
+  String get poolHeat => vaultHeatLpReserve.toString();
+
+  /// De-facto mint target: the current redemption price.
+  String get piTarget => formattedRedemptionPrice;
 }
 
-class LpPosition {
-  final String shares;
-  final String originalXfg;
-  final String originalHeat;
-  final String currentValueXfg;
-  final String currentValueHeat;
-  final String earningsXfg;
-  final String earningsHeat;
-
-  const LpPosition({
-    required this.shares,
-    required this.originalXfg,
-    required this.originalHeat,
-    required this.currentValueXfg,
-    required this.currentValueHeat,
-    required this.earningsXfg,
-    required this.earningsHeat,
-  });
-}
-
+/// Single level in the orderbook.
+/// C++: COMMAND_RPC_GET_ORDER_BOOK::response::OrderBookLevelJson
+/// (CoreRpcServerCommandsDefinitions.h:1047-1087)
+/// price/amount are uint64_t (JSON numbers, atomic units).
 class OrderBookLevel {
-  final double price;
-  final double amount;
-  final double total;
+  final String price;
+  final String amount;
+  final int orderCount;
 
   const OrderBookLevel({
     required this.price,
     required this.amount,
-    required this.total,
+    required this.orderCount,
   });
+
+  factory OrderBookLevel.fromJson(Map<String, dynamic> json) {
+    return OrderBookLevel(
+      price: json['price']?.toString() ?? '0',
+      amount: json['amount']?.toString() ?? '0',
+      orderCount: json['orderCount'] as int? ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'price': price,
+        'amount': amount,
+        'orderCount': orderCount,
+      };
 }
 
+/// Response to `/getorderbook`
+/// C++: COMMAND_RPC_GET_ORDER_BOOK (CoreRpcServerCommandsDefinitions.h:1047-1087)
 class OrderBookState {
-  final double clearingPrice;
-  final List<double> bidPrices;
-  final List<double> bidDepths;
-  final List<double> askPrices;
-  final List<double> askDepths;
+  final List<OrderBookLevel> bids;
+  final List<OrderBookLevel> asks;
+  final String spread;
+  final int height;
+  final String status;
 
   const OrderBookState({
-    required this.clearingPrice,
-    required this.bidPrices,
-    required this.bidDepths,
-    required this.askPrices,
-    required this.askDepths,
+    required this.bids,
+    required this.asks,
+    required this.spread,
+    required this.height,
+    required this.status,
   });
 
   factory OrderBookState.fromJson(Map<String, dynamic> json) {
-    double atomicAmount(Object? value) => value is num
-        ? value.toDouble()
-        : double.tryParse(value?.toString() ?? '') ?? 0;
-
-    final bidPrices = (json['bid_prices'] as List<dynamic>? ?? [])
-        .map(atomicAmount)
-        .toList();
-    final bidDepths = (json['bid_depths'] as List<dynamic>? ?? [])
-        .map(atomicAmount)
-        .toList();
-    final askPrices = (json['ask_prices'] as List<dynamic>? ?? [])
-        .map(atomicAmount)
-        .toList();
-    final askDepths = (json['ask_depths'] as List<dynamic>? ?? [])
-        .map(atomicAmount)
-        .toList();
+    final bidsRaw = json['bids'] as List<dynamic>? ?? [];
+    final asksRaw = json['asks'] as List<dynamic>? ?? [];
     return OrderBookState(
-      clearingPrice: atomicAmount(json['clearing_price']),
-      bidPrices: bidPrices,
-      bidDepths: bidDepths,
-      askPrices: askPrices,
-      askDepths: askDepths,
+      bids: bidsRaw
+          .map((e) => OrderBookLevel.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      asks: asksRaw
+          .map((e) => OrderBookLevel.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      spread: json['spread']?.toString() ?? '0',
+      height: _u64(json['height']),
+      status: json['status'] as String? ?? '',
     );
   }
 
-  bool get isEmpty => bidPrices.isEmpty && askPrices.isEmpty;
+  /// Best bid price (highest bid).
+  OrderBookLevel? get bestBid => bids.isNotEmpty ? bids.first : null;
+
+  /// Best ask price (lowest ask).
+  OrderBookLevel? get bestAsk => asks.isNotEmpty ? asks.first : null;
 }
 
-class FuegoPrice {
-  final double reserveXfg;
-  final double reserveHeat;
-  final double spotPrice;
-  final String xfgHeatRatio;
-  final String xfgSpotUsd;
-  final double heatPegUsd;
+/// Response to `/amm_quote`
+/// C++: COMMAND_RPC_AMM_QUOTE (CoreRpcServerCommandsDefinitions.h:2500+)
+class AmmQuote {
+  final String expectedOutput;
+  final String priceImpactBps;
+  final String fee;
+  final String status;
 
-  const FuegoPrice({
+  const AmmQuote({
+    required this.expectedOutput,
+    required this.priceImpactBps,
+    required this.fee,
+    required this.status,
+  });
+
+  factory AmmQuote.fromJson(Map<String, dynamic> json) {
+    return AmmQuote(
+      expectedOutput: json['expected_output']?.toString() ?? '0',
+      priceImpactBps: json['price_impact_bps']?.toString() ?? '0',
+      fee: json['fee']?.toString() ?? '0',
+      status: json['status'] as String? ?? '',
+    );
+  }
+
+  /// Output amount (atomic units) as a display string.
+  String get outputAmount => expectedOutput;
+
+  /// Price impact in basis points (1/100th of a percent).
+  String get priceImpact => priceImpactBps;
+}
+
+/// Response to `/amm_pool_info`
+/// C++: COMMAND_RPC_AMM_POOL_INFO (CoreRpcServerCommandsDefinitions.h:1613-1653)
+class PoolInfo {
+  final int reserveXfg;
+  final int reserveHeat;
+  final int totalLpShares;
+  final int spotPrice;
+  final int epochSwapFees;
+  final int hearthTwap;
+  final String status;
+
+  const PoolInfo({
     required this.reserveXfg,
     required this.reserveHeat,
+    required this.totalLpShares,
     required this.spotPrice,
-    required this.xfgHeatRatio,
-    required this.xfgSpotUsd,
-    required this.heatPegUsd,
+    required this.epochSwapFees,
+    required this.hearthTwap,
+    required this.status,
   });
 
-  factory FuegoPrice.fromJson(Map<String, dynamic> json) {
-    double atomicAmount(Object? value) => value is num
-        ? value.toDouble()
-        : double.tryParse(value?.toString() ?? '') ?? 0;
-
-    return FuegoPrice(
-      reserveXfg: atomicAmount(json['reserve_xfg']),
-      reserveHeat: atomicAmount(json['reserve_heat']),
-      spotPrice: atomicAmount(json['spot_price']),
-      xfgHeatRatio: json['xfg_heat_ratio']?.toString() ?? '0',
-      xfgSpotUsd: json['xfg_spot_usd']?.toString() ?? '0',
-      heatPegUsd: atomicAmount(json['heat_peg_usd']),
+  factory PoolInfo.fromJson(Map<String, dynamic> json) {
+    return PoolInfo(
+      reserveXfg: _u64(json['reserve_xfg']),
+      reserveHeat: _u64(json['reserve_heat']),
+      totalLpShares: _u64(json['total_lp_shares']),
+      spotPrice: _u64(json['spot_price']),
+      epochSwapFees: _u64(json['epoch_swap_fees']),
+      hearthTwap: _u64(json['hearth_twap']),
+      status: json['status'] as String? ?? '',
     );
   }
+
+  /// Spot price (HEAT per XFG, atomic units) as a display string.
+  String get price => spotPrice.toString();
+
+  /// XFG reserve (atomic units) as a display string.
+  String get xfgBalance => reserveXfg.toString();
+
+  /// HEAT reserve (atomic units) as a display string.
+  String get heatBalance => reserveHeat.toString();
+
+  /// Total LP shares as a display string.
+  String get heatTotalSupply => totalLpShares.toString();
+
+  /// Total liquidity value in HEAT units.
+  String get totalLiquidity => totalLpShares.toString();
 }
 
-class OrderBook {
-  final List<OrderBookLevel> asks;
-  final List<OrderBookLevel> bids;
-  final double lastPrice;
-
-  const OrderBook({
-    required this.asks,
-    required this.bids,
-    required this.lastPrice,
-  });
-
-  factory OrderBook.fromDaemon(OrderBookState state) {
-    double cumulative = 0;
-    final asks = <OrderBookLevel>[];
-    for (var i = 0; i < state.askPrices.length; i++) {
-      cumulative += state.askDepths[i];
-      asks.add(
-        OrderBookLevel(
-          price: state.askPrices[i],
-          amount: state.askDepths[i],
-          total: cumulative,
-        ),
-      );
-    }
-    cumulative = 0;
-    final bids = <OrderBookLevel>[];
-    for (var i = 0; i < state.bidPrices.length; i++) {
-      cumulative += state.bidDepths[i];
-      bids.add(
-        OrderBookLevel(
-          price: state.bidPrices[i],
-          amount: state.bidDepths[i],
-          total: cumulative,
-        ),
-      );
-    }
-    return OrderBook(
-      asks: asks.reversed.toList(),
-      bids: bids,
-      lastPrice: state.clearingPrice,
-    );
-  }
+int _u64(Object? value) {
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '') ?? 0;
 }

@@ -362,7 +362,7 @@ class _HomeScreenState extends State<HomeScreen> {
         String? miningHashrate;
         Color statusColor;
         if (!miningSupported) {
-          statusText = 'Pool mining unavailable on iOS';
+          statusText = 'Pool mining unavailable on iOS due to Appstore policy';
           statusColor = AppTheme.textMuted;
         } else {
           switch (mining.status) {

@@ -9,8 +9,7 @@ class HearthState {
   final bool isLoading;
   final PoolInfo? pool;
   final AmmQuote? quote;
-  final OrderBook? orderBook;
-  final FuegoPrice? fuegoPrice;
+  final OrderBookState? orderBookState;
   final OrderType orderType;
   final String? error;
 
@@ -18,8 +17,7 @@ class HearthState {
     this.isLoading = false,
     this.pool,
     this.quote,
-    this.orderBook,
-    this.fuegoPrice,
+    this.orderBookState,
     this.orderType = OrderType.market,
     this.error,
   });
@@ -28,16 +26,14 @@ class HearthState {
     bool? isLoading,
     PoolInfo? pool,
     AmmQuote? quote,
-    OrderBook? orderBook,
-    FuegoPrice? fuegoPrice,
+    OrderBookState? orderBookState,
     OrderType? orderType,
     String? error,
   }) => HearthState(
     isLoading: isLoading ?? this.isLoading,
     pool: pool ?? this.pool,
     quote: quote,
-    orderBook: orderBook ?? this.orderBook,
-    fuegoPrice: fuegoPrice ?? this.fuegoPrice,
+    orderBookState: orderBookState ?? this.orderBookState,
     orderType: orderType ?? this.orderType,
     error: error,
   );
@@ -51,23 +47,13 @@ class HearthCubit extends Cubit<HearthState> {
   Future<void> loadPool() async {
     emit(state.copyWith(isLoading: true));
     try {
-      final results = await Future.wait([
-        _daemon.getPoolInfo(),
-        _daemon.getOrderbookState(),
-        _daemon.getFuegoPrice(),
-      ]);
-      final pool = results[0] as PoolInfo;
-      final orderbookState = results[1] as OrderBookState;
-      final fuegoPrice = results[2] as FuegoPrice;
-      final orderBook = orderbookState.isEmpty
-          ? null
-          : OrderBook.fromDaemon(orderbookState);
+      final pool = await _daemon.getPoolInfo();
+      final orderbookState = await _daemon.getOrderbookState();
       emit(
         state.copyWith(
           isLoading: false,
           pool: pool,
-          orderBook: orderBook,
-          fuegoPrice: fuegoPrice,
+          orderBookState: orderbookState,
         ),
       );
     } catch (e) {
@@ -129,10 +115,5 @@ class HearthCubit extends Cubit<HearthState> {
       minXfg: minXfg,
       minHeat: minHeat,
     );
-  }
-
-  @override
-  Future<void> close() {
-    return super.close();
   }
 }
