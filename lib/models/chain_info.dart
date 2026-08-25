@@ -143,6 +143,27 @@ class ChainInfo {
     'ZEC': {'type': 'UTXO', 'wired': 'false'},
   };
 
+  /// PTLC descriptor per chain (point commitment / adaptor).
+  static const Map<String, String> ptlc = {
+    'BTC': 'P2WSH point commitment (Taproot scriptless Phase2)',
+    'LTC': 'P2WSH point commitment',
+    'SOL': 'ed25519 adaptor ClaimPtlc (Phase4) — now BRIDGE',
+    'ETH': 'HashedTimelock + PtlcLocked event (BRIDGE)',
+    'ARB': 'HashedTimelock + PtlcLocked event (BRIDGE)',
+    'BASE': 'HashedTimelock + PtlcLocked event (BRIDGE)',
+    'BNB': 'HashedTimelock + PtlcLocked event (BRIDGE)',
+    'POLY': 'HashedTimelock + PtlcLocked event (BRIDGE)',
+    'BCH': 'HashedTimelock + DLEQ bridge',
+    'XMR': 'native adaptor (no HTLC)',
+    'ZANO': 'native adaptor (no HTLC)',
+    'XFG': 'MuSig2 adaptor T=t*G (always PTLC)',
+  };
+
+  /// Chains where pure PTLC (point) is supported (others use BRIDGE).
+  static const Set<String> supportsPtlc = {'BTC', 'LTC', 'XMR', 'ZANO'};
+
+  static bool isPtlcSupported(String ticker) => supportsPtlc.contains(ticker);
+
   static const Map<String, Color> colors = {
     'BTC': Color(0xFFF7931A),
     'LTC': Color(0xFFBFBBBB),

@@ -44,6 +44,11 @@ class DexState {
   final bool isBalanceLoading;
   final String? htlcTxHash;
 
+  // PTLC (new)
+  final bool requirePtlc;
+  final String lastLockType;
+  final String lastPtlcPoint;
+
   const DexState({
     this.isLoading = false,
     this.error,
@@ -65,6 +70,9 @@ class DexState {
     this.solBalance = 0.0,
     this.isBalanceLoading = false,
     this.htlcTxHash,
+    this.requirePtlc = false,
+    this.lastLockType = 'HTLC',
+    this.lastPtlcPoint = '',
   });
 
   DexState copyWith({
@@ -88,6 +96,9 @@ class DexState {
     double? solBalance,
     bool? isBalanceLoading,
     String? htlcTxHash,
+    bool? requirePtlc,
+    String? lastLockType,
+    String? lastPtlcPoint,
   }) => DexState(
     isLoading: isLoading ?? this.isLoading,
     error: error,
@@ -109,6 +120,9 @@ class DexState {
     solBalance: solBalance ?? this.solBalance,
     isBalanceLoading: isBalanceLoading ?? this.isBalanceLoading,
     htlcTxHash: htlcTxHash ?? this.htlcTxHash,
+    requirePtlc: requirePtlc ?? this.requirePtlc,
+    lastLockType: lastLockType ?? this.lastLockType,
+    lastPtlcPoint: lastPtlcPoint ?? this.lastPtlcPoint,
   );
 }
 
@@ -142,19 +156,49 @@ class DexCubit extends Cubit<DexState> {
 
   void switchEvmChain(String chain) {
     if (_web3 == null) return;
-    switch (chain.toLowerCase()) {
+    final k = chain.toLowerCase();
+    // Use per-chain routing — setEthRpc only affects ETH mainnet, not L2s
+    switch (k) {
       case 'arb':
-        _web3!.setEthRpc(Web3MultiChainService.defaultArbRpc);
+        _web3!.setEvmRpc('arb', Web3MultiChainService.defaultArbRpc);
+        break;
       case 'base':
-        _web3!.setEthRpc(Web3MultiChainService.defaultBaseRpc);
+        _web3!.setEvmRpc('base', Web3MultiChainService.defaultBaseRpc);
+        break;
       case 'bsc':
-        _web3!.setEthRpc(Web3MultiChainService.defaultBscRpc);
+        _web3!.setEvmRpc('bsc', Web3MultiChainService.defaultBscRpc);
+        break;
       case 'poly':
-        _web3!.setEthRpc(Web3MultiChainService.defaultPolyRpc);
+        _web3!.setEvmRpc('poly', Web3MultiChainService.defaultPolyRpc);
+        break;
       case 'eth':
       default:
-        _web3!.setEthRpc(Web3MultiChainService.defaultEthRpc);
+        _web3!.setEvmRpc('eth', Web3MultiChainService.defaultEthRpc);
+        break;
     }
+  }
+
+  /// ERC20 helpers delegated to Web3MultiChainService.erc20.
+  Future<BigInt> erc20BalanceOf({required String chain, required String tokenAddress, required String holder}) =>
+      _web3!.getErc20Balance(holderAddress: holder, tokenAddress: tokenAddress, chain: chain);
+
+  Future<BigInt> erc20Allowance({required String chain, required String tokenAddress, required String owner, required String spender}) =>
+      _web3!.getErc20Allowance(owner: owner, spender: spender, tokenAddress: tokenAddress, chain: chain);
+
+  /// Check allowance and approve HTLC spender if needed before a token lock.
+  /// Returns txHash if approval sent, 'already-approved' if sufficient, throws on failure.
+  Future<String> ensureErc20Allowance({
+    required String chain,
+    required String tokenAddress,
+    required String owner,
+    required String spender,
+    required String privateKey,
+    required BigInt amountBaseUnits,
+  }) async {
+    if (_web3 == null) throw StateError('Web3 not configured');
+    final current = await erc20Allowance(chain: chain, tokenAddress: tokenAddress, owner: owner, spender: spender);
+    if (current >= amountBaseUnits) return 'already-approved';
+    return _web3!.approveErc20(privateKey: privateKey, tokenAddress: tokenAddress, spender: spender, amountBaseUnits: amountBaseUnits, chain: chain);
   }
 
   Future<void> init({String host = '127.0.0.1', int port = 18189}) async {
@@ -259,6 +303,9 @@ class DexCubit extends Cubit<DexState> {
 
   void selectChain(ChainTypeSdk chain) =>
       emit(state.copyWith(selectedChain: chain));
+
+  /// Toggle PTLC requirement (no downgrade to HTLC). Persists in state only.
+  void toggleRequirePtlc(bool v) => emit(state.copyWith(requirePtlc: v));
 
   /// Select a pair by chain ticker (e.g. "BTC"); no-op for unknown tickers.
   void selectPairById(String ticker) {
@@ -769,6 +816,7 @@ class DexCubit extends Cubit<DexState> {
         // Pin the daemon's peer connection to the offer's maker key so a
         // relay-supplied endpoint cannot redirect the fill (H13).
         expectedPeerPubkey: expectedPeerPubkey,
+        requirePtlc: state.requirePtlc,
       );
       final accept = await _swapClient!.acceptSwap(swapId);
       emit(
@@ -1051,6 +1099,10 @@ class DexCubit extends Cubit<DexState> {
     try {
       final swaps = await _swapClient!.listSwaps();
       emit(state.copyWith(spvSwaps: swaps, error: null));
+      if (swaps.isNotEmpty) {
+        final latest = swaps.first;
+        emit(state.copyWith(lastLockType: latest.lockTypeName, lastPtlcPoint: latest.ptlcPoint));
+      }
     } catch (e) {
       debugPrint('DexCubit: loadSpvSwaps failed: $e');
     }
@@ -1091,6 +1143,7 @@ class DexCubit extends Cubit<DexState> {
   }
 
   /// Direct peer-to-peer atomic swap via the local xfg-swapd (any chain).
+  /// `requirePtlc` enforces PTLC (no HTLC fallback) — daemon aborts if CTR cannot do PTLC.
   Future<void> initiateCrossChainSwap({
     required String pair,
     required int xfgAmount,
@@ -1098,6 +1151,7 @@ class DexCubit extends Cubit<DexState> {
     required String peer,
     String role = 'alice',
     String? expectedPeerPubkey,
+    bool? requirePtlc,
   }) async {
     if (_swapClient == null) {
       emit(state.copyWith(error: 'Swap daemon not connected'));
@@ -1112,6 +1166,7 @@ class DexCubit extends Cubit<DexState> {
         peer: peer,
         role: role,
         expectedPeerPubkey: expectedPeerPubkey,
+        requirePtlc: requirePtlc ?? state.requirePtlc,
       );
       emit(
         state.copyWith(

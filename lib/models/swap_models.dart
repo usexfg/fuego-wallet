@@ -35,6 +35,34 @@ enum SwapPairSdk {
   }
 }
 
+/// PTLC lock type (mirrors Rust SwapLockType / C++ SwapLockType).
+/// htlc=0 legacy hash, ptlc=1 pure point, bridge=2 PTLC on XFG + HTLC on CTR.
+enum SwapLockTypeSdk {
+  htlc(0, 'HTLC'),
+  ptlc(1, 'PTLC'),
+  bridge(2, 'BRIDGE');
+
+  final int id;
+  final String label;
+  const SwapLockTypeSdk(this.id, this.label);
+
+  static SwapLockTypeSdk fromId(int id) => SwapLockTypeSdk.values.firstWhere(
+        (v) => v.id == id,
+        orElse: () => SwapLockTypeSdk.htlc,
+      );
+
+  static SwapLockTypeSdk fromString(String s) {
+    final u = s.toUpperCase();
+    if (u == 'PTLC') return ptlc;
+    if (u == 'BRIDGE' || u == 'PTLC_HTLC_BRIDGE') return bridge;
+    return htlc;
+  }
+
+  bool get isPtlcPure => this == ptlc;
+  bool get isBridge => this == bridge;
+  bool get isHtlc => this == htlc;
+}
+
 /// Supported chains for SPV verification.
 enum ChainTypeSdk {
   fuego(0, 'XFG', 'Fuego'),

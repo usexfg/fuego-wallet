@@ -71,6 +71,9 @@ class SwapDaemonClient {
     String? hashLock,
     String? preSig,
     String? ctrAddress,
+    bool requirePtlc = false,
+    String? ptlcPoint,
+    int? lockType,
   }) async {
     final params = <String, dynamic>{
       'pair': pair,
@@ -91,6 +94,9 @@ class SwapDaemonClient {
     if (preSig != null && preSig.isNotEmpty) params['pre_sig'] = preSig;
     if (ctrAddress != null && ctrAddress.isNotEmpty)
       params['ctr_address'] = ctrAddress;
+    if (requirePtlc) params['require_ptlc'] = true;
+    if (ptlcPoint != null && ptlcPoint.isNotEmpty) params['ptlc_point'] = ptlcPoint;
+    if (lockType != null) params['lock_type'] = lockType;
     final result = await _rpc('initiate_swap', params) as Map<String, dynamic>;
     return result['swap_id'] as String;
   }
@@ -150,6 +156,10 @@ class SwapInfo {
   final int createdAt;
   final int updatedAt;
   final int? timeoutHeight;
+  final int lockType;
+  final String lockTypeName;
+  final String ptlcPoint;
+  final bool requirePtlc;
 
   SwapInfo({
     required this.swapId,
@@ -161,6 +171,10 @@ class SwapInfo {
     required this.createdAt,
     required this.updatedAt,
     this.timeoutHeight,
+    this.lockType = 0,
+    this.lockTypeName = 'HTLC',
+    this.ptlcPoint = '',
+    this.requirePtlc = false,
   });
 
   factory SwapInfo.fromJson(Map<String, dynamic> j) {
@@ -178,6 +192,30 @@ class SwapInfo {
         stateName = 'UNKNOWN';
       }
     }
+    // PTLC lockType: daemon sends int lockType (0 HTLC,1 PTLC,2 BRIDGE) and optionally lockTypeName/ptlcPoint
+    int lockTypeVal = 0;
+    String lockTypeNameVal = 'HTLC';
+    if (params.containsKey('lockType') && params['lockType'] is num) {
+      lockTypeVal = (params['lockType'] as num).toInt();
+    } else if (j.containsKey('lockType') && j['lockType'] is num) {
+      lockTypeVal = (j['lockType'] as num).toInt();
+    } else if (params.containsKey('lock_type') && params['lock_type'] is num) {
+      lockTypeVal = (params['lock_type'] as num).toInt();
+    } else if (j.containsKey('lock_type') && j['lock_type'] is num) {
+      lockTypeVal = (j['lock_type'] as num).toInt();
+    }
+    if (params.containsKey('lockTypeName') && params['lockTypeName'] is String) {
+      lockTypeNameVal = params['lockTypeName'] as String;
+    } else if (j.containsKey('lockTypeName') && j['lockTypeName'] is String) {
+      lockTypeNameVal = j['lockTypeName'] as String;
+    } else if (params.containsKey('lock_type_name') && params['lock_type_name'] is String) {
+      lockTypeNameVal = params['lock_type_name'] as String;
+    } else {
+      // derive from int
+      if (lockTypeVal == 1) lockTypeNameVal = 'PTLC';
+      else if (lockTypeVal == 2) lockTypeNameVal = 'BRIDGE';
+      else lockTypeNameVal = 'HTLC';
+    }
     return SwapInfo(
       swapId: params['swapId'] as String? ?? j['swapId'] as String? ?? '',
       state: stateName,
@@ -188,6 +226,10 @@ class SwapInfo {
       createdAt: (j['createdAt'] as num?)?.toInt() ?? 0,
       updatedAt: (j['updatedAt'] as num?)?.toInt() ?? 0,
       timeoutHeight: (params['xfgTimeoutHeight'] as num?)?.toInt(),
+      lockType: lockTypeVal,
+      lockTypeName: lockTypeNameVal,
+      ptlcPoint: params['ptlcPoint'] as String? ?? params['ptlc_point'] as String? ?? j['ptlcPoint'] as String? ?? j['ptlc_point'] as String? ?? '',
+      requirePtlc: params['requirePtlc'] as bool? ?? params['require_ptlc'] as bool? ?? j['requirePtlc'] as bool? ?? j['require_ptlc'] as bool? ?? false,
     );
   }
 
@@ -208,6 +250,11 @@ class SwapInfo {
     };
     return names[pair] ?? 'PAIR_$pair';
   }
+
+  String get lockTypeLabel => lockTypeName;
+  bool get isPtlc => lockType == 1;
+  bool get isBridge => lockType == 2;
+  bool get isHtlc => lockType == 0;
 
   // Numeric SwapState ids (XfgSwap::SwapState) → names. Kept in sync with the
   // C++ SwapTypes.h enum; terminal names match the daemon's isTerminal set.

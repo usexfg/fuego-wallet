@@ -7,10 +7,13 @@ import '../../bloc/dex/dex_cubit.dart';
 import '../../models/candlestick.dart';
 import '../../models/swap_models.dart';
 import '../../models/chain_info.dart';
+import '../../models/erc20_token.dart';
 import 'peer_swap_screen.dart';
 import '../../services/price_history_service.dart';
+import '../../services/web3_multi_chain_service.dart';
 import '../../utils/theme.dart';
 import '../../widgets/fuego_chart.dart';
+import '../tokens/token_overview_screen.dart';
 
 class DexScreen extends StatefulWidget {
   const DexScreen({super.key});
@@ -35,6 +38,12 @@ class _DexScreenState extends State<DexScreen>
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => context.read<DexCubit>().init(),
     );
+    _takerKeyController.addListener(_onTakerKeyChanged);
+  }
+
+  void _onTakerKeyChanged() {
+    // Rebuild ERC20 balance tiles when key changes; throttle via setState
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadPriceData() async {
@@ -44,6 +53,7 @@ class _DexScreenState extends State<DexScreen>
 
   @override
   void dispose() {
+    _takerKeyController.removeListener(_onTakerKeyChanged);
     _tabController.dispose();
     _amountController.dispose();
     _rateController.dispose();
@@ -279,6 +289,43 @@ class _DexScreenState extends State<DexScreen>
             ),
           ),
         ),
+        const SizedBox(width: 4),
+        // PTLC lockType badge
+        Semantics(
+          label: 'Lock type ${state.lastLockType}',
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: (state.lastLockType == 'PTLC'
+                      ? const Color(0xFF2E7D32)
+                      : state.lastLockType == 'BRIDGE'
+                          ? const Color(0xFFEF6C00)
+                          : const Color(0xFF6B7280))
+                  .withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(
+                color: state.lastLockType == 'PTLC'
+                    ? const Color(0xFF2E7D32)
+                    : state.lastLockType == 'BRIDGE'
+                        ? const Color(0xFFEF6C00)
+                        : const Color(0xFF6B7280),
+                width: 0.8,
+              ),
+            ),
+            child: Text(
+              state.lastLockType.isEmpty ? 'HTLC' : state.lastLockType,
+              style: TextStyle(
+                color: state.lastLockType == 'PTLC'
+                    ? const Color(0xFF2E7D32)
+                    : state.lastLockType == 'BRIDGE'
+                        ? const Color(0xFFEF6C00)
+                        : const Color(0xFF6B7280),
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
         const Spacer(),
         IconButton(
           icon: const Icon(
@@ -288,6 +335,15 @@ class _DexScreenState extends State<DexScreen>
           ),
           onPressed: _showChainInfo,
           tooltip: 'Chain details',
+        ),
+        IconButton(
+          icon: const Icon(
+            Icons.verified_outlined,
+            size: 18,
+            color: AppTheme.primaryColor,
+          ),
+          onPressed: _showPtlcGuide,
+          tooltip: 'PTLC guide',
         ),
         const SizedBox(width: 4),
         if (!state.isConnected)
@@ -455,6 +511,27 @@ class _DexScreenState extends State<DexScreen>
                                           ),
                                         ),
                                       ),
+                                    const SizedBox(width: 4),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                      decoration: BoxDecoration(
+                                        color: (ChainInfo.isPtlcSupported(ticker)
+                                                ? const Color(0xFF2E7D32)
+                                                : const Color(0xFFEF6C00))
+                                            .withValues(alpha: 0.13),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        ChainInfo.isPtlcSupported(ticker) ? 'PTLC' : 'BRIDGE',
+                                        style: TextStyle(
+                                          color: ChainInfo.isPtlcSupported(ticker)
+                                              ? const Color(0xFF2E7D32)
+                                              : const Color(0xFFEF6C00),
+                                          fontSize: 8,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
                                   ],
                                 ),
                                 const SizedBox(height: 2),
@@ -467,6 +544,19 @@ class _DexScreenState extends State<DexScreen>
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
+                                if (ChainInfo.ptlc[ticker] != null) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    ChainInfo.ptlc[ticker]!,
+                                    style: const TextStyle(
+                                      color: AppTheme.textMuted,
+                                      fontSize: 10,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
                               ],
                             ),
                           ),
@@ -987,6 +1077,61 @@ class _DexScreenState extends State<DexScreen>
               ),
               style: const TextStyle(color: AppTheme.textPrimary),
             ),
+          const SizedBox(height: 12),
+          if (state.selectedChain.isEvm) _buildErc20Balances(state),
+          const SizedBox(height: 12),
+          // PTLC toggle
+          Semantics(
+            label: 'Require PTLC toggle',
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppTheme.surfaceColor.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppTheme.surfaceColor),
+              ),
+              child: SwitchListTile(
+                title: const Text(
+                  'Require PTLC (no HTLC fallback)',
+                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(
+                  ChainInfo.isPtlcSupported(state.selectedPair.ticker)
+                      ? 'Enforces per-hop decorrelation + scriptless'
+                      : 'This chain is HTLC-only — will abort if on',
+                  style: const TextStyle(color: AppTheme.textMuted, fontSize: 10),
+                ),
+                value: state.requirePtlc,
+                activeThumbColor: AppTheme.primaryColor,
+                onChanged: (v) => context.read<DexCubit>().toggleRequirePtlc(v),
+              ),
+            ),
+          ),
+          if (state.requirePtlc && !ChainInfo.isPtlcSupported(state.selectedPair.ticker) && state.selectedPair.ticker != 'XMR' && state.selectedPair.ticker != 'ZANO')
+            const Padding(
+              padding: EdgeInsets.only(top: 6, left: 4),
+              child: Text(
+                'This chain will abort when Require PTLC is on — turn it off for BRIDGE mode.',
+                style: TextStyle(color: AppTheme.errorColor, fontSize: 10),
+              ),
+            ),
+          if (state.lastPtlcPoint.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8, left: 4, right: 4),
+              child: Row(
+                children: [
+                  const Icon(Icons.key, size: 12, color: AppTheme.textMuted),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      'T: ${state.lastPtlcPoint}  •  ${state.lastLockType}',
+                      style: const TextStyle(color: AppTheme.textMuted, fontSize: 9, fontFamily: 'monospace'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           const SizedBox(height: 20),
           Row(
             children: [
@@ -1234,6 +1379,70 @@ class _DexScreenState extends State<DexScreen>
     if (!isMonero) _takerKeyController.clear();
   }
 
+  // ── ERC20 balances inline (EVM chains) ──────────────────────────────
+  Widget _buildErc20Balances(DexState state) {
+    final chainKey = _evmChainKey(state.selectedChain);
+    if (chainKey == null) return const SizedBox.shrink();
+    final tokens = Erc20Registry.forChain(chainKey);
+    if (tokens.isEmpty) return const SizedBox.shrink();
+    final derived = _deriveEvmAddress(_takerKeyController.text.trim());
+    final hasAddr = derived != null && derived.isNotEmpty;
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceColor.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppTheme.surfaceColor),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.account_balance_wallet, size: 14, color: AppTheme.textMuted),
+              const SizedBox(width: 6),
+              Text('Stablecoins on ${chainKey.toUpperCase()}', style: const TextStyle(color: AppTheme.textPrimary, fontSize: 12, fontWeight: FontWeight.w600)),
+              const Spacer(),
+              GestureDetector(
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TokenOverviewScreen())),
+                child: const Text('Manage →', style: TextStyle(color: AppTheme.primaryColor, fontSize: 11, fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (!hasAddr)
+            const Text('Enter your EVM private key above to preview USDT/USDC balances (key stays local).', style: TextStyle(color: AppTheme.textMuted, fontSize: 10)),
+          if (hasAddr)
+            ...tokens.map((t) => _Erc20BalanceTile(chainKey: chainKey, token: t, holder: derived)),
+        ],
+      ),
+    );
+  }
+
+  String? _evmChainKey(ChainTypeSdk c) {
+    switch (c) {
+      case ChainTypeSdk.ethereum: return 'eth';
+      case ChainTypeSdk.arbitrum: return 'arb';
+      case ChainTypeSdk.base: return 'base';
+      case ChainTypeSdk.bnb: return 'bsc';
+      case ChainTypeSdk.polygon: return 'poly';
+      default: return null;
+    }
+  }
+
+  String? _deriveEvmAddress(String pk) {
+    final clean = pk.startsWith('0x') ? pk.substring(2) : pk;
+    if (!RegExp(r'^[0-9a-fA-F]{64}$').hasMatch(clean)) return null;
+    try {
+      // Minimal import-free derivation via web3dart EthPrivateKey is available
+      // through the service layer; for UI preview we do a lightweight parse
+      // and fall back to null on failure.
+      return Web3MultiChainService.deriveAddressFromPrivateKey(pk);
+    } catch (_) {
+      return null;
+    }
+  }
+
   // ── Chain Info Dialog ────────────────────────────────────────────
 
   void _showChainInfo() {
@@ -1468,6 +1677,146 @@ class _DexScreenState extends State<DexScreen>
           ),
         ],
       ),
+    );
+  }
+
+  void _showPtlcGuide() {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.verified_outlined, color: Color(0xFF2E7D32), size: 20),
+            SizedBox(width: 8),
+            Text('PTLC — Point Locks', style: TextStyle(color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w700)),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _ptlcBullet('PTLC', 'Point T=t·G, sig s\'=k+e·sk+t, extract t=s\'-s. Per-hop T_i decorrelated.', const Color(0xFF2E7D32)),
+              _ptlcBullet('BRIDGE', 'XFG PTLC + CTR HTLC H(t) + DLEQ Q=t·escrowPub. Current default.', const Color(0xFFEF6C00)),
+              _ptlcBullet('HTLC', 'Legacy hash only. Linkable.', const Color(0xFF6B7280)),
+              const SizedBox(height: 12),
+              const Text('Require PTLC ON aborts if chain cannot do PTLC. Leave OFF for BRIDGE (works everywhere).', style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: () => launchUrl(Uri.parse('https://github.com/usexfg/fuego-suite/blob/master/docs/PTLC_USER_WALKTHROUGH.md')),
+                child: const Text('Open full walkthrough →', style: TextStyle(color: AppTheme.primaryColor, fontSize: 12, fontWeight: FontWeight.w600, decoration: TextDecoration.underline)),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close', style: TextStyle(color: AppTheme.primaryColor)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _ptlcBullet(String label, String text, Color color) => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+              decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(4), border: Border.all(color: color, width: 0.7)),
+              child: Text(label, style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w700)),
+            ),
+            const SizedBox(width: 8),
+            Expanded(child: Text(text, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11))),
+          ],
+        ),
+      );
+}
+
+class _Erc20BalanceTile extends StatefulWidget {
+  final String chainKey;
+  final Erc20Token token;
+  final String holder;
+  const _Erc20BalanceTile({required this.chainKey, required this.token, required this.holder});
+
+  @override
+  State<_Erc20BalanceTile> createState() => _Erc20BalanceTileState();
+}
+
+class _Erc20BalanceTileState extends State<_Erc20BalanceTile> {
+  late Future<String> _future;
+  Web3MultiChainService? _w3;
+
+  @override
+  void initState() {
+    super.initState();
+    _w3 = Web3MultiChainService();
+    _future = _load();
+  }
+
+  Future<String> _load() async {
+    try {
+      final raw = await _w3!.getErc20Balance(holderAddress: widget.holder, tokenAddress: widget.token.address, chain: widget.chainKey);
+      int dec = widget.token.decimals;
+      try {
+        dec = await _w3!.getErc20Decimals(tokenAddress: widget.token.address, chain: widget.chainKey);
+      } catch (_) {}
+      final disp = Erc20Amount.fromBaseUnits(raw, dec);
+      return disp;
+    } catch (e) {
+      return '—';
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _Erc20BalanceTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.holder != widget.holder || oldWidget.token != widget.token || oldWidget.chainKey != widget.chainKey) {
+      _future = _load();
+    }
+  }
+
+  @override
+  void dispose() {
+    _w3?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<String>(
+      future: _future,
+      builder: (context, snap) {
+        final bal = snap.data ?? '...';
+        final isLoading = snap.connectionState == ConnectionState.waiting;
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 3),
+          child: Row(
+            children: [
+              Container(
+                width: 6, height: 6,
+                decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.7), shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 8),
+              Text('${widget.token.symbol}', style: const TextStyle(color: AppTheme.textPrimary, fontSize: 11, fontWeight: FontWeight.w600)),
+              const SizedBox(width: 6),
+              Expanded(
+                child: SelectableText(widget.token.address, style: const TextStyle(color: AppTheme.textMuted, fontSize: 9, fontFamily: 'monospace')),
+              ),
+              const SizedBox(width: 8),
+              if (isLoading)
+                const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 1.5, color: AppTheme.textMuted))
+              else
+                Text(bal, style: TextStyle(color: AppTheme.textPrimary, fontSize: 12, fontFamily: AppTheme.numberFontFamily, fontWeight: FontWeight.w600)),
+            ],
+          ),
+        );
+      },
     );
   }
 }
