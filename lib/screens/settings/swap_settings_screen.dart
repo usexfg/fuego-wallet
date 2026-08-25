@@ -47,7 +47,6 @@ class _SwapSettingsScreenState extends State<SwapSettingsScreen> {
   final Map<String, TextEditingController> _wifControllers = {};
   final Map<String, TextEditingController> _serverControllers = {};
   final Map<String, List<String>> _serverLists = {};
-  final Map<String, bool> _chainEnabled = {};
   final Map<String, TextEditingController> _rpcControllers = {};
   bool _swapdRunning = false;
   bool _isStarting = false;
@@ -60,19 +59,16 @@ class _SwapSettingsScreenState extends State<SwapSettingsScreen> {
       _wifControllers[chain] = TextEditingController();
       _serverControllers[chain] = TextEditingController();
       _serverLists[chain] = List<String>.from(_defaultServers[chain] ?? []);
-      _chainEnabled[chain] = false;
     }
     for (final chain in ['eth', 'arb', 'base', 'bsc', 'poly', 'sol']) {
       _wifControllers[chain] = TextEditingController();
       _serverControllers[chain] = TextEditingController();
       _serverLists[chain] = [];
-      _chainEnabled[chain] = false;
       if (_defaultRpcUrls.containsKey(chain)) _rpcControllers[chain] = TextEditingController(text: _defaultRpcUrls[chain]!);
     }
     _wifControllers['xmr'] = TextEditingController();
     _rpcControllers['xmr_daemon'] = TextEditingController(text: '127.0.0.1');
     _rpcControllers['xmr_wallet'] = TextEditingController(text: '127.0.0.1');
-    _chainEnabled['xmr'] = false;
     _loadSavedConfig();
   }
 
@@ -88,18 +84,18 @@ class _SwapSettingsScreenState extends State<SwapSettingsScreen> {
   Future<void> _loadSavedConfig() async {
     for (final chain in ['btc', 'ltc', 'kmd', 'bch', 'dcr']) {
       final wif = await _secureStorage.read(key: 'swap_wif_$chain');
-      if (wif != null && wif.isNotEmpty) { _wifControllers[chain]!.text = wif; _chainEnabled[chain] = true; }
+      if (wif != null && wif.isNotEmpty) { _wifControllers[chain]!.text = wif; }
       final serversStr = await _secureStorage.read(key: 'swap_servers_$chain');
       if (serversStr != null && serversStr.isNotEmpty) _serverLists[chain] = serversStr.split(',').where((s) => s.isNotEmpty).toList();
     }
     for (final chain in ['eth', 'arb', 'base', 'bsc', 'poly', 'sol']) {
       final wif = await _secureStorage.read(key: 'swap_wif_$chain');
-      if (wif != null && wif.isNotEmpty) { _wifControllers[chain]!.text = wif; _chainEnabled[chain] = true; }
+      if (wif != null && wif.isNotEmpty) { _wifControllers[chain]!.text = wif; }
       final rpcUrl = await _secureStorage.read(key: 'swap_rpc_url_$chain');
       if (rpcUrl != null && rpcUrl.isNotEmpty) _rpcControllers[chain]!.text = rpcUrl;
     }
     final xmrWif = await _secureStorage.read(key: 'swap_wif_xmr');
-    if (xmrWif != null && xmrWif.isNotEmpty) { _wifControllers['xmr']!.text = xmrWif; _chainEnabled['xmr'] = true; }
+    if (xmrWif != null && xmrWif.isNotEmpty) { _wifControllers['xmr']!.text = xmrWif; }
     final xmrDaemon = await _secureStorage.read(key: 'swap_xmr_daemon_host');
     if (xmrDaemon != null) _rpcControllers['xmr_daemon']!.text = xmrDaemon;
     final xmrWallet = await _secureStorage.read(key: 'swap_xmr_wallet_host');
@@ -237,7 +233,7 @@ class _SwapSettingsScreenState extends State<SwapSettingsScreen> {
   ]));
 
   Widget _buildChainCard(String chain) {
-    final info = _chainInfo[chain]!; final enabled = _chainEnabled[chain]!; final hasWif = _wifControllers[chain]!.text.isNotEmpty;
+    final info = _chainInfo[chain]!; final hasWif = _wifControllers[chain]!.text.isNotEmpty; final enabled = hasWif;
     return Container(margin: const EdgeInsets.only(bottom: 12), decoration: BoxDecoration(color: AppTheme.cardColor, borderRadius: BorderRadius.circular(12), border: Border.all(color: enabled ? AppTheme.primaryColor.withOpacity(0.5) : AppTheme.textSecondary.withOpacity(0.2))), child: Theme(data: Theme.of(context).copyWith(dividerColor: Colors.transparent), child: ExpansionTile(
       tilePadding: const EdgeInsets.symmetric(horizontal: 16), childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       leading: Container(width: 40, height: 40, decoration: BoxDecoration(color: enabled ? AppTheme.primaryColor.withOpacity(0.15) : AppTheme.surfaceColor, borderRadius: BorderRadius.circular(8)),
@@ -247,7 +243,6 @@ class _SwapSettingsScreenState extends State<SwapSettingsScreen> {
         if (hasWif) Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: AppTheme.successColor.withOpacity(0.2), borderRadius: BorderRadius.circular(4)), child: const Text('KEY', style: TextStyle(color: AppTheme.successColor, fontSize: 10, fontWeight: FontWeight.bold))),
       ]),
       subtitle: Text('${info['desc']} \u00b7 ${_serverLists[chain]!.length} server(s)', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-      trailing: Switch(value: enabled, onChanged: (val) => setState(() => _chainEnabled[chain] = val)),
       children: [Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('Private Key (WIF)', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)), const SizedBox(height: 8),
         TextField(controller: _wifControllers[chain], obscureText: true, decoration: InputDecoration(hintText: _wifHint(chain), hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.5), fontFamily: 'monospace', fontSize: 13), enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3))), focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: AppTheme.primaryColor)), suffixIcon: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -270,7 +265,7 @@ class _SwapSettingsScreenState extends State<SwapSettingsScreen> {
   }
 
   Widget _buildEvmChainCard(String chain) {
-    final info = _chainInfo[chain]!; final enabled = _chainEnabled[chain]!; final hasWif = _wifControllers[chain]!.text.isNotEmpty; final isSol = chain == 'sol';
+    final info = _chainInfo[chain]!; final hasWif = _wifControllers[chain]!.text.isNotEmpty; final enabled = hasWif; final isSol = chain == 'sol';
     return Container(margin: const EdgeInsets.only(bottom: 12), decoration: BoxDecoration(color: AppTheme.cardColor, borderRadius: BorderRadius.circular(12), border: Border.all(color: enabled ? AppTheme.primaryColor.withOpacity(0.5) : AppTheme.textSecondary.withOpacity(0.2))), child: Theme(data: Theme.of(context).copyWith(dividerColor: Colors.transparent), child: ExpansionTile(
       tilePadding: const EdgeInsets.symmetric(horizontal: 16), childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       leading: Container(width: 40, height: 40, decoration: BoxDecoration(color: enabled ? AppTheme.primaryColor.withOpacity(0.15) : AppTheme.surfaceColor, borderRadius: BorderRadius.circular(8)),
@@ -280,7 +275,6 @@ class _SwapSettingsScreenState extends State<SwapSettingsScreen> {
         if (hasWif) Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: AppTheme.successColor.withOpacity(0.2), borderRadius: BorderRadius.circular(4)), child: const Text('KEY', style: TextStyle(color: AppTheme.successColor, fontSize: 10, fontWeight: FontWeight.bold))),
       ]),
       subtitle: Text('${info['desc']} \u00b7 ${_rpcControllers[chain]?.text.isNotEmpty == true ? 'RPC configured' : 'No RPC'}', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-      trailing: Switch(value: enabled, onChanged: (val) => setState(() => _chainEnabled[chain] = val)),
       children: [Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(isSol ? 'Keypair (base58)' : 'Private Key (hex)', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)), const SizedBox(height: 8),
         TextField(controller: _wifControllers[chain], obscureText: true, decoration: InputDecoration(hintText: isSol ? 'Base58-encoded 64-byte keypair' : '64-char hex private key', hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.5), fontFamily: 'monospace', fontSize: 13), enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3))), focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: AppTheme.primaryColor)), suffixIcon: IconButton(icon: const Icon(Icons.paste, size: 18), onPressed: () async { final data = await Clipboard.getData('text/plain'); if (data?.text != null) setState(() => _wifControllers[chain]!.text = data!.text!); }, tooltip: 'Paste')), style: const TextStyle(color: AppTheme.textPrimary, fontFamily: 'monospace', fontSize: 13)),
@@ -294,7 +288,7 @@ class _SwapSettingsScreenState extends State<SwapSettingsScreen> {
   }
 
   Widget _buildMoneroCard() {
-    final enabled = _chainEnabled['xmr'] ?? false; final hasKey = _wifControllers['xmr']!.text.isNotEmpty;
+    final hasKey = _wifControllers['xmr']!.text.isNotEmpty; final enabled = hasKey;
     return Container(margin: const EdgeInsets.only(bottom: 12), decoration: BoxDecoration(color: AppTheme.cardColor, borderRadius: BorderRadius.circular(12), border: Border.all(color: enabled ? AppTheme.primaryColor.withOpacity(0.5) : AppTheme.textSecondary.withOpacity(0.2))), child: Theme(data: Theme.of(context).copyWith(dividerColor: Colors.transparent), child: ExpansionTile(
       tilePadding: const EdgeInsets.symmetric(horizontal: 16), childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       leading: Container(width: 40, height: 40, decoration: BoxDecoration(color: enabled ? AppTheme.primaryColor.withOpacity(0.15) : AppTheme.surfaceColor, borderRadius: BorderRadius.circular(8)),
@@ -304,7 +298,6 @@ class _SwapSettingsScreenState extends State<SwapSettingsScreen> {
         if (hasKey) Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: AppTheme.successColor.withOpacity(0.2), borderRadius: BorderRadius.circular(4)), child: const Text('KEY', style: TextStyle(color: AppTheme.successColor, fontSize: 10, fontWeight: FontWeight.bold))),
       ]),
       subtitle: Text('Daemon + Wallet RPC \u00b7 ${_rpcControllers['xmr_daemon']?.text ?? '127.0.0.1'}', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-      trailing: Switch(value: enabled, onChanged: (val) => setState(() => _chainEnabled['xmr'] = val)),
       children: [Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('Spend Key (64 hex)', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)), const SizedBox(height: 8),
         TextField(controller: _wifControllers['xmr'], obscureText: true, decoration: InputDecoration(hintText: '64-char hex spend key', hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.5), fontFamily: 'monospace', fontSize: 13), enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3))), focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: AppTheme.primaryColor)), suffixIcon: IconButton(icon: const Icon(Icons.paste, size: 18), onPressed: () async { final data = await Clipboard.getData('text/plain'); if (data?.text != null) setState(() => _wifControllers['xmr']!.text = data!.text!); }, tooltip: 'Paste')), style: const TextStyle(color: AppTheme.textPrimary, fontFamily: 'monospace', fontSize: 13)),
@@ -350,7 +343,7 @@ class _SwapSettingsScreenState extends State<SwapSettingsScreen> {
           final config = const JsonDecoder().convert(jsonStr) as Map;
           for (final chain in ['btc', 'ltc', 'kmd', 'bch']) {
             final wifKey = '${chain}_wif';
-            if (config.containsKey(wifKey)) setState(() { _wifControllers[chain]!.text = config[wifKey] as String; _chainEnabled[chain] = true; });
+            if (config.containsKey(wifKey)) setState(() { _wifControllers[chain]!.text = config[wifKey] as String; });
             final serverKeys = <String>[];
             for (var i = 0; i < 16; i++) { final key = '${chain}_spv_server_$i'; if (config.containsKey(key)) serverKeys.add(config[key] as String); }
             if (serverKeys.isNotEmpty) setState(() => _serverLists[chain] = serverKeys);

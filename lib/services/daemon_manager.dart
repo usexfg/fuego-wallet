@@ -50,6 +50,10 @@ class DaemonManager {
   /// (local mode requires an embedded fuegod; remote does not).
   bool _useLocalNode = true;
 
+  /// True while [stopAll]/[stopSwapd] is tearing processes down — suppresses
+  /// the xfg-swapd auto-restart so intentional stops don't respawn.
+  bool _stopping = false;
+
   /// Bounded stderr buffer captured during unified daemon startup
   /// (release mode) so failures surface the real cause, not just the
   /// exit code (e.g. "Address already in use").
@@ -837,6 +841,39 @@ class DaemonManager {
       _swapd!.exitCode.then((code) {
         debugPrint('[daemon] xfg-swapd exited with code $code');
         _swapd = null;
+        // Crash-only auto-restart: the swap daemon occasionally dies when a
+        // dependency (wallet proxy) bounces mid-handshake. Intentional stops
+        // set [_stopping] and never respawn here.
+        if (!_stopping && code != 0) {
+          Future<void>.delayed(const Duration(seconds: 3), () async {
+            if (_stopping || _swapd != null || !anyRunning) return;
+            debugPrint('[daemon] restarting xfg-swapd after crash');
+            final binary = _findSwapdBinary();
+            if (binary == null) return;
+            try {
+              final goHeadless = _isGoSwapd(binary);
+              final args = goHeadless
+                  ? [
+                      '--headless',
+                      '--headless-port', swapdPort.toString(),
+                      '--daemon', 'http://127.0.0.1:$fuegodPort',
+                      '--wallet', 'http://127.0.0.1:$walletdPort',
+                      '--no-bridge',
+                      '--no-bch',
+                    ]
+                  : <String>['--service'];
+              _swapd = await Process.start(binary, args);
+              _swapd!.stdout.drain<void>();
+              _swapd!.stderr.drain<void>();
+              _swapd!.exitCode.then((c) {
+                debugPrint('[daemon] xfg-swapd exited with code $c');
+                _swapd = null;
+              });
+            } catch (e) {
+              debugPrint('[daemon] xfg-swapd restart failed: $e');
+            }
+          });
+        }
       });
     } catch (e) {
       return 'Failed to spawn: $e';
@@ -866,6 +903,7 @@ class DaemonManager {
   // ── Stop all daemons ─────────────────────────────────────────────
 
   Future<void> stopAll() async {
+    _stopping = true;
     eventBus.stop();
     await _stopProcess(_unified, 'unified');
     _unified = null;
@@ -875,12 +913,15 @@ class DaemonManager {
     _walletd = null;
     await _stopProcess(_fuegod, 'fuegod');
     _fuegod = null;
+    _stopping = false;
     _updateStatus();
   }
 
   Future<void> stopSwapd() async {
+    _stopping = true;
     await _stopProcess(_swapd, 'xfg-swapd');
     _swapd = null;
+    _stopping = false;
     _updateStatus();
   }
 

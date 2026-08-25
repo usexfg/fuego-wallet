@@ -144,7 +144,8 @@ class _SendScreenState extends State<SendScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.cardColor,
         title: Text('Confirm Send $coin', style: const TextStyle(color: AppTheme.textPrimary)),
-        content: Column(
+        content: SingleChildScrollView(
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -158,6 +159,7 @@ class _SendScreenState extends State<SendScreen> {
             const Divider(color: AppTheme.textMuted),
             _confirmRow('Total', '${total.toStringAsFixed(7)} $coin', bold: true),
           ],
+          ),
         ),
         actions: [
           TextButton(
@@ -299,7 +301,8 @@ class _SendScreenState extends State<SendScreen> {
               Text('Transaction Sent', style: TextStyle(color: AppTheme.textPrimary)),
             ],
           ),
-          content: Column(
+          content: SingleChildScrollView(
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -350,6 +353,7 @@ class _SendScreenState extends State<SendScreen> {
                 ),
               ),
             ],
+            ),
           ),
           actions: [
             ElevatedButton(

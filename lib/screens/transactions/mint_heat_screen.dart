@@ -105,7 +105,8 @@ class _MintHeatScreenState extends State<MintHeatScreen> {
           'Confirm Mint ΗΞΔŦ',
           style: TextStyle(color: AppTheme.textPrimary),
         ),
-        content: Column(
+        content: SingleChildScrollView(
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -152,6 +153,7 @@ class _MintHeatScreenState extends State<MintHeatScreen> {
               ),
             ),
           ],
+          ),
         ),
         actions: [
           TextButton(
@@ -278,7 +280,8 @@ class _MintHeatScreenState extends State<MintHeatScreen> {
               Text('ΗΞΔŦ Minted', style: TextStyle(color: AppTheme.textPrimary)),
             ],
           ),
-          content: Column(
+          content: SingleChildScrollView(
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -353,6 +356,7 @@ class _MintHeatScreenState extends State<MintHeatScreen> {
                 ),
               ],
             ],
+            ),
           ),
           actions: [
             ElevatedButton(

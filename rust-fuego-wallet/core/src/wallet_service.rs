@@ -246,16 +246,29 @@ impl SyncEngine {
             return Ok(0);
         }
 
-        let locator: Vec<[u8; 32]> = match self.top_hash() {
+        // The daemon rejects locators whose LAST id is not the genesis hash
+        // (Core.cpp findStartAndFullOffsets). Locator order is newest first,
+        // genesis always last.
+        let genesis_hex = self.daemon.get_block_hash(0).await?;
+        let mut genesis = [0u8; 32];
+        hex::decode_to_slice(genesis_hex.trim(), &mut genesis)
+            .map_err(|e| format!("genesis hash: {e}"))?;
+
+        let mut locator: Vec<[u8; 32]> = match self.top_hash() {
             Some(h) if our_height > 0 => vec![h],
             _ => Vec::new(),
         };
+        locator.push(genesis);
 
         let resp = self.daemon.query_blocks_lite(&locator, 0).await?;
         let mut scanned = 0u64;
 
         for (k, item) in resp.items.iter().enumerate() {
             let block_height = resp.start_height + k as u64;
+            // The daemon re-sends the block matching the locator; skip it.
+            if Some(&item.block_id) == locator.first() && block_height <= our_height {
+                continue;
+            }
 
             for txi in &item.tx_prefixes {
                 let prefix = &txi.parsed;

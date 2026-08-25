@@ -147,11 +147,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             'App Font',
             style: TextStyle(color: AppTheme.textPrimary),
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (final option in fontOptions)
-                RadioListTile<String>(
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final option in fontOptions)
+                  RadioListTile<String>(
                   value: option.family,
                   groupValue: _fontFamily,
                   onChanged: (value) {
@@ -176,6 +177,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   activeColor: AppTheme.primaryColor,
                 ),
             ],
+            ),
           ),
           actions: [
             TextButton(
@@ -247,12 +249,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       decoration: const InputDecoration(
                         labelText: 'Confirm new PIN',
                         border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ],
                 ),
               ),
-              actions: [
+            ],
+            ),
+          ),
+          actions: [
                 TextButton(
                   onPressed: isLoading
                       ? null
@@ -350,7 +352,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             'Reset Wallet',
             style: TextStyle(color: AppTheme.textPrimary),
           ),
-          content: Column(
+          content: SingleChildScrollView(
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -390,6 +393,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
             ],
+            ),
           ),
           actions: [
             TextButton(
@@ -481,7 +485,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ],
               ),
-              content: Column(
+              content: SingleChildScrollView(
+                child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -688,6 +693,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ],
                 ],
               ),
+              ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
@@ -821,7 +827,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return AlertDialog(
           backgroundColor: AppTheme.cardColor,
           title: const Text('Wallet Address'),
-          content: Column(
+          content: SingleChildScrollView(
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
@@ -838,6 +845,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
             ],
+            ),
           ),
           actions: [
             TextButton(
@@ -1210,7 +1218,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ],
           ),
-          content: Column(
+          content: SingleChildScrollView(
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1256,6 +1265,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 style: TextStyle(color: AppTheme.textSecondary, height: 1.5),
               ),
             ],
+            ),
           ),
           actions: [
             ElevatedButton(

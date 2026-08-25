@@ -204,7 +204,8 @@ class _PinEntryScreenState extends State<PinEntryScreen>
             'Reset Wallet',
             style: TextStyle(color: AppTheme.textPrimary),
           ),
-          content: Column(
+          content: SingleChildScrollView(
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -243,6 +244,7 @@ class _PinEntryScreenState extends State<PinEntryScreen>
                 ),
               ),
             ],
+            ),
           ),
           actions: [
             TextButton(

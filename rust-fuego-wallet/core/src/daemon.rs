@@ -123,36 +123,15 @@ impl DaemonClient {
     }
 
     /// /get_o_indexes.bin — global output indices of a transaction, aligned
-    /// with its outputs. Request: 32-byte txid. Response: varint count +
-    /// varint uint64 indices + status string.
+    /// with its outputs. Request: KV doc {txid: 32-byte hash}. Response:
+    /// KV doc {o_indexes: array<uint64>, status: string}.
     pub async fn get_o_indexes(&self, tx_hash: &[u8; 32]) -> Result<Vec<u64>, String> {
-        let resp = self.post_bin("/get_o_indexes.bin", tx_hash.to_vec()).await?;
-        let mut pos = 0usize;
-        let read_varint = |data: &[u8], pos: &mut usize| -> Result<u64, String> {
-            let mut result: u64 = 0;
-            let mut shift = 0u32;
-            loop {
-                if *pos >= data.len() {
-                    return Err("o_indexes: truncated".into());
-                }
-                let byte = data[*pos];
-                *pos += 1;
-                result |= ((byte & 0x7F) as u64) << shift;
-                if byte & 0x80 == 0 {
-                    return Ok(result);
-                }
-                shift += 7;
-                if shift >= 64 {
-                    return Err("o_indexes: varint overflow".into());
-                }
-            }
+        use fuego_sdk::serialization::{
+            get_o_indexes_request, parse_get_o_indexes_response,
         };
-        let count = read_varint(&resp, &mut pos)?;
-        let mut indices = Vec::with_capacity(count as usize);
-        for _ in 0..count {
-            indices.push(read_varint(&resp, &mut pos)?);
-        }
-        Ok(indices)
+        let body = get_o_indexes_request(tx_hash);
+        let resp = self.post_bin("/get_o_indexes.bin", body).await?;
+        parse_get_o_indexes_response(&resp).map_err(|e| e.to_string())
     }
 
     /// /getrandom_commitment_outs.bin — decoy commitment outputs for a

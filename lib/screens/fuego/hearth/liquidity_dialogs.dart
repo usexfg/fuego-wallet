@@ -27,7 +27,8 @@ class _AddLiquidityDialogState extends State<AddLiquidityDialog> {
     return AlertDialog(
       backgroundColor: HearthTheme.bgCard,
       title: Text('Add Liquidity', style: HearthTheme.mono(size: 16, weight: FontWeight.w700, color: HearthTheme.textWhite)),
-      content: Column(
+      content: SingleChildScrollView(
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           _dialogInput(_xfgController, 'XFG Amount'),
@@ -37,6 +38,7 @@ class _AddLiquidityDialogState extends State<AddLiquidityDialog> {
           Text('Provide equal-value amounts of both tokens',
               style: HearthTheme.label(size: 10, color: HearthTheme.textMuted)),
         ],
+        ),
       ),
       actions: [
         TextButton(
@@ -119,7 +121,8 @@ class _RemoveLiquidityDialogState extends State<RemoveLiquidityDialog> {
     return AlertDialog(
       backgroundColor: HearthTheme.bgCard,
       title: Text('Withdraw Earnings', style: HearthTheme.mono(size: 16, weight: FontWeight.w700, color: HearthTheme.textWhite)),
-      content: Column(
+      content: SingleChildScrollView(
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
@@ -131,8 +134,9 @@ class _RemoveLiquidityDialogState extends State<RemoveLiquidityDialog> {
           const SizedBox(height: 12),
           _dialogInput(_minXfgController, 'Min XFG (slippage)'),
           const SizedBox(height: 12),
-          _dialogInput(_minHeatController, 'Min HΞ∆T (slippage)'),
+          _dialogInput(_minHeatController, 'Min HΞΔŦ (slippage)'),
         ],
+        ),
       ),
       actions: [
         TextButton(
