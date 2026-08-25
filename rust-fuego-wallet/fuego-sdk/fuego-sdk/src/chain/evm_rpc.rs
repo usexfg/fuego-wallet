@@ -120,6 +120,51 @@ impl EvmRpcClient {
         parse_hex_u64(&hex).ok_or_else(|| SdkError::Network(format!("Invalid chain ID: {hex}")))
     }
 
+    // ── ERC20 helpers (raw eth_call) ─────────────────────────────────
+
+    /// Raw eth_call to an ERC20 contract. `data` must be 0x-prefixed hex.
+    pub async fn erc20_call(&self, token: &str, data_hex: &str) -> Result<String> {
+        let hex: String = self.eth_call("eth_call", &[
+            serde_json::json!({"to": token, "data": data_hex}),
+            serde_json::json!("latest"),
+        ]).await?;
+        Ok(hex)
+    }
+
+    pub async fn get_erc20_balance(&self, token: &str, holder: &str) -> Result<u128> {
+        let holder_clean = holder.trim_start_matches("0x").to_lowercase();
+        let padded = format!("{:0>64}", holder_clean);
+        let data = format!("0x70a08231{}", padded);
+        let hex = self.erc20_call(token, &data).await?;
+        parse_hex_u128(&hex).ok_or_else(|| SdkError::Network(format!("Invalid ERC20 balance: {hex}")))
+    }
+
+    pub async fn get_erc20_decimals(&self, token: &str) -> Result<u8> {
+        let hex = self.erc20_call(token, "0x313ce567").await?;
+        let v = parse_hex_u64(&hex).ok_or_else(|| SdkError::Network(format!("Invalid decimals: {hex}")))?;
+        Ok(v as u8)
+    }
+
+    pub async fn get_erc20_allowance(&self, token: &str, owner: &str, spender: &str) -> Result<u128> {
+        let o = format!("{:0>64}", owner.trim_start_matches("0x").to_lowercase());
+        let s = format!("{:0>64}", spender.trim_start_matches("0x").to_lowercase());
+        let data = format!("0xdd62ed3e{}{}", o, s);
+        let hex = self.erc20_call(token, &data).await?;
+        parse_hex_u128(&hex).ok_or_else(|| SdkError::Network(format!("Invalid allowance: {hex}")))
+    }
+
+    pub fn erc20_transfer_data(to: &str, amount: u128) -> String {
+        let addr = format!("{:0>64}", to.trim_start_matches("0x").to_lowercase());
+        let amt = format!("{:0>64x}", amount);
+        format!("0xa9059cbb{}{}", addr, amt)
+    }
+
+    pub fn erc20_approve_data(spender: &str, amount: u128) -> String {
+        let addr = format!("{:0>64}", spender.trim_start_matches("0x").to_lowercase());
+        let amt = format!("{:0>64x}", amount);
+        format!("0x095ea7b3{}{}", addr, amt)
+    }
+
     async fn eth_call<T: serde::de::DeserializeOwned>(&self, method: &str, params: &[serde_json::Value]) -> Result<T> {
         let body = serde_json::json!({
             "jsonrpc": "2.0",

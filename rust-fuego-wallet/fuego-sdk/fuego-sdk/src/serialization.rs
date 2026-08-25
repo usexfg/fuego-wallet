@@ -576,14 +576,30 @@ pub fn add_limit_deposit_extra(
 
 // ---------------------------------------------------------------- daemon RPC
 
-/// COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS request (binary).
+/// KVBinary document header: signature pair, version 1, root entry count.
+fn kv_document_header(root_entries: usize, out: &mut Vec<u8>) {
+    out.extend_from_slice(&KV_SIGNATURE_A.to_le_bytes());
+    out.extend_from_slice(&KV_SIGNATURE_B.to_le_bytes());
+    out.push(1);
+    write_portable_size(root_entries, out);
+}
+
+/// COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS request (KV binary):
+/// amounts = array<uint64>, outs_count = uint64.
 pub fn get_random_outs_request(amounts: &[u64], outs_count: u64) -> Vec<u8> {
     let mut out = Vec::new();
-    write_varint(amounts.len() as u64, &mut out);
+    kv_document_header(2, &mut out);
+
+    write_kv_name(b"amounts", &mut out);
+    out.push(0x80 | 5); // array of uint64
+    write_portable_size(amounts.len(), &mut out);
     for a in amounts {
-        write_varint(*a, &mut out);
+        out.extend_from_slice(&a.to_le_bytes());
     }
-    write_varint(outs_count, &mut out);
+
+    write_kv_name(b"outs_count", &mut out);
+    out.push(5);
+    out.extend_from_slice(&outs_count.to_le_bytes());
     out
 }
 
@@ -599,34 +615,43 @@ pub struct RandomOutsForAmount {
     pub outs: Vec<RandomOutEntry>,
 }
 
-/// Parse the binary response of /getrandom_outs.bin.
+/// Parse the binary response of /getrandom_outs.bin:
+/// outs = array of {amount u64, outs blob}, status string. The per-amount
+/// blob is serializeAsBinary-packed POD records: N*(u64 index + 32 key),
+/// 40 bytes each, no element count.
 pub fn parse_get_random_outs_response(
     data: &[u8],
 ) -> Result<Vec<RandomOutsForAmount>, SerializationError> {
-    let mut pos = 0usize;
-    let status_len = read_varint(data, &mut pos)? as usize;
-    let status = read_bytes(data, &mut pos, status_len)?;
-    if status != b"OK" {
-        return Err(SerializationError(format!(
-            "getrandom_outs status: {}",
-            String::from_utf8_lossy(status)
-        )));
+    let root = parse_kv_document(data)?;
+    let status = String::from_utf8_lossy(&kv_bytes(&root, &["status"])?).to_string();
+    if status != "OK" {
+        return Err(SerializationError(format!("getrandom_outs status: {status}")));
     }
-    let count = read_varint(data, &mut pos)?;
-    let mut result = Vec::with_capacity(count as usize);
-    for _ in 0..count {
-        let amount = read_varint(data, &mut pos)?;
-        let outs_count = read_varint(data, &mut pos)?;
-        let mut outs = Vec::with_capacity(outs_count as usize);
-        for _ in 0..outs_count {
-            let idx_bytes = read_bytes(data, &mut pos, 8)?;
+    let groups = kv_array(&root, &["outs"])?;
+    let mut result = Vec::with_capacity(groups.len());
+    for group in groups {
+        let obj = group
+            .as_object()
+            .ok_or_else(|| SerializationError("outs_for_amount is not an object".into()))?;
+        let amount = kv_u64(obj, &["amount"])?;
+        let blob = kv_bytes(obj, &["outs"])?;
+        if blob.len() % 40 != 0 {
+            return Err(SerializationError(format!(
+                "getrandom_outs blob size {} not a multiple of 40",
+                blob.len()
+            )));
+        }
+        let count = blob.len() / 40;
+        let mut outs = Vec::with_capacity(count);
+        for i in 0..count {
+            let entry = &blob[i * 40..(i + 1) * 40];
             let mut idx = [0u8; 8];
-            idx.copy_from_slice(idx_bytes);
-            let global_amount_index = u64::from_le_bytes(idx);
-            let out_key = read_key(data, &mut pos)?;
+            idx.copy_from_slice(&entry[..8]);
+            let mut key = [0u8; 32];
+            key.copy_from_slice(&entry[8..]);
             outs.push(RandomOutEntry {
-                global_amount_index,
-                out_key,
+                global_amount_index: u64::from_le_bytes(idx),
+                out_key: key,
             });
         }
         result.push(RandomOutsForAmount { amount, outs });
@@ -634,17 +659,27 @@ pub fn parse_get_random_outs_response(
     Ok(result)
 }
 
-/// COMMAND_RPC_GET_RANDOM_COMMITMENT_OUTPUTS request (binary):
-/// amount u64 varint, outs_count u64 varint, max_height u32 varint.
+/// COMMAND_RPC_GET_RANDOM_COMMITMENT_OUTPUTS request (KV binary):
+/// amount uint64, outs_count uint64, max_height uint32.
 pub fn get_random_commitment_outs_request(
     amount: u64,
     outs_count: u64,
     max_height: u32,
 ) -> Vec<u8> {
     let mut out = Vec::new();
-    write_varint(amount, &mut out);
-    write_varint(outs_count, &mut out);
-    write_varint(max_height as u64, &mut out);
+    kv_document_header(3, &mut out);
+
+    write_kv_name(b"amount", &mut out);
+    out.push(5);
+    out.extend_from_slice(&amount.to_le_bytes());
+
+    write_kv_name(b"outs_count", &mut out);
+    out.push(5);
+    out.extend_from_slice(&outs_count.to_le_bytes());
+
+    write_kv_name(b"max_height", &mut out);
+    out.push(6);
+    out.extend_from_slice(&max_height.to_le_bytes());
     out
 }
 
@@ -655,57 +690,96 @@ pub struct RandomCommitmentOutEntry {
 }
 
 /// Parse the binary response of /getrandom_commitment_outs.bin:
-/// status string, then varint count of {u32 LE global index, 32B commit key}.
+/// outs blob of POD records (u32 LE index + 32B commit key, 36 bytes each,
+/// no element count), status string.
 pub fn parse_get_random_commitment_outs_response(
     data: &[u8],
 ) -> Result<Vec<RandomCommitmentOutEntry>, SerializationError> {
-    let mut pos = 0usize;
-    let status_len = read_varint(data, &mut pos)? as usize;
-    let status = read_bytes(data, &mut pos, status_len)?;
-    if status != b"OK" {
+    let root = parse_kv_document(data)?;
+    let status = String::from_utf8_lossy(&kv_bytes(&root, &["status"])?).to_string();
+    if status != "OK" {
         return Err(SerializationError(format!(
-            "getrandom_commitment_outs status: {}",
-            String::from_utf8_lossy(status)
+            "getrandom_commitment_outs status: {status}"
         )));
     }
-    let count = read_varint(data, &mut pos)?;
-    let mut outs = Vec::with_capacity(count as usize);
-    for _ in 0..count {
-        let idx_bytes = read_bytes(data, &mut pos, 4)?;
+    let blob = kv_bytes(&root, &["outs"])?;
+    if blob.len() % 36 != 0 {
+        return Err(SerializationError(format!(
+            "commitment outs blob size {} not a multiple of 36",
+            blob.len()
+        )));
+    }
+    let count = blob.len() / 36;
+    let mut outs = Vec::with_capacity(count);
+    for i in 0..count {
+        let entry = &blob[i * 36..(i + 1) * 36];
         let mut idx = [0u8; 4];
-        idx.copy_from_slice(idx_bytes);
-        let global_amount_index = u32::from_le_bytes(idx);
-        let commit_key = read_key(data, &mut pos)?;
+        idx.copy_from_slice(&entry[..4]);
+        let mut key = [0u8; 32];
+        key.copy_from_slice(&entry[4..]);
         outs.push(RandomCommitmentOutEntry {
-            global_amount_index,
-            commit_key,
+            global_amount_index: u32::from_le_bytes(idx),
+            commit_key: key,
         });
     }
     Ok(outs)
 }
 
-/// COMMAND_RPC_QUERY_BLOCKS_LITE request (binary).
+/// COMMAND_RPC_QUERY_BLOCKS_LITE request (KV binary).
 pub fn query_blocks_lite_request(block_ids: &[[u8; 32]], timestamp: u64) -> Vec<u8> {
     let mut out = Vec::new();
+    kv_document_header(2, &mut out);
 
-    // Fuego's binary RPC uses KVBinaryStorageBlockHeader, not the plain
-    // BinaryOutputStreamSerializer used for transaction bytes.
-    out.extend_from_slice(&0x0101_1101u32.to_le_bytes());
-    out.extend_from_slice(&0x0102_0101u32.to_le_bytes());
-    out.push(1);
-    write_portable_size(2, &mut out); // block_ids + timestamp
+    // Fuego's serializeAsBinary for POD vectors is a raw memcpy into a
+    // STRING field — no inner element count (SerializationOverloads.h).
+    let mut blob = Vec::with_capacity(block_ids.len() * 32);
+    for id in block_ids {
+        blob.extend_from_slice(id);
+    }
 
     write_kv_name(b"block_ids", &mut out);
     out.push(10); // BIN_KV_SERIALIZE_TYPE_STRING
-    write_portable_size(block_ids.len() * 32, &mut out);
-    for id in block_ids {
-        out.extend_from_slice(id);
-    }
+    write_portable_size(blob.len(), &mut out);
+    out.extend_from_slice(&blob);
 
     write_kv_name(b"timestamp", &mut out);
     out.push(5); // BIN_KV_SERIALIZE_TYPE_UINT64
     out.extend_from_slice(&timestamp.to_le_bytes());
     out
+}
+
+/// COMMAND_RPC_GET_TX_GLOBAL_OUTPUTS_INDEXES request (KV binary):
+/// txid = 32-byte hash stored as a STRING field.
+pub fn get_o_indexes_request(tx_hash: &[u8; 32]) -> Vec<u8> {
+    let mut out = Vec::new();
+    kv_document_header(1, &mut out);
+
+    write_kv_name(b"txid", &mut out);
+    out.push(10); // BIN_KV_SERIALIZE_TYPE_STRING
+    write_portable_size(tx_hash.len(), &mut out);
+    out.extend_from_slice(tx_hash);
+    out
+}
+
+/// COMMAND_RPC_GET_TX_GLOBAL_OUTPUTS_INDEXES response (KV binary):
+/// o_indexes = array<uint64>, status = string.
+pub fn parse_get_o_indexes_response(
+    data: &[u8],
+) -> Result<Vec<u64>, SerializationError> {
+    let root = parse_kv_document(data)?;
+    let status = String::from_utf8_lossy(&kv_bytes(&root, &["status"])?).to_string();
+    if status != "OK" {
+        return Err(SerializationError(format!("o_indexes status: {status}")));
+    }
+    kv_array(&root, &["o_indexes"])?
+        .iter()
+        .map(|value| match value {
+            KvValue::Unsigned(v) => Ok(*v),
+            KvValue::Signed(v) if *v >= 0 => u64::try_from(*v as u64)
+                .map_err(|_| SerializationError("o_index overflow".into())),
+            _ => Err(SerializationError("invalid o_index".into())),
+        })
+        .collect()
 }
 
 fn write_kv_name(name: &[u8], out: &mut Vec<u8>) {
