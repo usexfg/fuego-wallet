@@ -118,7 +118,7 @@ class _MintHeatDialogState extends State<MintHeatDialog> {
                   fontFamily: AppTheme.numberFontFamily)),
         const SizedBox(height: 4),
         Text('TX: ${_txHash!.substring(0, _txHash!.length > 16 ? 16 : _txHash!.length)}...',
-            style: const TextStyle(color: AppTheme.textMuted, fontSize: 11, fontFamily: 'monospace')),
+            style: const TextStyle(color: AppTheme.textMuted, fontSize: 11, fontFamily: 'IBMPlexMono')),
       ],
     );
   }

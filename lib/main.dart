@@ -156,10 +156,9 @@ Future<void> main() async {
   // Apply persisted font preference before the first frame.
   try {
     final prefs = await SharedPreferences.getInstance();
-    AppTheme.fontFamily = prefs.getString('app_font_family') ??
-        ((prefs.getBool('use_saira_font') ?? true) ? 'Saira' : 'Electrolize');
+    AppTheme.fontFamily = prefs.getString('app_font_family') ?? 'IBMPlexSans';
   } catch (_) {
-    // Default (Saira) applies on failure.
+    // Default (IBMPlexSans) applies on failure.
   }
 
   runApp(

@@ -21,11 +21,13 @@ import 'wallets_screen.dart';
 /// Bundled word-font families selectable in Settings > App Font.
 /// Numbers always render in Noto Sans ([AppTheme.numberFontFamily]).
 const List<({String family, String label, String? note})> fontOptions = [
-  (family: 'Saira', label: 'Saira', note: 'Sans-serif · default'),
+  (family: 'IBMPlexSans', label: 'IBM Plex Sans', note: 'Sans-serif · default'),
   (family: 'NotoSans', label: 'Noto Sans', note: 'Sans-serif · numbers font'),
-  (family: 'SourceSerif4', label: 'Source Serif 4', note: 'Serif text'),
+  (family: 'IBMPlexMono', label: 'IBM Plex Mono', note: 'Monospace'),
+  (family: 'Trirong', label: 'Trirong', note: 'Serif · formal'),
+  (family: 'Arimo', label: 'Arimo', note: 'Sans-serif · Arial-metric'),
+  (family: 'Bitter', label: 'Bitter', note: 'Slab serif'),
   (family: 'Brygada1918', label: 'Brygada 1918', note: 'Serif · editorial'),
-  (family: 'Electrolize', label: 'Electrolize', note: 'Monospace'),
 ];
 
 class SettingsScreen extends StatefulWidget {
@@ -42,7 +44,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _fuegodHost = '207.244.247.64';
   int _fuegodPort = 18180;
   bool _fuegodConfigured = true;
-  String _fontFamily = 'Saira';
+  String _fontFamily = 'IBMPlexSans';
 
   /// Desktop default = local, mobile default = remote (from [NodeConnection]).
   bool _useLocalNode = app.useLocalNode;
@@ -61,11 +63,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final ep = app.nodeConnection.lastEndpoints;
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString('app_font_family');
-    final family = saved ??
-        ((prefs.getBool('use_saira_font') ?? true) ? 'Saira' : 'Electrolize');
-    // Legacy boolean preference (Saira vs Electrolize) handled above.
-    final validFamily =
-        fontOptions.any((f) => f.family == family) ? family : 'Saira';
+    // Migrate legacy Saira/Electrolize boolean to the Plex default.
+    final family = saved ?? 'IBMPlexSans';
+    final validFamily = fontOptions.any((f) => f.family == family)
+        ? family
+        : 'IBMPlexSans';
     AppTheme.fontFamily = validFamily;
     setState(() {
       _biometricEnabled = biometricEnabled;
@@ -842,7 +844,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 address,
                 style: const TextStyle(
                   color: AppTheme.textSecondary,
-                  fontFamily: 'monospace',
+                  fontFamily: 'IBMPlexMono',
                 ),
               ),
             ],
@@ -1034,7 +1036,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   value,
                   style: TextStyle(
                     color: AppTheme.textSecondary,
-                    fontFamily: isMnemonic ? 'monospace' : null,
+                    fontFamily: isMnemonic ? 'IBMPlexMono' : null,
                     fontSize: isMnemonic ? 16 : 14,
                   ),
                 ),

@@ -35,13 +35,14 @@ class AppTheme {
 
   // Status colors (moved above for organization)
 
-  /// App-wide font for words: Saira (default) or Electrolize /
-  /// SourceSerif4 (bundled assets, OFL).
+  /// App-wide font for words: IBMPlexSans (default) or IBMPlexMono /
+  /// Arimo / Trirong / Bitter / Brygada1918 (bundled assets, OFL).
   /// Switched at runtime via [AppTheme.fontFamily].
-  static String fontFamily = 'Saira';
+  static String fontFamily = 'IBMPlexSans';
 
   /// Font used for all numeric displays (balances, prices, amounts,
-  /// hashrates, yields). Bundled Noto Sans, OFL.
+  /// hashrates, yields). Bundled Noto Sans, OFL. Fallback chain covers
+  /// the ΗΞΔŦ ticker glyph if a word font lacks it.
   static String numberFontFamily = 'NotoSans';
 
   /// Base sizes are the Material defaults +2 for readability.

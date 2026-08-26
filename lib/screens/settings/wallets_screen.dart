@@ -343,7 +343,7 @@ class _WalletsScreenState extends State<WalletsScreen> {
                             style: const TextStyle(
                               fontSize: 12,
                               color: AppTheme.textSecondary,
-                              fontFamily: 'monospace',
+                              fontFamily: 'IBMPlexMono',
                             ),
                           ),
                         ],

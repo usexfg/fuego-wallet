@@ -86,7 +86,7 @@ class _TokenOverviewScreenState extends State<TokenOverviewScreen> {
               onPressed: () => context.read<Erc20Cubit>().setAddress(_addrCtrl.text.trim()),
             ),
           ),
-          style: const TextStyle(color: AppTheme.textPrimary, fontFamily: 'monospace', fontSize: 13),
+          style: const TextStyle(color: AppTheme.textPrimary, fontFamily: 'IBMPlexMono', fontSize: 13),
           onSubmitted: (v) => context.read<Erc20Cubit>().setAddress(v),
         ),
         const SizedBox(height: 6),
@@ -117,7 +117,7 @@ class _TokenOverviewScreenState extends State<TokenOverviewScreen> {
             labelText: 'Private key (local only, never sent)',
             hintText: '0x... 64 hex',
           ),
-          style: const TextStyle(color: AppTheme.textPrimary, fontSize: 12, fontFamily: 'monospace'),
+          style: const TextStyle(color: AppTheme.textPrimary, fontSize: 12, fontFamily: 'IBMPlexMono'),
         ),
       ],
     );
@@ -207,7 +207,7 @@ class _TokenOverviewScreenState extends State<TokenOverviewScreen> {
               ],
             ],
           ),
-          subtitle: SelectableText(token.address, style: const TextStyle(color: AppTheme.textMuted, fontSize: 10, fontFamily: 'monospace')),
+          subtitle: SelectableText(token.address, style: const TextStyle(color: AppTheme.textMuted, fontSize: 10, fontFamily: 'IBMPlexMono')),
           trailing: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -311,7 +311,7 @@ class _TokenOverviewScreenState extends State<TokenOverviewScreen> {
                             },
                           ),
                   ),
-                  style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontFamily: 'monospace'),
+                  style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontFamily: 'IBMPlexMono'),
                 ),
                 if (fetchError != null)
                   Padding(
@@ -402,7 +402,7 @@ class _TokenOverviewScreenState extends State<TokenOverviewScreen> {
           TextField(
             controller: _toCtrl,
             decoration: const InputDecoration(labelText: 'To address', hintText: '0x...'),
-            style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontFamily: 'monospace'),
+            style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontFamily: 'IBMPlexMono'),
           ),
           const SizedBox(height: 8),
           TextField(

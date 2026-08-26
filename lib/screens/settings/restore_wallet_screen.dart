@@ -331,7 +331,7 @@ class _RestoreWalletScreenState extends State<RestoreWalletScreen> {
             style: const TextStyle(
               color: AppTheme.textPrimary,
               fontSize: 14,
-              fontFamily: 'monospace',
+              fontFamily: 'IBMPlexMono',
             ),
             decoration: InputDecoration(
               hintText: 'word1 word2 word3 ...',

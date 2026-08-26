@@ -253,7 +253,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: const TextStyle(
                     color: AppTheme.textPrimary,
                     fontSize: 11,
-                    fontFamily: 'monospace',
+                    fontFamily: 'IBMPlexMono',
                   ),
                 ),
               ],
@@ -559,7 +559,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: const TextStyle(
                       color: AppTheme.textPrimary,
                       fontSize: 12,
-                      fontFamily: 'monospace',
+                      fontFamily: 'IBMPlexMono',
                     ),
                   ),
                   Text(

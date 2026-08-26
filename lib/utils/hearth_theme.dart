@@ -34,7 +34,7 @@ class HearthTheme {
 
   static TextStyle mono({double size = 12, FontWeight weight = FontWeight.w500, Color color = textPrimary}) {
     return TextStyle(
-      fontFamily: 'monospace',
+      fontFamily: 'IBMPlexMono',
       fontSize: size,
       fontWeight: weight,
       color: color,

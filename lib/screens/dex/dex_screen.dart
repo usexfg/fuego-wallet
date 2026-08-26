@@ -953,7 +953,7 @@ class _DexScreenState extends State<DexScreen>
               style: TextStyle(
                 color: AppTheme.textPrimary,
                 fontSize: 11,
-                fontFamily: selectable ? 'monospace' : null,
+                fontFamily: selectable ? 'IBMPlexMono' : null,
               ),
             ),
           ),
@@ -1124,7 +1124,7 @@ class _DexScreenState extends State<DexScreen>
                   Expanded(
                     child: Text(
                       'T: ${state.lastPtlcPoint}  •  ${state.lastLockType}',
-                      style: const TextStyle(color: AppTheme.textMuted, fontSize: 9, fontFamily: 'monospace'),
+                      style: const TextStyle(color: AppTheme.textMuted, fontSize: 9, fontFamily: 'IBMPlexMono'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -1806,7 +1806,7 @@ class _Erc20BalanceTileState extends State<_Erc20BalanceTile> {
               Text('${widget.token.symbol}', style: const TextStyle(color: AppTheme.textPrimary, fontSize: 11, fontWeight: FontWeight.w600)),
               const SizedBox(width: 6),
               Expanded(
-                child: SelectableText(widget.token.address, style: const TextStyle(color: AppTheme.textMuted, fontSize: 9, fontFamily: 'monospace')),
+                child: SelectableText(widget.token.address, style: const TextStyle(color: AppTheme.textMuted, fontSize: 9, fontFamily: 'IBMPlexMono')),
               ),
               const SizedBox(width: 8),
               if (isLoading)

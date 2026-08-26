@@ -100,18 +100,18 @@ flutter:
     - assets/coin icons/
 
   fonts:
-    - family: Saira
+    - family: IBMPlexSans
       fonts:
-        - asset: assets/fonts/Saira/static/Saira-Regular.ttf
-          weight: 400
-        - asset: assets/fonts/Saira/static/Saira-Medium.ttf
-          weight: 500
-        - asset: assets/fonts/Saira/static/Saira-SemiBold.ttf
-          weight: 600
-        - asset: assets/fonts/Saira/static/Saira-Bold.ttf
-          weight: 700
-        - asset: assets/fonts/Saira/static/Saira-Light.ttf
+        - asset: assets/fonts/IBM_Plex_Sans/static/IBMPlexSans-Light.ttf
           weight: 300
+        - asset: assets/fonts/IBM_Plex_Sans/static/IBMPlexSans-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/IBM_Plex_Sans/static/IBMPlexSans-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/IBM_Plex_Sans/static/IBMPlexSans-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/IBM_Plex_Sans/static/IBMPlexSans-Bold.ttf
+          weight: 700
     - family: NotoSans
       fonts:
         - asset: assets/fonts/NotoSans/NotoSans-Regular.ttf
@@ -124,18 +124,39 @@ flutter:
           weight: 700
         - asset: assets/fonts/NotoSans/NotoSans-Light.ttf
           weight: 300
-    - family: SourceSerif4
+    - family: IBMPlexMono
       fonts:
-        - asset: assets/fonts/Source_Serif_4/static/SourceSerif4-Regular.ttf
-          weight: 400
-        - asset: assets/fonts/Source_Serif_4/static/SourceSerif4-Medium.ttf
-          weight: 500
-        - asset: assets/fonts/Source_Serif_4/static/SourceSerif4-SemiBold.ttf
-          weight: 600
-        - asset: assets/fonts/Source_Serif_4/static/SourceSerif4-Bold.ttf
-          weight: 700
-        - asset: assets/fonts/Source_Serif_4/static/SourceSerif4-Light.ttf
+        - asset: assets/fonts/IBM_Plex_Mono/static/IBMPlexMono-Light.ttf
           weight: 300
+        - asset: assets/fonts/IBM_Plex_Mono/static/IBMPlexMono-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/IBM_Plex_Mono/static/IBMPlexMono-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/IBM_Plex_Mono/static/IBMPlexMono-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/IBM_Plex_Mono/static/IBMPlexMono-Bold.ttf
+          weight: 700
+    - family: Trirong
+      fonts:
+        - asset: assets/fonts/Trirong/static/Trirong-Light.ttf
+          weight: 300
+        - asset: assets/fonts/Trirong/static/Trirong-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Trirong/static/Trirong-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Trirong/static/Trirong-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Trirong/static/Trirong-Bold.ttf
+          weight: 700
+    - family: Arimo
+      fonts:
+        - asset: assets/fonts/Arimo/static/Arimo-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Arimo/static/Arimo-Bold.ttf
+          weight: 700
+    - family: Bitter
+      fonts:
+        - asset: assets/fonts/Bitter/static/Bitter-Variable.ttf
     - family: Brygada1918
       fonts:
         - asset: assets/fonts/Brygada_1918/static/Brygada1918-Regular.ttf
@@ -146,8 +167,5 @@ flutter:
           weight: 600
         - asset: assets/fonts/Brygada_1918/static/Brygada1918-Bold.ttf
           weight: 700
-    - family: Electrolize
-      fonts:
-        - asset: assets/fonts/Electrolize-Regular.ttf
 
 dependency_overrides:
