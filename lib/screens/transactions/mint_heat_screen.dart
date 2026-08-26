@@ -538,9 +538,20 @@ class _MintHeatScreenState extends State<MintHeatScreen> {
                     focusNode: _amountFocusNode,
                     keyboardType: TextInputType.number,
                     onChanged: (_) => _onAmountChanged(),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: '0.0000000',
-                      suffixText: 'XFG',
+                      prefixText: xt.XfgTicker.isGlyph ? xt.XfgTicker.glyph : 'XFG ',
+                      prefixStyle: xt.XfgTicker.isGlyph
+                          ? xt.XfgTicker.glyphStyle(const TextStyle(
+                              color: AppTheme.primaryColor,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ))
+                          : const TextStyle(
+                              color: AppTheme.textSecondary,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {

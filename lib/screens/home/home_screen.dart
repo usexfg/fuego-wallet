@@ -14,6 +14,19 @@ import '../transactions/mint_heat_screen.dart';
 import '../transactions/receive_screen.dart';
 import '../../utils/xfg_ticker.dart';
 
+// Shared prestige palette + fire-brand gradients.
+const Color _obsidian = Color(0xFF0C0C0F);
+const Color _champagne = Color(0xFFFF8A5C); // warm ember accent
+const Color _platinum = Color(0xFFE9E7E2);
+const List<Color> _fireStops = [
+  Color(0xFF8A1E0B),
+  Color(0xFFD84315),
+  Color(0xFFFF6D00),
+  Color(0xFFF9A825),
+];
+LinearGradient get _fireLine =>
+    const LinearGradient(colors: _fireStops);
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -35,7 +48,6 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 16),
               if (state.address != null) _addressCard(state),
               const SizedBox(height: 16),
-              _infoRow(state),
               const SizedBox(height: 16),
               _miningControls(state),
               const SizedBox(height: 16),
@@ -77,7 +89,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  static const _champagne = Color(0xFFC9A96A);
   static const _plaque = Color(0xFF141417);
 
   Widget _balanceCard(WalletState state) => _BalanceCard(state: state);
@@ -148,47 +159,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _infoRow(WalletState state) {
-    return Row(
-      children: [
-        _infoTile('Peers', '${state.peerCount}', Icons.people),
-        const SizedBox(width: 8),
-        _infoTile('Min Fee', formatXfg(txFee), Icons.receipt),
-        const SizedBox(width: 8),
-        _infoTile('Height', '${state.blockHeight}', Icons.tag),
-      ],
-    );
-  }
-
-  Widget _infoTile(String label, String value, IconData icon) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: AppTheme.surfaceColor,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: AppTheme.primaryColor, size: 18),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: const TextStyle(
-                color: AppTheme.textPrimary,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            Text(
-              label,
-              style: const TextStyle(color: AppTheme.textMuted, fontSize: 10),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _miningControls(WalletState state) {
     return BlocBuilder<MiningCubit, MiningState>(
@@ -269,8 +239,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   ),
-                  ElevatedButton(
-                    onPressed: !canMine
+                  GestureDetector(
+                    onTap: !canMine
                         ? null
                         : () {
                             if (mining.isMining) {
@@ -281,20 +251,45 @@ class _HomeScreenState extends State<HomeScreen> {
                               );
                             }
                           },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: mining.isMining
-                          ? AppTheme.errorColor
-                          : AppTheme.successColor,
-                      foregroundColor: Colors.white,
+                    child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 6,
+                        horizontal: 14,
+                        vertical: 7,
                       ),
-                      disabledBackgroundColor: AppTheme.textMuted.withOpacity(
-                        0.3,
+                      decoration: BoxDecoration(
+                        color: mining.isMining
+                            ? AppTheme.errorColor.withOpacity(0.12)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          width: 1,
+                          color: mining.isMining
+                              ? AppTheme.errorColor.withOpacity(0.6)
+                              : _champagne.withOpacity(0.5),
+                        ),
+                        gradient: mining.isMining
+                            ? null
+                            : LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  for (final c in _fireStops)
+                                    c.withOpacity(0.18),
+                                ],
+                              ),
+                      ),
+                      child: Text(
+                        mining.isMining ? 'STOP MINING' : 'START MINING',
+                        style: TextStyle(
+                          color: mining.isMining
+                              ? AppTheme.errorColor
+                              : _champagne,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 2,
+                        ),
                       ),
                     ),
-                    child: Text(mining.isMining ? 'Stop' : 'Start'),
                   ),
                 ],
               ),
@@ -438,10 +433,17 @@ class _GuillochePainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.6
       ..color = Colors.white.withOpacity(0.035);
+    final fireRect = Rect.fromLTWH(0, 0, size.width, size.height);
     final gold = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.7
-      ..color = const Color(0xFFC9A96A).withOpacity(0.05);
+      ..shader = const LinearGradient(colors: [
+        Color(0xFF8A1E0B),
+        Color(0xFFD84315),
+        Color(0xFFFF6D00),
+        Color(0xFFF9A825),
+      ]).createShader(fireRect)
+      ..color = const Color(0xFFD84315).withOpacity(0.06);
 
     void rings(Offset center, int count, double step, Paint paint) {
       for (var i = 1; i <= count; i++) {
@@ -475,9 +477,6 @@ class _BalanceCard extends StatefulWidget {
 }
 
 class _BalanceCardState extends State<_BalanceCard> {
-  static const _obsidian = Color(0xFF0C0C0F);
-  static const _champagne = Color(0xFFC9A96A);
-  static const _platinum = Color(0xFFE9E7E2);
   static const _mask = '••••••••';
 
   bool _showBalance = true;
@@ -525,15 +524,26 @@ class _BalanceCardState extends State<_BalanceCard> {
             Positioned.fill(
               child: CustomPaint(painter: const _GuillochePainter()),
             ),
-            // Inner champagne bezel
+            // Inner fire-gradient bezel (thin flame leaf)
             Padding(
               padding: const EdgeInsets.all(5),
               child: Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(15),
-                  border: Border.all(
-                    color: _champagne.withOpacity(0.25),
-                    width: 0.8,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      for (final c in _fireStops) c.withOpacity(0.55),
+                      _fireStops.first.withOpacity(0.55),
+                    ],
+                  ),
+                ),
+                padding: const EdgeInsets.all(0.8),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: _obsidian,
+                    borderRadius: BorderRadius.circular(14.2),
                   ),
                 ),
               ),
@@ -616,7 +626,7 @@ class _BalanceCardState extends State<_BalanceCard> {
                     ),
                   ),
                   const SizedBox(height: 18),
-                  Container(height: 0.8, color: Colors.white.withOpacity(0.06)),
+                  Container(height: 1, decoration: BoxDecoration(gradient: _fireLine.withOpacity(0.35))),
                   const SizedBox(height: 12),
                   _statementRow('AVAILABLE', _figure(state.unlockedBalanceXfg), isXfgAmount: true),
                   if (state.totalHeatXfg > 0) ...[
@@ -628,7 +638,48 @@ class _BalanceCardState extends State<_BalanceCard> {
                     ),
                   ],
                   const SizedBox(height: 16),
-                  Container(height: 0.8, color: Colors.white.withOpacity(0.06)),
+                  Container(height: 1, decoration: BoxDecoration(gradient: _fireLine.withOpacity(0.35))),
+                  const SizedBox(height: 14),
+                  Container(height: 1, decoration: BoxDecoration(gradient: _fireLine.withOpacity(0.35))),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _CrownPusher(
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                                builder: (context) => const SendScreen()),
+                          );
+                        },
+                      ),
+                      _CrownPusher(
+                        icon: Icons.local_fire_department,
+                        label: 'MINT ΗΞΔŦ',
+                        accent: AppTheme.accentColor,
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const MintHeatScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      _CrownPusher(
+                        icon: Icons.arrow_downward,
+                        label: 'RECEIVE',
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const ReceiveScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Container(height: 1, decoration: BoxDecoration(gradient: _fireLine.withOpacity(0.35))),
                   BlocBuilder<MiningCubit, MiningState>(
                     builder: (context, mining) {
                       return Padding(
@@ -636,55 +687,13 @@ class _BalanceCardState extends State<_BalanceCard> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
-                            _complication(
-                              '${state.blockHeight}',
-                              'BLOCK HEIGHT',
-                            ),
-                            _complication(
-                              _hashrate(mining.hashrate),
-                              'HASHRATE',
-                            ),
+                            _complication('${state.blockHeight}', 'BLOCK HEIGHT'),
+                            _complication(_hashrate(mining.hashrate), 'HASHRATE'),
                             _complication('${state.peerCount}', 'PEERS'),
                           ],
                         ),
                       );
                     },
-                  ),
-                  const SizedBox(height: 14),
-                  Container(height: 0.8, color: Colors.white.withOpacity(0.06)),
-                  const SizedBox(height: 16),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        _CrownPusher(
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                  builder: (context) => const SendScreen()),
-                            );
-                          },
-                        ),
-                        const SizedBox(width: 16),
-                        _actionBtn('Mint ΗΞΔŦ', Icons.arrow_upward, () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => const MintHeatScreen(),
-                            ),
-                          );
-                        }, color: AppTheme.accentColor),
-                        const SizedBox(width: 16),
-                        _actionBtn('Receive', Icons.arrow_downward, () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => const ReceiveScreen(),
-                            ),
-                          );
-                        }),
-                      ],
-                    ),
                   ),
                 ],
               ),
@@ -741,15 +750,14 @@ class _BalanceCardState extends State<_BalanceCard> {
   }
 
   Widget _complication(String value, String label) {
-    return Container(
-      width: 54,
-      height: 54,
+    return SizedBox(
+      width: 64,
+      height: 64,
+      child: CustomPaint(
+        painter: const _FireRingPainter(),
+        child: Container(
       alignment: Alignment.center,
-      padding: const EdgeInsets.symmetric(horizontal: 5),
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white.withOpacity(0.10), width: 0.8),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -759,7 +767,7 @@ class _BalanceCardState extends State<_BalanceCard> {
               value,
               style: TextStyle(
                 color: _platinum,
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: FontWeight.w500,
                 fontFamily: AppTheme.numberFontFamily,
               ),
@@ -772,7 +780,7 @@ class _BalanceCardState extends State<_BalanceCard> {
               label,
               style: TextStyle(
                 color: Colors.white.withOpacity(0.38),
-                fontSize: 8,
+                fontSize: 9,
                 fontWeight: FontWeight.w500,
                 letterSpacing: 2,
               ),
@@ -780,40 +788,11 @@ class _BalanceCardState extends State<_BalanceCard> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _actionBtn(
-    String label,
-    IconData icon,
-    VoidCallback onTap, {
-    Color? color,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: (color ?? Colors.white).withOpacity(0.15),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: color ?? Colors.white, size: 16),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: color ?? Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 11,
-              ),
-            ),
-          ],
-        ),
+      ),
       ),
     );
   }
+
 }
 
 /// One-shot diagonal specular highlight across its child. Replays when the
@@ -1060,12 +1039,21 @@ class _OdometerTextState extends State<_OdometerText>
 /// Circular crown pusher: obsidian disc, champagne hairline ring over a
 /// knurled rim of radial ridges, 'SEND' micro-caps beneath.
 class _CrownPusher extends StatelessWidget {
-  const _CrownPusher({required this.onTap});
+  const _CrownPusher({
+    required this.onTap,
+    this.icon = Icons.arrow_upward,
+    this.label = 'SEND',
+    this.accent,
+  });
 
   final VoidCallback onTap;
+  final IconData icon;
+  final String label;
+  final Color? accent;
 
   @override
   Widget build(BuildContext context) {
+    final a = accent ?? _champagne;
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -1076,21 +1064,17 @@ class _CrownPusher extends StatelessWidget {
             width: 58,
             height: 58,
             child: CustomPaint(
-              painter: const _KnurlPainter(),
+              painter: _KnurlPainter(accent: a),
               child: Center(
-                child: Icon(
-                  Icons.arrow_upward,
-                  color: const Color(0xFFC9A96A),
-                  size: 20,
-                ),
+                child: Icon(icon, color: a, size: 20),
               ),
             ),
           ),
           const SizedBox(height: 6),
           Text(
-            'SEND',
+            label,
             style: TextStyle(
-              color: const Color(0xFFC9A96A).withOpacity(0.65),
+              color: a.withOpacity(0.65),
               fontSize: 8,
               fontWeight: FontWeight.w600,
               letterSpacing: 2,
@@ -1104,7 +1088,8 @@ class _CrownPusher extends StatelessWidget {
 
 /// Knurled crown edge: 36 radial ridges at the rim under a hairline ring.
 class _KnurlPainter extends CustomPainter {
-  const _KnurlPainter();
+  const _KnurlPainter({this.accent});
+  final Color? accent;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1117,8 +1102,12 @@ class _KnurlPainter extends CustomPainter {
       Paint()..color = const Color(0xFF0C0C0F),
     );
 
+    final fireRect = Rect.fromLTWH(0, 0, size.width, size.height);
     final tick = Paint()
-      ..color = const Color(0xFFC9A96A).withOpacity(0.45)
+      ..shader = LinearGradient(colors: [
+        for (final c in _fireStops) c.withOpacity(0.65),
+      ]).createShader(fireRect)
+      ..color = (accent ?? _champagne).withOpacity(0.45)
       ..strokeWidth = 1
       ..strokeCap = StrokeCap.round;
     for (var i = 0; i < 36; i++) {
@@ -1138,6 +1127,37 @@ class _KnurlPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = 0.8
         ..color = const Color(0xFFC9A96A).withOpacity(0.55),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Thin fire-gradient ring for complication subdials.
+class _FireRingPainter extends CustomPainter {
+  const _FireRingPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1
+      ..shader = const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Color(0xFF8A1E0B),
+          Color(0xFFD84315),
+          Color(0xFFFF6D00),
+          Color(0xFFF9A825),
+        ],
+      ).createShader(Offset.zero & size)
+      ..color = Colors.white.withOpacity(0.10);
+    canvas.drawCircle(
+      Offset(size.width / 2, size.height / 2),
+      size.width / 2 - 0.5,
+      paint,
     );
   }
 
