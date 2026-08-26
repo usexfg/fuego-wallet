@@ -291,7 +291,7 @@ class _ReceiveScreenState extends State<ReceiveScreen>
                 style: const TextStyle(
                   color: AppTheme.textPrimary,
                   fontSize: 13,
-                  fontFamily: 'monospace',
+                  fontFamily: 'IBMPlexMono',
                 ),
               ),
             ),
@@ -461,7 +461,7 @@ class _ReceiveScreenState extends State<ReceiveScreen>
                     style: const TextStyle(
                       color: AppTheme.textSecondary,
                       fontSize: 11,
-                      fontFamily: 'monospace',
+                      fontFamily: 'IBMPlexMono',
                     ),
                   ),
                 ],

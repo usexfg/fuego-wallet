@@ -43,7 +43,7 @@ class TransactionDetailsScreen extends StatelessWidget {
         children: [
           Text(title, style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600)),
           const SizedBox(height: 4),
-          SelectableText(value, style: const TextStyle(color: AppTheme.textSecondary, fontFamily: 'monospace')),
+          SelectableText(value, style: const TextStyle(color: AppTheme.textSecondary, fontFamily: 'IBMPlexMono')),
         ],
       ),
     );

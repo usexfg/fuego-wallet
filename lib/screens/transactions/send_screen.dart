@@ -331,7 +331,7 @@ class _SendScreenState extends State<SendScreen> {
                         style: const TextStyle(
                           color: AppTheme.textPrimary,
                           fontSize: 12,
-                          fontFamily: 'monospace',
+                          fontFamily: 'IBMPlexMono',
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,

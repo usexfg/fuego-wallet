@@ -329,7 +329,7 @@ class _MintHeatScreenState extends State<MintHeatScreen> {
                           style: const TextStyle(
                             color: AppTheme.textPrimary,
                             fontSize: 12,
-                            fontFamily: 'monospace',
+                            fontFamily: 'IBMPlexMono',
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
