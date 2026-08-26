@@ -9,6 +9,7 @@ import '../utils/theme.dart';
 
 import 'auth/pin_entry_screen.dart';
 import 'main/main_screen.dart';
+import '../../utils/xfg_ticker.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -238,7 +239,7 @@ class _SplashScreenState extends State<SplashScreen>
                             ),
                           ),
                           const SizedBox(height: 6),
-                          Text(
+                          xfgText(
                             'feat HEARTH Floor | DeXFG',
                             style: TextStyle(
                               fontSize: 14,
@@ -259,7 +260,7 @@ class _SplashScreenState extends State<SplashScreen>
                                 width: 1,
                               ),
                             ),
-                            child: Text(
+                            child: xfgText(
                               'XFG + ΗΞΔŦ',
                               style: TextStyle(
                                 fontSize: 13,

@@ -28,6 +28,7 @@ import 'services/fuego_vault_service.dart';
 import 'services/node_connection.dart';
 import 'services/security_service.dart';
 import 'utils/theme.dart';
+import 'utils/xfg_ticker.dart';
 
 final _log = Logger('main');
 late final DaemonManager daemonManager = DaemonManager(config: _activeConfig);
@@ -157,6 +158,7 @@ Future<void> main() async {
   try {
     final prefs = await SharedPreferences.getInstance();
     AppTheme.fontFamily = prefs.getString('app_font_family') ?? 'IBMPlexSans';
+    await XfgTicker.load();
   } catch (_) {
     // Default (IBMPlexSans) applies on failure.
   }

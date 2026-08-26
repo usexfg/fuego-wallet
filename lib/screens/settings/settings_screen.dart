@@ -17,6 +17,7 @@ import 'swap_settings_screen.dart';
 import 'alias_registration_screen.dart';
 import 'network_selection_screen.dart';
 import 'wallets_screen.dart';
+import '../../utils/xfg_ticker.dart';
 
 /// Bundled word-font families selectable in Settings > App Font.
 /// Numbers always render in Noto Sans ([AppTheme.numberFontFamily]).
@@ -62,6 +63,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final biometricEnabled = await _securityService.isBiometricEnabled();
     final ep = app.nodeConnection.lastEndpoints;
     final prefs = await SharedPreferences.getInstance();
+    await XfgTicker.load();
     final saved = prefs.getString('app_font_family');
     // Migrate legacy Saira/Electrolize boolean to the Plex default.
     final family = saved ?? 'IBMPlexSans';
@@ -138,6 +140,70 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       );
     }
+  }
+
+  Future<void> _setTickerFont(String family) async {
+    await XfgTicker.set(family);
+    setState(() {});
+  }
+
+  void _showTickerPickerDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            backgroundColor: AppTheme.cardColor,
+            title: const Text(
+              'XFG Symbol',
+              style: TextStyle(color: AppTheme.textPrimary),
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (final option in XfgTicker.options)
+                    RadioListTile<String>(
+                      value: option.family,
+                      groupValue: XfgTicker.font,
+                      onChanged: (value) async {
+                        if (value != null) {
+                          await _setTickerFont(value);
+                          setDialogState(() {});
+                        }
+                      },
+                      title: Text(
+                        option.label,
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontFamily:
+                              option.family.isEmpty ? null : option.family,
+                          fontSize: option.family.isEmpty ? null : 18,
+                        ),
+                      ),
+                      subtitle: option.note != null
+                          ? Text(
+                              option.note!,
+                              style: const TextStyle(
+                                color: AppTheme.textSecondary,
+                                fontSize: 13,
+                              ),
+                            )
+                          : null,
+                    ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Done'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   void _showFontPickerDialog() {
@@ -1244,7 +1310,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 4),
-              Text(
+              xfgText(
                 'A privacy-focused cryptocurrency wallet for Fuego (XFG)',
                 style: TextStyle(color: AppTheme.textSecondary),
               ),
@@ -1485,6 +1551,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 subtitle:
                     fontOptions.firstWhere((f) => f.family == _fontFamily).label,
                 onTap: _showFontPickerDialog,
+                trailing: const Icon(Icons.chevron_right),
+              ),
+              _buildSettingsTile(
+                icon: Icons.currency_exchange,
+                title: 'XFG Symbol',
+                subtitle: XfgTicker.options
+                    .firstWhere((o) => o.family == XfgTicker.font,
+                        orElse: () => XfgTicker.options.first)
+                    .label,
+                onTap: _showTickerPickerDialog,
                 trailing: const Icon(Icons.chevron_right),
               ),
               _buildSettingsTile(

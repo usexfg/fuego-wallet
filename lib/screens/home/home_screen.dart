@@ -9,6 +9,7 @@ import '../transactions/transaction_details_screen.dart';
 import '../transactions/send_screen.dart';
 import '../transactions/mint_heat_screen.dart';
 import '../transactions/receive_screen.dart';
+import '../../utils/xfg_ticker.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -93,7 +94,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              xfgText(
                 'XFG BALANCE',
                 style: TextStyle(
                   color: Colors.white70,
@@ -572,7 +573,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-            Text(
+            xfgText(
               '${isIn ? '+' : '-'}${tx.amount.toStringAsFixed(decimalPlaces)} XFG',
               style: TextStyle(
                 color: isIn ? AppTheme.successColor : AppTheme.errorColor,

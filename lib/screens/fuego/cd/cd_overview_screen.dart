@@ -4,6 +4,7 @@ import '../../../bloc/cd/cd_cubit.dart';
 import '../../../models/cd.dart';
 import '../../../utils/theme.dart';
 import 'create_cd_dialog.dart';
+import '../../../utils/xfg_ticker.dart';
 
 class CdOverviewScreen extends StatelessWidget {
   const CdOverviewScreen({super.key});
@@ -335,7 +336,7 @@ class _MarketRow extends StatelessWidget {
             Expanded(flex: 2, child: _termWidget(daysRemaining)),
             Expanded(flex: 2, child: Text(listing.amount,
               style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13))),
-            Expanded(flex: 2, child: Text('${listing.price} XFG',
+            Expanded(flex: 2, child: xfgText('${listing.price} XFG',
               style: const TextStyle(color: AppTheme.accentColor, fontSize: 13, fontWeight: FontWeight.w600))),
             SizedBox(
               width: 48,

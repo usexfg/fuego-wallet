@@ -14,6 +14,7 @@ import '../../services/web3_multi_chain_service.dart';
 import '../../utils/theme.dart';
 import '../../widgets/fuego_chart.dart';
 import '../tokens/token_overview_screen.dart';
+import '../../utils/xfg_ticker.dart';
 
 class DexScreen extends StatefulWidget {
   const DexScreen({super.key});
@@ -183,7 +184,7 @@ class _DexScreenState extends State<DexScreen>
           ),
         ),
         const SizedBox(width: 4),
-        const Text(
+        xfgText(
           'XFG',
           style: TextStyle(
             color: AppTheme.primaryColor,
@@ -392,7 +393,7 @@ class _DexScreenState extends State<DexScreen>
               ),
             ),
             // Title
-            const Padding(
+            Padding(
               padding: EdgeInsets.fromLTRB(20, 16, 20, 12),
               child: Row(
                 children: [
@@ -405,7 +406,7 @@ class _DexScreenState extends State<DexScreen>
                     ),
                   ),
                   Spacer(),
-                  Text(
+                  xfgText(
                     'XFG paired',
                     style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
                   ),
@@ -594,7 +595,7 @@ class _DexScreenState extends State<DexScreen>
       color: AppTheme.surfaceColor.withValues(alpha: 0.4),
       child: Row(
         children: [
-          Text(
+          xfgText(
             'XFG/${state.selectedPair.ticker}',
             style: const TextStyle(
               color: AppTheme.textPrimary,
@@ -690,7 +691,7 @@ class _DexScreenState extends State<DexScreen>
                 ),
               ),
               const Spacer(),
-              const Text(
+              xfgText(
                 'XFG',
                 style: TextStyle(color: AppTheme.textMuted, fontSize: 9),
               ),
@@ -749,7 +750,7 @@ class _DexScreenState extends State<DexScreen>
           ),
           Expanded(
             flex: 2,
-            child: Text(
+            child: xfgText(
               '${(o.amount / 1e7).toStringAsFixed(2)} XFG',
               style: const TextStyle(color: AppTheme.textPrimary, fontSize: 11),
             ),
@@ -970,7 +971,7 @@ class _DexScreenState extends State<DexScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
+          xfgText(
             'Trade XFG/${state.selectedPair.ticker}',
             style: const TextStyle(
               color: AppTheme.textPrimary,
@@ -1259,7 +1260,7 @@ class _DexScreenState extends State<DexScreen>
                 ),
               ),
               const Spacer(),
-              const Text(
+              xfgText(
                 'XFG',
                 style: TextStyle(color: AppTheme.textMuted, fontSize: 9),
               ),
@@ -1295,7 +1296,7 @@ class _DexScreenState extends State<DexScreen>
       children: [
         Expanded(
           flex: 2,
-          child: Text(
+          child: xfgText(
             '${(t.amount / 1e7).toStringAsFixed(2)} XFG',
             style: const TextStyle(color: AppTheme.textPrimary, fontSize: 11),
           ),
@@ -1482,7 +1483,7 @@ class _DexScreenState extends State<DexScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                xfgText(
                   'All swaps are XFG-paired atomic swaps handled by xfg-swapd.\n',
                   style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
                 ),

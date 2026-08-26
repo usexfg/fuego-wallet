@@ -167,5 +167,24 @@ flutter:
           weight: 600
         - asset: assets/fonts/Brygada_1918/static/Brygada1918-Bold.ttf
           weight: 700
+    - family: CormorantSC
+      fonts:
+        - asset: assets/fonts/Cormorant_SC/static/CormorantSC-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Cormorant_SC/static/CormorantSC-SemiBold.ttf
+          weight: 600
+    - family: UnicaOne
+      fonts:
+        - asset: assets/fonts/Unica_One/static/UnicaOne-Regular.ttf
+          weight: 400
+    - family: Fahkwang
+      fonts:
+        - asset: assets/fonts/Fahkwang/static/Fahkwang-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Fahkwang/static/Fahkwang-SemiBold.ttf
+          weight: 600
+    - family: CrimsonPro
+      fonts:
+        - asset: assets/fonts/Crimson_Pro/static/CrimsonPro-Variable.ttf
 
 dependency_overrides:

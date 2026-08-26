@@ -5,6 +5,7 @@ import 'package:dns_client/dns_client.dart' hide DnsClient;
 import 'package:dns_client/src/dns_over_https.dart';
 import '../../bloc/wallet/wallet_cubit.dart';
 import '../../utils/theme.dart';
+import '../../utils/xfg_ticker.dart';
 
 class SendScreen extends StatefulWidget {
   const SendScreen({super.key});
@@ -424,7 +425,7 @@ class _SendScreenState extends State<SendScreen> {
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               alignment: Alignment.center,
-                              child: Text(
+                              child: xfgText(
                                 'XFG',
                                 style: TextStyle(
                                   color: !_isHeat ? Colors.white : AppTheme.textSecondary,

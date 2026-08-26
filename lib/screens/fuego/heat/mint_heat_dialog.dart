@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../services/fuego_rpc_service.dart';
 import '../../../utils/theme.dart';
+import '../../../utils/xfg_ticker.dart';
 
 class MintHeatDialog extends StatefulWidget {
   const MintHeatDialog({super.key});
@@ -68,7 +69,7 @@ class _MintHeatDialogState extends State<MintHeatDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Burn XFG to mint ΗΞΔŦ at the PI redemption price.',
+          xfgText('Burn XFG to mint ΗΞΔŦ at the PI redemption price.',
               style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
           const SizedBox(height: 12),
           TextField(

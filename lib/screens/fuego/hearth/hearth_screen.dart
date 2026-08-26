@@ -7,6 +7,7 @@ import '../../../services/price_history_service.dart';
 import '../../../utils/hearth_theme.dart';
 import '../../../widgets/fuego_chart.dart';
 import 'liquidity_dialogs.dart';
+import '../../../utils/xfg_ticker.dart';
 
 class HearthScreen extends StatefulWidget {
   const HearthScreen({super.key});
@@ -175,7 +176,7 @@ children: [
           AnimatedBuilder(
             animation: _pulseAnim,
             builder: (context, _) {
-              return Text(
+              return xfgText(
                 'XFG = \$${xfgUsd.toStringAsFixed(2)}',
                 style: HearthTheme.mono(
                   size: 13,
@@ -192,7 +193,7 @@ children: [
           ),
           const Spacer(),
           // Center: XFG priced in ΗΞΔŦ
-          Text(
+          xfgText(
             '1 XFG ≈ ${spotNum.toStringAsFixed(1)} HΞ∆T',
             style: HearthTheme.mono(
               size: 13,
@@ -317,7 +318,7 @@ children: [
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
+                xfgText(
                   '$leftLabel HΞ∆T / 1 XFG',
                   style: HearthTheme.mono(
                     size: 15,
@@ -338,7 +339,7 @@ children: [
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(
+                xfgText(
                   '1 XFG Value',
                   style: HearthTheme.label(
                     size: 10,
@@ -477,7 +478,7 @@ children: [
             ),
           ),
           Expanded(
-            child: Text(
+            child: xfgText(
               'Amount (XFG)',
               style: HearthTheme.label(size: 10, color: HearthTheme.textMuted),
               textAlign: TextAlign.right,
@@ -630,7 +631,7 @@ children: [
                   color: _sellXfg ? HearthTheme.askPrimary : Colors.transparent,
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: Text(
+                child: xfgText(
                   'Sell XFG',
                   textAlign: TextAlign.center,
                   style: TextStyle(
@@ -659,7 +660,7 @@ children: [
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: Text(
+                child: xfgText(
                   'Buy XFG',
                   textAlign: TextAlign.center,
                   style: TextStyle(
@@ -809,7 +810,7 @@ children: [
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Limit Price (HΞ∆T per XFG)', style: HearthTheme.label(size: 10)),
+        xfgText('Limit Price (HΞ∆T per XFG)', style: HearthTheme.label(size: 10)),
         const SizedBox(height: 6),
         Container(
           decoration: BoxDecoration(

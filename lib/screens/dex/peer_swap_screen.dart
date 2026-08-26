@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../bloc/dex/dex_cubit.dart';
 import '../../models/chain_info.dart';
 import '../../utils/theme.dart';
+import '../../utils/xfg_ticker.dart';
 
 /// Direct peer-to-peer atomic swaps with a CHOSEN counterparty.
 ///
@@ -349,7 +350,7 @@ class _PeerSwapScreenState extends State<PeerSwapScreen> {
                 ],
               ),
               const SizedBox(height: 6),
-              Text(
+              xfgText(
                 '${swap.xfgAmountDecimal.toStringAsFixed(2)} XFG \u2192 ${swap.ctrAmountDecimal.toStringAsFixed(4)} ${swap.pairName}',
                 style: const TextStyle(
                   color: AppTheme.textPrimary,
@@ -400,7 +401,7 @@ class _PeerSwapScreenState extends State<PeerSwapScreen> {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
+                child: xfgText(
                   '${swap.xfgAmountDecimal.toStringAsFixed(2)} XFG \u2192 ${swap.pairName}',
                   style: const TextStyle(
                     color: AppTheme.textPrimary,
