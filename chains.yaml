@@ -1,0 +1,420 @@
+# chains.yaml — SINGLE SOURCE OF TRUTH for chain metadata.
+#
+# Regenerate the Dart registry after editing:
+#   dart run tool/gen_chains.dart          # writes lib/models/chain_registry.g.dart
+#   dart run tool/gen_chains.dart --check  # verify generated file is up to date
+#
+# Schema per entry:
+#   key           lowercase canonical key (matches EvmChainKey)
+#   ticker        uppercase display ticker
+#   name          human display name
+#   family        evm | utxo | cryptonote | sol
+#   chainId       EVM chain id
+#   rpc           default public JSON-RPC endpoint
+#   gasToken      native gas ticker ('' when none, e.g. Tempo)
+#   color         brand color "#RRGGBB"
+#   icon          asset path (missing files are tolerated by the UI)
+#   tier          swap  = wired into xfg-swapd orderbook
+#                 wallet = ERC20 wallet layer only
+#   confirmBlocks advisory confirmation depth before a tx is trusted
+#
+# Phase 1 scope: the 33 EvmChainKey chains ONLY.
+# Non-EVM swap chains (btc/ltc/bch/kmd/dcr/sol/xmr) and ERC20 token
+# constants stay hand-written elsewhere and are NOT listed here.
+
+chains:
+  - key: eth
+    ticker: ETH
+    name: Ethereum
+    family: evm
+    chainId: 1
+    rpc: https://eth.llamarpc.com
+    gasToken: ETH
+    color: "#627EEA"
+    icon: assets/coin icons/eth.png
+    tier: swap
+    confirmBlocks: 12
+
+  - key: arb
+    ticker: ARB
+    name: Arbitrum
+    family: evm
+    chainId: 42161
+    rpc: https://arb1.arbitrum.io/rpc
+    gasToken: ETH
+    color: "#28A0F0"
+    icon: assets/coin icons/arb.png
+    tier: swap
+    confirmBlocks: 20   # L2 — ~1s soft confirm; 20 covers L1 finalization window
+
+  - key: base
+    ticker: BASE
+    name: Base
+    family: evm
+    chainId: 8453
+    rpc: https://mainnet.base.org
+    gasToken: ETH
+    color: "#0052FF"
+    icon: assets/coin icons/base.png
+    tier: swap
+    confirmBlocks: 1
+
+  - key: bsc
+    ticker: BNB
+    name: BNB Chain
+    family: evm
+    chainId: 56
+    rpc: https://bsc-dataseed.binance.org
+    gasToken: BNB
+    color: "#F0B90B"
+    icon: assets/coin icons/bnb.png
+    tier: swap
+    confirmBlocks: 3
+
+  - key: poly
+    ticker: POLY
+    name: Polygon
+    family: evm
+    chainId: 137
+    rpc: https://polygon-rpc.com
+    gasToken: POL
+    color: "#8247E5"
+    icon: assets/coin icons/matic.png
+    tier: swap
+    confirmBlocks: 1
+
+  - key: op
+    ticker: OP
+    name: OP Mainnet
+    family: evm
+    chainId: 10
+    rpc: https://mainnet.optimism.io
+    gasToken: ETH
+    color: "#FF0420"
+    icon: assets/coin icons/op.jpg
+    tier: wallet
+    confirmBlocks: 1
+
+  - key: avax
+    ticker: AVAX
+    name: Avalanche
+    family: evm
+    chainId: 43114
+    rpc: https://api.avax.network/ext/bc/C/rpc
+    gasToken: AVAX
+    color: "#E84142"
+    icon: assets/coin icons/avax.png
+    tier: wallet
+    confirmBlocks: 1
+
+  - key: cro
+    ticker: CRO
+    name: Cronos
+    family: evm
+    chainId: 25
+    rpc: https://evm.cronos.org
+    gasToken: CRO
+    color: "#002D74"
+    icon: assets/coin icons/cronos.png
+    tier: wallet
+    confirmBlocks: 1
+
+  - key: monad
+    ticker: MON
+    name: Monad
+    family: evm
+    chainId: 143
+    rpc: https://rpc.monad.xyz
+    gasToken: MON
+    color: "#836EF9"
+    icon: assets/coin icons/monad.png
+    tier: wallet
+    confirmBlocks: 1
+
+  - key: xpl
+    ticker: XPL
+    name: Plasma
+    family: evm
+    chainId: 9745
+    rpc: https://rpc.plasma.to
+    gasToken: XPL
+    color: "#4FA9E0"
+    icon: assets/coin icons/xpl.png
+    tier: wallet
+    confirmBlocks: 1
+
+  - key: pls
+    ticker: PLS
+    name: PulseChain
+    family: evm
+    chainId: 369
+    rpc: https://rpc.pulsechain.com
+    gasToken: PLS
+    color: "#9C27B0"
+    icon: assets/coin icons/pls.png
+    tier: wallet
+    confirmBlocks: 1
+
+  - key: uni
+    ticker: UNI
+    name: Unichain
+    family: evm
+    chainId: 130
+    rpc: https://mainnet.unichain.org
+    gasToken: ETH
+    color: "#FF007A"
+    icon: assets/coin icons/uni.png
+    tier: wallet
+    confirmBlocks: 1
+
+  - key: rh
+    ticker: RHC
+    name: Robinhood Chain
+    family: evm
+    chainId: 4663
+    rpc: https://rpc.mainnet.chain.robinhood.com
+    gasToken: ETH
+    color: "#6B7280"
+    icon: assets/coin icons/rhc.png
+    tier: wallet
+    confirmBlocks: 1
+
+  - key: bob
+    ticker: BOB
+    name: BOB
+    family: evm
+    chainId: 60808
+    rpc: https://rpc.nodeflare.app/bob/public
+    gasToken: ETH
+    color: "#FF6D00"
+    icon: assets/coin icons/bob.png
+    tier: wallet
+    confirmBlocks: 1
+
+  - key: gleec
+    ticker: GLEEC
+    name: Gleec Chain
+    family: evm
+    chainId: 11169
+    rpc: https://evm-rpc.gleec.com
+    gasToken: GLEEC
+    color: "#00A3C4"
+    icon: assets/coin icons/gleec.png
+    tier: wallet
+    confirmBlocks: 1
+
+  - key: linea
+    ticker: LINEA
+    name: Linea
+    family: evm
+    chainId: 59144
+    rpc: https://rpc.linea.build
+    gasToken: ETH
+    color: "#61DFFF"
+    icon: assets/coin icons/linea.png
+    tier: wallet
+    confirmBlocks: 1
+
+  - key: zksync
+    ticker: ZKS
+    name: ZKsync Era
+    family: evm
+    chainId: 324
+    rpc: https://mainnet.era.zksync.io
+    gasToken: ETH
+    color: "#8C8DFC"
+    icon: assets/coin icons/zksync.png
+    tier: wallet
+    confirmBlocks: 1
+
+  - key: hyperevm
+    ticker: HYPER
+    name: HyperEVM
+    family: evm
+    chainId: 999
+    rpc: https://rpc.hyperliquid.xyz/evm
+    gasToken: HYPE
+    color: "#97FCE4"
+    icon: assets/coin icons/hyperevm.png
+    tier: wallet
+    confirmBlocks: 1
+
+  - key: ink
+    ticker: INK
+    name: Ink
+    family: evm
+    chainId: 57073
+    rpc: https://rpc-gel.inkonchain.com
+    gasToken: ETH
+    color: "#7132F5"
+    icon: assets/coin icons/ink.png
+    tier: wallet
+    confirmBlocks: 1
+
+  - key: rsk
+    ticker: RSK
+    name: Rootstock
+    family: evm
+    chainId: 30
+    rpc: https://public-node.rsk.co
+    gasToken: RBTC
+    color: "#E9B64E"
+    icon: assets/coin icons/rsk.png
+    tier: wallet
+    confirmBlocks: 15
+
+  - key: gnosis
+    ticker: GNO
+    name: Gnosis
+    family: evm
+    chainId: 100
+    rpc: https://rpc.gnosischain.com
+    gasToken: XDAI
+    color: "#1D6C4E"
+    icon: assets/coin icons/gnosis.png
+    tier: wallet
+    confirmBlocks: 1
+
+  - key: flare
+    ticker: FLR
+    name: Flare
+    family: evm
+    chainId: 14
+    rpc: https://flare-api.flare.network/ext/C-rpc
+    gasToken: FLR
+    color: "#E6413E"
+    icon: assets/coin icons/flare.png
+    tier: wallet
+    confirmBlocks: 1
+
+  - key: kaia
+    ticker: KAIA
+    name: Kaia
+    family: evm
+    chainId: 8217
+    rpc: https://public-en.node.kaia.io
+    gasToken: KAIA
+    color: "#FF1D01"
+    icon: assets/coin icons/kaia.png
+    tier: wallet
+    confirmBlocks: 1
+
+  - key: scroll
+    ticker: SCR
+    name: Scroll
+    family: evm
+    chainId: 534352
+    rpc: https://rpc.scroll.io
+    gasToken: ETH
+    color: "#EBC28E"
+    icon: assets/coin icons/scroll.png
+    tier: wallet
+    confirmBlocks: 1
+
+  - key: abstract
+    ticker: ABS
+    name: Abstract
+    family: evm
+    chainId: 2741
+    rpc: https://rpc.abstract.xyz
+    gasToken: ETH
+    color: "#202020"
+    icon: assets/coin icons/abstract.png
+    tier: wallet
+    confirmBlocks: 1
+
+  - key: plume
+    ticker: PLUME
+    name: Plume
+    family: evm
+    chainId: 98866
+    rpc: https://rpc.plume.org
+    gasToken: PLUME
+    color: "#FF3D00"
+    icon: assets/coin icons/plume.png
+    tier: wallet
+    confirmBlocks: 1
+
+  - key: soneium
+    ticker: SONEIUM
+    name: Soneium
+    family: evm
+    chainId: 1868
+    rpc: https://rpc.soneium.org
+    gasToken: ETH
+    color: "#937DFF"
+    icon: assets/coin icons/soneium.png
+    tier: wallet
+    confirmBlocks: 1
+
+  - key: doma
+    ticker: DOMA
+    name: Doma
+    family: evm
+    chainId: 97477
+    rpc: https://rpc.doma.xyz
+    gasToken: ETH
+    color: "#4F46E5"
+    icon: assets/coin icons/doma.png
+    tier: wallet
+    confirmBlocks: 1
+
+  - key: beam
+    ticker: BEAM
+    name: Beam
+    family: evm
+    chainId: 4337
+    rpc: https://build.onbeam.com/rpc
+    gasToken: BEAM
+    color: "#0BDBB5"
+    icon: assets/coin icons/beam.png
+    tier: wallet
+    confirmBlocks: 1
+
+  - key: moonriver
+    ticker: MOVR
+    name: Moonriver
+    family: evm
+    chainId: 1285
+    rpc: https://rpc.api.moonriver.moonbeam.network
+    gasToken: MOVR
+    color: "#F5B700"
+    icon: assets/coin icons/moonriver.png
+    tier: wallet
+    confirmBlocks: 1
+
+  - key: peaq
+    ticker: PEAQ
+    name: peaq
+    family: evm
+    chainId: 3338
+    rpc: https://peaq.api.onfinality.io/public
+    gasToken: PEAQ
+    color: "#7A2BF5"
+    icon: assets/coin icons/peaq.png
+    tier: wallet
+    confirmBlocks: 1
+
+  - key: tempo
+    ticker: TEMPO
+    name: Tempo
+    family: evm
+    chainId: 4217
+    rpc: https://rpc.tempo.xyz
+    gasToken: ''
+    color: "#111111"
+    icon: assets/coin icons/tempo.png
+    tier: wallet
+    confirmBlocks: 1
+
+  - key: sei
+    ticker: SEI
+    name: Sei
+    family: evm
+    chainId: 1329
+    rpc: https://evm-rpc.sei-apis.com
+    gasToken: SEI
+    color: "#9E1F19"
+    icon: assets/coin icons/sei.png
+    tier: wallet
+    confirmBlocks: 1

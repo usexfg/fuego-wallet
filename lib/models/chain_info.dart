@@ -1,9 +1,19 @@
 import 'dart:ui';
 
+import 'chain_registry.g.dart';
+
 /// Chain display metadata shared by the DEX marketplace (Orderbook/Trade/
 /// Trades) and the Peer Swap section.
 class ChainInfo {
-  static const Map<String, String> names = {
+  /// Display names.
+  ///
+  /// Canonical per-chain names are GENERATED from chains.yaml
+  /// ([kChainNames], lowercase keys). The legacy UPPERCASE ticker aliases
+  /// below are kept verbatim — the DEX UI keys by ticker ('MON', 'RHC',
+  /// 'ZKS', …) while the ERC20 layer keys by chain key ('monad', 'rh',
+  /// 'zksync', …). Both coexist: no key collision across cases.
+  static final Map<String, String> names = {
+    ...kChainNames,
     'BTC': 'Bitcoin',
     'LTC': 'Litecoin',
     'KMD': 'Komodo',
@@ -184,53 +194,109 @@ class ChainInfo {
 
   static bool isPtlcSupported(String ticker) => supportsPtlc.contains(ticker);
 
-  static const Map<String, Color> colors = {
-    'BTC': Color(0xFFF7931A),
-    'LTC': Color(0xFFBFBBBB),
-    'KMD': Color(0xFF2B6DE9),
-    'BCH': Color(0xFF8DC351),
-    'ETH': Color(0xFF627EEA),
-    'ARB': Color(0xFF28A0F0),
-    'BASE': Color(0xFF0052FF),
-    'BNB': Color(0xFFF0B90B),
-    'POLY': Color(0xFF8247E5),
-    'SOL': Color(0xFF9945FF),
-    'DCR': Color(0xFF2970FF),
-    'XMR': Color(0xFFFF6600),
-    'XFG': Color(0xFFD84315),
-    'AVAX': Color(0xFFE84142),
-    'BOB': Color(0xFFFF6D00),
-    'CRO': Color(0xFF002D74),
-    'DASH': Color(0xFF008CE7),
-    'DOGE': Color(0xFFC2A633),
-    'MON': Color(0xFF836EF9),
-    'OP': Color(0xFFFF0420),
-    'PLS': Color(0xFF9C27B0),
-    'RHC': Color(0xFF6B7280),
-    'UNI': Color(0xFFFF007A),
-    'XPL': Color(0xFF4FA9E0),
-    'ZANO': Color(0xFF6A5AF9),
-    'ZEC': Color(0xFFF4B728),
+  static const Map<String, int> decimals = {
+    'BTC': 8, 'LTC': 8, 'BCH': 8, 'KMD': 8, 'DCR': 8, 'DASH': 8, 'DOGE': 8, 'ZEC': 8,
+    'ETH': 18, 'ARB': 18, 'BASE': 18, 'BNB': 18, 'POLY': 18, 'AVAX': 18, 'BOB': 18,
+    'CRO': 18, 'LINEA': 18, 'ZKS': 18, 'HYPER': 18, 'INK': 18, 'RSK': 18, 'GNO': 18,
+    'FLR': 18, 'KAIA': 18, 'SCR': 18, 'ABS': 18, 'PLUME': 18, 'SONEIUM': 18, 'DOMA': 18,
+    'BEAM': 18, 'MOVR': 18, 'PEAQ': 18, 'TEMPO': 18, 'SEI': 18, 'GLEEC': 18,
+    'SOL': 9, 'XMR': 12, 'ZANO': 12, 'XFG': 7,
+  };
+
+  static const Map<String, String> explorerTx = {
+    'BTC': 'https://mempool.space/tx/{txid}',
+    'LTC': 'https://litecoinspace.org/tx/{txid}',
+    'BCH': 'https://blockchair.com/bitcoin-cash/transaction/{txid}',
+    'KMD': 'https://kmdexplorer.io/tx/{txid}',
+    'DCR': 'https://dcrdata.decred.org/tx/{txid}',
+    'DASH': 'https://blockchair.com/dash/transaction/{txid}',
+    'DOGE': 'https://blockchair.com/dogecoin/transaction/{txid}',
+    'ZEC': 'https://blockchair.com/zcash/transaction/{txid}',
+    'ETH': 'https://etherscan.io/tx/{txid}',
+    'ARB': 'https://arbiscan.io/tx/{txid}',
+    'BASE': 'https://basescan.org/tx/{txid}',
+    'BNB': 'https://bscscan.com/tx/{txid}',
+    'POLY': 'https://polygonscan.com/tx/{txid}',
+    'AVAX': 'https://snowscan.xyz/tx/{txid}',
+    'BOB': 'https://explorer.gobob.xyz/tx/{txid}',
+    'CRO': 'https://cronoscan.com/tx/{txid}',
+    'SOL': 'https://solscan.io/tx/{txid}',
+    'XMR': 'https://xmrchain.net/tx/{txid}',
+    'ZANO': 'https://explorer.zano.org/transaction/{txid}',
+    'XFG': 'https://explorer.fuego.foundation/tx/{txid}',
+  };
+
+  static String explorerTxUrl(String ticker, String txid) {
+    final tmpl = explorerTx[ticker];
+    if (tmpl == null || txid.isEmpty) return '';
+    return tmpl.replaceAll('{txid}', txid);
+  }
+
+  static double amountToDecimal(String ticker, int atomic) {
+    final d = decimals[ticker] ?? 7;
+    return atomic / _pow10(d);
+  }
+
+  static double _pow10(int n) {
+    double r = 1;
+    for (int i = 0; i < n; i++) r *= 10;
+    return r;
+  }
+
+  /// Brand palette.
+  ///
+  /// Generated entries from chains.yaml ([kChainColors], lowercase keys,
+  /// alpha FF) merged under the legacy UPPERCASE ticker palette kept
+  /// verbatim below.
+  static final Map<String, Color> colors = {
+    for (final e in kChainColors.entries) e.key: Color(0xFF000000 | e.value),
+    // Legacy ticker-keyed palette — verbatim.
+    'BTC': const Color(0xFFF7931A),
+    'LTC': const Color(0xFFBFBBBB),
+    'KMD': const Color(0xFF2B6DE9),
+    'BCH': const Color(0xFF8DC351),
+    'ETH': const Color(0xFF627EEA),
+    'ARB': const Color(0xFF28A0F0),
+    'BASE': const Color(0xFF0052FF),
+    'BNB': const Color(0xFFF0B90B),
+    'POLY': const Color(0xFF8247E5),
+    'SOL': const Color(0xFF9945FF),
+    'DCR': const Color(0xFF2970FF),
+    'XMR': const Color(0xFFFF6600),
+    'XFG': const Color(0xFFD84315),
+    'AVAX': const Color(0xFFE84142),
+    'BOB': const Color(0xFFFF6D00),
+    'CRO': const Color(0xFF002D74),
+    'DASH': const Color(0xFF008CE7),
+    'DOGE': const Color(0xFFC2A633),
+    'MON': const Color(0xFF836EF9),
+    'OP': const Color(0xFFFF0420),
+    'PLS': const Color(0xFF9C27B0),
+    'RHC': const Color(0xFF6B7280),
+    'UNI': const Color(0xFFFF007A),
+    'XPL': const Color(0xFF4FA9E0),
+    'ZANO': const Color(0xFF6A5AF9),
+    'ZEC': const Color(0xFFF4B728),
     // Wallet-tier expansion colors
-    'LINEA': Color(0xFF61DFFF),
-    'ZKS': Color(0xFF8C8DFC),
-    'HYPER': Color(0xFF97FCE4),
-    'INK': Color(0xFF7132F5),
-    'RSK': Color(0xFFE9B64E),
-    'GNO': Color(0xFF1D6C4E),
-    'FLR': Color(0xFFE6413E),
-    'KAIA': Color(0xFFFF1D01),
-    'SCR': Color(0xFFEBC28E),
-    'ABS': Color(0xFF202020),
-    'PLUME': Color(0xFFFF3D00),
-    'SONEIUM': Color(0xFF937DFF),
-    'DOMA': Color(0xFF4F46E5),
-    'BEAM': Color(0xFF0BDBB5),
-    'MOVR': Color(0xFFF5B700),
-    'PEAQ': Color(0xFF7A2BF5),
-    'TEMPO': Color(0xFF111111),
-    'SEI': Color(0xFF9E1F19),
-    'GLEEC': Color(0xFF00A3C4),
+    'LINEA': const Color(0xFF61DFFF),
+    'ZKS': const Color(0xFF8C8DFC),
+    'HYPER': const Color(0xFF97FCE4),
+    'INK': const Color(0xFF7132F5),
+    'RSK': const Color(0xFFE9B64E),
+    'GNO': const Color(0xFF1D6C4E),
+    'FLR': const Color(0xFFE6413E),
+    'KAIA': const Color(0xFFFF1D01),
+    'SCR': const Color(0xFFEBC28E),
+    'ABS': const Color(0xFF202020),
+    'PLUME': const Color(0xFFFF3D00),
+    'SONEIUM': const Color(0xFF937DFF),
+    'DOMA': const Color(0xFF4F46E5),
+    'BEAM': const Color(0xFF0BDBB5),
+    'MOVR': const Color(0xFFF5B700),
+    'PEAQ': const Color(0xFF7A2BF5),
+    'TEMPO': const Color(0xFF111111),
+    'SEI': const Color(0xFF9E1F19),
+    'GLEEC': const Color(0xFF00A3C4),
   };
 
   static const Map<String, String> icons = {
@@ -281,11 +347,11 @@ class ChainInfo {
 
   /// DeXFG 33-chain EVM expansion: live in the wallet's ERC20 layer
   /// (Erc20Service / EvmChainKey — balances, send, approve via Tokens tab)
-  /// but NOT wired into xfg-swapd, so no CLI swaps. Icon files pending;
+  /// but NOT wired into xfg-swapd, so no CLI swaps.
+  ///
+  /// DERIVED from chains.yaml ([kWalletTierKeys]) — uppercased to match
+  /// the ticker-keyed convention of this class. Icon files pending;
   /// UI falls back to [colors] letter-marks until real logos land.
-  static const Set<String> walletOnlyChains = {
-    'LINEA', 'ZKS', 'HYPER', 'INK', 'RSK', 'GNO', 'FLR', 'KAIA', 'SCR',
-    'ABS', 'PLUME', 'SONEIUM', 'DOMA', 'BEAM', 'MOVR', 'PEAQ', 'TEMPO',
-    'SEI', 'GLEEC',
-  };
+  static final Set<String> walletOnlyChains =
+      kWalletTierKeys.map((k) => k.toUpperCase()).toSet();
 }

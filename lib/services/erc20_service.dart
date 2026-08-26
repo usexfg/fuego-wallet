@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:web3dart/web3dart.dart';
+import '../models/chain_registry.g.dart';
 import '../models/erc20_token.dart';
 
 /// ERC20 service for EVM chains (33 chains at 2026-08-25).
@@ -17,77 +18,10 @@ class Erc20Service {
   final Map<String, String> _rpcUrls = {};
   final http.Client _http = http.Client();
 
-  static const _defaultRpcs = {
-    'eth': 'https://eth.llamarpc.com',
-    'arb': 'https://arb1.arbitrum.io/rpc',
-    'base': 'https://mainnet.base.org',
-    'bsc': 'https://bsc-dataseed.binance.org',
-    'poly': 'https://polygon-rpc.com',
-    'op': 'https://mainnet.optimism.io',
-    'avax': 'https://api.avax.network/ext/bc/C/rpc',
-    'cro': 'https://evm.cronos.org',
-    'monad': 'https://rpc.monad.xyz',
-    'xpl': 'https://rpc.plasma.to',
-    'pls': 'https://rpc.pulsechain.com',
-    'uni': 'https://mainnet.unichain.org',
-    'rh': 'https://rpc.mainnet.chain.robinhood.com',
-    'bob': 'https://rpc.nodeflare.app/bob/public',
-    'gleec': 'https://evm-rpc.gleec.com',
-    'linea': 'https://rpc.linea.build',
-    'zksync': 'https://mainnet.era.zksync.io',
-    'hyperevm': 'https://rpc.hyperliquid.xyz/evm',
-    'ink': 'https://rpc-gel.inkonchain.com',
-    'rsk': 'https://public-node.rsk.co',
-    'gnosis': 'https://rpc.gnosischain.com',
-    'flare': 'https://flare-api.flare.network/ext/C-rpc',
-    'kaia': 'https://public-en.node.kaia.io',
-    'scroll': 'https://rpc.scroll.io',
-    'abstract': 'https://rpc.abstract.xyz',
-    'plume': 'https://rpc.plume.org',
-    'soneium': 'https://rpc.soneium.org',
-    'doma': 'https://rpc.doma.xyz',
-    'beam': 'https://build.onbeam.com/rpc',
-    'moonriver': 'https://rpc.api.moonriver.moonbeam.network',
-    'peaq': 'https://peaq.api.onfinality.io/public',
-    'tempo': 'https://rpc.tempo.xyz',
-    'sei': 'https://evm-rpc.sei-apis.com',
-  };
-
-  static const _chainIds = {
-    'eth': 1,
-    'arb': 42161,
-    'base': 8453,
-    'bsc': 56,
-    'poly': 137,
-    'op': 10,
-    'avax': 43114,
-    'cro': 25,
-    'monad': 143,
-    'xpl': 9745,
-    'pls': 369,
-    'uni': 130,
-    'rh': 4663,
-    'bob': 60808,
-    'gleec': 11169,
-    'linea': 59144,
-    'zksync': 324,
-    'hyperevm': 999,
-    'ink': 57073,
-    'rsk': 30,
-    'gnosis': 100,
-    'flare': 14,
-    'kaia': 8217,
-    'scroll': 534352,
-    'abstract': 2741,
-    'plume': 98866,
-    'soneium': 1868,
-    'doma': 97477,
-    'beam': 4337,
-    'moonriver': 1285,
-    'peaq': 3338,
-    'tempo': 4217,
-    'sei': 1329,
-  };
+  /// Canonical per-chain defaults — generated from chains.yaml via
+  /// tool/gen_chains.dart (single source of truth).
+  static const Map<String, String> _defaultRpcs = kChainRpcs;
+  static const Map<String, int> _chainIds = kChainIds;
 
   Erc20Service({Map<String, String>? rpcUrls}) {
     final src = rpcUrls ?? _defaultRpcs;

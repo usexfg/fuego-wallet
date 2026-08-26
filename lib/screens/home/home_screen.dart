@@ -589,12 +589,11 @@ class _BalanceCardState extends State<_BalanceCard> {
                             padding: const EdgeInsets.only(right: 8, bottom: 4),
                             child: Text(
                               XfgTicker.glyph,
-                              style: TextStyle(
+                              style: XfgTicker.glyphStyle(const TextStyle(
                                 color: _champagne,
                                 fontSize: 30,
                                 fontWeight: FontWeight.w600,
-                                fontFamily: XfgTicker.font,
-                              ),
+                              )),
                             ),
                           ),
                         _ShimmerSweep(
@@ -719,12 +718,11 @@ class _BalanceCardState extends State<_BalanceCard> {
             padding: const EdgeInsets.only(right: 4),
             child: Text(
               XfgTicker.glyph,
-              style: TextStyle(
+              style: XfgTicker.glyphStyle(const TextStyle(
                 color: _champagne,
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                fontFamily: XfgTicker.font,
-              ),
+              )),
             ),
           ),
         _OdometerText(

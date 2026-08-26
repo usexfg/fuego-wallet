@@ -189,5 +189,8 @@ flutter:
     - family: CrimsonPro
       fonts:
         - asset: assets/fonts/Crimson_Pro/static/CrimsonPro-Variable.ttf
+    - family: TiltPrism
+      fonts:
+        - asset: assets/fonts/Tilt_Prism/static/TiltPrism-Variable.ttf
 
 dependency_overrides:

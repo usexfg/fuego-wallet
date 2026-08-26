@@ -24,6 +24,7 @@ class XfgTicker {
     (family: 'UnicaOne', label: '₲ Unica One', note: 'Condensed display'),
     (family: 'Fahkwang', label: '₲ Fahkwang', note: 'Thai-latin sans'),
     (family: 'CrimsonPro', label: '₲ Crimson Pro', note: 'Old-style serif'),
+    (family: 'TiltPrism', label: '₲ Tilt Prism', note: 'Prismatic 3D'),
   ];
 
   static bool get isGlyph => font.isNotEmpty;
@@ -46,9 +47,29 @@ class XfgTicker {
     } catch (_) {}
   }
 
+  /// Optical size compensation — most glyph faces run small next to
+  /// lining figures; Fahkwang is the odd one out (full x-height).
+  static double glyphScale(String family) => switch (family) {
+        'Fahkwang' => 1.0,
+        'CormorantSC' => 1.22,
+        'UnicaOne' => 1.22,
+        'CrimsonPro' => 1.18,
+        'TiltPrism' => 1.15,
+        _ => 1.0,
+      };
+
   /// Style applied to just the ₲ span when a glyph font is active.
-  static TextStyle? glyphStyle(TextStyle base) =>
-      isGlyph ? base.copyWith(fontFamily: font) : null;
+  /// Scales fontSize per-family so every option sits optically level
+  /// with the surrounding numerals.
+  static TextStyle? glyphStyle(TextStyle base) {
+    if (!isGlyph) return null;
+    final fs = base.fontSize;
+    return base.copyWith(
+      fontFamily: font,
+      fontSize: fs == null ? null : fs * glyphScale(font),
+      height: 1.0,
+    );
+  }
 }
 
 /// Renders an XFG amount without any trailing ticker.

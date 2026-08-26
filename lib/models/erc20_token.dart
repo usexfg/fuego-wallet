@@ -3,6 +3,8 @@
 // queried at runtime via decimals() as source of truth — these defaults
 // only seed UI formatting before the first RPC succeeds.
 
+import 'chain_registry.g.dart';
+
 
 
 /// Canonical EVM chain key used by Web3MultiChainService.
@@ -494,44 +496,11 @@ class Erc20Registry {
       EvmChainKey.values.map((e) => e.key).toList();
 
   /// Human display label for chain key.
-  static String displayNameFor(String chainKey) {
-    switch (chainKey.toLowerCase()) {
-      case 'eth': return 'Ethereum';
-      case 'arb': return 'Arbitrum';
-      case 'base': return 'Base';
-      case 'bsc': return 'BNB Chain';
-      case 'poly': return 'Polygon';
-      case 'op': return 'OP Mainnet';
-      case 'avax': return 'Avalanche';
-      case 'cro': return 'Cronos';
-      case 'monad': return 'Monad';
-      case 'xpl': return 'Plasma';
-      case 'pls': return 'PulseChain';
-      case 'uni': return 'Unichain';
-      case 'rh': return 'Robinhood Chain';
-      case 'bob': return 'BOB';
-      case 'gleec': return 'Gleec Chain';
-      case 'linea': return 'Linea';
-      case 'zksync': return 'ZKsync Era';
-      case 'hyperevm': return 'HyperEVM';
-      case 'ink': return 'Ink';
-      case 'rsk': return 'Rootstock';
-      case 'gnosis': return 'Gnosis';
-      case 'flare': return 'Flare';
-      case 'kaia': return 'Kaia';
-      case 'scroll': return 'Scroll';
-      case 'abstract': return 'Abstract';
-      case 'plume': return 'Plume';
-      case 'soneium': return 'Soneium';
-      case 'doma': return 'Doma';
-      case 'beam': return 'Beam';
-      case 'moonriver': return 'Moonriver';
-      case 'peaq': return 'peaq';
-      case 'tempo': return 'Tempo';
-      case 'sei': return 'Sei';
-      default: return chainKey.toUpperCase();
-    }
-  }
+  ///
+  /// Names come from the generated chain registry (chains.yaml). Unknown
+  /// keys fall back to an uppercased key, matching the old switch default.
+  static String displayNameFor(String chainKey) =>
+      kChainNames[chainKey.toLowerCase()] ?? chainKey.toUpperCase();
 }
 
 /// Amount helpers for ERC20 integer <-> display conversion.
