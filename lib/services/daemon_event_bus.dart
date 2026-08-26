@@ -238,33 +238,37 @@ class DaemonEventBus {
   Future<void> _pollSwapd() async {
     try {
       // ── Unified daemon: swapd health via GET /health on walletdPort ──
+      bool healthHandled = false;
       try {
         final client = HttpClient()..connectionTimeout = const Duration(seconds: 3);
         final req = await client.getUrl(
             Uri.parse('http://127.0.0.1:$walletdPort/health'));
         final resp = await req.close().timeout(const Duration(seconds: 3));
-         final body = await resp.transform(utf8.decoder).join();
-         client.close(force: true);
+        final body = await resp.transform(utf8.decoder).join();
+        client.close(force: true);
 
-         debugPrint('[EventBus] swapd unified GET /health body=$body');
+        debugPrint('[EventBus] swapd unified GET /health body=$body');
 
-          if (resp.statusCode == 200) {
-            final data = jsonDecode(body) as Map<String, dynamic>;
-            if (data.containsKey('swap')) {
-              final swapOk = data['swap'] as bool? ?? false;
-              _updateHealth(swapdOk: swapOk);
-              if (swapOk) {
-                _emit(eventSwap, data);
-              }
-              return;
+        if (resp.statusCode == 200) {
+          final data = jsonDecode(body) as Map<String, dynamic>;
+          if (data.containsKey('swap')) {
+            final swapOk = data['swap'] as bool? ?? false;
+            _updateHealth(swapdOk: swapOk);
+            if (swapOk) {
+              _emit(eventSwap, data);
             }
+            healthHandled = true;
+          } else {
             debugPrint('[EventBus] swapd unified GET /health no "swap" key');
           }
-       } catch (e) {
-         debugPrint('[EventBus] swapd unified GET /health failed: $e');
-       }
+        }
+      } catch (e) {
+        debugPrint('[EventBus] swapd unified GET /health failed: $e');
+      }
 
+      if (!healthHandled) {
         // ── Standalone xfg-swapd: GET /health (or /status) on swapdPort ──
+        bool standaloneOk = false;
         for (final path in ['/health', '/status']) {
           try {
             final client = HttpClient()..connectionTimeout = const Duration(seconds: 3);
@@ -280,16 +284,309 @@ class DaemonEventBus {
               final data = jsonDecode(body) as Map<String, dynamic>;
               _updateHealth(swapdOk: true);
               _emit(eventSwap, data);
-              return;
+              standaloneOk = true;
+              break;
             }
           } catch (e) {
             debugPrint('[EventBus] swapd standalone GET $path failed: $e');
           }
         }
+        if (!standaloneOk) {
+          _updateHealth(swapdOk: false, swapdError: 'Connection refused');
+        }
+      }
 
-        _updateHealth(swapdOk: false, swapdError: 'Connection refused');
-     } catch (_) {}
-   }
+      // ── SPV status emit (Act 3): poll xfg-swapd list_swaps and emit eventSpv ──
+      // Ensure broadcast controller exists (it does — _controller is broadcast).
+      // Only emit when any non-terminal swap has a ctrLockTxId.
+      try {
+        await _pollAndEmitSpv();
+      } catch (e) {
+        debugPrint('[EventBus] spv poll failed: $e');
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _pollAndEmitSpv() async {
+    final List<Map<String, dynamic>> swaps = await _fetchSpvSwaps();
+    if (swaps.isEmpty) {
+      return;
+    }
+    final List<Map<String, dynamic>> filtered = <Map<String, dynamic>>[];
+    for (final Map<String, dynamic> raw in swaps) {
+      final String state = _extractState(raw);
+      if (_isTerminalState(state)) {
+        continue;
+      }
+      final String? txid = _extractCtrLockTxId(raw);
+      if (txid == null || txid.isEmpty) {
+        continue;
+      }
+      final int confirmations = _extractInt(raw, ['confirmations', 'confirmations', 'confirmations']) ?? 0;
+      final int requiredConfirmations = _extractInt(raw, ['requiredConfirmations', 'required_confirmations']) ?? 6;
+      final int blockHeight = _extractInt(raw, ['blockHeight', 'block_height']) ?? 0;
+      final bool spvVerified = _extractBool(raw, ['spvVerified', 'spv_verified']) ?? false;
+      final String explorerUrl = _explorerUrlFor(raw, txid);
+      final Map<String, dynamic> entry = <String, dynamic>{
+        'swapId': _extractString(raw, ['swapId', 'swap_id']) ?? '',
+        'confirmations': confirmations,
+        'requiredConfirmations': requiredConfirmations,
+        'spvVerified': spvVerified,
+        'blockHeight': blockHeight,
+        'explorerUrl': explorerUrl,
+      };
+      filtered.add(entry);
+    }
+    if (filtered.isEmpty) {
+      return;
+    }
+    // Ensure controller still open for eventSpv.
+    if (_controller.isClosed) {
+      return;
+    }
+    final Map<String, dynamic> payload = <String, dynamic>{
+      'swaps': filtered,
+      'count': filtered.length,
+      'timestamp': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+    };
+    _emit(eventSpv, payload);
+    debugPrint('[EventBus] emitted $eventSpv with ${filtered.length} swap(s)');
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchSpvSwaps() async {
+    // Try standalone swapd JSON-RPC first, then unified walletd proxy if needed.
+    final List<String> endpoints = <String>[
+      'http://127.0.0.1:$swapdPort/',
+      'http://127.0.0.1:$walletdPort/',
+    ];
+    for (final String url in endpoints) {
+      try {
+        final HttpClient client = HttpClient()..connectionTimeout = const Duration(seconds: 3);
+        final HttpClientRequest req = await client.postUrl(Uri.parse(url));
+        req.headers.set('Content-Type', 'application/json');
+        final String body = jsonEncode(<String, dynamic>{
+          'jsonrpc': '2.0',
+          'id': 1,
+          'method': 'list_swaps',
+          'params': <String, dynamic>{},
+        });
+        req.add(utf8.encode(body));
+        final HttpClientResponse resp = await req.close().timeout(const Duration(seconds: 3));
+        final String respBody = await resp.transform(utf8.decoder).join();
+        client.close(force: true);
+        if (resp.statusCode != 200) {
+          continue;
+        }
+        final Map<String, dynamic> decoded = jsonDecode(respBody) as Map<String, dynamic>;
+        if (decoded.containsKey('error') && decoded['error'] != null) {
+          continue;
+        }
+        final dynamic result = decoded['result'];
+        if (result is Map<String, dynamic>) {
+          final dynamic swapsDyn = result['swaps'];
+          if (swapsDyn is List) {
+            final List<Map<String, dynamic>> out = <Map<String, dynamic>>[];
+            for (final dynamic item in swapsDyn) {
+              if (item is Map<String, dynamic>) {
+                out.add(item);
+              } else if (item is Map) {
+                out.add(Map<String, dynamic>.from(item));
+              }
+            }
+            if (out.isNotEmpty || result.containsKey('swaps')) {
+              return out;
+            }
+          }
+        } else if (result is List) {
+          final List<Map<String, dynamic>> out = <Map<String, dynamic>>[];
+          for (final dynamic item in result) {
+            if (item is Map<String, dynamic>) {
+              out.add(item);
+            }
+          }
+          return out;
+        }
+      } catch (_) {
+        continue;
+      }
+    }
+    return <Map<String, dynamic>>[];
+  }
+
+  String _extractState(Map<String, dynamic> raw) {
+    final dynamic params = raw['params'];
+    if (params is Map) {
+      final dynamic s = params['state'] ?? params['stateName'];
+      if (s is String && s.isNotEmpty) {
+        return s;
+      }
+    }
+    final dynamic direct = raw['state'] ?? raw['stateName'];
+    if (direct is String && direct.isNotEmpty) {
+      return direct;
+    }
+    if (direct is num) {
+      return direct.toString();
+    }
+    return '';
+  }
+
+  String? _extractCtrLockTxId(Map<String, dynamic> raw) {
+    final List<String> keys = <String>['ctrLockTxId', 'ctr_lock_txid', 'ctrLockTxid', 'ctrLockTxId'];
+    final dynamic params = raw['params'];
+    if (params is Map) {
+      for (final String k in keys) {
+        final dynamic v = params[k];
+        if (v is String && v.isNotEmpty) {
+          return v;
+        }
+      }
+    }
+    for (final String k in keys) {
+      final dynamic v = raw[k];
+      if (v is String && v.isNotEmpty) {
+        return v;
+      }
+    }
+    return null;
+  }
+
+  int? _extractInt(Map<String, dynamic> raw, List<String> keys) {
+    final dynamic params = raw['params'];
+    if (params is Map) {
+      for (final String k in keys) {
+        final dynamic v = params[k];
+        if (v is num) {
+          return v.toInt();
+        }
+      }
+    }
+    for (final String k in keys) {
+      final dynamic v = raw[k];
+      if (v is num) {
+        return v.toInt();
+      }
+    }
+    return null;
+  }
+
+  bool? _extractBool(Map<String, dynamic> raw, List<String> keys) {
+    final dynamic params = raw['params'];
+    if (params is Map) {
+      for (final String k in keys) {
+        final dynamic v = params[k];
+        if (v is bool) {
+          return v;
+        }
+      }
+    }
+    for (final String k in keys) {
+      final dynamic v = raw[k];
+      if (v is bool) {
+        return v;
+      }
+    }
+    return null;
+  }
+
+  String? _extractString(Map<String, dynamic> raw, List<String> keys) {
+    final dynamic params = raw['params'];
+    if (params is Map) {
+      for (final String k in keys) {
+        final dynamic v = params[k];
+        if (v is String && v.isNotEmpty) {
+          return v;
+        }
+      }
+    }
+    for (final String k in keys) {
+      final dynamic v = raw[k];
+      if (v is String && v.isNotEmpty) {
+        return v;
+      }
+    }
+    return null;
+  }
+
+  String _explorerUrlFor(Map<String, dynamic> raw, String txid) {
+    final String? pairName = _extractPairName(raw);
+    if (pairName == null || pairName.isEmpty) {
+      return '';
+    }
+    // Minimal explorer map inline to avoid importing ChainInfo if not needed.
+    const Map<String, String> explorerTx = <String, String>{
+      'BTC': 'https://mempool.space/tx/{txid}',
+      'LTC': 'https://litecoinspace.org/tx/{txid}',
+      'BCH': 'https://blockchair.com/bitcoin-cash/transaction/{txid}',
+      'KMD': 'https://kmdexplorer.io/tx/{txid}',
+      'DCR': 'https://dcrdata.decred.org/tx/{txid}',
+      'ETH': 'https://etherscan.io/tx/{txid}',
+      'ARB': 'https://arbiscan.io/tx/{txid}',
+      'BASE': 'https://basescan.org/tx/{txid}',
+      'BNB': 'https://bscscan.com/tx/{txid}',
+      'POLY': 'https://polygonscan.com/tx/{txid}',
+      'SOL': 'https://solscan.io/tx/{txid}',
+      'XMR': 'https://xmrchain.net/tx/{txid}',
+    };
+    final String? tmpl = explorerTx[pairName];
+    if (tmpl == null) {
+      return '';
+    }
+    return tmpl.replaceAll('{txid}', txid);
+  }
+
+  String? _extractPairName(Map<String, dynamic> raw) {
+    final dynamic params = raw['params'];
+    int? pairId;
+    if (params is Map) {
+      final dynamic v = params['pair'];
+      if (v is num) {
+        pairId = v.toInt();
+      }
+    }
+    if (pairId == null) {
+      final dynamic v = raw['pair'];
+      if (v is num) {
+        pairId = v.toInt();
+      }
+    }
+    if (pairId == null) {
+      return null;
+    }
+    const Map<int, String> names = <int, String>{
+      0: 'SOL',
+      1: 'ETH',
+      2: 'XMR',
+      3: 'BCH',
+      4: 'ARB',
+      5: 'BASE',
+      6: 'KMD',
+      7: 'BNB',
+      8: 'DCR',
+      9: 'BTC',
+      10: 'LTC',
+      11: 'POLYGON',
+    };
+    return names[pairId];
+  }
+
+  bool _isTerminalState(String state) {
+    const Set<String> terminal = <String>{
+      'ADAPTOR_XFG_SPENT',
+      'ADAPTOR_REFUNDED',
+      'AFK_CLAIMED',
+      'AFK_REFUNDED',
+      'FAILED',
+      'XFG_REFUNDED',
+      'XFG_CLAIMED',
+      'CTR_CLAIMED',
+      'CTR_REFUNDED',
+    };
+    if (terminal.contains(state)) {
+      return true;
+    }
+    return false;
+  }
 
   // ── Health state management ──────────────────────────────────────
 

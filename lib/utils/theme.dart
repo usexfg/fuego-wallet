@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  // Fuego brand colors - Rich reddish-orange inspired by Bitcoin/Monero/Reddit
-  static const Color primaryColor = Color(0xFFD84315); // Main reddish-orange
-  static const Color secondaryColor = Color(0xFF1A1A1A); // Dark gray
-  static const Color accentColor = Color(0xFFFFD700); // Gold accent
-  static const Color backgroundColor =
-      Color(0xFF0A0E14); // Even darker blue-gray
-  static const Color surfaceColor = Color(0xFF1A1F26); // Darker surface
-  static const Color cardColor = Color(0xFF252B33); // Darker card background
+  // Bank of XFG Luxury Swiss Watch & Monaco Private Banking — Ultra Rare Edition
+  // Golden champagne dial, brushed platinum case, Midnight Blue accents
+  static const Color primaryColor = Color(0xFFC5A059); // Champagne gold (Swiss watch dial)
+  static const Color secondaryColor = Color(0xFF1A1814); // Midnight blue-black (depth)
+  static const Color accentColor = Color(0xFF3D5A80); // Midnight Blue (Monaco sea / yacht canvas)
+  static const Color backgroundColor = Color(0xFF0D0B08); // Obsidian black (premium watch case back)
+  static const Color surfaceColor = Color(0xFF181512); // Warm obsidian (inside the case)
+  static const Color cardColor = Color(0xFF25221A); // Brushed platinum dark (card face)
 
   // Comprehensive reddish-orange color palette
   static const Color primaryLight = Color(0xFFFF5722); // Lighter reddish-orange
