@@ -326,6 +326,26 @@ class ChainInfo {
     'XPL': 'assets/coin icons/xpl.png',
     'ZANO': 'assets/coin icons/zano.png',
     'ZEC': 'assets/coin icons/zec.png',
+    // DeXFG wallet-tier expansion logos
+    'LINEA': 'assets/coin icons/linea.png',
+    'ZKS': 'assets/coin icons/zksync.png',
+    'HYPER': 'assets/coin icons/hyperevm.png',
+    'INK': 'assets/coin icons/ink.png',
+    'RSK': 'assets/coin icons/rootstock.png',
+    'GNO': 'assets/coin icons/gnosis.png',
+    'FLR': 'assets/coin icons/flare.png',
+    'KAIA': 'assets/coin icons/kaia.png',
+    'SCR': 'assets/coin icons/scroll.png',
+    'ABS': 'assets/coin icons/abstract.png',
+    'PLUME': 'assets/coin icons/plume.png',
+    'SONEIUM': 'assets/coin icons/soneium.png',
+    'DOMA': 'assets/coin icons/doma.png',
+    'BEAM': 'assets/coin icons/beam.png',
+    'MOVR': 'assets/coin icons/moonriver.png',
+    'PEAQ': 'assets/coin icons/peaq.png',
+    'TEMPO': 'assets/coin icons/tempo.png',
+    'SEI': 'assets/coin icons/sei.png',
+    'GLEEC': 'assets/coin icons/gleec.png',
   };
 
   /// Chains a direct peer swap can actually run on (the ones the local
