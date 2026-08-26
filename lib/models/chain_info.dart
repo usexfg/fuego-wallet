@@ -30,6 +30,26 @@ class ChainInfo {
     'XPL': 'Plasma',
     'ZANO': 'Zano',
     'ZEC': 'Zcash',
+    // ── DeXFG wallet-tier EVM expansion (33-chain ERC20 layer) ──
+    'LINEA': 'Linea',
+    'ZKS': 'ZKsync Era',
+    'HYPER': 'HyperEVM',
+    'INK': 'Ink',
+    'RSK': 'Rootstock',
+    'GNO': 'Gnosis',
+    'FLR': 'Flare',
+    'KAIA': 'Kaia',
+    'SCR': 'Scroll',
+    'ABS': 'Abstract',
+    'PLUME': 'Plume',
+    'SONEIUM': 'Soneium',
+    'DOMA': 'Doma',
+    'BEAM': 'Beam',
+    'MOVR': 'Moonriver',
+    'PEAQ': 'peaq',
+    'TEMPO': 'Tempo',
+    'SEI': 'Sei',
+    'GLEEC': 'Gleec Chain',
   };
 
   static const Map<String, String> desc = {
@@ -191,6 +211,26 @@ class ChainInfo {
     'XPL': Color(0xFF4FA9E0),
     'ZANO': Color(0xFF6A5AF9),
     'ZEC': Color(0xFFF4B728),
+    // Wallet-tier expansion colors
+    'LINEA': Color(0xFF61DFFF),
+    'ZKS': Color(0xFF8C8DFC),
+    'HYPER': Color(0xFF97FCE4),
+    'INK': Color(0xFF7132F5),
+    'RSK': Color(0xFFE9B64E),
+    'GNO': Color(0xFF1D6C4E),
+    'FLR': Color(0xFFE6413E),
+    'KAIA': Color(0xFFFF1D01),
+    'SCR': Color(0xFFEBC28E),
+    'ABS': Color(0xFF202020),
+    'PLUME': Color(0xFFFF3D00),
+    'SONEIUM': Color(0xFF937DFF),
+    'DOMA': Color(0xFF4F46E5),
+    'BEAM': Color(0xFF0BDBB5),
+    'MOVR': Color(0xFFF5B700),
+    'PEAQ': Color(0xFF7A2BF5),
+    'TEMPO': Color(0xFF111111),
+    'SEI': Color(0xFF9E1F19),
+    'GLEEC': Color(0xFF00A3C4),
   };
 
   static const Map<String, String> icons = {
@@ -238,4 +278,14 @@ class ChainInfo {
     'SOL',
     'XMR',
   ];
+
+  /// DeXFG 33-chain EVM expansion: live in the wallet's ERC20 layer
+  /// (Erc20Service / EvmChainKey — balances, send, approve via Tokens tab)
+  /// but NOT wired into xfg-swapd, so no CLI swaps. Icon files pending;
+  /// UI falls back to [colors] letter-marks until real logos land.
+  static const Set<String> walletOnlyChains = {
+    'LINEA', 'ZKS', 'HYPER', 'INK', 'RSK', 'GNO', 'FLR', 'KAIA', 'SCR',
+    'ABS', 'PLUME', 'SONEIUM', 'DOMA', 'BEAM', 'MOVR', 'PEAQ', 'TEMPO',
+    'SEI', 'GLEEC',
+  };
 }
