@@ -173,6 +173,9 @@ flutter:
           weight: 400
         - asset: assets/fonts/Cormorant_SC/static/CormorantSC-SemiBold.ttf
           weight: 600
+    - family: Cormorant
+      fonts:
+        - asset: assets/fonts/Cormorant/static/Cormorant-Variable.ttf
     - family: UnicaOne
       fonts:
         - asset: assets/fonts/Unica_One/static/UnicaOne-Regular.ttf

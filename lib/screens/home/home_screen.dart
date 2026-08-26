@@ -142,7 +142,18 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       GestureDetector(
-                        onTap: () => setState(() => _showBalance = !_showBalance),
+                        onTap: () async {
+                          final revealing = !_showBalance;
+                          setState(() => _showBalance = revealing);
+                          if (revealing) {
+                            // Minute-repeater double tick on reveal.
+                            HapticFeedback.selectionClick();
+                            await Future.delayed(
+                              const Duration(milliseconds: 90),
+                            );
+                            if (mounted) HapticFeedback.selectionClick();
+                          }
+                        },
                         child: Icon(
                           _showBalance
                               ? Icons.visibility_outlined
@@ -166,11 +177,12 @@ class _HomeScreenState extends State<HomeScreen> {
                               : '••••••••',
                           style: TextStyle(
                             color: _platinum,
-                            fontSize: 42,
-                            fontWeight: FontWeight.w300,
+                            fontSize: 44,
+                            fontWeight: FontWeight.w600,
                             height: 1.0,
-                            letterSpacing: -0.5,
-                            fontFamily: AppTheme.numberFontFamily,
+                            letterSpacing: 0.2,
+                            fontFamily: 'Cormorant',
+                            fontFamilyFallback: [AppTheme.numberFontFamily],
                           ),
                         ),
                         const SizedBox(width: 10),
