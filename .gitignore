@@ -30,3 +30,13 @@ payment_gate.log
 *.dll
 *.a
 native/crypto/target/
+
+# Build outputs / scratch
+src/Release/
+det_*.json
+
+# Vendored C++ daemon (separate upstream repo)
+xfgo/
+
+# Unbundled font drops (not wired in pubspec)
+assets/fonts/Noto_Serif_Display/
