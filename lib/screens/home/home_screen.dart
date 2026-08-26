@@ -45,10 +45,10 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.all(16),
             children: [
               _balanceCard(state),
-              const SizedBox(height: 16),
-              if (state.address != null) _addressCard(state),
-              const SizedBox(height: 16),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
+              if (state.address != null) _addressPlate(state),
+              if (state.address != null) const SizedBox(height: 14),
+              _complicationsRow(state),
               _miningControls(state),
               const SizedBox(height: 16),
               const Text(
@@ -93,23 +93,22 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _balanceCard(WalletState state) => _BalanceCard(state: state);
 
-  Widget _addressCard(WalletState state) {
+  Widget _addressPlate(WalletState state) {
     final addr = state.address ?? '';
     final alias = state.alias; // Assuming alias is in WalletState
     if (addr.isEmpty) return const SizedBox.shrink();
     return Container(
-      padding: const EdgeInsets.all(12),
+      height: 64,
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       decoration: BoxDecoration(
         color: _plaque,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: Colors.white.withOpacity(0.08)),
-        gradient: LinearGradient(
+        gradient: const LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            Colors.white.withOpacity(0.04),
-            Colors.white.withOpacity(0),
-          ],
+          colors: [Color(0xFF1E1E24), Color(0xFF131317)],
         ),
       ),
       child: Row(
@@ -679,28 +678,30 @@ class _BalanceCardState extends State<_BalanceCard> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  Container(height: 1, decoration: BoxDecoration(gradient: _fireLine.withOpacity(0.35))),
-                  BlocBuilder<MiningCubit, MiningState>(
-                    builder: (context, mining) {
-                      return Padding(
-                        padding: const EdgeInsets.only(top: 14),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            _complication('${state.blockHeight}', 'BLOCK HEIGHT'),
-                            _complication(_hashrate(mining.hashrate), 'HASHRATE'),
-                            _complication('${state.peerCount}', 'PEERS'),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
                 ],
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _complicationsRow(WalletState state) {
+    return BlocBuilder<MiningCubit, MiningState>(
+      builder: (context, mining) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _complication('${state.blockHeight}', 'BLOCK HEIGHT'),
+              _complication(_hashrate(mining.hashrate), 'HASHRATE'),
+              _complication('${state.peerCount}', 'PEERS'),
+            ],
+          ),
+        );
+      },
     );
   }
 
