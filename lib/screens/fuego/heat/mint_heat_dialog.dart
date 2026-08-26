@@ -69,7 +69,7 @@ class _MintHeatDialogState extends State<MintHeatDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          xfgText('Burn XFG to mint ΗΞΔŦ at the PI redemption price.',
+          Text('Burn XFG to mint ΗΞΔŦ at the PI redemption price.',
               style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
           const SizedBox(height: 12),
           TextField(

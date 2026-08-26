@@ -184,7 +184,7 @@ class _DexScreenState extends State<DexScreen>
           ),
         ),
         const SizedBox(width: 4),
-        xfgText(
+        Text(
           'XFG',
           style: TextStyle(
             color: AppTheme.primaryColor,
@@ -406,7 +406,7 @@ class _DexScreenState extends State<DexScreen>
                     ),
                   ),
                   Spacer(),
-                  xfgText(
+                  Text(
                     'XFG paired',
                     style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
                   ),
@@ -595,7 +595,7 @@ class _DexScreenState extends State<DexScreen>
       color: AppTheme.surfaceColor.withValues(alpha: 0.4),
       child: Row(
         children: [
-          xfgText(
+          Text(
             'XFG/${state.selectedPair.ticker}',
             style: const TextStyle(
               color: AppTheme.textPrimary,
@@ -691,7 +691,7 @@ class _DexScreenState extends State<DexScreen>
                 ),
               ),
               const Spacer(),
-              xfgText(
+              Text(
                 'XFG',
                 style: TextStyle(color: AppTheme.textMuted, fontSize: 9),
               ),
@@ -750,8 +750,8 @@ class _DexScreenState extends State<DexScreen>
           ),
           Expanded(
             flex: 2,
-            child: xfgText(
-              '${(o.amount / 1e7).toStringAsFixed(2)} XFG',
+            child: xfgAmount(
+              '${(o.amount / 1e7).toStringAsFixed(2)}',
               style: const TextStyle(color: AppTheme.textPrimary, fontSize: 11),
             ),
           ),
@@ -971,7 +971,7 @@ class _DexScreenState extends State<DexScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          xfgText(
+          Text(
             'Trade XFG/${state.selectedPair.ticker}',
             style: const TextStyle(
               color: AppTheme.textPrimary,
@@ -1260,7 +1260,7 @@ class _DexScreenState extends State<DexScreen>
                 ),
               ),
               const Spacer(),
-              xfgText(
+              Text(
                 'XFG',
                 style: TextStyle(color: AppTheme.textMuted, fontSize: 9),
               ),
@@ -1296,8 +1296,8 @@ class _DexScreenState extends State<DexScreen>
       children: [
         Expanded(
           flex: 2,
-          child: xfgText(
-            '${(t.amount / 1e7).toStringAsFixed(2)} XFG',
+          child: xfgAmount(
+            '${(t.amount / 1e7).toStringAsFixed(2)}',
             style: const TextStyle(color: AppTheme.textPrimary, fontSize: 11),
           ),
         ),
@@ -1483,7 +1483,7 @@ class _DexScreenState extends State<DexScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                xfgText(
+                Text(
                   'All swaps are XFG-paired atomic swaps handled by xfg-swapd.\n',
                   style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
                 ),

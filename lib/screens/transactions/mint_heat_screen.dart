@@ -4,7 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../bloc/wallet/wallet_cubit.dart';
 import '../../models/heat_amm.dart';
 import '../../utils/theme.dart';
-import '../../utils/xfg_ticker.dart';
+import '../../utils/xfg_ticker.dart' as xt;
 
 class MintHeatScreen extends StatefulWidget {
   const MintHeatScreen({super.key});
@@ -146,7 +146,7 @@ class _MintHeatScreenState extends State<MintHeatScreen> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  xfgText(
+                  Text(
                     'Rate: 1 XFG = ${_twapRate.toStringAsFixed(4)} ΗΞΔŦ (TWAP)',
                     style: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
                   ),
@@ -286,8 +286,9 @@ class _MintHeatScreenState extends State<MintHeatScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              xfgText(
-                '${xfgAmount.toStringAsFixed(7)} XFG burned',
+              xt.xfgAmount(
+                '${xfgAmount.toStringAsFixed(7)}',
+                plainTail: ' XFG burned',
                 style: TextStyle(
                   color: AppTheme.textPrimary,
                   fontSize: 18,
@@ -415,7 +416,7 @@ class _MintHeatScreenState extends State<MintHeatScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        xfgText(
+                        Text(
                           'Available XFG Balance',
                           style: TextStyle(
                             fontSize: 14,
@@ -426,8 +427,8 @@ class _MintHeatScreenState extends State<MintHeatScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            xfgText(
-                              '${availableXfg.toStringAsFixed(7)} XFG',
+                            xt.xfgAmount(
+                              '${availableXfg.toStringAsFixed(7)}',
                               style: TextStyle(
                                 fontSize: 22,
                                 fontWeight: FontWeight.w600,
@@ -508,7 +509,7 @@ class _MintHeatScreenState extends State<MintHeatScreen> {
                                       fontSize: 14,
                                     ),
                                   ),
-                                  xfgText(
+                                  Text(
                                     '1 XFG = ${_twapRate.toStringAsFixed(4)} ΗΞΔŦ',
                                     style: TextStyle(
                                       fontSize: 16,
@@ -523,7 +524,7 @@ class _MintHeatScreenState extends State<MintHeatScreen> {
                   const SizedBox(height: 24),
 
                   // XFG amount input
-                  xfgText(
+                  Text(
                     'XFG Amount to Burn',
                     style: TextStyle(
                       fontSize: 16,

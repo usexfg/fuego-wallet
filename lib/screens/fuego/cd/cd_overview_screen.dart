@@ -336,7 +336,7 @@ class _MarketRow extends StatelessWidget {
             Expanded(flex: 2, child: _termWidget(daysRemaining)),
             Expanded(flex: 2, child: Text(listing.amount,
               style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13))),
-            Expanded(flex: 2, child: xfgText('${listing.price} XFG',
+            Expanded(flex: 2, child: xfgAmount('${listing.price}',
               style: const TextStyle(color: AppTheme.accentColor, fontSize: 13, fontWeight: FontWeight.w600))),
             SizedBox(
               width: 48,

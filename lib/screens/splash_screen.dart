@@ -239,7 +239,7 @@ class _SplashScreenState extends State<SplashScreen>
                             ),
                           ),
                           const SizedBox(height: 6),
-                          xfgText(
+                          Text(
                             'feat HEARTH Floor | DeXFG',
                             style: TextStyle(
                               fontSize: 14,
@@ -260,7 +260,7 @@ class _SplashScreenState extends State<SplashScreen>
                                 width: 1,
                               ),
                             ),
-                            child: xfgText(
+                            child: Text(
                               'XFG + ΗΞΔŦ',
                               style: TextStyle(
                                 fontSize: 13,

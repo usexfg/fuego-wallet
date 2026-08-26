@@ -3,18 +3,23 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// XFG ticker display style.
 ///
-/// 'XFG' renders the plain text ticker; any other value renders the ₲
-/// glyph (U+20B2, present in all bundled glyph fonts) in that family,
-/// applied only to the symbol span via [xfgText].
+/// '' renders the classic trailing-ticker convention (`123.45 XFG`).
+/// A glyph family renders the ₲ sign (U+20B2, present in every bundled
+/// glyph font) as a PREFIX on XFG amounts — exactly like $ on USD — and
+/// suppresses the redundant trailing ticker: `₲123.45`, never `₲123.45 XFG`.
+///
+/// Labels, pair names and prose keep the literal 'XFG' text; only
+/// [xfgAmount] call sites participate in glyph styling.
 class XfgTicker {
   XfgTicker._();
   static const prefKey = 'xfg_ticker_font';
+  static const glyph = '\u20B2';
 
-  /// Glyph font family, or '' for the plain-text XFG ticker.
+  /// Glyph font family, or '' for the plain-text convention.
   static String font = '';
 
   static const options = <({String family, String label, String? note})>[
-    (family: '', label: 'XFG', note: 'Plain text · default'),
+    (family: '', label: 'XFG · trailing ticker', note: 'Classic · default'),
     (family: 'CormorantSC', label: '₲ Cormorant SC', note: 'Small-cap serif'),
     (family: 'UnicaOne', label: '₲ Unica One', note: 'Condensed display'),
     (family: 'Fahkwang', label: '₲ Fahkwang', note: 'Thai-latin sans'),
@@ -41,101 +46,30 @@ class XfgTicker {
     } catch (_) {}
   }
 
-  /// The ticker token as rendered inline: 'XFG' or the ₲ glyph.
-  static String get symbol => isGlyph ? '\u20B2' : 'XFG';
-
-  /// Style applied to just the glyph span when a glyph font is active.
+  /// Style applied to just the ₲ span when a glyph font is active.
   static TextStyle? glyphStyle(TextStyle base) =>
       isGlyph ? base.copyWith(fontFamily: font) : null;
-
-  /// Text widget builder: swaps every 'XFG' token for the configured
-  /// ticker, styling the glyph span with its own family when active.
-  static Widget text(
-    String data,
-    TextStyle style, {
-    Key? key,
-    StrutStyle? strutStyle,
-    TextAlign? textAlign,
-    TextDirection? textDirection,
-    Locale? locale,
-    bool? softWrap,
-    TextOverflow? overflow,
-    int? maxLines,
-    String? semanticsLabel,
-    TextWidthBasis? textWidthBasis,
-  }) {
-    if (!isGlyph || !data.contains('XFG')) {
-      return Text(
-        key: key,
-        data,
-        style: style,
-        strutStyle: strutStyle,
-        textAlign: textAlign,
-        textDirection: textDirection,
-        locale: locale,
-        softWrap: softWrap,
-        overflow: overflow,
-        maxLines: maxLines,
-        semanticsLabel: semanticsLabel,
-        textWidthBasis: textWidthBasis,
-      );
-    }
-    final glyph = glyphStyle(style);
-    final spans = <TextSpan>[];
-    var i = 0;
-    while (true) {
-      final idx = data.indexOf('XFG', i);
-      if (idx < 0) {
-        spans.add(TextSpan(text: data.substring(i)));
-        break;
-      }
-      if (idx > i) spans.add(TextSpan(text: data.substring(i, idx)));
-      spans.add(TextSpan(text: '\u20B2', style: glyph));
-      i = idx + 3;
-    }
-    return Text.rich(
-      key: key,
-      TextSpan(style: style, children: spans),
-      strutStyle: strutStyle,
-      textAlign: textAlign,
-      textDirection: textDirection,
-      locale: locale,
-      softWrap: softWrap,
-      overflow: overflow,
-      maxLines: maxLines,
-      semanticsLabel: semanticsLabel,
-      textWidthBasis: textWidthBasis,
-    );
-  }
 }
 
-/// Drop-in replacement for [Text] that renders every 'XFG' token with
-/// the configured ticker glyph font when active.
-Widget xfgText(
-  String data, {
-  Key? key,
+/// Renders an XFG amount without any trailing ticker.
+///
+/// Glyph mode: `₲` prefix in the chosen display font + the bare figure.
+/// Plain mode: the bare figure + [plainTail] (default ` XFG`).
+Widget xfgAmount(
+  String amount, {
   TextStyle? style,
-  StrutStyle? strutStyle,
-  TextAlign? textAlign,
-  TextDirection? textDirection,
-  Locale? locale,
-  bool? softWrap,
-  TextOverflow? overflow,
-  int? maxLines,
-  String? semanticsLabel,
-  TextWidthBasis? textWidthBasis,
-}) =>
-    XfgTicker.text(
-      data,
-      style ?? const TextStyle(),
-      key: key,
-      strutStyle: strutStyle,
-      textAlign: textAlign,
-      textDirection: textDirection,
-      locale: locale,
-      softWrap: softWrap,
-      overflow: overflow,
-      maxLines: maxLines,
-      semanticsLabel: semanticsLabel,
-      textWidthBasis: textWidthBasis,
-    );
+  String plainTail = ' XFG',
+  Key? key,
+}) {
+  final s = style ?? const TextStyle();
+  if (!XfgTicker.isGlyph) {
+    return Text(key: key, '$amount$plainTail', style: s);
+  }
+  return Text.rich(
+    key: key,
+    TextSpan(style: s, children: [
+      TextSpan(text: XfgTicker.glyph, style: XfgTicker.glyphStyle(s)),
+      TextSpan(text: amount),
+    ]),
+  );
+}

@@ -1310,7 +1310,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 4),
-              xfgText(
+              Text(
                 'A privacy-focused cryptocurrency wallet for Fuego (XFG)',
                 style: TextStyle(color: AppTheme.textSecondary),
               ),

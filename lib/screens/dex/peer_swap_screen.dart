@@ -350,13 +350,13 @@ class _PeerSwapScreenState extends State<PeerSwapScreen> {
                 ],
               ),
               const SizedBox(height: 6),
-              xfgText(
-                '${swap.xfgAmountDecimal.toStringAsFixed(2)} XFG \u2192 ${swap.ctrAmountDecimal.toStringAsFixed(4)} ${swap.pairName}',
-                style: const TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontSize: 13,
+              Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    xfgAmount('${swap.xfgAmountDecimal.toStringAsFixed(2)}'),
+                    Text(' \u2192 ${swap.ctrAmountDecimal.toStringAsFixed(4)} ${swap.pairName}'),
+                  ],
                 ),
-              ),
               Text(
                 'ID: ${swap.swapId.substring(0, 12)}\u2026',
                 style: TextStyle(color: AppTheme.textMuted, fontSize: 10),
@@ -401,12 +401,12 @@ class _PeerSwapScreenState extends State<PeerSwapScreen> {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: xfgText(
-                  '${swap.xfgAmountDecimal.toStringAsFixed(2)} XFG \u2192 ${swap.pairName}',
-                  style: const TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontSize: 12,
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    xfgAmount('${swap.xfgAmountDecimal.toStringAsFixed(2)}'),
+                    Text(' \u2192 ${swap.pairName}'),
+                  ],
                 ),
               ),
               Text(

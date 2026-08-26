@@ -425,7 +425,7 @@ class _SendScreenState extends State<SendScreen> {
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               alignment: Alignment.center,
-                              child: xfgText(
+                              child: Text(
                                 'XFG',
                                 style: TextStyle(
                                   color: !_isHeat ? Colors.white : AppTheme.textSecondary,
