@@ -91,6 +91,75 @@ class _HomeScreenState extends State<HomeScreen> {
 
   static const _plaque = Color(0xFF141417);
 
+  Widget _complicationsRow(WalletState state) {
+    return BlocBuilder<MiningCubit, MiningState>(
+      builder: (context, mining) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _complication('${state.blockHeight}', 'BLOCK HEIGHT'),
+              _complication(_hashrate(mining.hashrate), 'HASHRATE'),
+              _complication('${state.peerCount}', 'PEERS'),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  String _hashrate(int h) {
+    if (h >= 1000000) return '${(h / 1000000).toStringAsFixed(1)}MH/s';
+    if (h >= 1000) return '${(h / 1000).toStringAsFixed(1)}kH/s';
+    return '${h}H/s';
+  }
+
+
+  Widget _complication(String value, String label) {
+    return SizedBox(
+      width: 64,
+      height: 64,
+      child: CustomPaint(
+        painter: const _FireRingPainter(),
+        child: Container(
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: TextStyle(
+                color: _platinum,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                fontFamily: AppTheme.numberFontFamily,
+              ),
+            ),
+          ),
+          const SizedBox(height: 2),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.38),
+                fontSize: 9,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 2,
+              ),
+            ),
+          ),
+        ],
+      ),
+      ),
+      ),
+    );
+  }
+
   Widget _balanceCard(WalletState state) => _BalanceCard(state: state);
 
   Widget _addressPlate(WalletState state) {
@@ -494,12 +563,6 @@ class _BalanceCardState extends State<_BalanceCard> {
   String _figure(double v) =>
       _showBalance ? _grouped(v.toStringAsFixed(decimalPlaces)) : _mask;
 
-  String _hashrate(int h) {
-    if (h >= 1000000) return '${(h / 1000000).toStringAsFixed(1)}MH/s';
-    if (h >= 1000) return '${(h / 1000).toStringAsFixed(1)}kH/s';
-    return '${h}H/s';
-  }
-
   @override
   Widget build(BuildContext context) {
     final state = widget.state;
@@ -687,24 +750,6 @@ class _BalanceCardState extends State<_BalanceCard> {
     );
   }
 
-  Widget _complicationsRow(WalletState state) {
-    return BlocBuilder<MiningCubit, MiningState>(
-      builder: (context, mining) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _complication('${state.blockHeight}', 'BLOCK HEIGHT'),
-              _complication(_hashrate(mining.hashrate), 'HASHRATE'),
-              _complication('${state.peerCount}', 'PEERS'),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   Widget _statementRow(
     String label,
     String value, {
@@ -747,50 +792,6 @@ class _BalanceCardState extends State<_BalanceCard> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _complication(String value, String label) {
-    return SizedBox(
-      width: 64,
-      height: 64,
-      child: CustomPaint(
-        painter: const _FireRingPainter(),
-        child: Container(
-      alignment: Alignment.center,
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              value,
-              style: TextStyle(
-                color: _platinum,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                fontFamily: AppTheme.numberFontFamily,
-              ),
-            ),
-          ),
-          const SizedBox(height: 2),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              label,
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.38),
-                fontSize: 9,
-                fontWeight: FontWeight.w500,
-                letterSpacing: 2,
-              ),
-            ),
-          ),
-        ],
-      ),
-      ),
-      ),
     );
   }
 
