@@ -136,6 +136,16 @@ flutter:
           weight: 700
         - asset: assets/fonts/Source_Serif_4/static/SourceSerif4-Light.ttf
           weight: 300
+    - family: Brygada1918
+      fonts:
+        - asset: assets/fonts/Brygada_1918/static/Brygada1918-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Brygada_1918/static/Brygada1918-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Brygada_1918/static/Brygada1918-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Brygada_1918/static/Brygada1918-Bold.ttf
+          weight: 700
     - family: Electrolize
       fonts:
         - asset: assets/fonts/Electrolize-Regular.ttf

@@ -24,6 +24,7 @@ const List<({String family, String label, String? note})> fontOptions = [
   (family: 'Saira', label: 'Saira', note: 'Sans-serif · default'),
   (family: 'NotoSans', label: 'Noto Sans', note: 'Sans-serif · numbers font'),
   (family: 'SourceSerif4', label: 'Source Serif 4', note: 'Serif text'),
+  (family: 'Brygada1918', label: 'Brygada 1918', note: 'Serif · editorial'),
   (family: 'Electrolize', label: 'Electrolize', note: 'Monospace'),
 ];
 
