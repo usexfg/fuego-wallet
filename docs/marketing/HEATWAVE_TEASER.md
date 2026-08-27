@@ -109,6 +109,14 @@ jobs:
 # This workflow is marketing-fiction documentation — NOT an actual release pipeline.
 ```
 
+## House Inversion — Weakness as Strength
+
+> Unapologetically private — remarkably rare.
+> We carry no insurance on deposits. We carry sound money.
+> Not chartered. Not connected. Not concerned.
+
+Sound money does not ask permission. Privacy is not a feature. It is the foundation.
+
 ## Brand Asset Generation Plan (Evidence-Based)
 
 Because luxury imagery requires external sources, and per OKOC / YES.md rules 
