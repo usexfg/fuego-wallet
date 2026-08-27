@@ -197,10 +197,11 @@ class _PeerSwapScreenState extends State<PeerSwapScreen> {
   }
 
   Widget _chainSelector(DexState state) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: ChainInfo.swapableChains.map((String t) {
+    return LayoutBuilder(
+      builder: (context, constraints) => Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: ChainInfo.swapableChains.map((String t) {
         final bool selected = t == state.selectedPair.ticker;
         final Color color = ChainInfo.colors[t] ?? AppTheme.primaryColor;
         return GestureDetector(
@@ -225,6 +226,7 @@ class _PeerSwapScreenState extends State<PeerSwapScreen> {
           ),
         );
       }).toList(),
+      ),
     );
   }
 

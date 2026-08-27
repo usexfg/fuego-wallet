@@ -263,7 +263,7 @@ class ChainInfo {
     'SOL': const Color(0xFF9945FF),
     'DCR': const Color(0xFF2970FF),
     'XMR': const Color(0xFFFF6600),
-    'XFG': const Color(0xFFD84315),
+    'XFG': const Color(0xFFC5A059), // Champagne gold — Bank of XFG house
     'AVAX': const Color(0xFFE84142),
     'BOB': const Color(0xFFFF6D00),
     'CRO': const Color(0xFF002D74),

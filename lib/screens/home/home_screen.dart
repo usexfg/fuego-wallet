@@ -14,15 +14,15 @@ import '../transactions/mint_heat_screen.dart';
 import '../transactions/receive_screen.dart';
 import '../../utils/xfg_ticker.dart';
 
-// Shared prestige palette + fire-brand gradients.
-const Color _obsidian = Color(0xFF0C0C0F);
-const Color _champagne = Color(0xFFFF8A5C); // warm ember accent
-const Color _platinum = Color(0xFFE9E7E2);
+// Shared prestige palette — Obsidian case + Champagne dial (Bank of XFG house)
+const Color _obsidian = Color(0xFF0D0B08);
+const Color _champagne = Color(0xFFC5A059); // Champagne gold — muted, not peachy
+const Color _platinum = Color(0xFFF5F1E8); // Cream parchment
 const List<Color> _fireStops = [
-  Color(0xFF8A1E0B),
-  Color(0xFFD84315),
-  Color(0xFFFF6D00),
-  Color(0xFFF9A825),
+  Color(0xFF8C734B), // Muted gold
+  Color(0xFFC5A059), // Champagne
+  Color(0xFFD4B896), // Light champagne
+  Color(0xFF8C734B),
 ];
 LinearGradient get _fireLine =>
     const LinearGradient(colors: _fireStops);
@@ -39,11 +39,15 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return BlocBuilder<WalletCubit, WalletState>(
       builder: (context, state) {
-        return RefreshIndicator(
-          onRefresh: () => context.read<WalletCubit>().refreshWallet(),
-          child: ListView(
-            padding: const EdgeInsets.all(16),
+        return SafeArea(
+          top: true,
+          bottom: false,
+          child: RefreshIndicator(
+            onRefresh: () => context.read<WalletCubit>().refreshWallet(),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
             children: [
+              const SizedBox(height: 8),
               _balanceCard(state),
               const SizedBox(height: 14),
               if (state.address != null) _addressPlate(state),
@@ -153,10 +157,12 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
-        ],
-      ),
-      ),
-      ),
+            ],
+          ),
+        ),
+          ),
+        );
+      },
     );
   }
 
@@ -506,12 +512,12 @@ class _GuillochePainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.7
       ..shader = const LinearGradient(colors: [
-        Color(0xFF8A1E0B),
-        Color(0xFFD84315),
-        Color(0xFFFF6D00),
-        Color(0xFFF9A825),
+        Color(0xFF8C734B),
+        Color(0xFFC5A059),
+        Color(0xFFD4B896),
+        Color(0xFF8C734B),
       ]).createShader(fireRect)
-      ..color = const Color(0xFFD84315).withOpacity(0.06);
+      ..color = const Color(0xFFC5A059).withOpacity(0.06);
 
     void rings(Offset center, int count, double step, Paint paint) {
       for (var i = 1; i <= count; i++) {
@@ -670,18 +676,28 @@ class _BalanceCardState extends State<_BalanceCard> {
                           ),
                         _ShimmerSweep(
                           sweep: _sweep,
-                          child: _OdometerText(
-                            _figure(state.balanceXfg),
-                            TextStyle(
-                              color: _platinum,
-                              fontSize: 44,
-                              fontWeight: FontWeight.w600,
-                              height: 1.0,
-                              letterSpacing: 0.2,
-                              fontFamily: 'Cormorant',
-                              fontFamilyFallback: [AppTheme.numberFontFamily],
+                          child: ShaderMask(
+                            shaderCallback: (bounds) => const LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Color(0xFFC5A059),
+                                Color(0xFFD4B896),
+                                Color(0xFF8C734B),
+                              ],
+                            ).createShader(bounds),
+                            child: _OdometerText(
+                              _figure(state.balanceXfg),
+                              const TextStyle(
+                                color: Colors.white,
+                                fontSize: 44,
+                                fontWeight: FontWeight.w600,
+                                height: 1.0,
+                                letterSpacing: 0.2,
+                                fontFamily: 'Cormorant',
+                              ),
+                              onSettled: () => setState(() => _sweep++),
                             ),
-                            onSettled: () => setState(() => _sweep++),
                           ),
                         ),
                       ],
@@ -1107,7 +1123,7 @@ class _KnurlPainter extends CustomPainter {
     final fireRect = Rect.fromLTWH(0, 0, size.width, size.height);
     final tick = Paint()
       ..shader = LinearGradient(colors: [
-        for (final c in _fireStops) c.withOpacity(0.65),
+        for (final c in _fireStops) c.withOpacity(0.55),
       ]).createShader(fireRect)
       ..color = (accent ?? _champagne).withOpacity(0.45)
       ..strokeWidth = 1
@@ -1149,10 +1165,10 @@ class _FireRingPainter extends CustomPainter {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          Color(0xFF8A1E0B),
-          Color(0xFFD84315),
-          Color(0xFFFF6D00),
-          Color(0xFFF9A825),
+          Color(0xFF8C734B),
+          Color(0xFFC5A059),
+          Color(0xFFD4B896),
+          Color(0xFF8C734B),
         ],
       ).createShader(Offset.zero & size)
       ..color = Colors.white.withOpacity(0.10);

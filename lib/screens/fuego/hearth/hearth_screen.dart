@@ -172,48 +172,61 @@ children: [
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // XFG-denominated (left of center)
-          AnimatedBuilder(
-            animation: _pulseAnim,
-            builder: (context, _) {
-              return Text(
-                'XFG = \$${xfgUsd.toStringAsFixed(2)}',
+          // XFG-denominated (left) — flexible to prevent overflow
+          Flexible(
+            flex: 2,
+            child: AnimatedBuilder(
+              animation: _pulseAnim,
+              builder: (context, _) {
+                return FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'XFG = \$${xfgUsd.toStringAsFixed(2)}',
+                    style: HearthTheme.mono(
+                      size: 13,
+                      weight: FontWeight.w700,
+                      color: xfgColor.withOpacity(0.4 + _pulseAnim.value * 0.6),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(width: 6),
+          Flexible(child: _metricChip('24h ${_priceUp ? '+' : ''}0.00%', _priceUp ? HearthTheme.bidPrimary : HearthTheme.askPrimary)),
+          const SizedBox(width: 6),
+          // Center: XFG priced in ΗΞΔŦ — expanded but ellipsized
+          Expanded(
+            flex: 3,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                '1 XFG ≈ ${spotNum.toStringAsFixed(1)} HΞ∆T',
                 style: HearthTheme.mono(
                   size: 13,
                   weight: FontWeight.w700,
-                  color: xfgColor.withOpacity(0.4 + _pulseAnim.value * 0.6),
+                  color: HearthTheme.askPrimary,
                 ),
-              );
-            },
-          ),
-          const SizedBox(width: 8),
-          _metricChip(
-            '24h ${_priceUp ? '+' : ''}0.00%',
-            _priceUp ? HearthTheme.bidPrimary : HearthTheme.askPrimary,
-          ),
-          const Spacer(),
-          // Center: XFG priced in ΗΞΔŦ
-          Text(
-            '1 XFG ≈ ${spotNum.toStringAsFixed(1)} HΞ∆T',
-            style: HearthTheme.mono(
-              size: 13,
-              weight: FontWeight.w700,
-              color: HearthTheme.askPrimary,
+              ),
             ),
           ),
-          const Spacer(),
-          // HΞ∆T-denominated (right of center)
-          _metricChip(
-            _formatVol(state.pool?.epochSwapFees.toString()),
-            HearthTheme.textSecondary,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            'HΞ∆T ≋ \$${heatUsd.toStringAsFixed(2)}',
-            style: HearthTheme.mono(
-              size: 13,
-              weight: FontWeight.w700,
-              color: HearthTheme.textWhite,
+          const SizedBox(width: 6),
+          Flexible(child: _metricChip(_formatVol(state.pool?.epochSwapFees.toString()), HearthTheme.textSecondary)),
+          const SizedBox(width: 6),
+          Flexible(
+            flex: 2,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Text(
+                'HΞ∆T ≋ \$${heatUsd.toStringAsFixed(2)}',
+                style: HearthTheme.mono(
+                  size: 13,
+                  weight: FontWeight.w700,
+                  color: HearthTheme.textWhite,
+                ),
+              ),
             ),
           ),
         ],

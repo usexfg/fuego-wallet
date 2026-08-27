@@ -22,11 +22,11 @@ class AppTheme {
   static const Color errorColor = Color(0xFFF44336); // Error red
   static const Color infoColor = Color(0xFF2196F3); // Info blue
 
-  // Enhanced surface variations
-  static const Color surfaceLight = Color(0xFF2A2F36); // Lighter surface
-  static const Color surfaceDark = Color(0xFF151A20); // Darker surface
-  static const Color cardLight = Color(0xFF2E343C); // Lighter card
-  static const Color cardDark = Color(0xFF1E2228); // Darker card
+  // Enhanced surface variations — warm obsidian family
+  static const Color surfaceLight = Color(0xFF1E1B14); // Lighter warm obsidian
+  static const Color surfaceDark = Color(0xFF12100C); // Darker warm obsidian
+  static const Color cardLight = Color(0xFF2A2418); // Lighter card — brushed platinum
+  static const Color cardDark = Color(0xFF1A1712); // Darker card
 
   // Text colors
   static const Color textPrimary = Color(0xFFFFFFFF);

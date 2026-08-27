@@ -15,10 +15,10 @@ class HearthTheme {
   static const Color bidBg = Color(0x1800ACC1);
   static const Color bidDepth = Color(0x3000ACC1);
 
-  static const Color askPrimary = Color(0xFFD84315);
-  static const Color askLight = Color(0xFFFF5722);
-  static const Color askBg = Color(0x18D84315);
-  static const Color askDepth = Color(0x30D84315);
+  static const Color askPrimary = Color(0xFFC5A059); // Champagne gold — house primary
+  static const Color askLight = Color(0xFFD4B896);
+  static const Color askBg = Color(0x18C5A059);
+  static const Color askDepth = Color(0x30C5A059);
 
   static const Color textWhite = Color(0xFFFFFFFF);
   static const Color textPrimary = Color(0xFFD9D9D9);
@@ -29,8 +29,8 @@ class HearthTheme {
   static const Color divider = Color(0xFF1A1A1A);
   static const Color border = Color(0xFF222222);
 
-  static const Color chartLine = Color(0xFFD84315);
-  static const Color chartPulse = Color(0xFFD84315);
+  static const Color chartLine = Color(0xFFC5A059);
+  static const Color chartPulse = Color(0xFFC5A059);
 
   static TextStyle mono({double size = 12, FontWeight weight = FontWeight.w500, Color color = textPrimary}) {
     return TextStyle(
