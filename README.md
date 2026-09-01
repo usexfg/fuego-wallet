@@ -1,4 +1,4 @@
-# 🔥 Fuego Wallet
+#  Fuego Valise 💼
 
 <p align="center">
   <img src="https://img.shields.io/badge/Flutter-3.44.4-blue?logo=flutter" alt="Flutter Version" />
@@ -7,11 +7,11 @@
   <img src="https://img.shields.io/badge/License-MIT-green" alt="License" />
 </p>
 
-A desktop & mobile wallet app for **Fuego (XFG)** privacy cryptocurrency.
-Features include secure untraceable transactions, Fuego's new flatcoin: ΗΞΔŦ (burn XFG to mint or buy & sell on), HⲈⲆ☈ⲦН (Fuego's on-chain HEAT exchange), DeXFG atomic swaps, earn yield on ΗΞΔŦ_𝖢𝖣s, register your fire alias, built-in pool mining and more. 🔥
+A desktop & mobile _valise_ for Fuego Blockchain Bank of **XFG** privacy cryptocurrency & Fuego's new flatcoin ΗΞΔŦ - pegged to purchasing power by tracking a US dollar's rate of inflation since Q1|2009 (or 1.58)
+Burn XFG to mint ΗΞΔŦ or buy & sell on HⲈⲆ☈ⲦН Floor; Fuego's on-chain orderbook block-discrete market swap & limit order exchange, DeXFG cross-chain PYLC atomic swaps, earn yield on ΗΞΔŦ_𝖢𝖣s, register your 8-character fire alias, built-in pool mining and more. 🔥
 
 <p align="center">
-  <img src="https://github.com/usexfg/fuego-wallet/raw/master/assets/images/xfgwalletdesktopsplash.gif" alt="Fuego Wallet Screenshot" />
+  <img src="https://github.com/usexfg/fuego-valise/raw/master/assets/images/xfgwalletdesktopsplash.gif" alt="Fuego Valise Screenshot" />
 </p>
 
 ### 🔐 Advanced Security
@@ -21,7 +21,7 @@ Features include secure untraceable transactions, Fuego's new flatcoin: ΗΞΔŦ
 - **Secure Device Storage** with hardware keychain
 - **25-word Mnemonic** backup / recovery
 
-### 💼 Wallet Management
+### 💼 Valise Management
 - **Create New Wallets** with secure entropy
 - **Restore from Backup** using mnemonic phrase or private keys
 - **Real-time Balance Display** with privacy toggle
@@ -29,7 +29,7 @@ Features include secure untraceable transactions, Fuego's new flatcoin: ΗΞΔŦ
 - **Transaction History** with confirmation status monitoring
 
 ### 💸 Privacy Transactions
-- **Send XFG** with default max privacy levels
+- **Send XFG** or ΗΞΔŦ; default max privacy levels
 - **Ring Signatures** (8-32 mixins for anonymity)
 - **Receive with QR Codes** and integrated addresses
 - **Open Alias Support** for oa1:xfg transactions
@@ -44,7 +44,7 @@ Features include secure untraceable transactions, Fuego's new flatcoin: ΗΞΔŦ
 ### 🔄 Unified Daemon
 The app uses a **unified daemon** process (`unified`) that bundles fuegod, walletd, and xfg-swapd into a single embedded process for local node operation. When the unified daemon is unavailable, the app falls back to a remote node connection.
 
-## 🚀 Getting Started
+## 🚀 Get Started
 
 ### Prerequisites
 
@@ -57,8 +57,8 @@ The app uses a **unified daemon** process (`unified`) that bundles fuegod, walle
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/usexfg/fuego-wallet.git
-   cd fuego-wallet
+   git clone https://github.com/usexfg/fuego-valise.git
+   cd fuego-valise
    ```
 
 2. **Install dependencies**
@@ -151,7 +151,7 @@ lib/
 ### State Management
 - **Provider Pattern** for reactive state management
 - **Clean Architecture** with separation of concerns
-- **Comprehensive Error Handling** throughout
+- **Complete Error Handling** throughout
 
 ### Daemon Architecture
 The app supports two daemon modes:
@@ -218,7 +218,7 @@ static const List<String> defaultRemoteNodes = [
 - **No data tracking** - all operations local
 
 ### Authentication Security
-- **Multi-factor authentication** with PIN + biometric
+- **Multi-factor authentication** with PIN or optional biometric 
 - **Failed attempt protection** with progressive lockout
 - **Secure session management** with timeout
 - **Device binding** with hardware-specific keys
@@ -271,7 +271,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🔗 Links
 
 - **Fuego Website**: [https://usexfg.org](https://usexfg.org)
-- **Main Repository**: [https://github.com/usexfg/fuego-wallet](https://github.com/usexfg/fuego-wallet)
+- **Main Repository**: [https://github.com/usexfg/fuego-valise](https://github.com/usexfg/fuego-wallet)
 - **Discord**: [https://discord.gg/5UJcJJg](https://discord.gg/5UJcJJg)
 - **Twitter**: [https://twitter.com/useXFG](https://twitter.com/useXFG)
 
@@ -283,7 +283,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## ⚠️ Disclaimer
 
-This software is provided "as is" without warranty. Cryptocurrency transactions are irreversible. Always:
+Fuogo Valise is provided "as is" without warranty. Cryptocurrency transactions are irreversible. Always:
 - **Backup your wallet** securely
 - **Verify transactions** before sending
 - **Use at your own risk**
