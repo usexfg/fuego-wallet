@@ -1,0 +1,88 @@
+{
+  "house": "Bank of XFG — ΗΞΔŦ — Fuego",
+  "doctrine": "Unapologetically private — remarkably rare. Timeless stability / Intellectual capital / Understated elegance. Cultural institution, not software.",
+  "rule_60_30_10": "60% Obsidian neutrals (background/surface/card) — 30% Champagne Gold (primary, progress, headlines) — 10% Midnight Blue (accent, secondary actions, provenance). No other saturated hues.",
+  "palette": {
+    "obsidian": {
+      "obsidian": "#0D0B08",
+      "warmObsidian": "#181512",
+      "brushedPlatinumDark": "#25221A",
+      "surfaceLight": "#1E1B14",
+      "surfaceDark": "#12100C",
+      "cardLight": "#2A2418",
+      "cardDark": "#1A1712",
+      "plaque": "#141417"
+    },
+    "champagneGold": {
+      "champagne": "#C5A059",
+      "lightChampagne": "#D4B896",
+      "mutedGold": "#8C734B",
+      "deepGold": "#6B5637",
+      "hairline": "rgba(197,160,89,0.18)",
+      "softBg": "rgba(197,160,89,0.08)",
+      "subtleBg": "rgba(197,160,89,0.12)"
+    },
+    "midnightBlue": {
+      "midnight": "#3D5A80",
+      "deep": "#1A1814",
+      "light": "#5A7A9C",
+      "muted": "#2A3A4A"
+    },
+    "parchment": {
+      "cream": "#F5F1E8",
+      "warmPlatinum": "#E9E7E2",
+      "textPrimary": "#F5F1E8",
+      "textSecondary": "#C2B8A3",
+      "textMuted": "#8A8278"
+    },
+    "semanticMuted": {
+      "success": "#7A9B7E",
+      "successBg": "rgba(122,155,126,0.12)",
+      "warning": "#C5A059",
+      "warningBg": "rgba(197,160,89,0.12)",
+      "error": "#7A1C1C",
+      "errorBg": "rgba(122,28,28,0.12)",
+      "info": "#5A7A9C",
+      "infoBg": "rgba(90,122,156,0.12)"
+    },
+    "deprecatedBanned": {
+      "peachyOrange": "#FFFF8A5C — BANNED (use Champagne)",
+      "neonOrange": "#FFD84315 — BANNED (use Champagne)",
+      "neonGreen": "#4CAF50 — BANNED (use muted sage 7A9B7E)",
+      "neonRed": "#F44336 — BANNED (use burgundy 7A1C1C)",
+      "neonCyan": "#00ACC1 — BANNED (use Midnight Blue)"
+    }
+  },
+  "typography": {
+    "headline": "Cormorant Garamond — luxury editorial serif, tight tracking, high contrast",
+    "body": "Inter / IBM Plex Sans — Swiss, quiet, invisible",
+    "mono": "IBM Plex Mono — hashes/amounts at 10-11px muted, tabular figures",
+    "numberFont": "NotoSans — pinned for figures, OFL",
+    "rule": "Max 2 families per surface"
+  },
+  "material": {
+    "cardRadius": 12,
+    "cardBorder": "1px Muted Gold @0.18",
+    "progressHeight": "3-4px Champagne on Warm Obsidian",
+    "motion": "400ms ease — sweep seconds hand, no bounce",
+    "shadow": "0-1px soft only, no glow",
+    "haptics": "mediumImpact on completion only"
+  },
+  "hearthFloor": {
+    "note": "The Hearth Floor uses SAME house palette — no cyan/orange. Bids = Midnight Blue, Asks = Champagne Gold, both muted bg at 0.08",
+    "bidPrimary": "#3D5A80",
+    "bidBg": "rgba(61,90,128,0.08)",
+    "askPrimary": "#C5A059",
+    "askBg": "rgba(197,160,89,0.08)"
+  },
+  "usage": {
+    "background": "obsidian",
+    "surface": "warmObsidian",
+    "card": "brushedPlatinumDark",
+    "primary": "champagne",
+    "accent": "midnight",
+    "textOnDark": "parchment.cream",
+    "border": "champagne.hairline",
+    "fireGoldIs": "champagne — NOT peachy orange. Fire gold = champagne gold."
+  }
+}

@@ -10,17 +10,17 @@ class AppTheme {
   static const Color surfaceColor = Color(0xFF181512); // Warm obsidian (inside the case)
   static const Color cardColor = Color(0xFF25221A); // Brushed platinum dark (card face)
 
-  // Comprehensive reddish-orange color palette
-  static const Color primaryLight = Color(0xFFFF5722); // Lighter reddish-orange
-  static const Color primaryDark = Color(0xFFBF360C); // Darker reddish-orange
-  static const Color primaryAccent = Color(0xFFFF8A65); // Accent reddish-orange
-  static const Color primaryVariant = Color(0xFFE64A19); // Primary variant
+  // Champagne gold scale — fire gold IS champagne, not peachy orange (per design-tokens.json)
+  static const Color primaryLight = Color(0xFFD4B896); // Light champagne
+  static const Color primaryDark = Color(0xFF6B5637); // Deep gold
+  static const Color primaryAccent = Color(0xFFD4B896); // Light champagne accent
+  static const Color primaryVariant = Color(0xFF8C734B); // Muted gold
 
-  // Complementary colors for better UX
-  static const Color successColor = Color(0xFF4CAF50); // Success green
-  static const Color warningColor = Color(0xFFFF9800); // Warning orange
-  static const Color errorColor = Color(0xFFF44336); // Error red
-  static const Color infoColor = Color(0xFF2196F3); // Info blue
+  // Muted semantic — sage/burgundy/slate, no neon (house palette)
+  static const Color successColor = Color(0xFF7A9B7E); // Sage — muted success
+  static const Color warningColor = Color(0xFFC5A059); // Champagne — warning is gold
+  static const Color errorColor = Color(0xFF7A1C1C); // Burgundy — muted error
+  static const Color infoColor = Color(0xFF5A7A9C); // Slate blue — muted info
 
   // Enhanced surface variations — warm obsidian family
   static const Color surfaceLight = Color(0xFF1E1B14); // Lighter warm obsidian
@@ -28,10 +28,10 @@ class AppTheme {
   static const Color cardLight = Color(0xFF2A2418); // Lighter card — brushed platinum
   static const Color cardDark = Color(0xFF1A1712); // Darker card
 
-  // Text colors
-  static const Color textPrimary = Color(0xFFFFFFFF);
-  static const Color textSecondary = Color(0xFFB3B3B3);
-  static const Color textMuted = Color(0xFF7D8590);
+  // Text colors — parchment on obsidian (cream, not cold white)
+  static const Color textPrimary = Color(0xFFF5F1E8); // Cream parchment
+  static const Color textSecondary = Color(0xFFC2B8A3); // Warm secondary
+  static const Color textMuted = Color(0xFF8A8278); // Muted
 
   // Status colors (moved above for organization)
 
@@ -179,7 +179,7 @@ class AppTheme {
         indicatorColor: primaryColor,
       ),
       dividerTheme: const DividerThemeData(
-        color: Color(0xFF30363D),
+        color: Color(0xFF2A2418), // Brushed platinum — warm, not blue-gray
         thickness: 1,
         space: 1,
       ),
@@ -229,9 +229,9 @@ class AppTheme {
         }),
       ),
       progressIndicatorTheme: const ProgressIndicatorThemeData(
-        color: primaryColor,
-        linearTrackColor: Color(0xFF30363D),
-        circularTrackColor: Color(0xFF30363D),
+        color: primaryColor, // Champagne
+        linearTrackColor: Color(0xFF1E1B14), // Warm obsidian light
+        circularTrackColor: Color(0xFF1E1B14),
       ),
     );
   }
@@ -330,8 +330,8 @@ class AppTheme {
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
     colors: [
-      backgroundColor,
-      Color(0xFF1A1F26),
+      backgroundColor, // Obsidian 0D0B08
+      Color(0xFF181512), // Warm obsidian
     ],
   );
 

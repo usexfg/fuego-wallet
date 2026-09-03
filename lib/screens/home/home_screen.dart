@@ -88,7 +88,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
             ],
           ),
-        );
+        ),
+      );
       },
     );
   }
@@ -127,42 +128,40 @@ class _HomeScreenState extends State<HomeScreen> {
       child: CustomPaint(
         painter: const _FireRingPainter(),
         child: Container(
-      alignment: Alignment.center,
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              value,
-              style: TextStyle(
-                color: _platinum,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                fontFamily: AppTheme.numberFontFamily,
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    color: _platinum,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    fontFamily: AppTheme.numberFontFamily,
+                  ),
+                ),
               ),
-            ),
-          ),
-          const SizedBox(height: 2),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              label,
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.38),
-                fontSize: 9,
-                fontWeight: FontWeight.w500,
-                letterSpacing: 2,
+              const SizedBox(height: 2),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.38),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 2,
+                  ),
+                ),
               ),
-            ),
-          ),
             ],
           ),
         ),
-          ),
-        );
-      },
+      ),
     );
   }
 
@@ -173,7 +172,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final alias = state.alias; // Assuming alias is in WalletState
     if (addr.isEmpty) return const SizedBox.shrink();
     return Container(
-      height: 64,
+      constraints: const BoxConstraints(minHeight: 64),
       alignment: Alignment.center,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       decoration: BoxDecoration(
@@ -203,6 +202,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 SelectableText(
                   addr,
+                  maxLines: 1,
                   style: TextStyle(
                     color: const Color(0xFFE9E7E2).withOpacity(0.85),
                     fontSize: 11,
@@ -481,12 +481,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-            xfgAmount(
-              '${isIn ? '+' : '-'}${tx.amount.toStringAsFixed(decimalPlaces)}',
-              style: TextStyle(
-                color: isIn ? AppTheme.successColor : AppTheme.errorColor,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
+            Flexible(
+              child: xfgAmount(
+                '${isIn ? '+' : '-'}${tx.amount.toStringAsFixed(decimalPlaces)}',
+                style: TextStyle(
+                  color: isIn ? AppTheme.successColor : AppTheme.errorColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -1089,13 +1093,16 @@ class _CrownPusher extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          Text(
-            label,
-            style: TextStyle(
-              color: a.withOpacity(0.65),
-              fontSize: 8,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 2,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              style: TextStyle(
+                color: a.withOpacity(0.65),
+                fontSize: 8,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 2,
+              ),
             ),
           ),
         ],

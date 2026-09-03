@@ -938,12 +938,17 @@ children: [
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('You receive', style: HearthTheme.label(size: 10)),
-              Text(
-                quote.outputAmount,
-                style: HearthTheme.mono(
-                  size: 14,
-                  weight: FontWeight.w700,
-                  color: HearthTheme.textWhite,
+              Flexible(
+                child: Text(
+                  quote.outputAmount,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
+                  style: HearthTheme.mono(
+                    size: 14,
+                    weight: FontWeight.w700,
+                    color: HearthTheme.textWhite,
+                  ),
                 ),
               ),
             ],
